@@ -1,0 +1,18 @@
+.godot/
+**/bin/
+**/obj/
+.DS_Store
+*.user
+artifacts/
+.runtime.env
+.env
+.env.*
+!.env.example
+.aws/
+.codex/
+.agents/
+
+# Local previews and exported animation packages; game assets live in assets/.
+output/dice/
+output/yuno-ludo/
+
