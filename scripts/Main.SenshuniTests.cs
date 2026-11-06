@@ -39,7 +39,7 @@ public partial class Main
             card.EmitSignal(BaseButton.SignalName.Pressed);
             Check(CanUseSelected() && SelectedVerb().Contains("1 acción"), "No se puede jugar Senshuni por una acción.");
             UseSelected();
-            Check(p.Hand.Count == 12 && p.Deck.Count == before - 2 && p.Memory.Single() == "senshuni" && s.ActionsLeft == 1 && _drawQueue.Count == 2,
+            Check(p.Hand.Count == 12 && p.Deck.Count == before - 2 && p.Memory.Single() == "senshuni" && s.ActionsLeft == 1 && _drawQueue.Count(d => d.PileDestination == null) == 2,
                 $"Senshuni: fase={s.Phase}, mano={p.Hand.Count}, mazo={p.Deck.Count}/{before}, memoria={string.Join(",",p.Memory)}, acciones={s.ActionsLeft}, vuelos={_drawQueue.Count}.");
             // Drive actual process frames, rather than just draining queued events.
             SetProcess(true);
@@ -63,7 +63,7 @@ public partial class Main
             before = p.Hand.Count; Press(Dialog(), "RelikiaMemory0_0");
             Check(p.Hand.Count == before + 2 && p.CorruptedMemory.Single() == "senshuni" && p.Memory.Count == 0 && p.Relikia == 0 && s.ActionsLeft == 0,
                 "Relikia no activa el robo ni corrompe Senshuni.");
-            Check(_drawQueue.Count == 2, "Relikia no encola los dos robos de Senshuni.");
+            Check(_drawQueue.Count(d => d.PileDestination == null) == 2, "Relikia no encola los dos robos de Senshuni.");
             await FinishDraws();
 
             // Pending responses must not draw early; passing resumes both flights.
@@ -72,15 +72,15 @@ public partial class Main
             s.Players[1].Hand.Add("load-error");
             before = p.Deck.Count;
             Execute(_game.PlayCode(0, 0));
-            Check(s.Phase == Phase.ErrorResponse && !CardsInMotion && p.Deck.Count == before,
+            Check(s.Phase == Phase.ErrorResponse && _drawQueue.All(d => d.PileDestination == CardZone.Memory) && p.Deck.Count == before,
                 "Senshuni roba antes de resolver Error de Carga.");
             Execute(_game.PassErrorResponse(1));
-            Check(_drawQueue.Count == 2 && p.Deck.Count == before - 2, "Pasar la respuesta no reanuda el robo animado.");
+            Check(_drawQueue.Count(d => d.PileDestination == null) == 2 && p.Deck.Count == before - 2, "Pasar la respuesta no reanuda el robo animado.");
             await FinishDraws();
             s.ActionsLeft = 2; p.Hand.Clear(); p.Hand.Add("senshuni");
             Execute(_game.PlayCode(0, 0));
             Execute(_game.PlayCode(1, 0));
-            Check(!CardsInMotion && p.Hand.Count == 0 && s.ActionsLeft == 2,
+            Check(_drawQueue.All(d => d.PileDestination == CardZone.Memory) && p.Hand.Count == 0 && s.ActionsLeft == 2,
                 "Un Senshuni anulado roba cartas o no devuelve la acción.");
             GD.Print("SENSHUNI_SMOKE_PASS · arte limpio, código por 1 acción, dos robos animados, mano sin límite, memoria y activación/corrupción por Relikia.");
             GetTree().Quit();

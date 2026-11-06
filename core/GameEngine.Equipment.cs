@@ -22,7 +22,11 @@ public sealed partial class GameEngine
             p.Equipment = id;
             Log($"{p.Name} pone {CardCatalog.Get(id).Name} en su zona de equipo (1 acción).");
         };
-        frame.Cancel = () => State.Phase = frame.ResumePhase;
+        frame.Cancel = () =>
+        {
+            NotifyPileMove(p, id, CardZone.Activation);
+            State.Phase = frame.ResumePhase;
+        };
         BeginActivation(frame);
         return CommandResult.Ok();
     }
@@ -30,7 +34,9 @@ public sealed partial class GameEngine
     private void DestroyEquipment(PlayerState p)
     {
         if (p.Equipment == null) return;
-        var id = p.Equipment; p.Equipment = null; p.Memory.Add(id);
+        var id = p.Equipment;
+        NotifyPileMove(p, id, CardZone.Equipment);
+        p.Equipment = null; p.Memory.Add(id);
         Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: va a su memoria.");
     }
 

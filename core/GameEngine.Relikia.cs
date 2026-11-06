@@ -154,6 +154,7 @@ public sealed partial class GameEngine
     {
         var p = State.Players[owner];
         var id = p.Memory[index];
+        NotifyPileMove(p, id, CardZone.Memory, index, CardZone.Corrupted);
         p.Memory.RemoveAt(index);
         p.CorruptedMemory.Add(id);
         Log($"Se corrompe {CardCatalog.Get(id).Name} de la memoria de {p.Name} (boca abajo).");

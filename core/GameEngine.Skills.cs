@@ -35,8 +35,7 @@ public sealed partial class GameEngine
             return CommandResult.Fail($"Elige una copia disponible de Destiny y exactamente {DefenseDiscardCost} cartas para descartar.");
         foreach (var index in indices.OrderDescending())
         {
-            p.Memory.Add(p.Hand[index]);
-            p.RemoveHandCard(index);
+            SendHandToMemory(p, index);
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
         Log($"{p.Name} activa Relick Destiny Shuffle (espacio {skillSlot + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");

@@ -45,6 +45,11 @@ public sealed partial class GameEngine
         var target = DestructionTargets().FirstOrDefault(t => t.Owner == owner && t.Zone == zone && (zone is FieldZone.Equipment or FieldZone.Bonus || t.Index == index));
         if (target == null) return CommandResult.Fail("Elige una no-habilidad del campo.");
         var p = State.Players[owner];
+        if (zone != FieldZone.Equipment)
+            NotifyPileMove(p, target.CardId, zone switch
+            {
+                FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, _ => CardZone.Attached
+            }, index);
         switch (zone)
         {
             case FieldZone.Equipment: DestroyEquipment(p); break;
@@ -63,7 +68,7 @@ public sealed partial class GameEngine
     private CommandResult PlayRerollCombo(int actor, int index)
     {
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
-        p.RemoveHandCard(index); p.Memory.Add(card.Id); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
+        SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
         var frame = new ActivationFrame(actor, card.Id, card.ActionCost, card.PrCost, State.Phase);
         frame.Parent = _activeActivation;
         frame.Resume = () => { _activeActivation = frame.Parent; ResolveRerollComboEffect(actor, card); };

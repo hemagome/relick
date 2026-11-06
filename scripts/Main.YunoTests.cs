@@ -32,9 +32,9 @@ public partial class Main
             var name = (Label)_root.FindChild("RelikarioName0", true, false);
             Check(name.TooltipText.Contains("Vida máxima: 8") && name.TooltipText.Contains("Una vez por turno"), "No se puede consultar la habilidad de Yuno.");
             rng.Enqueue(3); Execute(_game.Attack(0, 0, 0));
-            ShowPendingSkillChoice();
+            DrainTestCards(); ShowPendingSkillChoice();
             Check(!_helpOpen, "La elección aparece antes de terminar la tirada.");
-            DrainTestDice(); ShowPendingSkillChoice();
+            DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Check(Dialog().Title.Contains("Yuno") && _game.State.Players[1].Health == 8, "Yuno no permite decidir antes del daño.");
             Check(((Button)_root.FindChild("AdvanceStageButton", true, false)).Disabled, "Se permite avanzar con la tirada pendiente.");
             rng.Enqueue(6);
@@ -45,12 +45,12 @@ public partial class Main
 
             Fixture(skill: CardCatalog.Magnet.Id);
             _game.State.Players[1].Hand.Add("lucky-pendant");
-            rng.Enqueue(6); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); ShowPendingSkillChoice();
+            rng.Enqueue(6); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
             Check(_game.State.Phase == Phase.MagnetChoice && _game.State.LastAttackDie == 6 && !_game.State.Active.AttackRerollUsedThisTurn, "Conservar un 6 pierde el crítico original.");
-            ShowPendingSkillChoice(); Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
+            DrainTestCards(); ShowPendingSkillChoice(); Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
 
-            Fixture(); rng.Enqueue(1); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); ShowPendingSkillChoice();
+            Fixture(); rng.Enqueue(1); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Check(_game.State.Phase == Phase.Combat && !_helpOpen && _game.State.Players[1].Health == 8, "Un 1 ofrece relanzamiento.");
             Fixture(1); rng.Enqueue(3); Execute(_game.Attack(1, 0, 0)); DrainTestDice();
             rng.Enqueue(6); Check(PracticeBot.Step(_game, 1).Success, "El rival no sabe decidir el relanzamiento.");

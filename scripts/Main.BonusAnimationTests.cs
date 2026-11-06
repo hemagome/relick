@@ -50,6 +50,8 @@ public partial class Main
                 Check(!CardsInMotion, "Un canje incompleto anima un Bonus.");
                 Execute(_game.Exchange(actor, 0));
                 await Layout();
+                Check(_drawQueue.Take(2).All(d => d.PileDestination == CardZone.Memory), "El canje no envía ambas cartas a Memoria antes de reclamar el Bonus.");
+                UpdateDrawAnimations(1); UpdateDrawAnimations(1);
                 Check(_drawQueue.Count == 2 && _drawQueue.Peek().BonusSource == actor,
                     "El reclamo y la reposición no están en orden.");
                 Check(BonusTarget(actor)!.Modulate.A == 0 && DrawTarget(_drawQueue.Peek())!.Modulate.A == 0,

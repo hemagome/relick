@@ -24,7 +24,7 @@ public partial class Main
             {
                 Fixture(counter); await Layout();
                 Check(((HandCard)_root.FindChild("HandCard0", true, false)).HasCodeArtwork, "Error de Carga no muestra arte limpio.");
-                Execute(_game.PlayCode(1, 0)); ShowPendingSkillChoice();
+                Execute(_game.PlayCode(1, 0)); DrainTestCards(); ShowPendingSkillChoice();
                 Check(_game.State.Phase == Phase.ErrorResponse && Dialog().Title.Contains("Error de Carga"), "No se abre la ventana de respuesta.");
                 ((Button)Dialog().FindChild("LoadErrorResponse0", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
                 if (counter)
@@ -37,7 +37,7 @@ public partial class Main
                     "Anular el Huevo no conserva objetivo y devuelve todos los costes.");
             }
             Fixture(false); var enemy = _game.State.Players[1]; enemy.Hand.Clear(); enemy.Hand.Add("extra-life"); enemy.Relikario = RelikarioCatalog.YunoLv2; enemy.Health = 1;
-            Execute(_game.PlayCode(1, 0)); ShowPendingSkillChoice(); rng.Enqueue(2);
+            Execute(_game.PlayCode(1, 0)); DrainTestCards(); ShowPendingSkillChoice(); rng.Enqueue(2);
             Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
             Check(_game.State.Phase == Phase.DieRerollChoice, "No se conserva el código en resolución tras pasar.");
             var interrupt = (Button?)_root.FindChild("InterruptWithLoadError", true, false);

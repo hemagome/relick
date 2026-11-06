@@ -41,6 +41,7 @@ herido ni una animación de derrota específicos.
 - **Mazo gráfico** para cada jugador: pila con el reverso original, cantidad restante y espacio vacío al agotarse. Memoria y Corruptas quedan debajo de la pila.
 - **Robo animado** desde el mazo hasta la mano: cada carta sigue un arco y las tuyas giran para mostrar su frente al llegar; las del rival conservan el reverso. Los robos de turno, Senshuni, cambios iniciales y Relikia se reproducen carta por carta. La mano se desplaza para mostrar las nuevas cartas. El rival y los controles esperan al final de la animación; actualizar el tablero no la reinicia y una nueva partida la cancela.
 - **Reparto y mulligan:** las cinco cartas iniciales se reparten simultáneamente a ambos jugadores, en cinco tandas de 0,28 segundos. El mulligan devuelve primero las cartas elegidas, anima un barajado y roba los reemplazos. Devolver cartas por Relikia y reciclar memoria también animan el mazo. El barajado visual conserva el orden establecido por las reglas: devolver al fondo no aleatoriza el mazo.
+- **Memoria y Corruptas animadas:** ataques, códigos usados y descartes viajan desde la mano a Memoria. Los equipos destruidos y las cartas retiradas del campo también viajan a la memoria de su dueño. Al corromper una carta, se mueve desde Memoria y se voltea para llegar boca abajo a Corruptas. Si Error de Carga revierte una corrupción, la carta regresa a Memoria. Los movimientos se completan antes de ofrecer la siguiente elección.
 - Vidas con contador y barra continua que se adapta a la vida máxima de cada personaje.
   El relleno se anima al recibir daño o curarse: verde por encima del 50 %, amarillo
   entre el 20 % y el 50 %, y rojo al 20 % o menos. PR identificados por una gema.
@@ -256,6 +257,7 @@ dotnet build Relick.csproj
 godot --headless --path . -- --smoke-test
 godot --headless --path . -- --animation-test
 godot --headless --path . -- --attack-timing-test
+godot --headless --path . -- --pile-animation-test
 godot --headless --path . -- --dice-test
 godot --headless --path . -- --visual-test
 godot --headless --path . -- --relikia-test

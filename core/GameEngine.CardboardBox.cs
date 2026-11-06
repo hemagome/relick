@@ -25,6 +25,7 @@ public sealed partial class GameEngine
         {
             if (frame.ReplayCorrupted)
             {
+                NotifyPileMove(State.Players[actor], card.Id, CardZone.Corrupted, frame.CorruptedIndex);
                 State.Players[actor].CorruptedMemory.RemoveAt(frame.CorruptedIndex);
                 State.Players[actor].Memory.Insert(Math.Min(memoryIndex, State.Players[actor].Memory.Count), card.Id);
             }

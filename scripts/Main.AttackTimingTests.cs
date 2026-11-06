@@ -87,7 +87,7 @@ public partial class Main
 
             Fixture(); _game.State.Players[1].Equipment = "cardboard-box";
             Start(0, 5); DrainTestDice(); Execute(_game.ResolveAttackReroll(0, false));
-            Execute(_game.CancelAttackWithBox(1)); PlayPendingCombatAnimations();
+            Execute(_game.CancelAttackWithBox(1)); DrainTestCards(); PlayPendingCombatAnimations();
             Check(attacks == 1 && _yuno.Motion == PortraitMotion.Attack && _enemyYuno.Motion == PortraitMotion.Idle,
                 "Cancelar daño cancela la animación exitosa o reproduce daño inexistente.");
 

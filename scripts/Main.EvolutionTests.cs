@@ -42,9 +42,9 @@ public partial class Main
             p.AttackRerollUsedThisTurn = false; s.AttackedThisTurn = false; p.Hand.Add("attack");
             // The prior critical left the opponent at 3; restore health to inspect all outcomes.
             s.Players[1].Health = 8;
-            rng.Enqueue(2); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); ShowPendingSkillChoice();
+            rng.Enqueue(2); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Check(Dialog().Title.Contains("Lv 2"), "No se muestra la nueva habilidad.");
-            Reroll(3); await Layout(); ShowPendingSkillChoice();
+            Reroll(3); await Layout(); DrainTestCards(); ShowPendingSkillChoice();
             Check(s.Phase == Phase.AttackRerollChoice && s.Players[1].Health == 8, "El primer relanzamiento resuelve el ataque antes de elegir el segundo.");
             Reroll(6); await Layout();
             Check(s.LastAttackDie == 6 && s.Players[1].Health == 3 && !_die.RollCaption.Contains("convierte"), "Lv 2 sigue convirtiendo 6 en 5.");
@@ -52,7 +52,7 @@ public partial class Main
 
             // A different kind of die uses the same Lv 2 choice and stops on 1.
             s.Phase = Phase.Actions; s.ActionsLeft = 2; p.Relikia = 1000; p.AttackRerollUsedThisTurn = false; p.Bonus = "lucky-pendant";
-            rng.Enqueue(3); Execute(_game.UseRelikiaEffect(0, RelikiaEffect.ClaimBonus)); DrainTestDice(); await Layout(); ShowPendingSkillChoice();
+            rng.Enqueue(3); Execute(_game.UseRelikiaEffect(0, RelikiaEffect.ClaimBonus)); DrainTestDice(); await Layout(); DrainTestCards(); ShowPendingSkillChoice();
             Check(s.Phase == Phase.DieRerollChoice && Dialog().Title.Contains("Lv 2"), "No se ofrece relanzar el dado de Relikia.");
             Reroll(1); await Layout();
             Check(s.Phase == Phase.Actions && s.PendingDieRoll == null && p.AttackRerollUsedThisTurn, "Un 1 no detiene la cadena de relanzamientos.");

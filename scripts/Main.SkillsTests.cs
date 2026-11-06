@@ -38,7 +38,7 @@ public partial class Main
             rng.Enqueue(5); Execute(_game.Attack(1, 0, 0)); KeepTestAttackRoll(); _die.AdvancePlayback(3); await Layout();
             var tile = (SkillTile)_root.FindChild("Skill0_0", true, false);
             Check(tile.HasSkillArtwork, "La habilidad enseñada no usa el arte limpio.");
-            _helpOpen = false; ShowPendingSkillChoice();
+            _helpOpen = false; DrainTestCards(); ShowPendingSkillChoice();
             Check(Dialog().Title.Contains("Destiny"), "No se abre la respuesta del defensor.");
             for (var i = 0; i < 3; i++) Press($"DefenseDiscard{i}");
             Press("ConfirmDestiny"); await Layout();
@@ -49,7 +49,7 @@ public partial class Main
             defender.Hand.Clear(); defender.Hand.AddRange(Enumerable.Repeat("attack", 5));
             _game.State.AttackedThisTurn = false; _game.State.Active.Hand.Add("attack");
             rng.Enqueue(6); Execute(_game.Attack(1, 0, 0)); KeepTestAttackRoll(); _die.AdvancePlayback(3);
-            ShowPendingSkillChoice(); Press("DefendWithSlot1");
+            DrainTestCards(); ShowPendingSkillChoice(); Press("DefendWithSlot1");
             for (var i = 0; i < 4; i++) Press($"DefenseDiscard{i}");
             Press("ConfirmDestiny"); await Layout();
             Check(defender.CountersOnSkill(0) == 1 && defender.CountersOnSkill(1) == 1 && defender.Hand.Count == 1,
@@ -58,7 +58,7 @@ public partial class Main
             Fixture(0, CardCatalog.Magnet.Id);
             var rival = _game.State.Players[1]; rival.Hand.AddRange(new[] { "lucky-pendant", CardCatalog.Destiny.Id });
             rng.Enqueue(6); Execute(_game.Attack(0, 0, 0)); KeepTestAttackRoll(); _die.AdvancePlayback(3); await Layout();
-            ShowPendingSkillChoice();
+            DrainTestCards(); ShowPendingSkillChoice();
             var shown = (HandCard)Dialog().FindChild("MagnetTakeHand1", true, false);
             Check(shown.HasSkillArtwork && shown.Card.Id == CardCatalog.Destiny.Id, "Magnet no permite mirar la mano rival con el arte correcto.");
             Press("MagnetTakeHand0"); await Layout();
@@ -94,7 +94,18 @@ public partial class Main
     private void DrainTestDice()
     {
         for (var i = 0; i < 100 && (_die.IsBusy || _die.IsPresented); i++) _die.AdvancePlayback(3);
+        DrainTestCards();
         PlayPendingCombatAnimations();
+    }
+
+    private void DrainTestCards()
+    {
+        if (CardsInMotion && _drawOverlay == null) Render();
+        for (var i = 0; CardsInMotion && i < 100; i++)
+        {
+            _drawLayoutFrames = 0;
+            UpdateDrawAnimations(1);
+        }
     }
 
     private sealed class SkillsTestRandom : IGameRandom

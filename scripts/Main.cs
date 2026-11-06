@@ -66,6 +66,7 @@ public partial class Main : Control
         NewGame();
         var args = OS.GetCmdlineUserArgs();
         if (args.Contains("--smoke-test")) CallDeferred(nameof(SmokeTest));
+        if (args.Contains("--pile-animation-test")) CallDeferred(nameof(PileAnimationSmokeTest));
         if (args.Contains("--attack-timing-test")) CallDeferred(nameof(AttackTimingSmokeTest));
         if (args.Contains("--animation-test")) CallDeferred(nameof(AnimationSmokeTest));
         if (args.Contains("--dice-test")) CallDeferred(nameof(DiceSmokeTest));
@@ -117,6 +118,7 @@ public partial class Main : Control
         _pendingCombatAnimations.Clear();
         _game = game;
         _game.CardDrawn += QueueCardDraw;
+        _game.CardMovedToPile += QueuePileMovement;
         _game.CardReturnedToDeck += QueueCardReturn;
         _game.CardsReturnedToDeck += owner => _drawQueue.Enqueue(new(owner, -1, Shuffle: true, Duration: 0.72));
         _game.BonusPlaced += (owner, id) => _drawQueue.Enqueue(new(owner, -1, BonusDestination: true, CardId: id));

@@ -23,11 +23,11 @@ public partial class Main
             Check(card.HasCodeArtwork && BoardArt.CardType(card.Card).Contains("JUGADA"), "No se muestra el arte o subtipo jugada.");
             card.EmitSignal(BaseButton.SignalName.Pressed); rng.Enqueue(6); UseSelected();
             Check(_die.IsRolling && s.Phase == Phase.PointsChoice && s.PendingPoints!.Amount == 1500 && s.ActionsLeft == 1 && s.Players[1].Equipment != null, "La tirada o el coste son incorrectos, o la Caja cancela una jugada.");
-            DrainTestDice(); ShowPendingSkillChoice();
+            DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Check(Dialog().FindChildren("Points*", "Button", true, false).Count == 4 && ((Button)_root.FindChild("AdvanceStageButton", true, false)).Disabled, "Faltan opciones o se permite saltar el efecto.");
             Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
             Check(s.PendingPoints != null && s.Players[1].Relikia == 200, "Cerrar la elección aplica un efecto implícito.");
-            ShowPendingSkillChoice(); ((Button)Dialog().FindChild("Points1Decrease", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
+            DrainTestCards(); ShowPendingSkillChoice(); ((Button)Dialog().FindChild("Points1Decrease", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
             Check(s.Players[1].Relikia == 0 && s.Active.Relikia == 0 && s.Phase == Phase.Actions && s.PendingPoints == null && s.Active.Memory.Single() == CardCatalog.PointsIncrease.Id, "La elección no aplica la reducción al jugador correcto.");
             NewGame(); await Layout(); Check(_game.State.PendingPoints == null, "Reiniciar conserva una elección pendiente.");
             GD.Print("POINTS_SMOKE_PASS · arte limpio, jugada, dado, cuatro opciones, elección obligatoria, mínimo cero, Caja excluida y reinicio."); GetTree().Quit();

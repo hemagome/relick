@@ -48,10 +48,10 @@ public partial class Main
             DrainTestDice(); await Layout();
 
             Fixture(); p = _game.State.Active; p.Relikario = RelikarioCatalog.YunoLv2; p.Health = 1; Render();
-            rng.Enqueue(2); Execute(_game.PlayCode(0, 0)); DrainTestDice(); ShowPendingSkillChoice();
+            rng.Enqueue(2); Execute(_game.PlayCode(0, 0)); DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Check(_game.State.PendingDieRoll!.Purpose == DiePurpose.ExtraLife && Dialog().FindChildren("*", "Label", true, false).OfType<Label>().Any(l => l.Text.Contains("VIDA EXTRA")),
                 "El relanzamiento no identifica el dado de curación.");
-            rng.Enqueue(6); Press("YunoReroll"); DrainTestDice(); await Layout(); ShowPendingSkillChoice();
+            rng.Enqueue(6); Press("YunoReroll"); DrainTestDice(); await Layout(); DrainTestCards(); ShowPendingSkillChoice();
             Check(p.Health == 1, "La curación se aplica antes de conservar el resultado final.");
             Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
             Check(p.Health == 5 && !p.HasNaturalSix && _game.State.PendingDieRoll == null, "El 6 relanzado no cura cuatro vidas o se considera natural.");

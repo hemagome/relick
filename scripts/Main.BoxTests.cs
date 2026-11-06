@@ -37,7 +37,7 @@ public partial class Main
             ShowEquipment(0);
             Check(((HandCard)Dialog().FindChild("ZoneCardPreview", true, false)).HasEquipmentArtwork, "La Caja no muestra su arte limpio.");
             Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
-            Attack(1, 5); await Layout(); ShowPendingSkillChoice();
+            Attack(1, 5); await Layout(); DrainTestCards(); ShowPendingSkillChoice();
             Check(_game.State.Players[0].Health == 8 && Dialog().FindChild("BoxCancelAttack", true, false) != null && Dialog().FindChild("ConfirmDestiny", true, false) == null,
                 "La Caja sola no ofrece defensa antes de recibir daño.");
             ((Button)Dialog().FindChild("BoxCancelAttack", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
@@ -46,7 +46,7 @@ public partial class Main
             Check(((ZoneCardButton)_root.FindChild("EquipmentZone0", true, false)).Card == null, "El equipo destruido permanece visible.");
 
             Fixture(1); var own = _game.State.Players[0]; own.Skills.Add(CardCatalog.Destiny.Id); own.Hand.AddRange(Enumerable.Repeat("attack", 3));
-            Attack(1, 5); await Layout(); ShowPendingSkillChoice();
+            Attack(1, 5); await Layout(); DrainTestCards(); ShowPendingSkillChoice();
             Check(Dialog().FindChild("BoxCancelAttack", true, false) != null && Dialog().FindChild("ConfirmDestiny", true, false) != null, "No se ofrecen Caja y Destiny como alternativas.");
             for (var i = 0; i < 3; i++) ((Button)Dialog().FindChild($"DefenseDiscard{i}", true, false)).EmitSignal(BaseButton.SignalName.Pressed);
             ((Button)Dialog().FindChild("ConfirmDestiny", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
@@ -61,7 +61,7 @@ public partial class Main
                 "La Caja cancela Senshuni pese a ser código de personaje.");
             Fixture(1); enemy = _game.State.Players[1];
             _game.State.Phase = Phase.Actions; _game.State.ActionsLeft = 2; enemy.Hand.Clear(); enemy.Hand.Add(CardCatalog.ExtraLife.Id);
-            before = enemy.Deck.Count; Execute(_game.PlayCode(1, 0)); await Layout(); ShowPendingSkillChoice();
+            before = enemy.Deck.Count; Execute(_game.PlayCode(1, 0)); await Layout(); DrainTestCards(); ShowPendingSkillChoice();
             Check(_game.State.Phase == Phase.CodeResponse && enemy.Hand.Count == 0 && enemy.Deck.Count == before && ((Button)_root.FindChild("AdvanceStageButton", true, false)).Disabled,
                 "El código se resuelve antes de decidir su cancelación.");
             ((Button)Dialog().FindChild("BoxCancelCode", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Layout();

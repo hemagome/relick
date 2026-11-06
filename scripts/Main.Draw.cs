@@ -7,7 +7,7 @@ public partial class Main
 {
     private record DrawRequest(int Player, int Slot, int BonusSource = -1, bool BonusDestination = false,
         string? CardId = null, bool ReturnToDeck = false, bool Shuffle = false, Rect2? Origin = null, double Duration = 0.62,
-        bool InitialDeal = false);
+        bool InitialDeal = false, CardZone? PileSource = null, CardZone? PileDestination = null);
     private readonly Queue<DrawRequest> _drawQueue = new();
     private DrawRequest? _activeDraw;
     private Control? _drawOverlay;
@@ -109,7 +109,7 @@ public partial class Main
     private ZoneCardButton? BonusTarget(int owner) =>
         (_root.FindChild($"BonusTrack{owner}", true, false) as ExchangeTrack)?.BonusButton;
 
-    private Control? DrawTarget(DrawRequest request) => request.ReturnToDeck || request.Shuffle ? null : request.BonusDestination ? BonusTarget(request.Player) : _root.FindChild(
+    private Control? DrawTarget(DrawRequest request) => request.PileDestination is { } zone ? PileTarget(request.Player, zone) : request.ReturnToDeck || request.Shuffle ? null : request.BonusDestination ? BonusTarget(request.Player) : _root.FindChild(
         request.Player == 0 ? $"HandCard{request.Slot}" : $"OpponentHandCard{request.Slot}", true, false) as Control;
 
     private static Rect2 BonusCardRect(Control zone) => new(zone.GlobalPosition + new Vector2((zone.Size.X - 28) / 2, 20), new(28, 39));
@@ -128,7 +128,7 @@ public partial class Main
             for (var slot = 0; slot < _game.State.Players[_returnHandPlayer].Hand.Count; slot++)
                 if (DrawTarget(new(_returnHandPlayer, slot)) is { } card) card.Modulate = new(1, 1, 1, 0);
         // New cards remain visible even when the hand already requires scrolling.
-        foreach (var player in _drawQueue.Where(d => !d.BonusDestination && !d.ReturnToDeck && !d.Shuffle).Select(d => d.Player).Distinct())
+        foreach (var player in _drawQueue.Where(d => !d.BonusDestination && !d.ReturnToDeck && !d.Shuffle && d.PileDestination == null).Select(d => d.Player).Distinct())
         {
             var scroll = player == 0 ? _handScroll : _opponentHandScroll;
             scroll?.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, int.MaxValue);
@@ -154,7 +154,7 @@ public partial class Main
                 back.Position = new(1, 7); back.Size = new(124, 175);
                 _pairedFlyingCard.AddChild(back);
             }
-            if (_activeDraw.ReturnToDeck && _returnHandCards.Remove(_activeDraw.Slot, out var returning)) returning.QueueFree();
+            if (LeavesHand(_activeDraw) && _activeDraw.Player == _returnHandPlayer && _returnHandCards.Remove(_activeDraw.Slot, out var returning)) returning.QueueFree();
             if (_activeDraw.Shuffle)
             {
                 for (var i = 0; i < 4; i++)
@@ -209,14 +209,14 @@ public partial class Main
             if (t >= 1) { FinishCardDraw(); if (!CardsInMotion) Render(); }
             return;
         }
-        var sourceRect = _activeDraw.BonusSource >= 0 && BonusTarget(_activeDraw.BonusSource) is { } bonus
+        var sourceRect = _activeDraw.PileDestination != null ? _activeDraw.Origin ?? deckRect : _activeDraw.BonusSource >= 0 && BonusTarget(_activeDraw.BonusSource) is { } bonus
             ? BonusCardRect(bonus) : _activeDraw.ReturnToDeck ? _activeDraw.Origin ?? deckRect : deckRect;
-        var destination = _activeDraw.ReturnToDeck ? deckRect : _activeDraw.BonusDestination ? BonusCardRect(target!) : target!.GetGlobalRect();
+        var destination = target is MemoryZoneButton pile ? PileCardRect(pile) : _activeDraw.ReturnToDeck ? deckRect : _activeDraw.BonusDestination ? BonusCardRect(target!) : target!.GetGlobalRect();
         var flip = 1f;
         if (_flyingFront != null)
         {
-            var startsFaceUp = _activeDraw.BonusSource >= 0 || _activeDraw.ReturnToDeck;
-            var endsFaceUp = !_activeDraw.ReturnToDeck && (_activeDraw.BonusDestination || _activeDraw.Player == 0);
+            var startsFaceUp = _activeDraw.PileDestination != null ? _activeDraw.PileSource != CardZone.Corrupted : _activeDraw.BonusSource >= 0 || _activeDraw.ReturnToDeck;
+            var endsFaceUp = _activeDraw.PileDestination is { } destinationZone ? destinationZone != CardZone.Corrupted : !_activeDraw.ReturnToDeck && (_activeDraw.BonusDestination || _activeDraw.Player == 0);
             var reveal = Mathf.Clamp((t - 0.55f) / 0.3f, 0, 1);
             var faceUp = startsFaceUp;
             if (startsFaceUp != endsFaceUp)
@@ -252,14 +252,16 @@ public partial class Main
 
     private void FinishCardDraw()
     {
-        if (_activeDraw != null && DrawTarget(_activeDraw) is { } target) target.Modulate = Colors.White;
+        if (_activeDraw != null && DrawTarget(_activeDraw) is { } target &&
+            !_drawQueue.Any(d => d.PileDestination != null && d.Player == _activeDraw.Player && d.PileDestination == _activeDraw.PileDestination))
+            target.Modulate = Colors.White;
         if (_pairedDraw != null && DrawTarget(_pairedDraw) is { } pairedTarget) pairedTarget.Modulate = Colors.White;
         _pairedFlyingCard?.QueueFree();
         _pairedFlyingCard = null; _pairedDraw = null;
         _flyingCard?.QueueFree();
         foreach (var card in _shuffleCards) card.QueueFree();
         _shuffleCards.Clear();
-        if (_activeDraw?.ReturnToDeck == true && !_drawQueue.Any(d => d.ReturnToDeck))
+        if (_activeDraw != null && LeavesHand(_activeDraw) && _activeDraw.Player == _returnHandPlayer && !_drawQueue.Any(d => LeavesHand(d) && d.Player == _returnHandPlayer))
         {
             ClearReturnHand();
             for (var player = 0; player < 2; player++)

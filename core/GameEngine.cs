@@ -121,8 +121,7 @@ public sealed partial class GameEngine
             return CommandResult.Fail("Primero enseña y selecciona una habilidad.");
         if (State.AttackedThisTurn) return CommandResult.Fail("Ya atacaste este turno.");
         var skill = CardCatalog.Get(p.Skills[skillIndex]);
-        p.RemoveHandCard(handIndex);
-        p.Memory.Add(CardCatalog.Attack.Id);
+        SendHandToMemory(p, handIndex);
         State.AttackedThisTurn = true;
         var die = Roll();
         State.LastAttackDie = die;
@@ -153,8 +152,7 @@ public sealed partial class GameEngine
         var card = CardCatalog.Get(p.Hand[handIndex]);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie) return PlayRerollCombo(actor, handIndex);
-        p.RemoveHandCard(handIndex);
-        p.Memory.Add(card.Id);
+        SendHandToMemory(p, handIndex);
         p.ActionsLeft -= card.ActionCost;
         p.Relikia -= card.PrCost;
         Log($"{p.Name} juega {card.Name}.");
@@ -225,6 +223,8 @@ public sealed partial class GameEngine
         Log($"{p.Name} coloca {CardCatalog.Get(id).Name} en canje ({p.Exchange.Count}/2).");
         if (p.Exchange.Count == 2 && p.Bonus != null)
         {
+            for (var slot = 0; slot < p.Exchange.Count; slot++)
+                NotifyPileMove(p, p.Exchange[slot], CardZone.Exchange, slot);
             p.Memory.AddRange(p.Exchange);
             p.Exchange.Clear();
             TakeBonus(p, p);
@@ -256,8 +256,7 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
         var id = p.Hand[handIndex];
-        p.RemoveHandCard(handIndex);
-        p.Memory.Add(id);
+        SendHandToMemory(p, handIndex);
         Log($"{p.Name} descarta {CardCatalog.Get(id).Name}.");
         State.DiscardsRemaining--;
         if (p.Hand.Count == 0) State.DiscardsRemaining = 0;

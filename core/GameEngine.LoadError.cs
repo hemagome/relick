@@ -48,7 +48,7 @@ public sealed partial class GameEngine
             OpenErrorChain(suspended, resume);
         }
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
-        p.RemoveHandCard(index); p.Memory.Add(card.Id); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
+        SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
         var frame = new ActivationFrame(actor, card.Id, card.ActionCost, card.PrCost, State.Phase);
         _activationChain.Add(frame); State.ActivationChain.Add(new(actor, card.Id, card.ActionCost, card.PrCost));
         Log($"{p.Name} responde con Error de Carga (1 acción).");

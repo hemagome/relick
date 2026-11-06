@@ -11,6 +11,7 @@ public partial class MemoryZoneButton : Button
     public CardDefinition? TopCard { get; init; }
     public Color Accent { get; init; } = new("b5a2fa");
     private Texture2D? _back;
+    public Rect2 CardRect => new(6, 18, 26, 36.8f);
 
     public override void _Ready()
     {
@@ -36,7 +37,7 @@ public partial class MemoryZoneButton : Button
         BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), new Color(Corrupted ? "201c32" : "111a2c"),
             IsHovered() || HasFocus() ? Accent : Accent.Darkened(0.65f), 8);
         BoardArt.CenterText(this, Corrupted ? "CORRUPTAS" : "MEMORIA", new(Size.X / 2, 12), 8, Accent);
-        var thumb = new Rect2(6, 18, 26, 36.8f);
+        var thumb = CardRect;
         if (_back != null)
         {
             var scale = Math.Min(thumb.Size.X / _back.GetWidth(), thumb.Size.Y / _back.GetHeight());

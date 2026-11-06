@@ -36,9 +36,9 @@ public partial class Main
             ((HandCard)_root.FindChild("HandCard0", true, false)).EmitSignal(BaseButton.SignalName.Pressed); UseSelected(); await Layout();
             Check(p.Hand.Count == 0 && p.Memory.Single() == CardCatalog.Pendant.Id && p.Equipment == CardCatalog.Pendant.Id && s.ActionsLeft == 0, "Reemplazar equipo no destruye el anterior.");
             p.Hand.Add("attack"); p.Skills.Add(CardCatalog.Destiny.Id); s.Phase = Phase.Combat;
-            rng.Enqueue(3); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); ShowPendingSkillChoice();
+            rng.Enqueue(3); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Check(((Button)Dialog().FindChild("PendantAddTwo", true, false)).Disabled, "Se permite sumar a un dado que no fue relanzado.");
-            rng.Enqueue(3); Press("YunoReroll"); DrainTestDice(); await Layout(); ShowPendingSkillChoice();
+            rng.Enqueue(3); Press("YunoReroll"); DrainTestDice(); await Layout(); DrainTestCards(); ShowPendingSkillChoice();
             Check(!((Button)Dialog().FindChild("PendantAddTwo", true, false)).Disabled && ((Button)Dialog().FindChild("YunoReroll", true, false)).Disabled,
                 "Tras usar Yuno, no se permite el efecto adecuado del Colgante.");
             Press("PendantAddTwo"); await Layout();
@@ -48,12 +48,12 @@ public partial class Main
 
             BindGame(new GameEngine(rng)); s = _game.State; s.Phase = Phase.Actions; s.CurrentPlayer = 0; s.ActionsLeft = 2;
             p = s.Active; p.Hand.Clear(); p.Hand.Add(CardCatalog.Pendant.Id); _game.Equip(0, 0); p.Hand.Add("attack"); p.Skills.Add(CardCatalog.Destiny.Id);
-            s.Phase = Phase.Combat; rng.Enqueue(1); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); ShowPendingSkillChoice();
+            s.Phase = Phase.Combat; rng.Enqueue(1); Execute(_game.Attack(0, 0, 0)); DrainTestDice(); DrainTestCards(); ShowPendingSkillChoice();
             Check(((Button)Dialog().FindChild("YunoReroll", true, false)).Disabled && !((Button)Dialog().FindChild("PendantReroll", true, false)).Disabled,
                 "El Colgante no permite relanzar un 1 independientemente de Yuno.");
             rng.Enqueue(6); Press("PendantReroll");
             Check(_die.RollCaption.Contains("Colgante") && !_die.RollCaption.Contains("convierte"), "Se convierte por error el 6 del Colgante como si fuera de Yuno.");
-            DrainTestDice(); await Layout(); ShowPendingSkillChoice(); Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
+            DrainTestDice(); await Layout(); DrainTestCards(); ShowPendingSkillChoice(); Dialog().EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
             Check(s.LastAttackDie == 6 && !p.HasNaturalSix && p.Equipment == null && !p.AttackRerollUsedThisTurn,
                 "El relanzamiento del Colgante afecta indebidamente al crítico, la evolución o la habilidad de Yuno.");
             ShowAnimationLab(); Check(!Dialog().FindChildren("*", "Button", true, false).OfType<Button>().Any(b => b.Name.ToString().StartsWith("EquipSample") || b.Name.ToString().StartsWith("AddAttachment")), "El laboratorio aún permite crear cartas de ejemplo.");
