@@ -14,6 +14,9 @@ public sealed partial class GameEngine
     public event Action<int, int>? DamageReceived;
     public event Action<int>? DieRolled;
     public event Action<int, int>? CardDrawn;
+    public event Action<int, int, string>? CardReturnedToDeck;
+    // Signals the end of a batch for the deck animation; does not change deck order.
+    public event Action<int>? CardsReturnedToDeck;
     public event Action<int, string>? BonusPlaced;
     public event Action<int, int, int, string>? BonusClaimed;
 
@@ -44,9 +47,11 @@ public sealed partial class GameEngine
         // Deck[0] is the top; returned cards go to the bottom before drawing replacements.
         foreach (var index in indices)
         {
+            CardReturnedToDeck?.Invoke(0, index, player.Hand[index]);
             player.Deck.Add(player.Hand[index]);
             player.RemoveHandCard(index);
         }
+        if (indices.Length > 0) CardsReturnedToDeck?.Invoke(0);
         foreach (var _ in indices) DrawOne(player);
         if (indices.Length > 0) Log($"Cambiaste {indices.Length} carta(s) de tu mano inicial.");
         foreach (var p in State.Players) DealBonus(p);
@@ -340,6 +345,7 @@ public sealed partial class GameEngine
                 var count = Math.Min(rolled, p.Memory.Count);
                 Shuffle(p.Memory);
                 p.Deck.AddRange(p.Memory.Take(count)); p.Memory.RemoveRange(0, count);
+                if (count > 0) CardsReturnedToDeck?.Invoke(Array.IndexOf(State.Players, p));
                 Log($"{p.Name} agota su mazo: D6 = {rolled}. Recicla {count} carta(s) al azar (demo).");
                 completed?.Invoke();
             });

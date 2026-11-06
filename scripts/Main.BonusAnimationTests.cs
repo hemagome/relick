@@ -74,7 +74,7 @@ public partial class Main
             Check(_drawQueue.Count == 2 && _drawQueue.Peek().BonusSource == 0, "Relikia no anima el reclamo.");
             UpdateDrawAnimations(0.2);
             NewGame(); await Layout();
-            Check(!CardsInMotion && _drawOverlay == null, "Reiniciar conserva el vuelo del Bonus.");
+            Check(_drawQueue.Count == 10 && _activeDraw == null && _flyingCard == null, "Reiniciar conserva el vuelo del Bonus o no reparte la nueva mano.");
             GD.Print("BONUS_ANIMATION_PASS · colocación inicial, canje, reclamo PR, orden, identidad, privacidad, render y reinicio.");
             GetTree().Quit();
         }

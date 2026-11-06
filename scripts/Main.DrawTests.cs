@@ -65,7 +65,8 @@ public partial class Main
             Check(CardsInMotion && _drawQueue.Count == 1, "Relikia no anima su robo.");
             UpdateDrawAnimations(0.2);
             NewGame(); await Layout();
-            Check(!CardsInMotion && _drawOverlay == null && _flyingCard == null, "Reiniciar deja una animación antigua.");
+            Check(_drawQueue.Count == 10 && _activeDraw == null && _flyingCard == null, "Reiniciar no reemplaza el vuelo antiguo por el reparto inicial.");
+            ResetDrawAnimations(); Render();
             // Drawing the last card still arrives even when exhaustion ends the duel.
             _game.State.CurrentPlayer = 0; _game.State.Phase = Phase.Actions; _game.State.ActionsLeft = 2;
             own = _game.State.Players[0];

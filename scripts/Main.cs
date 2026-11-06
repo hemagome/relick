@@ -82,6 +82,7 @@ public partial class Main : Control
         if (args.Contains("--yuno-test")) CallDeferred(nameof(YunoSmokeTest));
         if (args.Contains("--skills-test")) CallDeferred(nameof(SkillsSmokeTest));
         if (args.Contains("--bonus-animation-test")) CallDeferred(nameof(BonusAnimationSmokeTest));
+        if (args.Contains("--opening-animation-test")) CallDeferred(nameof(OpeningAnimationSmokeTest));
         if (args.Contains("--draw-test")) CallDeferred(nameof(DrawSmokeTest));
         if (args.Contains("--memory-test")) CallDeferred(nameof(MemorySmokeTest));
         if (args.Any(a => a.StartsWith("--dice-frames="))) CallDeferred(nameof(CaptureDiceFrames));
@@ -105,6 +106,7 @@ public partial class Main : Control
         _handScroll = null;
         _opponentHandScrollPosition = 0;
         _opponentHandScroll = null;
+        QueueInitialHands();
         Render();
     }
 
@@ -113,6 +115,8 @@ public partial class Main : Control
         ResetDrawAnimations();
         _game = game;
         _game.CardDrawn += QueueCardDraw;
+        _game.CardReturnedToDeck += QueueCardReturn;
+        _game.CardsReturnedToDeck += owner => _drawQueue.Enqueue(new(owner, -1, Shuffle: true, Duration: 0.72));
         _game.BonusPlaced += (owner, id) => _drawQueue.Enqueue(new(owner, -1, BonusDestination: true, CardId: id));
         _game.BonusClaimed += (owner, recipient, slot, id) => _drawQueue.Enqueue(new(recipient, slot, BonusSource: owner, CardId: id));
         _die.Value = 0;

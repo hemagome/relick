@@ -74,12 +74,14 @@ public sealed partial class GameEngine
         if (!InHand(p, handIndex) || !Enum.IsDefined(destination)) return CommandResult.Fail("Elige una carta y su destino.");
         if (destination == CardDestination.Exchange && p.Bonus == null) return CommandResult.Fail("No hay Bonus disponible para canjear.");
         var id = p.Hand[handIndex];
+        if (destination == CardDestination.DeckBottom) CardReturnedToDeck?.Invoke(actor, handIndex, id);
         p.RemoveHandCard(handIndex);
         EndRelikiaChoice();
         if (destination == CardDestination.Exchange) PlaceInExchange(p, id);
         else
         {
             p.Deck.Add(id);
+            CardsReturnedToDeck?.Invoke(actor);
             Log($"{p.Name} envía {CardCatalog.Get(id).Name} al fondo del mazo por Relikia.");
         }
         return CommandResult.Ok();
