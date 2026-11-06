@@ -34,12 +34,6 @@ public partial class Main
         BuildPlayer(arena, 1);
         BuildToolbar(_root);
         BuildHand(_root);
-        var footer = new HBoxContainer();
-        var local = Label("DUELO LOCAL  ·  CARTAS REALES", 10, Muted);
-        local.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        footer.AddChild(local);
-        footer.AddChild(Label("Pasa el cursor por una carta para ver su efecto", 10, Muted));
-        _root.AddChild(footer);
         MoveChild(_diceOverlay, GetChildCount() - 1);
         UpdateDiceOverlay();
         PrepareDrawTargets();
@@ -92,9 +86,7 @@ public partial class Main
         var brand = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         brand.AddThemeConstantOverride("separation", 0);
         brand.AddChild(Label("R E L I C K", 29, Gold));
-        brand.AddChild(Label("A R E N A   D E   P R Á C T I C A", 9, Muted));
         row.AddChild(brand);
-        row.AddChild(Pill("VS  RIVAL", Gold));
         row.AddChild(Button("Pruebas", ShowAnimationLab, false, 126));
         var errorIndex = _game.State.Players[0].Hand.FindIndex(id => CardCatalog.Get(id).CancelActivation);
         if (errorIndex >= 0 && _game.CanPlayLoadError(0) && _game.CodeUnavailableReason(0, errorIndex) == null && _game.State.Phase != Phase.ErrorResponse)
@@ -125,7 +117,7 @@ public partial class Main
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 8);
         row.AddChild(Pill(state.Phase == Phase.Preparation ? "PREPARACIÓN" : state.IsOver ? "DUELO TERMINADO" : state.CurrentPlayer == 0 ? "TU TURNO" : "TURNO DEL RIVAL", state.CurrentPlayer == 0 ? Mint : Coral));
-        row.AddChild(Pill(state.Phase == Phase.Preparation ? "DUELO LOCAL" : $"TURNO {state.Turn:00}", Muted));
+        if (state.Phase != Phase.Preparation) row.AddChild(Pill($"TURNO {state.Turn:00}", Muted));
         var phase = state.Phase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse ? Phase.Actions : state.Phase == Phase.DieRerollChoice ? state.PendingDieRoll!.ResumePhase : state.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse ? Phase.Combat : state.Phase == Phase.Discard ? state.DiscardResumePhase : state.Phase == Phase.RelikiaChoice ? Phase.Actions : state.Phase;
         var current = phase switch { Phase.Preparation => 0, Phase.Combat => 1, Phase.Actions => 2, _ => 3 };
         var phases = new[] { ("Preparar", GameIcon.Cards), ("Combate", GameIcon.Sword), ("Acciones", GameIcon.Bolt), ("Final", GameIcon.Flag) };
@@ -272,16 +264,18 @@ public partial class Main
         panel.AddChild(col);
         BuildOpponentHand(col);
         col.AddChild(new HSeparator { Modulate = new Color("38415a") });
-        var title = Label(state.IsOver ? "RESULTADO DEL DUELO" : state.Phase == Phase.Preparation ? "EL DUELO ESTÁ POR EMPEZAR" : "RESOLUCIÓN DE COMBATE", 10, Gold);
+        var title = Label(state.IsOver ? "RESULTADO DEL DUELO" : "RESOLUCIÓN DE COMBATE", 10, Gold);
         title.HorizontalAlignment = HorizontalAlignment.Center;
+        title.Visible = state.Phase != Phase.Preparation;
         col.AddChild(title);
-        var message = state.IsOver ? (state.Winner == -1 ? "Empate" : state.Winner == 0 ? "¡Victoria!" : "Derrota") : state.Phase == Phase.Preparation ? "Elige tu mano inicial" : state.LastCombat;
+        var message = state.IsOver ? (state.Winner == -1 ? "Empate" : state.Winner == 0 ? "¡Victoria!" : "Derrota") : state.Phase == Phase.Preparation ? "" : state.LastCombat;
         if (_die.IsBusy) message = "";
         else if (_dicePreview) message = $"Resultado de prueba: {_die.Value}";
         var status = Label(message, 20, Ink);
         status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         status.HorizontalAlignment = HorizontalAlignment.Center;
         status.CustomMinimumSize = new(0, 32);
+        status.Visible = message.Length > 0;
         col.AddChild(status);
         var divider = new HSeparator();
         divider.Modulate = new Color("38415a");
@@ -320,6 +314,7 @@ public partial class Main
         var hint = Label(_feedback.Length > 0 ? _feedback : hintText, 12, _feedback.Length > 0 ? Coral : Muted);
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         hint.CustomMinimumSize = new(0, 18);
+        hint.Visible = hint.Text.Length > 0;
         column.AddChild(hint);
         var actions = new HBoxContainer();
         actions.AddThemeConstantOverride("separation", 8);
@@ -378,7 +373,6 @@ public partial class Main
         var title = Label($"TU MANO  ·  {state.Players[0].Hand.Count} CARTAS", 10, Ink);
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         header.AddChild(title);
-        header.AddChild(Label(state.Phase == Phase.Preparation ? "Selecciona las cartas que quieras cambiar" : "Selecciona una carta para jugarla", 10, Muted));
         board.AddChild(header);
         var scroll = new ScrollContainer
         {

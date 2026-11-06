@@ -197,7 +197,7 @@ public partial class Main : Control
         var s = _game.State;
         if (s.Phase == Phase.Discard) return "Descartar por efecto";
         var p = s.Players[0];
-        if (_selectedCard < 0 || _selectedCard >= p.Hand.Count) return "Selecciona una carta";
+        if (_selectedCard < 0 || _selectedCard >= p.Hand.Count) return "Jugar carta";
         return CardCatalog.Get(p.Hand[_selectedCard]).Kind switch
         {
             CardKind.Skill => p.Skills.Count >= GameEngine.MaxSkills ? "Sin espacios disponibles" : $"Enseñar · {_game.SkillCost(p)} PR",
@@ -231,8 +231,7 @@ public partial class Main : Control
 
     private string Hint()
     {
-        if (CardsInMotion) return "Robando cartas…";
-        if (_die.IsBusy) return "Espera a que el dado se detenga…";
+        if (CardsInMotion || _die.IsBusy) return "";
         var s = _game.State;
         if (s.Phase == Phase.DieRerollChoice) return s.DecisionPlayer == 0 ? "Yuno Lv 2: decide si conservas este dado o lo relanzas." : "El rival decide si relanza su dado con Yuno Lv 2.";
         if (s.Phase == Phase.AttackRerollChoice) return s.DecisionPlayer == 0 ? "Yuno: puedes conservar el dado o relanzarlo una vez." : "El rival decide si relanza su dado con Yuno.";
@@ -242,17 +241,17 @@ public partial class Main : Control
         if (s.Phase == Phase.CodeResponse) return s.DecisionPlayer == 0 ? "Puedes destruir Caja de Cartón para cancelar el código objeto." : "El rival decide si cancela el código objeto.";
         if (s.Phase == Phase.DefenseChoice) return s.DecisionPlayer == 0 ? "Puedes cancelar el daño con una respuesta disponible." : "El rival decide si cancela el daño.";
         if (s.Phase == Phase.MagnetChoice) return s.DecisionPlayer == 0 ? "Magnet Shuffle: elige una carta de la mano rival o de su Bonus." : "El rival elige una carta por Magnet Shuffle.";
-        if (s.IsOver) return "El duelo terminó. Puedes empezar otra partida cuando quieras.";
-        if (s.Phase == Phase.Preparation) return "Tienes una habilidad y 4 cartas. Puedes cambiar cualquier selección una sola vez.";
+        if (s.IsOver) return "";
+        if (s.Phase == Phase.Preparation) return "Puedes cambiar cartas de tu mano inicial una sola vez.";
         if (s.Phase == Phase.Discard) return s.DecisionPlayer == 0
             ? $"Relikia o un efecto requiere descartar {s.DiscardsRemaining} carta(s). Tú eliges cuáles de tu mano."
             : $"El rival elige {s.DiscardsRemaining} carta(s) para descartar por efecto.";
-        if (s.CurrentPlayer == 1) return "El rival está pensando… puedes consultar tus cartas mientras juega.";
+        if (s.CurrentPlayer == 1) return "";
         if (s.Phase == Phase.RelikiaChoice) return "Completa la elección del efecto de Relikia para continuar.";
-        if (s.Phase == Phase.Actions) return $"Te quedan {s.ActionsLeft} acciones: juega un código, canjea o usa efectos de Relikia.";
-        if (s.AttackedThisTurn) return "Ataque resuelto. Continúa a la etapa de acciones.";
-        if (s.Active.Skills.Count == 0) return "Primero selecciona una habilidad de tu mano y pulsa Enseñar.";
-        return "Selecciona una carta de ataque. Puedes elegir tu habilidad en el tablero.";
+        if (s.Phase == Phase.Actions) return "";
+        if (s.AttackedThisTurn) return "";
+        if (s.Active.Skills.Count == 0) return "Necesitas una habilidad enseñada para atacar.";
+        return "";
     }
 
     private void ShowHelp()

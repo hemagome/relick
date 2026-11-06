@@ -80,7 +80,7 @@ public sealed class GameState
         : Phase == Phase.Discard ? DiscardPlayer ?? CurrentPlayer : CurrentPlayer;
     public int? Winner { get; internal set; } // -1 = draw, null = still playing
     public int LastDie { get; internal set; }
-    public string LastCombat { get; internal set; } = "El dado espera tu primer ataque.";
+    public string LastCombat { get; internal set; } = "";
     public List<string> Log { get; } = new();
     public PlayerState Active => Players[CurrentPlayer];
     public bool IsOver => Phase == Phase.Finished;
