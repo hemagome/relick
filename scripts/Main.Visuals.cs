@@ -422,13 +422,6 @@ public partial class Main
         _helpOpen = false;
     }
 
-    private void ShowHistory()
-    {
-        var text = new RichTextLabel { CustomMinimumSize = new(550, 340), Text = string.Join("\n\n", _game.State.Log), ScrollFollowing = true, BbcodeEnabled = false };
-        text.AddThemeFontSizeOverride("normal_font_size", 15);
-        OpenBoardDialog("Registro del duelo", text, new Vector2I(620, 430));
-    }
-
     private void ShowBonus(int player)
     {
         if (_helpOpen || _game.State.Phase == Phase.Preparation || _game.State.Players[player].Bonus is not { } id) return;

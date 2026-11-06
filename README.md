@@ -66,7 +66,7 @@ herido ni una animación de derrota específicos.
   Las cartas se elevan al pasar el cursor; el borde y la marca indican la selección.
 - El efecto de la carta seleccionada aparece sobre los botones de acción; pasar el cursor
   por la carta permite consultar su explicación completa.
-- **Registro** abre el historial de la partida. **Pruebas** permite probar animaciones y las nuevas zonas.
+- **Registro** identifica al jugador 1 (tú) en verde y al jugador 2 (rival) en coral, con etiquetas J1/J2. Los ataques y efectos sobre otro jugador indican quién actúa y quién recibe el efecto. **Pruebas** permite probar animaciones y las nuevas zonas.
 
 La interfaz está en `scripts/Main.Visuals.cs` y los símbolos, medidores y cartas se dibujan
 en `scripts/BoardWidgets.cs`. No se necesitan imágenes ni servicios nuevos para estos elementos.

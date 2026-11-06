@@ -85,7 +85,7 @@ public sealed partial class GameEngine
     private void CorruptActivationCode(int actor, int index)
     {
         if (_activeActivation != null) { _activeActivation.ReplayCorrupted = true; _activeActivation.CorruptedIndex = State.Players[actor].CorruptedMemory.Count; }
-        Corrupt(actor, index);
+        Corrupt(actor, actor, index);
     }
     private void CompleteActivationIfFinished()
     {

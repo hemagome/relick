@@ -53,12 +53,12 @@ public sealed partial class GameEngine
         }
         if (indices.Length > 0) CardsReturnedToDeck?.Invoke(0);
         foreach (var _ in indices) DrawOne(player);
-        if (indices.Length > 0) Log($"Cambiaste {indices.Length} carta(s) de tu mano inicial.");
+        if (indices.Length > 0) Log($"{player.Name} cambia {indices.Length} carta(s) de su mano inicial.");
         foreach (var p in State.Players) DealBonus(p);
         int human, bot;
         do { human = Roll(); bot = Roll(); } while (human == bot);
         State.CurrentPlayer = human > bot ? 0 : 1;
-        Log($"Dado inicial: tú {human}, rival {bot}. Empieza {State.Active.Name}.");
+        Log($"Dado inicial: {State.Players[0].Name} {human}, {State.Players[1].Name} {bot}. Empieza {State.Active.Name}.");
         BeginTurn();
         return CommandResult.Ok();
     }

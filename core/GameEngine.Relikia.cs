@@ -97,7 +97,7 @@ public sealed partial class GameEngine
         {
             var rival = 1 - actor;
             State.DiscardsRemaining = Math.Min(2, State.Players[rival].Hand.Count);
-            Log($"{State.Players[rival].Name} debe elegir {State.DiscardsRemaining} carta(s) para descartar por Relikia.");
+            Log($"{State.Players[actor].Name} obliga a {State.Players[rival].Name} a descartar {State.DiscardsRemaining} carta(s) por Relikia.");
             if (State.DiscardsRemaining > 0)
             {
                 State.DiscardPlayer = rival;
@@ -119,7 +119,7 @@ public sealed partial class GameEngine
         var error = ValidateRelikiaChoice(actor, RelikiaChoice.CorruptCode);
         if (error != null) return CommandResult.Fail(error);
         if (!IsMemoryCode(owner, memoryIndex)) return CommandResult.Fail("Elige un código sin corromper de una memoria.");
-        Corrupt(owner, memoryIndex);
+        Corrupt(actor, owner, memoryIndex);
         if (--State.CorruptionsRemaining == 0) EndRelikiaChoice();
         return CommandResult.Ok();
     }
@@ -150,14 +150,14 @@ public sealed partial class GameEngine
     private static bool IsCode(string id) => CardCatalog.Get(id).Kind == CardKind.Code;
     private bool IsMemoryCode(int owner, int index) => owner >= 0 && owner < State.Players.Length &&
         index >= 0 && index < State.Players[owner].Memory.Count && IsCode(State.Players[owner].Memory[index]);
-    private void Corrupt(int owner, int index)
+    private void Corrupt(int actor, int owner, int index)
     {
         var p = State.Players[owner];
         var id = p.Memory[index];
         NotifyPileMove(p, id, CardZone.Memory, index, CardZone.Corrupted);
         p.Memory.RemoveAt(index);
         p.CorruptedMemory.Add(id);
-        Log($"Se corrompe {CardCatalog.Get(id).Name} de la memoria de {p.Name} (boca abajo).");
+        Log($"{State.Players[actor].Name} corrompe {CardCatalog.Get(id).Name} de la memoria de {p.Name} (boca abajo).");
     }
     private void BeginRelikiaChoice(RelikiaChoice choice)
     {

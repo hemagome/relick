@@ -80,7 +80,7 @@ public sealed partial class GameEngine
             State.Active.Hand.Add(id);
         }
         State.Phase = Phase.Combat;
-        Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {(fromBonus ? "Bonus" : "la mano")} del rival por Magnet Shuffle.");
+        Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
         if (fromBonus) RefillBonus(rival);
         return CommandResult.Ok();
     }
