@@ -94,6 +94,7 @@ public partial class Main
     private void DrainTestDice()
     {
         for (var i = 0; i < 100 && (_die.IsBusy || _die.IsPresented); i++) _die.AdvancePlayback(3);
+        PlayPendingCombatAnimations();
     }
 
     private sealed class SkillsTestRandom : IGameRandom

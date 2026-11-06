@@ -57,6 +57,7 @@ public sealed partial class GameEngine
         State.LastCombat = $"{p.Name} · {outcome} · {damage} de daño" +
             (rerolled ? $" · Dado final: {die}" : "");
         Log($"{p.Name} usa {skill.Name}: dado {die}, {outcome.ToLowerInvariant()}, {damage} de daño.");
+        if (die >= 4) AttackPerformed?.Invoke(actor);
         if (damage <= 0) return;
         p.Relikia += skill.Reward;
         Log($"{p.Name} obtiene {skill.Reward} PR.");

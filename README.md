@@ -19,8 +19,8 @@ Tu relikario está a la izquierda, con acento verde; el adversario está a la de
 con acento rojo. Cada panel muestra un medidor de vidas (8 como máximo para Yuno), PR y contadores de mazo y memoria.
 
 - **Reposo:** cada personaje tiene su propio bucle al abrir y reiniciar la partida.
-- **Ataque:** lo reproduce quien juega el ataque válido, incluso si el dado falla.
-- **Daño:** solo lo reproduce quien recibe daño; un fallo no provoca esa reacción.
+- **Ataque:** solo se reproduce una vez cuando el resultado definitivo es 4, 5 o 6, después de terminar las tiradas y decidir los relanzamientos. Los resultados finales 1, 2 y 3 no lo animan.
+- **Daño:** solo lo reproduce quien recibe daño, sincronizado con el ataque tras terminar el dado; un fallo o daño cancelado no provoca esa reacción.
 - Ataque dura **1.2 s**, daño **0.9 s** y el bucle de reposo **2 s**. Las acciones vuelven automáticamente a reposo. El rival espera
   a que ambos terminen sus acciones visibles antes de continuar su siguiente decisión.
 - El botón superior **Pruebas** abre las pruebas **Reposo / Ataque / Daño** de ambos personajes. La prueba de ataque hace que
@@ -255,6 +255,7 @@ dotnet run --project tests/Relick.Core.Tests.csproj
 dotnet build Relick.csproj
 godot --headless --path . -- --smoke-test
 godot --headless --path . -- --animation-test
+godot --headless --path . -- --attack-timing-test
 godot --headless --path . -- --dice-test
 godot --headless --path . -- --visual-test
 godot --headless --path . -- --relikia-test

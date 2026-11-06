@@ -623,7 +623,7 @@ public partial class Main
             Hand(attack).EmitSignal(BaseButton.SignalName.Pressed);
             Press("Atacar");
             KeepTestAttackRoll();
-            if (!_game.State.AttackedThisTurn || !_die.IsRolling || _yuno.Motion != PortraitMotion.Attack)
+            if (!_game.State.AttackedThisTurn || !_die.IsRolling || _yuno.Motion == PortraitMotion.Attack)
                 throw new InvalidOperationException("El ataque no conserva sus efectos y animación.");
             DrainTestDice();
             var enemyLife = _root.FindChild("EnemyLifeMeter", true, false) as LifeMeter;

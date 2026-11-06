@@ -66,6 +66,7 @@ public partial class Main : Control
         NewGame();
         var args = OS.GetCmdlineUserArgs();
         if (args.Contains("--smoke-test")) CallDeferred(nameof(SmokeTest));
+        if (args.Contains("--attack-timing-test")) CallDeferred(nameof(AttackTimingSmokeTest));
         if (args.Contains("--animation-test")) CallDeferred(nameof(AnimationSmokeTest));
         if (args.Contains("--dice-test")) CallDeferred(nameof(DiceSmokeTest));
         if (args.Contains("--visual-test")) CallDeferred(nameof(VisualSmokeTest));
@@ -113,6 +114,7 @@ public partial class Main : Control
     private void BindGame(GameEngine game)
     {
         ResetDrawAnimations();
+        _pendingCombatAnimations.Clear();
         _game = game;
         _game.CardDrawn += QueueCardDraw;
         _game.CardReturnedToDeck += QueueCardReturn;
@@ -129,8 +131,8 @@ public partial class Main : Control
             _dicePreview = false;
             _die.QueueRoll(value, _game.CurrentDieCaption);
         };
-        _game.AttackPerformed += actor => PortraitFor(actor).Play(PortraitMotion.Attack);
-        _game.DamageReceived += (target, _) => PortraitFor(target).Play(PortraitMotion.Hit);
+        _game.AttackPerformed += actor => _pendingCombatAnimations.Add((actor, PortraitMotion.Attack));
+        _game.DamageReceived += (target, _) => _pendingCombatAnimations.Add((target, PortraitMotion.Hit));
     }
 
     private YunoPortrait PortraitFor(int player) => player == 0 ? _yuno : _enemyYuno;
@@ -153,6 +155,7 @@ public partial class Main : Control
     {
         UpdateDiceOverlay();
         UpdateDrawAnimations(delta);
+        PlayPendingCombatAnimations();
         var s = _game.State;
         if (s.DecisionPlayer == 0 && !_helpOpen && !_die.IsBusy && !CardsInMotion &&
             s.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse) ShowPendingSkillChoice();
@@ -586,8 +589,8 @@ public partial class Main : Control
             _game.AttackPerformed += _ =>
             {
                 attacks++;
-                if (!_die.IsBusy || _die.LatestResult != _game.State.LastDie)
-                    throw new InvalidOperationException("El ataque no animó el resultado real.");
+                if (_game.State.LastAttackDie < 4 || _game.State.PendingAttackRoll != null)
+                    throw new InvalidOperationException("El ataque animó un resultado fallido o sin confirmar.");
             };
             for (var i = 0; i < 1500 && !_game.State.IsOver; i++)
             {
@@ -680,14 +683,14 @@ public partial class Main : Control
             void VerifyAttack(int actor)
             {
                 attacks[actor]++;
-                if (PortraitFor(actor).Motion != PortraitMotion.Attack || PortraitFor(1 - actor).Motion != PortraitMotion.Idle)
-                    throw new InvalidOperationException("El ataque animó al relikario equivocado.");
+                if (_pendingCombatAnimations.Last() != (actor, PortraitMotion.Attack))
+                    throw new InvalidOperationException("El ataque no encoló al relikario correcto.");
             }
             void VerifyDamage(int target, int amount)
             {
                 hits[target]++;
-                if (PortraitFor(target).Motion != PortraitMotion.Hit || PortraitFor(1 - target).Motion == PortraitMotion.Hit)
-                    throw new InvalidOperationException("El daño animó al relikario equivocado.");
+                if (_pendingCombatAnimations.Last() != (target, PortraitMotion.Hit))
+                    throw new InvalidOperationException("El daño no encoló al relikario correcto.");
             }
             var checkRandom = new SkillsTestRandom();
             BindGame(new GameEngine(checkRandom));

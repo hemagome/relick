@@ -159,7 +159,7 @@ var tests = new (string Name, Action Run)[]
         Ok(startRolls.SequenceEqual(new[] { 6, 1 })); Eq(initial.State.CurrentPlayer, 0);
         Eq(initial.State.LastDie, 1);
     }),
-    ("Eventos visuales: fallos atacan, aciertos dañan y rechazos no emiten", () =>
+    ("Eventos visuales: solo ataques exitosos definitivos animan; fallos y rechazos no emiten", () =>
     {
         var (g, rng) = Combat();
         var attacks = new List<int>();
@@ -168,11 +168,11 @@ var tests = new (string Name, Action Run)[]
         g.DamageReceived += (target, amount) => hits.Add((target, amount));
         Ok(!AttackKeepingRoll(g,1, 0, 0).Success); Eq(attacks.Count, 0); Eq(hits.Count, 0);
         rng.EnqueueDie(2); Ok(AttackKeepingRoll(g,0, 0, 0).Success);
-        Eq(attacks.Single(), 0); Eq(hits.Count, 0);
-        Ok(!AttackKeepingRoll(g,0, 0, 0).Success); Eq(attacks.Count, 1);
+        Eq(attacks.Count, 0); Eq(hits.Count, 0);
+        Ok(!AttackKeepingRoll(g,0, 0, 0).Success); Eq(attacks.Count, 0);
         g.State.AttackedThisTurn = false; g.State.Active.Hand.Add("attack");
         rng.EnqueueDie(5); Ok(AttackKeepingRoll(g,0, 0, 0).Success);
-        Eq(attacks.Count, 2); Eq(hits.Single(), (1, 3));
+        Eq(attacks.Count, 1); Eq(attacks.Single(), 0); Eq(hits.Single(), (1, 3));
         g.State.Players[1].Health = 0;
         g.State.AttackedThisTurn = false; g.State.Active.Hand.Add("attack");
         rng.EnqueueDie(5); Ok(AttackKeepingRoll(g,0, 0, 0).Success);

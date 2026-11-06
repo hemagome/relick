@@ -127,7 +127,6 @@ public sealed partial class GameEngine
         var die = Roll();
         State.LastAttackDie = die;
         State.PendingAttackRoll = new(actor, skill.Id, die);
-        AttackPerformed?.Invoke(actor);
         State.Phase = Phase.AttackRerollChoice;
         if (CanRespondToAttackDie())
         {

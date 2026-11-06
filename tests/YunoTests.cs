@@ -42,13 +42,14 @@ static class YunoTests
                 var (g, rng) = Fixture(); var rolls = new List<int>(); var attacks = 0; var damageEvents = 0;
                 g.DieRolled += rolls.Add; g.AttackPerformed += _ => attacks++; g.DamageReceived += (_, _) => damageEvents++;
                 rng.EnqueueDie(6); rng.EnqueueDie(reroll);
-                Check(g.Attack(0, 0, 0).Success); Check(g.ResolveAttackReroll(0, true).Success);
+                Check(g.Attack(0, 0, 0).Success); Check(attacks == 0);
+                Check(g.ResolveAttackReroll(0, true).Success);
                 var effective = reroll == 6 ? 5 : reroll;
                 Check(g.State.LastAttackDie == effective && g.State.LastDie == reroll);
                 Check(g.State.Players[1].Health == 8 - GameEngine.DamageFor(effective, 3, 5));
                 Check(g.State.Active.Relikia == (effective >= 4 ? 600 : 0));
                 Check(g.State.Active.AttackRerollUsedThisTurn && g.State.PendingAttackRoll == null);
-                Check(rolls.SequenceEqual(new[] { 6, reroll }) && attacks == 1 && damageEvents == (effective >= 4 ? 1 : 0));
+                Check(rolls.SequenceEqual(new[] { 6, reroll }) && attacks == (effective >= 4 ? 1 : 0) && damageEvents == (effective >= 4 ? 1 : 0));
                 Check(g.State.Active.Hand.Count == 0 && g.State.Active.Memory.Count == 1);
                 var before = Snapshot(g);
                 Check(!g.ResolveAttackReroll(0, true).Success && before == Snapshot(g));
