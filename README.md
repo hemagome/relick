@@ -35,7 +35,7 @@ herido ni una animación de derrota específicos.
 
 ## Tablero visual
 
-Práctica y PvP usan los mismos componentes visuales. La distribución se adapta a pantallas pequeñas y horizontales; los detalles de cartas se consultan también con un toque. [Interfaz, optimizaciones y pruebas](docs/UI.md).
+Práctica y PvP usan los mismos componentes visuales. La distribución admite PC, tablet y celular en horizontal; no se mantiene una interfaz móvil vertical. En móvil se permite girar entre ambos lados horizontales; los detalles de cartas se consultan también con un toque. [Interfaz, optimizaciones y pruebas](docs/UI.md).
 
 - Barra de fases con la etapa activa y el dueño del turno. El botón para avanzar pulsa con un brillo dorado cuando no quedan jugadas legales (incluidos los efectos de Relikia). No avanza automáticamente ni brilla durante tiradas o elecciones pendientes.
 - **Mano del rival** sobre la resolución de combate: un reverso por carta, usando la imagen original aportada por el usuario. Sustituye los contadores laterales de mano. Se actualiza al robar, jugar, canjear o descartar. La fila se desplaza si no cabe y **Ampliar** permite recorrer todas las cartas en una cuadrícula, sin límite de mano.

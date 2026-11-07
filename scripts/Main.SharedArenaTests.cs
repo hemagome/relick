@@ -11,12 +11,13 @@ public partial class Main
         {
             SetProcess(false); _helpOpen = true;
             BindGame(new GameEngine(42)); _game.Start([]); ResetDrawAnimations();
-            var sizes = new[] { new Vector2I(1440, 1024), new(390, 844), new(844, 390), new(320, 568) };
+            var sizes = new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) };
             async Task Layout()
             {
                 for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
             void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+            Check(ArenaViewport.LandscapeSize(new(390, 844)) == new Vector2I(844, 390), "Una ventana alta no conserva el lienzo horizontal.");
             var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
             async Task Capture(string name)
             {
@@ -72,7 +73,7 @@ public partial class Main
             GetWindow().ContentScaleSize = new(1440, 1024); await Layout(); _root.Hide(); MoveChild(online, GetChildCount() - 1);
             await online.CheckVisualCues(DuelSnapshot.For(_game, 1, 8));
             online.QueueFree();
-            GD.Print("SHARED_ARENA_PASS · escritorio, vertical, horizontal, pantalla pequeña, selección estable y privacidad.");
+            GD.Print("SHARED_ARENA_PASS · escritorio, tablet horizontal, teléfono horizontal, pantalla pequeña horizontal, selección estable y privacidad.");
             GetTree().Quit();
         }
         catch (Exception error) { GD.PushError("SHARED_ARENA_FAIL · " + error); GetTree().Quit(1); }

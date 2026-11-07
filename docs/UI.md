@@ -16,9 +16,9 @@ Los controladores permanecen separados: práctica consulta el motor local; `Onli
 
 La disposición amplia conserva el tablero enfrentado. Con menos de 1100 unidades lógicas de ancho, el tablero puede desplazarse verticalmente y los controles secundarios pasan a un menú. La mano tiene desplazamiento horizontal independiente.
 
-En pantallas cortas y horizontales (altura menor de 600 y ancho de al menos 700), el tablero queda a la izquierda y la mano/acciones a la derecha. Esto evita que una mano inferior ocupe casi toda la altura. Los dispositivos pequeños en vertical conservan la mano debajo. Los resúmenes de vidas permanecen fuera del desplazamiento del tablero.
+En pantallas cortas y horizontales (altura menor de 600 y ancho de al menos 700), el tablero queda a la izquierda y la mano/acciones a la derecha. Esto evita que una mano inferior ocupe casi toda la altura. No se mantiene una distribución vertical para celulares: el proyecto solicita horizontal con giro de 180° permitido. Las ventanas de escritorio altas conservan un lienzo horizontal con bandas, en lugar de activar otra distribución. Los resúmenes de vidas permanecen fuera del desplazamiento del tablero.
 
-La configuración móvil tiene en cuenta densidad de pantalla y área segura. Los botones principales usan al menos 48 unidades lógicas, los menús aumentan la separación entre elementos y los detalles se pueden abrir con un toque. Los diálogos largos de cartas, elecciones y Relikia se adaptan mediante desplazamiento. Se habilita la entrada de ratón emulada por el toque para los controles de Godot.
+PC, tablet y teléfono comparten el alcance horizontal. La configuración móvil tiene en cuenta densidad de pantalla y área segura. Los botones principales usan al menos 48 unidades lógicas, los menús aumentan la separación entre elementos y los detalles se pueden abrir con un toque. Los diálogos largos de cartas, elecciones y Relikia se adaptan mediante desplazamiento. Se habilita la entrada de ratón emulada por el toque para los controles de Godot.
 
 Esto prepara la interfaz; **no constituye una exportación Android/iOS ni una validación en hardware móvil**. Aún hay que comprobar teclado virtual, zonas seguras, consumo, rendimiento y funcionamiento táctil en los dispositivos elegidos.
 
@@ -60,7 +60,7 @@ dotnet run --project tests/Relick.Core.Tests.csproj
 ./jugar.sh --headless -- --shared-arena-test
 ```
 
-La prueba de interfaz recorre 1440×1024, 390×844, 844×390 y 320×568 en ambos modos. Comprueba límites de pantalla, mano accesible, selección estable y privacidad desde el asiento 1. Además ejecuta las señales visuales, incluidos dados repetidos y devolución de cartas ocultas.
+La prueba de interfaz recorre 1440×1024, 1024×768, 844×390 y 700×390 en ambos modos. Comprueba límites de pantalla, mano accesible, selección estable y privacidad desde el asiento 1. Además ejecuta las señales visuales, incluidos dados repetidos y devolución de cartas ocultas.
 
 Para capturas renderizadas, ejecuta sin `--headless`:
 

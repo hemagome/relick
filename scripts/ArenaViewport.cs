@@ -7,6 +7,10 @@ public static class ArenaViewport
     public static bool Compact(Control control) => control.Size.X < 1100;
     public static bool Short(Control control) => control.Size.Y < 600;
 
+    // One landscape canvas, including when a desktop window is resized taller than wide.
+    public static Vector2I LandscapeSize(Vector2I size) => new(
+        Math.Max(700, Math.Max(size.X, size.Y)), Math.Max(390, Math.Min(size.X, size.Y)));
+
     public static void Configure(Window window)
     {
         if (OS.GetCmdlineUserArgs().Contains("--shared-arena-test")) return;
@@ -17,13 +21,13 @@ public static class ArenaViewport
         if (requested != null)
         {
             var dimensions = requested.Split('=', 2)[1].Split('x');
-            window.ContentScaleSize = new(int.Parse(dimensions[0]), int.Parse(dimensions[1]));
+            window.ContentScaleSize = LandscapeSize(new(int.Parse(dimensions[0]), int.Parse(dimensions[1])));
             return;
         }
         if (DisplayServer.GetName() == "headless") return;
         if (size.X <= 0 || size.Y <= 0) return;
         var logical = mobile || size.X < 1100
-            ? new Vector2I(Math.Max(320, (int)(size.X / density)), Math.Max(280, (int)(size.Y / density)))
+            ? LandscapeSize(new((int)(size.X / density), (int)(size.Y / density)))
             : new Vector2I(1440, 1024);
         if (window.ContentScaleSize != logical) window.ContentScaleSize = logical;
     }
