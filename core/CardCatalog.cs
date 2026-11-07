@@ -1,5 +1,6 @@
 namespace Relick.Core;
 
+// Legacy MVP subtypes. Target taxonomy and unresolved card mappings: docs/CARD_TAXONOMY.md.
 public enum CodeType { None, Character, Object, Play }
 
 public enum CardKind { Attack, Skill, Code, Attachment, Equipment }
