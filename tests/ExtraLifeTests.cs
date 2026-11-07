@@ -32,11 +32,13 @@ static class ExtraLifeTests
             foreach (var cancel in new[] { true, false })
             {
                 var (g, rng) = Fixture(); var p = g.State.Active; var rival = g.State.Players[1]; rival.Equipment = CardCatalog.CardboardBox.Id;
+                var cues = DuelVisualEvents.Capture(g);
                 var rolls = new List<int>(); g.DieRolled += rolls.Add; rng.EnqueueDie(6);
                 Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.CodeResponse && rolls.Count == 0 && p.Health == 1);
                 Check(g.ResolveCodeResponse(1, cancel).Success && p.Memory.Single() == "extra-life" && g.State.ActionsLeft == (cancel ? 2 : 1));
                 Check(cancel ? p.Health == 1 && rolls.Count == 0 && rival.Equipment == null && rival.Memory.Single() == CardCatalog.CardboardBox.Id
                     : p.Health == 5 && rolls.Single() == 6 && rival.Equipment != null);
+                Check(cues.Count(c => c.Kind == DuelVisualKind.Heal) == (cancel ? 0 : 1));
             }
         }),
         ("Vida Extra por Relikia se corrompe antes de tirar; cancelarla la deja en memoria", () =>
@@ -69,6 +71,32 @@ static class ExtraLifeTests
             random.EnqueueDie(3); random.EnqueueDie(4);
             Check(second.PlayCode(0, 0).Success && second.ResolveDieReroll(0, true).Success && second.UsePendant(0, PendantEffect.AddTwo).Success);
             Check(second.ResolveDieReroll(0, false).Success && p.Health == 5 && !p.HasNaturalSix && p.Equipment == null);
+        }),
+        ("Curación visual: ambos jugadores, ganancia efectiva, cero vidas y límite máximo", () =>
+        {
+            foreach (var actor in new[] { 0, 1 }) foreach (var health in new[] { 0, 1, 7, 8 })
+            {
+                var (g, rng) = Fixture(); g.State.CurrentPlayer = actor; g.State.ActionsLeft = 2;
+                var p = g.State.Active; p.Hand.Clear(); p.Hand.Add(CardCatalog.ExtraLife.Id);
+                p.Health = health; p.HasReachedZero = health == 0;
+                var cues = DuelVisualEvents.Capture(g); rng.EnqueueDie(6);
+                Check(g.PlayCode(actor, 0).Success);
+                var heal = cues.Where(c => c.Kind == DuelVisualKind.Heal).ToArray();
+                var restored = Math.Min(4, p.MaxHealth - health);
+                Check(restored == 0 ? heal.Length == 0 : heal.Length == 1 && heal[0].Player == actor && heal[0].Value == restored);
+                Check(p.Health == health + restored && p.HasReachedZero == (health == 0));
+            }
+        }),
+        ("Curación visual: espera a resolver el relanzamiento y se emite una sola vez", () =>
+        {
+            var (g, rng) = Fixture(); g.State.Active.Relikario = RelikarioCatalog.YunoLv2;
+            var cues = DuelVisualEvents.Capture(g); rng.EnqueueDie(2); rng.EnqueueDie(6);
+            Check(g.PlayCode(0, 0).Success && cues.All(c => c.Kind != DuelVisualKind.Heal));
+            Check(g.ResolveDieReroll(0, true).Success && cues.All(c => c.Kind != DuelVisualKind.Heal));
+            Check(g.ResolveDieReroll(0, false).Success);
+            var heal = cues.Single(c => c.Kind == DuelVisualKind.Heal);
+            Check(heal.Player == 0 && heal.Value == 4 && cues.Last() == heal);
+            Check(!g.ResolveDieReroll(0, false).Success && cues.Count(c => c.Kind == DuelVisualKind.Heal) == 1);
         }),
         ("Vida Extra: rechazos no consumen carta, acción, vida ni azar; el rival prioriza curarse", () =>
         {

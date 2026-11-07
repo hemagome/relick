@@ -2,7 +2,7 @@ using Godot;
 
 namespace Relick;
 
-public enum PortraitMotion { Idle, Attack, Hit, ExhaustedIdle }
+public enum PortraitMotion { Idle, Attack, Hit, ExhaustedIdle, Heal }
 
 /// <summary>One fixed canvas shared by all clips. UI rebuilds reparent this node, preserving playback.</summary>
 public partial class YunoPortrait : Control
@@ -13,7 +13,8 @@ public partial class YunoPortrait : Control
         [PortraitMotion.Idle] = new("idle", 64, 2.0, true),
         [PortraitMotion.Attack] = new("attack", 56, 1.2, false),
         [PortraitMotion.Hit] = new("hit", 64, 0.9, false),
-        [PortraitMotion.ExhaustedIdle] = new("exhausted-idle", 16, 2.8, true)
+        [PortraitMotion.ExhaustedIdle] = new("exhausted-idle", 16, 2.8, true),
+        [PortraitMotion.Heal] = new("heal", 16, 1.2, false)
     };
     public static double DurationFor(PortraitMotion motion) => Clips[motion].Seconds;
     private const int Columns = 8;
@@ -100,8 +101,15 @@ public partial class YunoPortrait : Control
         var font = ThemeDB.FallbackFont;
         if (IsActionPlaying)
         {
-            var caption = Motion == PortraitMotion.Attack ? "ATAQUE" : "RECIBIENDO DAÑO";
-            DrawCircle(new Vector2(5, 9), 3, Motion == PortraitMotion.Hit ? new Color("f08076") : AccentColor);
+            var caption = Motion switch
+            {
+                PortraitMotion.Attack => "ATAQUE", PortraitMotion.Heal => "CURACIÓN", _ => "RECIBIENDO DAÑO"
+            };
+            var color = Motion switch
+            {
+                PortraitMotion.Hit => new Color("f08076"), PortraitMotion.Heal => new Color("53d49e"), _ => AccentColor
+            };
+            DrawCircle(new Vector2(5, 9), 3, color);
             DrawString(font, new Vector2(15, 13), caption, HorizontalAlignment.Left, -1, 11, new Color("a2afbc"));
         }
         var scale = Math.Min(Size.X / FrameWidth, Math.Max(0, Size.Y - 24) / FrameHeight);

@@ -95,6 +95,7 @@ static class DuelTests
         var random = new DuelRandom(); random.Replay([1]);
         var game = GameEngine.FromOpening(opening, random);
         game.State.Phase = Phase.Actions;
+        game.State.Players[0].Health = 4;
         var events = DuelVisualEvents.Capture(game);
         var before = JsonSerializer.Serialize(game.State);
         if (events.Count != 0 || before != JsonSerializer.Serialize(game.State)) throw new Exception("Capturar señales cambia la partida.");
@@ -109,5 +110,7 @@ static class DuelTests
         var view = DuelSnapshot.For(game, 0, 2); view.Visuals = events;
         var restored = JsonSerializer.Deserialize(JsonSerializer.Serialize(view, DuelJson.Default.DuelSnapshot), DuelJson.Default.DuelSnapshot)!;
         if (restored.Visuals.Count != events.Count || restored.LastCombat != view.LastCombat) throw new Exception("Las señales no sobreviven al transporte.");
+        if (restored.Visuals.Count(v => v.Kind == DuelVisualKind.Heal && v.Player == 0 && v.Value == 2) != 2)
+            throw new Exception("Se pierden las curaciones repetidas al transportar las señales.");
     }
 }

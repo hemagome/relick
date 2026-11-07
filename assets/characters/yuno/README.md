@@ -18,7 +18,14 @@ algunos raspones superficiales. Usa ocho fases de una inhalación lenta, reprodu
 con los extremos repetidos (0…7, 7…0), formando un bucle de 16 cuadros sin salto entre final e inicio.
 Se extrajo el fondo para conservar transparencia real. Los prompts están en
 [exhausted-idle-prompts.txt](exhausted-idle-prompts.txt); los intermedios y la vista previa local,
-en `artifacts/yuno-zero-health/`. El juego utiliza únicamente los cuatro atlas PNG de esta carpeta.
+en `artifacts/yuno-zero-health/`.
+
+El quinto clip, `heal.png`, es una curación de estilo arcade creada con `image_gen`: Yuno se lleva
+la mano al pecho, se endereza con alivio y aparecen corazones verdes de píxel que ascienden y se
+desvanecen. Los corazones son decorativos; la vida recuperada la determina el motor y la muestra
+el marcador. Son 16 poses consecutivas, sin ida y vuelta, con regreso a la postura de reposo.
+Los prompts están en [heal-prompts.txt](heal-prompts.txt) y los intermedios y la vista previa local
+en `artifacts/yuno-heal/`. El juego utiliza únicamente los cinco atlas PNG de esta carpeta.
 
 | Archivo | Rejilla | Cuadro | Cuadros | Duración en el MVP | Repetición |
 | --- | --- | --- | --- | --- | --- |
@@ -26,6 +33,7 @@ en `artifacts/yuno-zero-health/`. El juego utiliza únicamente los cuatro atlas 
 | attack.png | 8 × 7 | 608 × 504 | 56 | 1.2 s | No; vuelve a reposo |
 | hit.png | 8 × 8 | 608 × 504 | 64 | 0.9 s | No; vuelve a reposo |
 | exhausted-idle.png | 8 × 2 | 608 × 504 | 16 | 2.8 s | Sí; solo a cero vidas |
+| heal.png | 8 × 2 | 608 × 504 | 16 | 1.2 s | No; vuelve a reposo |
 
 Orden: izquierda a derecha, arriba abajo. Las tres hojas procedentes de Ludo.ai se exportaron a 3 s.
 El MVP las reproduce aceleradas: reposo 1.5×, ataque 2.5× y daño aproximadamente 3.33×.
@@ -37,6 +45,9 @@ El reposo depende de la vida autorizada del jugador, tanto al recibir una actual
 recuperar la partida: a cero vidas usa `exhausted-idle`, y con vida positiva usa `idle`.
 El último golpe termina su reacción antes de entrar al bucle agotado. Reconstruir el tablero
 no reinicia la respiración; restablecer las animaciones conserva el reposo correspondiente a la vida.
+La curación se activa mediante la señal pública `Heal` de una revisión aceptada, con el jugador y
+la cantidad efectiva recuperada. Espera las tiradas y movimientos de cartas pendientes; al terminar
+regresa al reposo que corresponda a la vida actual. Recuperar una vista no reproduce curaciones pasadas.
 
 Las opciones de importación limitan las texturas a 2432 píxeles de ancho: Godot genera
 hojas a media resolución, con cuadros de 304 × 252 y la misma cuadrícula. Los PNG

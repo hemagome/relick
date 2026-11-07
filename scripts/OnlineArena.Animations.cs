@@ -72,6 +72,7 @@ public partial class OnlineArena
                 case DuelVisualKind.Die: _die.QueueRoll(cue.Value, cue.Caption); break;
                 case DuelVisualKind.Attack: _pendingPortraits.Add((cue.Player, PortraitMotion.Attack)); break;
                 case DuelVisualKind.Hit: _pendingPortraits.Add((cue.Player, PortraitMotion.Hit)); break;
+                case DuelVisualKind.Heal when cue.Value > 0: _pendingPortraits.Add((cue.Player, PortraitMotion.Heal)); break;
                 case DuelVisualKind.Draw:
                 case DuelVisualKind.Shuffle: _flights.Enqueue(new(cue)); break;
                 case DuelVisualKind.BonusPlace: _flights.Enqueue(new(cue, Face: _snapshot!.Players[cue.Player].Bonus)); break;

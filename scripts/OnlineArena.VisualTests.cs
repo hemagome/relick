@@ -37,6 +37,63 @@ public partial class OnlineArena
         GD.Print("SHARED_ARENA_VISUALS_PASS · dados repetidos, robo, devolución oculta, barajado, Bonus, memoria, ataque y daño.");
     }
 
+    internal async Task CheckHealingPortraits(GameEngine game)
+    {
+        void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+        var originalSnapshot = _snapshot!;
+        var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+        foreach (var portrait in _portraits) portrait.SetProcess(false);
+        try
+        {
+            foreach (var seat in new[] { 0, 1 })
+            foreach (var healedPlayer in new[] { 0, 1 })
+            {
+                var snapshot = DuelSnapshot.For(game, seat, 10);
+                snapshot.Players[healedPlayer].Health = 3;
+                ResetAnimations(); PresentTestSnapshot(snapshot);
+                var relative = healedPlayer == seat ? 0 : 1;
+                var portrait = _portraits[relative];
+                snapshot.Visuals = [new() { Kind = DuelVisualKind.Die, Player = -1, Value = 3 },
+                    new() { Kind = DuelVisualKind.Heal, Player = healedPlayer, Value = 2 }];
+                Animate(snapshot.Visuals, []);
+                Check(portrait.Motion == PortraitMotion.Idle, "La curación se reproduce antes de resolver el dado.");
+                var frames = 0;
+                while (IsAnimating && frames++ < 40)
+                {
+                    _die.AdvancePlayback(0.5); UpdateFlights(0.5);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+                PlayPendingPortraits();
+                Check(!IsAnimating && portrait.Motion == PortraitMotion.Heal && _portraits[1 - relative].Motion == PortraitMotion.Idle,
+                    "La curación no se reproduce para el destinatario correcto.");
+                portrait.AdvancePlayback(portrait.DurationSeconds / 2);
+                var frame = portrait.CurrentFrame; PresentTestSnapshot(snapshot);
+                Check(portrait.CurrentFrame == frame && frame > 0, "Reconstruir el tablero reinicia la curación.");
+                if (directory != null && DisplayServer.GetName() != "headless")
+                {
+                    System.IO.Directory.CreateDirectory(directory);
+                    await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                    GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory,
+                        $"healing-seat{seat}-player{healedPlayer}.png"));
+                }
+                portrait.AdvancePlayback(portrait.DurationSeconds);
+                Check(portrait.Motion == PortraitMotion.Idle, "La curación no vuelve al reposo.");
+                Animate([new() { Kind = DuelVisualKind.Heal, Player = healedPlayer, Value = 0 }], []);
+                Check(portrait.Motion == PortraitMotion.Idle, "Una curación sin vidas recuperadas reproduce el efecto.");
+                Animate([new() { Kind = DuelVisualKind.Heal, Player = healedPlayer, Value = 2 }], []);
+                Check(portrait.Motion == PortraitMotion.Heal && portrait.CurrentFrame == 0, "Se pierde una curación consecutiva del mismo valor.");
+                ResetAnimations(); PresentTestSnapshot(snapshot);
+                Check(portrait.Motion == PortraitMotion.Idle, "Recuperar el estado vuelve a reproducir una curación pasada.");
+            }
+            GD.Print("PVP_HEALING_PASS · ambos jugadores/asientos, dado, destinatario, repetición, reposo y recuperación.");
+        }
+        finally
+        {
+            ResetAnimations(); PresentTestSnapshot(originalSnapshot);
+            foreach (var portrait in _portraits) portrait.SetProcess(true);
+        }
+    }
+
     internal async Task CheckZeroHealthPortraits(GameEngine game)
     {
         void Check(bool condition, string message) { if (!condition) throw new Exception(message); }

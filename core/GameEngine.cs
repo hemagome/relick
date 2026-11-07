@@ -12,6 +12,7 @@ public sealed partial class GameEngine
     public GameState State { get; } = new();
     public event Action<int>? AttackPerformed;
     public event Action<int, int>? DamageReceived;
+    public event Action<int, int>? HealingReceived;
     public event Action<int>? DieRolled;
     public event Action<int, int>? CardDrawn;
     public event Action<int, int, string>? CardReturnedToDeck;
@@ -206,8 +207,10 @@ public sealed partial class GameEngine
     {
         var old = p.Health;
         p.Health = Math.Min(p.MaxHealth, p.Health + amount);
-        Log($"{p.Name} recupera {p.Health - old} vida(s).");
-        return p.Health - old;
+        var restored = p.Health - old;
+        Log($"{p.Name} recupera {restored} vida(s).");
+        if (restored > 0) HealingReceived?.Invoke(Array.IndexOf(State.Players, p), restored);
+        return restored;
     }
 
     public CommandResult Exchange(int actor, int handIndex)

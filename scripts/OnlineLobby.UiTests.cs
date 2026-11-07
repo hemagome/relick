@@ -34,6 +34,7 @@ public partial class OnlineLobby
             GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
             await online.CheckVisualCues(DuelSnapshot.For(game, 1, 8));
             await online.CheckZeroHealthPortraits(game);
+            await online.CheckHealingPortraits(game);
             await online.CheckPreparationLayout();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
