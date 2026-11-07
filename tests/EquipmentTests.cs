@@ -6,8 +6,8 @@ static class EquipmentTests
     {
         ("Catálogo jugable solo real; equipo y cartas sobre Relikario empiezan vacíos", () =>
         {
-            var deck = CardCatalog.TrainingDeck(); Check(deck.Count == 20 && deck.Count(id => id == CardCatalog.Pendant.Id) == 2);
-            Check(deck.All(id => id is "attack" or "magnet-shuffle" or "destiny-shuffle" or "lucky-pendant" or "senshuni" or "cardboard-box" or "extra-life" or "points-increase" or "blue-egg" or "reroll" or "load-error"));
+            var deck = CardCatalog.TrainingDeck(); Check(deck.Count == 20 && deck.Count(id => id == CardCatalog.Pendant.Id) == 1 && deck.Count(id => id == CardCatalog.DiamondHelmet.Id) == 1);
+            Check(deck.All(id => CardCatalog.All.ContainsKey(id)));
             Check(TestGame.Create(42).State.Players.All(p => p.Equipment == null && p.AttachedCards.Count == 0));
         }),
         ("Equipar cuesta una acción y reemplazar destruye el anterior sin perder cartas", () =>

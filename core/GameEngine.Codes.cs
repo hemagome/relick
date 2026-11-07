@@ -79,7 +79,7 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var phase = State.Phase; var attack = State.PendingAttackRoll; var effect = State.PendingDieRoll;
         var continuation = _pendingDieEffect;
-        var die = Roll("Re-lanza · COMBO");
+        var die = attack != null ? RollAttack("Re-lanza · COMBO") : Roll("Re-lanza · COMBO");
         if (attack != null) attack = attack with { Die = die, Modified = true, WasRerolled = true };
         if (effect != null) effect = effect with { Die = die, Modified = true, WasRerolled = true };
         State.PendingAttackRoll = null; State.PendingDieRoll = null; _pendingDieEffect = null;

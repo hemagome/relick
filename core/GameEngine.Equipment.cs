@@ -4,6 +4,8 @@ public enum PendantEffect { Reroll, AddOne, AddTwo }
 
 public sealed partial class GameEngine
 {
+    private static int DamageAfterEquipment(PlayerState player, int amount) =>
+        Math.Max(0, amount - (player.Equipment == null ? 0 : CardCatalog.Get(player.Equipment).DamageReduction));
     public CommandResult Equip(int actor, int handIndex)
     {
         var error = ValidateAction(actor);
@@ -66,7 +68,8 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var die = attack ? State.PendingAttackRoll!.Die : State.PendingDieRoll!.Die;
         DestroyEquipment(p);
-        die = effect switch { PendantEffect.AddOne => die + 1, PendantEffect.AddTwo => die + 2, _ => Roll("Colgante · Relanzamiento") };
+        die = effect switch { PendantEffect.AddOne => die + 1, PendantEffect.AddTwo => die + 2,
+            _ => attack ? RollAttack("Colgante · Relanzamiento") : Roll("Colgante · Relanzamiento") };
         Log($"{p.Name} usa Colgante de la Suerte ({effect}): el dado queda en {die}.");
         if (attack)
         {

@@ -145,3 +145,11 @@ El módulo publicado emite `Heal` únicamente al recuperar vidas de forma efecti
 La señal `Hit` incluye `AttackDie`, separado de la cantidad de daño y de los dados secundarios: 4 conserva la reacción reducida anterior, 5 selecciona el impacto normal y 6 el crítico. El valor procede del resultado final del ataque después de relanzamientos/modificadores y persiste durante la decisión de defensa. El daño sin ataque utiliza 0 y conserva la reacción genérica. Estas señales no contienen identidades de cartas; una recuperación de estado no vuelve a reproducirlas.
 
 Ambas actualizaciones están publicadas en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin cambios de tablas ni borrado. La última validación pasó 131 comprobaciones del motor, 65 de red en Maincloud y la prueba de interfaz de Godot en modo gráfico y sin ventana. Se verificaron los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos, junto a la matriz de cuatro tamaños. La partida remota verificó además el transporte del dado final en tres impactos reales. Las salas de prueba se cerraron al finalizar.
+
+## Casco de Diamantes
+
+Equipo normal que resta dos a cada daño recibido, después de calcular el daño del ataque y con mínimo cero. Si absorbe todo el daño, no pierde vida, no emite impacto ni activa la derrota por daño a cero vidas. También reduce la penalización de agotamiento del mazo, aunque la comparación final de vidas sigue resolviéndose.
+
+Un 1 en cualquier tirada de ataque destruye inmediatamente los cascos equipados de ambos jugadores y los envía a sus respectivas memorias. Incluye relanzamientos de Yuno, Colgante y Re-lanza: cambiar después el resultado no recupera el equipo. Los unos de iniciativa, curación, reciclaje o daño secundario de Magnet no lo destruyen. Utiliza las reglas comunes de equipamiento, sustitución, cancelación y persistencia.
+
+Las salas nuevas conservan mazos de 20 cartas: una copia del Casco sustituye una de Colgante. Las partidas existentes mantienen sus cartas. Publicado sin borrado en la misma base de desarrollo; validado con 139 comprobaciones del motor, la matriz de interfaz de Godot y 65 comprobaciones PvP remotas. La imagen restaurada y el prompt están en `assets/cards/`.

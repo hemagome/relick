@@ -106,3 +106,12 @@ Los JPG y sus prompts anteriores se conservan para referencia.
 Caja de Cartón usa ahora la edición BY4-6/14 del PNG: «No recibir daño de un ataque»
 y «Cancelar la activación de un código que sea tipo objeto». Esta actualización
 solo sustituye la imagen y no modifica las reglas ya implementadas.
+
+`diamond-helmet-clean.png` restaura el JPG del Casco de Diamantes (B04-6/15), retirando
+la marca diagonal y conservando la ilustración, las reglas y el crédito impreso.
+Se editó con `image_gen` y se normalizó a 697×987; el prompt está en
+`diamond-helmet-prompt.txt`. El original aportado permanece en Downloads.
+Es equipo normal: resta dos a cada daño, con mínimo cero. Un 1 en cualquier tirada
+de ataque, también en un relanzamiento, destruye todos los cascos equipados y los
+envía a memoria de sus dueños. Unos en otros dados no lo destruyen.
+El mazo de prueba conserva 20 cartas: una copia de Casco sustituye una de Colgante.

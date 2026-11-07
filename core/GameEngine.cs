@@ -144,7 +144,7 @@ public sealed partial class GameEngine
         var skill = CardCatalog.Get(p.Skills[skillIndex]);
         SendHandToMemory(p, handIndex);
         State.AttackedThisTurn = true;
-        var die = Roll();
+        var die = RollAttack();
         State.LastAttackDie = die;
         State.PendingAttackRoll = new(actor, skill.Id, die);
         State.Phase = Phase.AttackRerollChoice;
@@ -301,6 +301,15 @@ public sealed partial class GameEngine
     {
         if (amount <= 0) return;
         var p = State.Players[target];
+        var reduction = p.Equipment == null ? 0 : CardCatalog.Get(p.Equipment).DamageReduction;
+        if (reduction > 0)
+        {
+            var reduced = DamageAfterEquipment(p, amount);
+            Log($"{p.Name} reduce el daño de {amount} a {reduced} con {CardCatalog.Get(p.Equipment!).Name}.");
+            State.LastCombat += $" · {CardCatalog.Get(p.Equipment!).Name}: {reduced} daño recibido";
+            amount = reduced;
+            if (amount == 0) return;
+        }
         var wasZero = p.Health == 0;
         p.Health = Math.Max(0, p.Health - amount);
         DamageReceived?.Invoke(target, amount, attackDie);
@@ -347,11 +356,12 @@ public sealed partial class GameEngine
             RollWithRelikario(p, DiePurpose.Recycling, new DieEffect { Purpose = DiePurpose.Recycling, Actor = Array.IndexOf(State.Players, p), Next = completed });
             return;
         }
+        var penalty = DamageAfterEquipment(p, 2);
         var target = Array.IndexOf(State.Players, p); DealDamage(target, 2);
         if (State.IsOver) return;
         var a = State.Players[0].Health; var b = State.Players[1].Health;
         Finish(a == b ? -1 : a > b ? 0 : 1,
-            $"{p.Name} agota su mazo y pierde 2 vidas. Se comparan las vidas restantes.");
+            $"{p.Name} agota su mazo y pierde {penalty} vidas. Se comparan las vidas restantes.");
     }
 
     private void Finish(int winner, string reason)
@@ -376,6 +386,14 @@ public sealed partial class GameEngine
 
     private static bool InHand(PlayerState p, int index) => index >= 0 && index < p.Hand.Count;
     public string CurrentDieCaption { get; private set; } = "";
+    private int RollAttack(string caption = "", bool convertSix = false)
+    {
+        var die = Roll(caption, convertSix);
+        if (die == 1)
+            foreach (var player in State.Players)
+                if (player.Equipment is { } id && CardCatalog.Get(id).DestroyOnAttackOne) DestroyEquipment(player);
+        return die;
+    }
     private int Roll(string caption = "", bool convertSix = false)
     {
         var value = _random.Next(6) + 1;
