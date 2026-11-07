@@ -122,3 +122,14 @@ Es código de tipo Objeto: elige equipo, Bonus o mano al azar, de cualquiera de 
 La carta destruida va a memoria de su dueño; el Bonus se repone. La selección aleatoria se
 resuelve en el servidor y no enumera cartas de la mano rival. Respeta Caja de Cartón, Error
 de Carga y Relikia. Una copia sustituye una de Aumento de PR, manteniendo las 20 cartas.
+
+`konamy-code-clean.png` restaura Código Konamy (B04-11/15) desde el PNG aportado,
+usando la herramienta integrada `image_gen` y normalizando a 697×987. Conserva la
+secuencia de botones, las reglas y ambos créditos impresos. El prompt completo está
+en `konamy-code-prompt.txt`; el original permanece en Downloads.
+Es código de tipo Jugada, sin COMBO: cuesta una acción y permite elegir una
+no-habilidad del mazo propio para añadirla a la mano. La búsqueda y la identidad de
+la carta añadida son privadas. Conserva el orden del mazo restante: el texto no
+indica barajarlo. Error de Carga y Relikia utilizan sus ventanas y costes comunes;
+Caja de Cartón no cancela códigos Jugada. Una copia sustituye una de Caja de
+Cartón, conservando veinte cartas en los mazos nuevos.

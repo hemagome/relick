@@ -111,6 +111,11 @@ public sealed partial class GameEngine
                 State.DestroyActor = null; State.Phase = frame.CancelPhase ?? Phase.Actions;
                 ResolveCode(State.Players[frame.Actor], card);
             }
+            if (State.Phase == Phase.DeckSearchChoice && card.SearchNonSkill && !SearchableDeckCards(frame.Actor).Any())
+            {
+                State.Phase = frame.CancelPhase ?? Phase.Actions;
+                ResolveCode(State.Players[frame.Actor], card);
+            }
             return;
         }
         var p = State.Players[frame.Actor];

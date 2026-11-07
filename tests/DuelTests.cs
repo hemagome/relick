@@ -81,7 +81,7 @@ static class DuelTests
             }
             if (!resumed.Game.State.IsOver) throw new Exception("El duelo reconstruido no termina.");
         }
-        foreach (var phase in new[] { Phase.AttackRerollChoice, Phase.DieRerollChoice, Phase.ErrorResponse, Phase.PointsChoice, Phase.DestroyChoice, Phase.RecycleChoice })
+        foreach (var phase in new[] { Phase.AttackRerollChoice, Phase.DieRerollChoice, Phase.ErrorResponse, Phase.PointsChoice, Phase.DestroyChoice, Phase.RecycleChoice, Phase.DeckSearchChoice })
             if (!phases.Contains(phase)) throw new Exception("No se ejercitó una continuación de " + phase);
     }
 

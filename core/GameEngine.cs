@@ -183,6 +183,17 @@ public sealed partial class GameEngine
 
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
+        if (card.SearchNonSkill)
+        {
+            if (!SearchableDeckCards(Array.IndexOf(State.Players, p)).Any())
+            {
+                Log($"{card.Name} se resuelve sin no-habilidades disponibles en el mazo.");
+                return;
+            }
+            State.Phase = Phase.DeckSearchChoice;
+            State.LastCombat = $"{p.Name} · {card.Name} · Elige una no-habilidad de tu mazo";
+            return;
+        }
         if (card.DestroyChosenZone && !TimeBombTargets().Any())
         {
             Log($"{card.Name} se resuelve sin objetivos disponibles.");
@@ -346,10 +357,15 @@ public sealed partial class GameEngine
             Exhaust(p, new EngineContinuation { Kind = bonus ? ContinuationKind.MoveBonus : ContinuationKind.MoveHand, Actor = actor, Next = completed });
             return;
         }
-        var id = p.Deck[0];
+        MoveDeckCard(p, 0, bonus, completed);
+    }
+    private void MoveDeckCard(PlayerState p, int index, bool bonus, EngineContinuation? completed = null)
+    {
+        var actor = Array.IndexOf(State.Players, p);
+        var id = p.Deck[index];
         if (bonus) { p.Bonus = id; BonusPlaced?.Invoke(actor, id); }
         else { p.Hand.Add(id); CardDrawn?.Invoke(actor, p.Hand.Count - 1); }
-        p.Deck.RemoveAt(0);
+        p.Deck.RemoveAt(index);
         if (p.Deck.Count == 0 && State.Phase != Phase.Preparation) Exhaust(p, completed);
         else Continue(completed);
     }

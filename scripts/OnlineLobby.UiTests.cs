@@ -17,6 +17,11 @@ public partial class OnlineLobby
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+            if (OS.GetCmdlineUserArgs().Contains("--deck-search-only"))
+            {
+                await online.CheckDeckSearchLayout(); online.QueueFree(); await Layout();
+                GD.Print("PVP_DECK_SEARCH_ONLY_PASS"); GetTree().Quit(); return;
+            }
             foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
             foreach (var seat in new[] { 0, 1 })
             {
@@ -36,6 +41,7 @@ public partial class OnlineLobby
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();
+            await online.CheckDeckSearchLayout();
             await online.CheckRecyclingLayout();
             await online.CheckPreparationLayout();
             online.QueueFree(); await Layout();

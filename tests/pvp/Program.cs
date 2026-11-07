@@ -220,6 +220,7 @@ try
     Until(() => fighterA.Duel?.Revision == 2 && b.Duel?.Revision == 2);
     var combatSteps = 0;
     var verifiedImpacts = 0;
+    var verifiedSearches = 0;
     var decisions = new HashSet<Phase>();
     while (fighterA.Duel!.Winner == null && combatSteps++ < 600)
     {
@@ -238,6 +239,14 @@ try
             if (actor.Errors.Count > errors) throw new Exception(choice.Option.Label + ": " + actor.Errors.Last());
             return fighterA.Duel?.Revision == before.Revision + 1 && b.Duel?.Revision == before.Revision + 1;
         });
+        if (choice.Option.Move.Kind == DuelMoveKind.SearchDeck)
+        {
+            var other = actor == fighterA ? b : fighterA;
+            if (actor.Duel!.Players[before.MySeat].Hand.Last() != choice.Option.CardId || other.Duel!.Players[before.MySeat].Hand.Last() != null ||
+                before.Options.Where(o => o.Move.Kind == DuelMoveKind.SearchDeck).Any(o => o.CardId == null || CardCatalog.Get(o.CardId).Kind == CardKind.Skill))
+                throw new Exception("La búsqueda remota cambia el objetivo o revela la carta al rival.");
+            verifiedSearches++;
+        }
         if (before.Phase is Phase.Combat or Phase.AttackRerollChoice or Phase.DefenseChoice)
         foreach (var hit in fighterA.Duel!.Visuals.Where(v => v.Kind == DuelVisualKind.Hit && v.Player != before.CurrentPlayer))
         {
@@ -309,8 +318,12 @@ try
         }
         if (!isRecycling)
         {
-            choice = before.Phase == Phase.DieRerollChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.EffectDie) : before.Players[before.MySeat].Memory.Length < 6
-                ? options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Exchange) : default;
+            choice = before.Phase == Phase.ErrorResponse ? options.First(o => o.Option.Move.Kind == DuelMoveKind.PassError) :
+                before.Phase == Phase.DeckSearchChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.SearchDeck) :
+                before.Phase == Phase.DieRerollChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.EffectDie) :
+                options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.PlayCode && before.Players[before.MySeat].Hand[o.Option.Move.Index] == CardCatalog.KonamyCode.Id);
+            if (choice.Option == null && (before.Players[before.MySeat].Memory.Length < 6 || before.Players[before.MySeat].Bonus == CardCatalog.KonamyCode.Id))
+                choice = options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Exchange);
             if (choice.Option == null) choice = options.First(o => o.Option.Move.Kind == DuelMoveKind.Advance);
         }
         var selected = isRecycling ? Enumerable.Range(before.Players[before.MySeat].Memory.Length - choice.Option!.RequiredDiscards,
@@ -329,6 +342,14 @@ try
             if (!actor.Duel!.Players[before.MySeat].Memory.SequenceEqual(remaining)) throw new Exception("El servidor recicló cartas que no fueron elegidas.");
             Console.WriteLine($"RECYCLE_TRANSPORT · D6 {before.Die}, {selected.Count} cartas elegidas y memoria restante verificada.");
         }
+        if (choice.Option!.Move.Kind == DuelMoveKind.SearchDeck)
+        {
+            var other = actor == fighterA ? b : fighterA;
+            if (actor.Duel!.Players[before.MySeat].Hand.Last() != choice.Option.CardId || other.Duel!.Players[before.MySeat].Hand.Last() != null ||
+                other.Duel.Options.Any(o => o.Move.Kind == DuelMoveKind.SearchDeck || o.CardId != null))
+                throw new Exception("La búsqueda revela opciones o la carta añadida a otro jugador.");
+            verifiedSearches++;
+        }
     }
     Check(recyclingChoices > 0, "El duelo remoto ejercita la selección manual de memoria");
     var resultView = fighterA.Duel!;
@@ -336,6 +357,7 @@ try
         resultView.Players[resultView.Winner.Value].Health == 8 && b.Duel!.Winner == resultView.Winner,
         "El segundo agotamiento resta dos vidas y gana quien conserva más vida");
     service.Leave(); Until(() => service.Room == null && b.Room == null && fighterA.Duel == null);
+    Console.WriteLine($"SEARCH_TRANSPORT · {verifiedSearches} búsquedas privadas verificadas.");
     Console.WriteLine("Todas las comprobaciones PvP pasaron.");
     return 0;
 }

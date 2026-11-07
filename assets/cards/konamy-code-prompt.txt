@@ -1,0 +1,10 @@
+Tool: built-in image_gen
+Use case: precise-object-edit
+Asset type: existing trading card raster image for a game.
+Input image 1 is the edit target. Remove ONLY the large faint diagonal repeated 'RELICK' watermark over the card. Reconstruct the underlying circles, dark sparkly illustration, black arrow symbols and circuitry cleanly.
+Preserve the entire original card composition, exact framing, border, sizes, colors, layout, all printed text, ten round buttons, and original artwork. Exact button order: top row up up down down; middle row left right left right; bottom B A.
+Preserve ALL original print including top 'JUGADA' and 'CÓDIGO', title 'CÓDIGO KONAMY', rule 'BUSCA EN TU MAZO UNA NO-HABILIDAD Y AÑÁDELA A TU MANO.', card code 'B04-11/15', bottom middle credit 'BKGD BY STARLINE/FREEPIK', and bottom-right copyright '©2018 FUYUHIRO GUSHIKEN'. Do NOT remove or alter the credits or copyright. Do not add text, redesign, crop, or add logos. Output the complete opaque portrait card, matching original aspect ratio.
+
+Input: /home/hemagome/Downloads/codigo-konami.png
+Generated output: /home/hemagome/.codex/generated_images/01a1b457-4f38-7ab1-b988-d07e56737030/exec-ee1aef99-41bd-43ea-98b0-17cc23c3b0bd.png
+Project asset normalized to 697x987 with ImageMagick.

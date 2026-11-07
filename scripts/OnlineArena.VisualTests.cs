@@ -7,6 +7,53 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckDeckSearchLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = new GameEngine(43); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
+            foreach (var p in game.State.Players) { p.Hand.Clear(); p.Hand.Add(CardCatalog.Attack.Id); }
+            var player = game.State.Active; player.Hand.Clear(); player.Hand.Add(CardCatalog.KonamyCode.Id); player.Deck.Clear();
+            player.Deck.AddRange(new[] { CardCatalog.Magnet.Id, CardCatalog.Attack.Id, CardCatalog.DiamondHelmet.Id, CardCatalog.ExtraLife.Id,
+                CardCatalog.PointsIncrease.Id, CardCatalog.BlueEgg.Id, CardCatalog.TimeBomb.Id, CardCatalog.Reroll.Id, CardCatalog.LoadError.Id,
+                CardCatalog.KonamyCode.Id, CardCatalog.CardboardBox.Id, CardCatalog.Pendant.Id, CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id });
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("No comienza la búsqueda en el mazo.");
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                GetWindow().ContentScaleSize = size;
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 13));
+                if (seat == actor)
+                {
+                    if (_handCards.Count != 12 || _handCards.Any(c => c.Card.Kind == CardKind.Skill))
+                        throw new Exception("La búsqueda no filtra las habilidades del mazo.");
+                    SelectCard(2);
+                    var label = _deckSearchOptions[2].Label;
+                    if (_selected.Single() != 2 || _moveButtons.Count(b => b.Text == label) != 1 ||
+                        _deckSearchOptions[2].Move.Index != 3 || !_selection.Text.Contains(CardCatalog.ExtraLife.Name) ||
+                        _moves.GetChildren().OfType<Button>().First().Text != label)
+                        throw new Exception("La carta ilustrada no corresponde a la opción autorizada del mazo.");
+                }
+                else if (_handCards.Count != 1 || _deckSearchOptions.Length != 0 || _handCards[0].Card.Id != CardCatalog.Attack.Id)
+                    throw new Exception("La búsqueda expone el mazo al rival o sustituye su mano.");
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var minimum = _root!.GetCombinedMinimumSize();
+                if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1) throw new Exception($"Búsqueda desborda {size}: {minimum}.");
+                if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                    throw new Exception("La búsqueda revela cartas ocultas del rival.");
+                var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+                if (directory != null && seat == actor && size.X is 1440 or 844)
+                {
+                    DirAccess.MakeDirRecursiveAbsolute(directory);
+                    GetViewport().GetTexture().GetImage().SavePng($"{directory}/deck-search-{actor}-{size.X}.png");
+                }
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_DECK_SEARCH_LAYOUT_PASS · doce objetivos privados ilustrados, filtro de habilidades, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckRecyclingLayout()
     {
         foreach (var actor in new[] { 0, 1 })

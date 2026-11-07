@@ -16,7 +16,7 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -58,6 +58,7 @@ public sealed class DuelMove
         DuelMoveKind.Corrupt => game.ResolveRelikiaCorruption(actor, Target, Index),
         DuelMoveKind.Concede => game.Concede(actor),
         DuelMoveKind.Recycle => game.ResolveRecycling(actor, Discards),
+        DuelMoveKind.SearchDeck => game.ResolveDeckSearch(actor, Index),
         _ => CommandResult.Fail("Jugada desconocida.")
     };
 }
@@ -67,6 +68,8 @@ public sealed class DuelOption
     public string Label { get; set; } = "";
     public DuelMove Move { get; set; } = new();
     public int RequiredDiscards { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? CardId { get; set; }
 }
 
 public sealed class DuelEntry

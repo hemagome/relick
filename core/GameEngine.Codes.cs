@@ -41,6 +41,7 @@ public sealed partial class GameEngine
     private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0, int excludedHand = -1)
     {
         if (p.Relikia < card.PrCost + extraCost) return $"Necesitas {card.PrCost + extraCost} PR.";
+        if (card.SearchNonSkill && !SearchableDeckCards(Array.IndexOf(State.Players, p)).Any()) return "No hay no-habilidades en tu mazo.";
         if (card.DestroyNonSkill && !DestructionTargets().Any()) return "No hay no-habilidades en el campo para destruir.";
         if (card.DestroyChosenZone && !TimeBombTargets(Array.IndexOf(State.Players, p), excludedHand).Any())
             return "No hay cartas en equipos, manos o Bonus para destruir.";

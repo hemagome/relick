@@ -165,3 +165,15 @@ En el segundo agotamiento, el dueño pierde dos vidas inevitables, con mínimo c
 La arena muestra la memoria seleccionable durante esta decisión y conserva la mano habitual para el rival. El servidor valida propietario, revisión, cantidad, duplicados y límites; admite hasta seis selecciones. El estado persistido conserva el dado final y la continuación, de modo que reconectar no repite el lanzamiento ni los robos.
 
 Publicado junto con Bomba de Tiempo en `relick-pvp-dev-c2006ee7`, sin cambios de tablas ni borrado (`--delete-data=never`). Validación: 157 comprobaciones del motor y 69 PvP remotas; la partida dedicada verificó elección de cinco cartas, recuperación de la decisión al reconectar, rechazo de cantidades inválidas y comparación final de vidas. Las salas de prueba se cerraron al terminar. La matriz de interfaz cubre hasta seis cartas de memoria para ambos jugadores/asientos.
+
+## Código Konamy
+
+Código de tipo Jugada, sin COMBO: una acción y cero PR. Elige una carta que no sea habilidad del mazo propio y la añade a la mano. No se puede activar sin objetivos legales, tampoco mediante Relikia. El mazo restante conserva su orden porque el texto no indica barajar. Si se retira su última carta, se aplican las reglas de agotamiento.
+
+La decisión enumera las ilustraciones de los objetivos únicamente en las opciones privadas del dueño. El rival no recibe el contenido ni el orden del mazo y la carta añadida permanece oculta en la mano. El servidor valida el índice del mazo asociado a la revisión y rechaza habilidades o decisiones ajenas. La elección pendiente se restaura al reconectar.
+
+Error de Carga puede anularla antes o durante la búsqueda, devolviendo los costes. Caja de Cartón no responde a códigos Jugada. Activarla desde memoria cuesta dos acciones y 400 PR y corrompe la carta, con la restitución habitual si se anula. Una copia sustituye una de Caja en los mazos nuevos; las partidas existentes conservan sus cartas.
+
+También se corrigió un bloqueo previo de Relikia: si un COMBO consume la última carta de la mano durante el reciclaje, la colocación posterior termina sin pedir una carta inexistente.
+
+Publicado en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin cambios de tablas. Validación: 167 comprobaciones del motor, 69 PvP remotas y cinco búsquedas con identidades de cartas privadas verificadas entre ambos clientes. La interfaz pasó la matriz completa sin ventana y la matriz gráfica específica de búsqueda en cuatro tamaños, para ambos jugadores/asientos, con la confirmación visible antes de la inspección de carta.

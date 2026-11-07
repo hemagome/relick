@@ -4,11 +4,11 @@ static class CardboardBoxTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
-        ("Caja de Cartón: equipo real, dos copias y reemplazo de equipo", () =>
+        ("Caja de Cartón: equipo real, una copia y reemplazo de equipo", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active; g.State.Phase = Phase.Actions; g.State.ActionsLeft = 2;
             p.Hand.Clear(); p.Hand.Add(CardCatalog.CardboardBox.Id); p.Equipment = CardCatalog.Pendant.Id;
-            Check(CardCatalog.TrainingDeck().Count == 20 && CardCatalog.TrainingDeck().Count(id => id == CardCatalog.CardboardBox.Id) == 2);
+            Check(CardCatalog.TrainingDeck().Count == 20 && CardCatalog.TrainingDeck().Count(id => id == CardCatalog.CardboardBox.Id) == 1);
             Check(g.Equip(0, 0).Success && p.Equipment == CardCatalog.CardboardBox.Id && p.Memory.Single() == CardCatalog.Pendant.Id && g.State.ActionsLeft == 1);
         }),
         ("Caja cancela daño reducido, normal y crítico sin requerir Destiny ni descartes", () =>

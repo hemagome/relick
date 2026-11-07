@@ -23,7 +23,7 @@ La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RE
 ## Alcance actual
 
 - Yuno Gyambura y su evolución, con animaciones de reposo, ataque y daño. Las hojas actuales conservan la marca de agua de Ludo del recurso aportado.
-- Trece definiciones aportadas: Ataque, Magnet Shuffle, Destiny Shuffle, Colgante de la Suerte, Senshuni, Caja de Cartón, Vida Extra, Aumento de Relick Points, Huevo Azul Explosivo, Re-lanza, Error de Carga, Casco de Diamantes y Bomba de Tiempo.
+- Catorce definiciones aportadas: Ataque, Magnet Shuffle, Destiny Shuffle, Colgante de la Suerte, Senshuni, Caja de Cartón, Vida Extra, Aumento de Relick Points, Huevo Azul Explosivo, Re-lanza, Error de Carga, Casco de Diamantes, Bomba de Tiempo y Código Konamy.
 - Mazos de desarrollo simétricos de 20 cartas, cuatro espacios de habilidad con costes 0/300/500/1000 PR, Memoria, Corruptas, Bonus, canje, respuestas, COMBO y efectos de Relikia.
 - Selección de habilidad inicial, mulligan y combate en la misma arena; manos privadas, reintentos idempotentes y recuperación de decisiones pendientes.
 - Primer agotamiento: D6, selección de cartas de la memoria y barajado. Segundo: dos vidas inevitables y comparación de vidas; igualdad es empate.
