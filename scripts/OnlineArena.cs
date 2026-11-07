@@ -33,6 +33,10 @@ public partial class OnlineArena : Control
     private bool _layoutQueued;
     private int _selectedSkill;
     private bool? _lastDisabled;
+    private readonly List<HandCard> _handCards = [];
+    private readonly List<HandCard> _initialSkillCards = [];
+    private readonly List<SkillTile> _ownSkills = [];
+    private Button? _evolveButton;
     private ScrollContainer? _hand;
     private ScrollContainer? _arenaScroll;
     internal int BoardBuildCount { get; private set; }
@@ -182,8 +186,12 @@ public partial class OnlineArena : Control
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 8); _moves.AddThemeConstantOverride("v_separation", 6); movesScroll.AddChild(_moves);
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(body.Controls, _availableInitialSkills, _initialSkillCandidate,
-            id => { if (CanChooseInitialSkill) { _initialSkillCandidate = id; Render(); } }, Short) : ArenaPresentation.Hand(body.Controls, relativePlayers[0].Hand.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short);
+            SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(body.Controls, relativePlayers[0].Hand.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
+        _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
+        _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
+        _ownSkills.Clear(); _ownSkills.AddRange(_root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>());
+        _evolveButton = _root.FindChild("EvolveRelikario", true, false) as Button;
         BuildMoves(); MoveChild(_diceOverlay, GetChildCount() - 1);
         BoardBuildCount++;
     }
@@ -218,9 +226,9 @@ public partial class OnlineArena : Control
     }
     private void RefreshSelection()
     {
-        foreach (var card in _root!.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>())
+        foreach (var card in _handCards)
         { card.Chosen = _selected.Contains(int.Parse(card.Name.ToString()[8..])); card.QueueRedraw(); }
-        foreach (var skill in _root!.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>())
+        foreach (var skill in _ownSkills)
         { skill.Chosen = skill.Skill != null && skill.Slot == _selectedSkill; skill.QueueRedraw(); }
         BuildMoves();
     }
@@ -260,12 +268,12 @@ public partial class OnlineArena : Control
         if (_lastDisabled == disabled) return;
         _lastDisabled = disabled;
         foreach (var button in _moveButtons) button.Disabled = disabled || (int)button.GetMeta("discards") > 0 && (int)button.GetMeta("discards") != _selected.Count;
-        if (_root?.FindChild("EvolveRelikario", true, false) is Button evolve)
+        if (_evolveButton is Button evolve)
             evolve.Disabled = disabled || !_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve);
         if (_choosingOpeningSkill && InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled |= _initialSkillCandidate == null;
         if (_choosingOpeningSkill && _hand != null)
-            foreach (var card in _hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>()) card.Disabled = disabled;
-        if (_hand != null) foreach (var card in _hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>()) card.Disabled = disabled;
+            foreach (var card in _initialSkillCards) card.Disabled = disabled;
+        if (_hand != null) foreach (var card in _handCards) card.Disabled = disabled;
     }
     private void SendKind(DuelMoveKind kind)
     {

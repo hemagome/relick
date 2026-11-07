@@ -16,6 +16,9 @@ public sealed class LobbyConnection : IDisposable
     private string _initialSkillRoom = "", _initialSkillDefinition = "";
     public InitialSkillInfo? InitialSkills => _connection?.Db.MyInitialSkill.Iter().SingleOrDefault();
     public bool InitialSkillPending => _initialSkillCommand != null;
+    private bool _preparationHandDirty = true;
+    private Relick.Network.Types.HandCard[] _preparationHand = [];
+    public ulong PreparationRevision { get; private set; }
     private string? _confirmationId;
     private List<ulong> _returnedCards = [];
     private string _confirmationRoom = "";
@@ -62,7 +65,19 @@ public sealed class LobbyConnection : IDisposable
             return _cachedDuel;
         }
     }
-    public Relick.Network.Types.HandCard[] Hand => _connection?.Db.MyHand.Iter().OrderBy(c => c.Position).ToArray() ?? [];
+    // Authoritative SDK rows, ordered once per change; consumers must not mutate this cached array.
+    public Relick.Network.Types.HandCard[] Hand
+    {
+        get
+        {
+            if (_preparationHandDirty)
+            {
+                _preparationHand = _connection?.Db.MyHand.Iter().OrderBy(c => c.Position).ToArray() ?? [];
+                _preparationHandDirty = false;
+            }
+            return _preparationHand;
+        }
+    }
 
     public void Connect(string server, string database, string? token)
     {
@@ -93,6 +108,19 @@ public sealed class LobbyConnection : IDisposable
             .OnDisconnect((_, error) => { Ready = false; Message = error == null ? "Sin conexión" : "Se perdió la conexión. Pulsa Reconectar."; });
         if (!string.IsNullOrEmpty(token)) builder = builder.WithToken(token);
         _connection = builder.Build();
+        void HandChanged() { _preparationHandDirty = true; PreparationRevision++; }
+        _connection.Db.MyHand.OnInsert += (_, _) => HandChanged();
+        _connection.Db.MyHand.OnUpdate += (_, _, _) => HandChanged();
+        _connection.Db.MyHand.OnDelete += (_, _) => HandChanged();
+        _connection.Db.MyPreparation.OnInsert += (_, _) => PreparationRevision++;
+        _connection.Db.MyPreparation.OnUpdate += (_, _, _) => PreparationRevision++;
+        _connection.Db.MyPreparation.OnDelete += (_, _) => PreparationRevision++;
+        _connection.Db.MyInitialSkill.OnInsert += (_, _) => PreparationRevision++;
+        _connection.Db.MyInitialSkill.OnUpdate += (_, _, _) => PreparationRevision++;
+        _connection.Db.MyInitialSkill.OnDelete += (_, _) => PreparationRevision++;
+        _connection.Db.MyRoom.OnInsert += (_, _) => PreparationRevision++;
+        _connection.Db.MyRoom.OnUpdate += (_, _, _) => PreparationRevision++;
+        _connection.Db.MyRoom.OnDelete += (_, _) => PreparationRevision++;
         _connection.OnUnhandledReducerError += (_, error) => Message = error.Message;
         _connection.Db.MyBoard.OnInsert += (_, row) => GamePayloadBytes += Encoding.UTF8.GetByteCount(row.Json);
         _connection.Db.MyBoard.OnUpdate += (_, _, row) => GamePayloadBytes += Encoding.UTF8.GetByteCount(row.Json);
@@ -244,6 +272,8 @@ public sealed class LobbyConnection : IDisposable
     public void Dispose()
     {
         Ready = false;
+        _preparationHand = []; _preparationHandDirty = true; PreparationRevision++;
+        _cachedDuelJson = _cachedHandJson = _cachedOptionsJson = null; _cachedDuel = null;
         if (_connection?.IsActive == true) _connection.Disconnect();
         _connection = null; _preparationSubscription = null;
     }

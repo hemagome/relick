@@ -15,6 +15,7 @@ public partial class OnlineArena
     private NetworkCard[] _openingCards = [];
     private readonly HashSet<ulong> _openingReturns = [];
     private string? _openingKey;
+    private (ulong Revision, ulong Epoch, bool Ready, bool Confirming, bool Choosing)? _preparationVersion;
     internal Button? PreparationConfirmButton { get; private set; }
     internal int OpeningCardCount => _openingCards.Length;
     internal int OpeningSelectionCount => _openingReturns.Count;
@@ -24,6 +25,9 @@ public partial class OnlineArena
 
     private void UpdatePreparation()
     {
+        var version = (Connection.PreparationRevision, Connection.Epoch, Connection.Ready, Connection.ConfirmationPending, Connection.InitialSkillPending);
+        if (_preparing && _preparationVersion == version) return;
+        _preparationVersion = version;
         if (!Connection.Ready || Connection.Room is not { Dealt: true } room)
         {
             _openingConnected = false; _initialSkillConnected = false; _lastDisabled = null; return;

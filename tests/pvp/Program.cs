@@ -174,6 +174,7 @@ try
     b.Connection.Reducers.ChooseInitialSkill(nextCode, "magnet-shuffle", Guid.NewGuid().ToString("N")); service.ChooseInitialSkill("destiny-shuffle");
     service.Connect(server, database, serviceToken);
     Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
+    Check(ReferenceEquals(service.Hand,service.Hand), "La mano ordenada se reutiliza mientras no cambian las filas");
     Rejected(b, () => b.Connection.Reducers.ConfirmPreparation(code, [], commandB), "Una confirmación atrasada no se aplica a otra sala");
     Check(b.Preparation?.MyConfirmed == false, "La sala nueva empieza sin confirmaciones heredadas");
     service.Confirm([]);

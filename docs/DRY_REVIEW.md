@@ -103,3 +103,9 @@ Es una oportunidad demostrada de reducir construcción redundante, pero falta pe
 5. Medir las proyecciones en el servidor antes de optimizar su construcción.
 
 La suite actual ejecutada durante la revisión pasó **123/123 comprobaciones**. La propuesta de rendimiento aún no forma parte del motor; no se hicieron cambios jugables ni despliegues. Para una implementación posterior, cada bloque debe ser revisable y probarse por separado.
+
+## Aplicación posterior: PvP como único modo
+
+Se retiraron el controlador de práctica, sus pantallas y el rival del ejecutable. La política de simulación queda únicamente en las pruebas. Se aplicaron la consulta lineal de candidatos de Memoria, la reutilización de referencias de controles, la selección inicial sin reconstrucción, la caché de mano por cambios de filas y las actualizaciones de preparación por revisión. La geometría constante de vida se calcula una vez. La medición anterior es la referencia previa al cambio; las demás propuestas requieren su propia validación antes de aplicarse.
+
+Medición posterior de `ReplayableMemoryCodes`, con el mismo escenario y metodología del ensayo anterior: 16 cartas, mediana 0,00240 ms y 1.152 bytes por consulta; 64 cartas, 0,00890 ms y 3.840 bytes; 256 cartas de estrés, 0,04480 ms y 14.592 bytes. La medición compara ejecuciones locales distintas, no garantiza un factor de mejora en producción ni mide latencia completa o FPS. Resultados en `artifacts/pvp-only/memory-query-after.txt`.

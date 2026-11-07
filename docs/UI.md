@@ -30,8 +30,13 @@ La configuración contempla densidad y área segura. No constituye una exportaci
 
 ## Actualizaciones y animaciones
 
+- La selección de habilidad inicial actualiza las cartas y el botón existentes: no reconstruye la arena.
+- Las referencias a cartas, habilidades propias y botón de evolución se reúnen al construir el tablero, evitando búsquedas del árbol en cada selección o cambio de habilitación.
+- La mano de preparación se ordena y materializa solo al cambiar las filas de la suscripción. Una revisión local evita construir claves de preparación cada fotograma cuando los datos, la conexión y los envíos pendientes no cambian.
+- Reconectar invalida la caché por época y vuelve a comprobar las versiones coherentes de tablero, mano y opciones. Retirar la suscripción de preparación invalida su mano mediante las eliminaciones de filas.
 - Las señales visuales representan una revisión aceptada; tiradas consecutivas iguales siguen siendo eventos distintos. Una recuperación o salto de revisión restaura el estado sin reproducir efectos antiguos.
 - Las cartas no mantienen procesamiento de hover cuando ya no necesitan animarlo. Los personajes ocultos no avanzan; los visibles solicitan redibujado cuando cambia su fotograma. El dado deja de actualizar continuamente su viewport 3D cuando está inmóvil.
+- La geometría constante del icono de vida se calcula una sola vez. No se introdujo una caché global ilimitada de estilos o colores animados.
 
 Las hojas originales de Yuno permanecen intactas. Las versiones importadas a mitad de ancho y alto mantienen su cuadrícula; en la medición original ocuparon 16,4 MiB frente a 44,6 MiB, aproximadamente un 63 % menos en recursos importados. No es una medición de RAM, VRAM ni FPS.
 
@@ -43,7 +48,7 @@ dotnet build Relick.csproj
 ./jugar.sh --headless -- --pvp-ui-test
 ```
 
-La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. Comprueba límites, privacidad, selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
+La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
 
 Para capturas:
 

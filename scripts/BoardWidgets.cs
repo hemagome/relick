@@ -8,6 +8,11 @@ public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange,
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
 {
+    private static readonly Vector2[] HeartPoints = Enumerable.Range(0, 48).Select(i =>
+    {
+        var t = i * Mathf.Tau / 48;
+        return new Vector2(14 * Mathf.Pow(Mathf.Sin(t), 3), -(13 * Mathf.Cos(t) - 5 * Mathf.Cos(2 * t) - 2 * Mathf.Cos(3 * t) - Mathf.Cos(4 * t)) * 0.8f);
+    }).ToArray();
     public static readonly Color Ink = new("f1f2f8");
     public static readonly Color Muted = new("92a0bd");
     public static readonly Color Gold = new("f4c57a");
@@ -60,12 +65,7 @@ public static class BoardArt
                 c.DrawColoredPolygon(new Vector2[] { new(0, -14), new(-11, 3), new(-2, 3), new(-5, 14), new(12, -5), new(3, -5), new(7, -14) }, color);
                 break;
             case GameIcon.Heart:
-                var heart = Enumerable.Range(0, 48).Select(i =>
-                {
-                    var t = i * Mathf.Tau / 48;
-                    return new Vector2(14 * Mathf.Pow(Mathf.Sin(t), 3), -(13 * Mathf.Cos(t) - 5 * Mathf.Cos(2 * t) - 2 * Mathf.Cos(3 * t) - Mathf.Cos(4 * t)) * 0.8f);
-                }).ToArray();
-                c.DrawColoredPolygon(heart, color);
+                c.DrawColoredPolygon(HeartPoints, color);
                 break;
             case GameIcon.Cards:
                 Rect(-12, -12, 17, 23); Rect(-7, -8, 18, 23); Line(-3, -1, 6, -1); Line(-3, 4, 6, 4);

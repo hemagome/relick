@@ -35,6 +35,14 @@ public partial class OnlineArena
         ResetAnimations(); Render();
     }
 
+    private void SelectInitialSkillCandidate(string id)
+    {
+        if (!CanChooseInitialSkill || !_availableInitialSkills.Contains(id)) return;
+        _initialSkillCandidate = id;
+        foreach (var card in _initialSkillCards) { card.Chosen = card.Card.Id == id; card.QueueRedraw(); }
+        if (InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled = !CanChooseInitialSkill;
+    }
+
     private void BuildInitialSkillMoves()
     {
         PreparationConfirmButton = null;

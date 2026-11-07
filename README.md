@@ -48,7 +48,7 @@ dotnet build Relick.csproj
 godot --headless --path . -- --pvp-ui-test
 ```
 
-La prueba de interfaz trabaja sin servidor: comprueba cuatro tamaños horizontales, ambos asientos, privacidad, selección de habilidad inicial, mulligan, recuperación y animaciones. Para capturas renderizadas:
+La prueba de interfaz trabaja sin servidor: comprueba cuatro tamaños horizontales, ambos asientos, privacidad, selección de habilidad sin reconstruir el tablero, mulligan, recuperación y animaciones. Para capturas renderizadas:
 
 ```bash
 ./jugar.sh -- --pvp-ui-test --ui-screenshot-dir=/tmp/relick-ui

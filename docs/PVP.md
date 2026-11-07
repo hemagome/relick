@@ -126,13 +126,14 @@ Las identidades son de dispositivo con token persistente. La reconexión es manu
 
 La elección previa al mulligan está publicada en `relick-pvp-dev-c2006ee7` en Maincloud. La migración agregó `initial_skill` (tabla privada), `my_initial_skill` (vista propia) y `choose_initial_skill` (comando). No fue necesario limpiar tablas ni reiniciar datos: se aplicó la actualización con `--delete-data=never`.
 
-Validación: 123 comprobaciones del motor; 64 comprobaciones de red tanto en una base local aislada como en Maincloud, incluido un duelo completo; selección y mulligan mediante Godot con reconexión en Maincloud; dos procesos independientes con entrada real en 844×390; y revisión gráfica de cuatro tamaños desde ambos asientos. Las salas creadas por las pruebas se cierran al finalizar.
+Validación: 125 comprobaciones del motor; 65 comprobaciones de red tanto en una base local aislada como en Maincloud, incluido un duelo completo; selección y mulligan mediante Godot con reconexión en Maincloud; dos procesos independientes con entrada real en 844×390; y revisión gráfica de cuatro tamaños desde ambos asientos. Las salas creadas por las pruebas se cierran al finalizar.
 
 Vuelve a abrir el juego con el cliente actualizado para utilizar la elección inicial en el PvP remoto. Las salas que ya tenían manos repartidas siguen con esas manos; las salas nuevas solicitan la habilidad antes de repartir las otras cuatro cartas.
 
-## PvP como único modo
+## PvP como único modo y optimizaciones aplicadas
 
 El arranque de `scenes/Main.tscn` carga directamente `OnlineLobby`. Se retiraron el controlador de práctica, sus accesos y el bot del ejecutable. El perfil de usuario anterior conserva su ubicación para recuperar identidades. Las simulaciones automáticas solo están en el proyecto de pruebas.
 
+La consulta de candidatos de Memoria comprueba recursos y etapa una vez y realiza un recorrido. La mano de preparación se ordena por cambios de filas y la arena reacciona a una revisión local; reconectar invalida esas cachés. La selección de habilidad conserva los controles y actualiza sus referencias tipadas.
 
-El motor actualizado está publicado en la misma base de desarrollo de Maincloud sin cambios de esquema ni borrado. Pasaron 123 comprobaciones del motor y 64 de red tanto locales como remotas, un duelo completo, la preparación con reconexión en Godot, dos clientes independientes en 844×390 y la revisión gráfica de cuatro tamaños y ambos asientos. Las pruebas verifican que el ensamblado del juego no incluya ni el antiguo controlador ni el simulador de pruebas.
+El motor actualizado está publicado en la misma base de desarrollo de Maincloud sin cambios de esquema ni borrado. Pasaron 125 comprobaciones del motor y 65 de red tanto locales como remotas, un duelo completo, la preparación con reconexión en Godot, dos clientes independientes en 844×390 y la revisión gráfica de cuatro tamaños y ambos asientos. Las pruebas verifican que el ensamblado del juego no incluya ni el antiguo controlador ni el simulador de pruebas.
