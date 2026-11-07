@@ -34,7 +34,7 @@ static class SnapshotTests
     }
     static void PacketPrivacy()
     {
-        var game = new GameEngine(17); game.Start([]);
+        var game = TestGame.Create(17); game.Start([]);
         var publicBoard = DuelSnapshot.For(game, -1, 1);
         foreach (var p in publicBoard.Players) if (p.Hand.All(c => c == null)) p.Hand = [];
         var own = new DuelPrivateData { MySeat = 0, OwnHand = game.State.Players[0].Hand.Cast<string?>().ToArray() };
@@ -50,7 +50,7 @@ static class SnapshotTests
 
     static void BoundedLog()
     {
-        var game = new GameEngine(1); game.Start([]);
+        var game = TestGame.Create(1); game.Start([]);
         game.State.Log.Add(new string('x', 50000));
         var saved = game.SaveSnapshot(false);
         if (saved.Length > 20000 || game.State.Log.Count == 0) throw new Exception("El estado conserva el registro o modifica el motor original.");

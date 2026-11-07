@@ -50,8 +50,8 @@ static class ScalabilityChecks
             client.Connection = T.DbConnection.Builder().WithUri(server).WithDatabaseName(database)
                 .OnConnect((connection, _, _) => connection.SubscriptionBuilder().OnApplied(_ => client.Ready = true)
                     .OnError((_, error) => client.Fatal = error.Message)
-                    .Subscribe(stats ? ["SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_duel", "SELECT * FROM my_move_result", "SELECT * FROM my_fixture_stats"] :
-                        ["SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_duel", "SELECT * FROM my_move_result"]))
+                    .Subscribe(stats ? ["SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel", "SELECT * FROM my_move_result", "SELECT * FROM my_fixture_stats"] :
+                        ["SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel", "SELECT * FROM my_move_result"]))
                 .OnConnectError(error => client.Fatal = error.Message).Build();
             client.Connection.OnUnhandledReducerError += (_, error) => client.Errors.Add(error.Message);
             Raw.Add(client); return client;
@@ -83,6 +83,9 @@ static class ScalabilityChecks
         await h.Wait(() => a.Ready && b.Ready);
         a.Connection.Reducers.CreateRoom("A"); await h.Wait(() => a.Room != null);
         var code = a.Room!.Code; b.Connection.Reducers.JoinRoom(code, "B");
+        await h.Wait(() => a.Room?.Dealt == true && b.Room?.Dealt == true);
+        a.Connection.Reducers.ChooseInitialSkill(code, "magnet-shuffle", Guid.NewGuid().ToString("N"));
+        b.Connection.Reducers.ChooseInitialSkill(code, "magnet-shuffle", Guid.NewGuid().ToString("N"));
         await h.Wait(() => a.Connection.Db.MyHand.Iter().Count() == 5 && b.Connection.Db.MyHand.Iter().Count() == 5);
         a.Connection.Reducers.ConfirmPreparation(code, [], Guid.NewGuid().ToString("N"));
         b.Connection.Reducers.ConfirmPreparation(code, [], Guid.NewGuid().ToString("N"));
@@ -173,7 +176,10 @@ static class ScalabilityChecks
         else
         {
             a.Create("Reinicio A"); await h.Wait(() => a.Room != null);
-            b.Join(a.Room!.Code, "Reinicio B"); await h.Wait(() => a.Hand.Length == 5 && b.Hand.Length == 5);
+            b.Join(a.Room!.Code, "Reinicio B");
+            await h.Wait(() => a.InitialSkills?.Selected == false && b.InitialSkills?.Selected == false);
+            a.ChooseInitialSkill("magnet-shuffle"); b.ChooseInitialSkill("magnet-shuffle");
+            await h.Wait(() => a.Hand.Length == 5 && b.Hand.Length == 5);
             a.Confirm([]); b.Confirm([]); await h.Wait(() => a.Duel != null && b.Duel != null);
         }
         for (var i = 0; i < (verify ? 1 : 50); i++)
@@ -261,6 +267,8 @@ static class ScalabilityChecks
             foreach (var pair in pairs) pair.A.Create("Carga A");
             await h.Wait(() => pairs.All(p => p.A.Room != null), 90);
             foreach (var pair in pairs) pair.B.Join(pair.A.Room!.Code, "Carga B");
+            await h.Wait(() => pairs.All(p => p.A.InitialSkills?.Selected == false && p.B.InitialSkills?.Selected == false), 90);
+            foreach (var pair in pairs) { pair.A.ChooseInitialSkill("magnet-shuffle"); pair.B.ChooseInitialSkill("magnet-shuffle"); }
             await h.Wait(() => pairs.All(p => p.A.Hand.Length == 5 && p.B.Hand.Length == 5), 90);
             foreach (var pair in pairs) { pair.A.Confirm([]); pair.B.Confirm([]); }
             await h.Wait(() => pairs.All(p => p.A.Duel != null && p.B.Duel != null && !p.A.ConfirmationPending && !p.B.ConfirmationPending), 90);

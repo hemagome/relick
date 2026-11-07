@@ -75,12 +75,12 @@ static class ExtraLifeTests
             var (g, rng) = Fixture(); g.State.ActionsLeft = 0; var before = Snapshot(g); var rolls = 0; g.DieRolled += _ => rolls++;
             Check(!g.PlayCode(0, 0).Success && before == Snapshot(g) && rolls == 0);
             g.State.ActionsLeft = 2; g.State.CurrentPlayer = 1; var p = g.State.Active; p.Health = 1; p.Hand.Clear(); p.Hand.Add("extra-life");
-            rng.EnqueueDie(5); Check(PracticeBot.Step(g, 1).Success && p.Health == 4 && p.Memory.Single() == "extra-life");
+            rng.EnqueueDie(5); Check(SimulationDriver.Step(g, 1).Success && p.Health == 4 && p.Memory.Single() == "extra-life");
         })
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
         g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("extra-life"); g.State.Active.Health = 1;
         return (g, rng);
     }

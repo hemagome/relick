@@ -160,6 +160,23 @@ public static class ArenaPresentation
         return panel;
     }
 
+    public static ScrollContainer InitialSkills(Node parent, IReadOnlyList<string> skills, string? chosen, Action<string> selected, bool shortScreen)
+    {
+        parent.AddChild(Text("ELIGE TU HABILIDAD INICIAL", 12, BoardArt.Gold));
+        var scroll = new ScrollContainer { Name = "InitialSkillScroll", CustomMinimumSize = new(0, shortScreen ? 120 : 196),
+            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var row = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 12); scroll.AddChild(row); parent.AddChild(scroll);
+        for (var i = 0; i < skills.Count; i++)
+        {
+            var id = skills[i];
+            var card = new HandCard { Name = "InitialSkillCard" + i, Card = CardCatalog.Get(id), Chosen = id == chosen,
+                PresentationScale = shortScreen ? 0.6f : 1 };
+            card.Pressed += () => selected(id); row.AddChild(card);
+        }
+        return scroll;
+    }
+
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
         Action<int> pressed, bool preparing, bool shortScreen)
     {
@@ -176,7 +193,7 @@ public static class ArenaPresentation
                 PresentationScale = shortScreen ? 0.6f : 1 };
             card.Pressed += () => pressed(slot); cards.AddChild(card);
         }
-        if (hand.Count == 0) cards.AddChild(Text("Mano vacía · robarás 3 cartas al empezar tu turno.", 14, BoardArt.Muted));
+        if (hand.Count == 0) cards.AddChild(Text(preparing ? "Sincronizando tu mano inicial…" : "Mano vacía · robarás 3 cartas al empezar tu turno.", 14, BoardArt.Muted));
         scroll.AddChild(cards); parent.AddChild(scroll); return scroll;
     }
 
@@ -190,7 +207,7 @@ public static class ArenaPresentation
     {
         if (compact)
         {
-            var label = Text($"TURNO {turn:00} · {caption}", 12, ownTurn ? Mint : Coral);
+            var label = Text(stage == Phase.Preparation ? caption : $"TURNO {turn:00} · {caption}", 12, ownTurn ? Mint : Coral);
             label.AutowrapMode = TextServer.AutowrapMode.WordSmart; parent.AddChild(label); return;
         }
         var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", 8); parent.AddChild(row);

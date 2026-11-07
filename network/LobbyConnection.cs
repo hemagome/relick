@@ -12,6 +12,10 @@ namespace Relick.Network;
 public sealed class LobbyConnection : IDisposable
 {
     private DbConnection? _connection;
+    private string? _initialSkillCommand;
+    private string _initialSkillRoom = "", _initialSkillDefinition = "";
+    public InitialSkillInfo? InitialSkills => _connection?.Db.MyInitialSkill.Iter().SingleOrDefault();
+    public bool InitialSkillPending => _initialSkillCommand != null;
     private string? _confirmationId;
     private List<ulong> _returnedCards = [];
     private string _confirmationRoom = "";
@@ -34,6 +38,9 @@ public sealed class LobbyConnection : IDisposable
     public string Message { get; private set; } = "Sin conexión";
     public RoomInfo? Room => _connection?.Db.MyRoom.Iter().SingleOrDefault();
     public PreparationInfo? Preparation => _connection?.Db.MyPreparation.Iter().SingleOrDefault();
+    private PreparationInfo? _openingResult;
+    private string? _openingRoom;
+    public PreparationInfo? OpeningResult => _openingRoom == Room?.Code ? _openingResult : null;
     public bool ConfirmationPending => _confirmationId != null;
     public bool PlayPending => _playId != null;
     public DuelSnapshot? Duel
@@ -73,6 +80,7 @@ public sealed class LobbyConnection : IDisposable
                     connection.Reducers.EnsureDuel();
                     if (Duel == null) SubscribePreparation();
                     // Reuse the same command after recovery, including when its acknowledgement was lost.
+                    if (_initialSkillCommand != null) connection.Reducers.ChooseInitialSkill(_initialSkillRoom, _initialSkillDefinition, _initialSkillCommand);
                     if (_confirmationId != null) connection.Reducers.ConfirmPreparation(_confirmationRoom, _returnedCards, _confirmationId);
                     if (_playId != null) connection.Reducers.PlayDuelV2(_playRoom, _playRevision, _playId, _playOption, _playSelection);
                 }).OnError((_, error) =>
@@ -106,6 +114,16 @@ public sealed class LobbyConnection : IDisposable
                     Message = "No se recibió la confirmación. Pulsa Reconectar para comprobarla."; break;
             }
         };
+        _connection.Reducers.OnChooseInitialSkill += (context, _, _, _) =>
+        {
+            switch (context.Event.Status)
+            {
+                case Status.Committed: _initialSkillCommand = null; Message = "Habilidad elegida"; break;
+                case Status.Failed(var reason): _initialSkillCommand = null; Message = reason; break;
+                case Status.OutOfEnergy: _initialSkillCommand = null; Message = "No se pudo elegir la habilidad. Inténtalo de nuevo."; break;
+                default: Message = "No se recibió la elección. Pulsa Reconectar para comprobarla."; break;
+            }
+        };
         _connection.Reducers.OnConfirmPreparation += (context, _, _, _) =>
         {
             switch (context.Event.Status)
@@ -132,7 +150,7 @@ public sealed class LobbyConnection : IDisposable
     private void SubscribePreparation()
     {
         if (_connection == null || _preparationSubscription != null) return;
-        _preparationSubscription = _connection.SubscriptionBuilder().Subscribe(new[] { "SELECT * FROM my_hand", "SELECT * FROM my_preparation" });
+        _preparationSubscription = _connection.SubscriptionBuilder().Subscribe(new[] { "SELECT * FROM my_hand", "SELECT * FROM my_preparation", "SELECT * FROM my_initial_skill" });
     }
     private void ResolvePlayResult()
     {
@@ -145,6 +163,8 @@ public sealed class LobbyConnection : IDisposable
     public void Tick()
     {
         _connection?.FrameTick(); ResolvePlayResult();
+        var preparation = Preparation;
+        if (preparation?.Started == true) { _openingResult = preparation; _openingRoom = Room?.Code; }
         if (Duel != null && _preparationSubscription != null)
         {
             _preparationSubscription.Unsubscribe(); _preparationSubscription = null;
@@ -155,6 +175,7 @@ public sealed class LobbyConnection : IDisposable
     public void Join(string code, string name) => Send(() => _connection!.Reducers.JoinRoom(code, name));
     public void Leave()
     {
+        _initialSkillCommand = null;
         _confirmationId = null;
         _playId = null;
         Send(() => _connection!.Reducers.LeaveRoom());
@@ -179,6 +200,19 @@ public sealed class LobbyConnection : IDisposable
             Message = "Enviando jugada…";
         }
         catch (Exception) { Message = "No se pudo comprobar la jugada. Pulsa Reconectar."; }
+    }
+
+    public void ChooseInitialSkill(string definition)
+    {
+        if (!Ready || Room is not { Dealt: true } room || InitialSkillPending ||
+            InitialSkills is not { Selected: false } skills || !skills.Options.Contains(definition)) return;
+        _initialSkillRoom = room.Code; _initialSkillDefinition = definition; _initialSkillCommand = Guid.NewGuid().ToString("N");
+        try
+        {
+            _connection!.Reducers.ChooseInitialSkill(_initialSkillRoom, definition, _initialSkillCommand);
+            Message = "Eligiendo tu habilidad inicial…";
+        }
+        catch (Exception) { Message = "No se pudo comprobar la elección. Pulsa Reconectar."; }
     }
 
     public void Confirm(IEnumerable<ulong> returnedCards)

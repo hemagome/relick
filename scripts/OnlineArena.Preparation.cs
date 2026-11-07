@@ -1,0 +1,181 @@
+using Godot;
+using Relick.Core;
+using Relick.Network.Types;
+using NetworkCard = Relick.Network.Types.HandCard;
+
+namespace Relick;
+
+public partial class OnlineArena
+{
+    private bool _preparing;
+    private bool _choosingOpeningSkill;
+    private bool _openingDealt;
+    private bool _openingConnected, _openingPending;
+    private PreparationInfo? _openingInfo;
+    private NetworkCard[] _openingCards = [];
+    private readonly HashSet<ulong> _openingReturns = [];
+    private string? _openingKey;
+    internal Button? PreparationConfirmButton { get; private set; }
+    internal int OpeningCardCount => _openingCards.Length;
+    internal int OpeningSelectionCount => _openingReturns.Count;
+    internal bool IsPreparing => _preparing;
+    private bool CanChooseOpening => _openingConnected && !_openingPending &&
+        _openingInfo is { MyConfirmed: false, Started: false } && _openingCards.Length == 5;
+
+    private void UpdatePreparation()
+    {
+        if (!Connection.Ready || Connection.Room is not { Dealt: true } room)
+        {
+            _openingConnected = false; _initialSkillConnected = false; _lastDisabled = null; return;
+        }
+        if (Connection.InitialSkills is { Selected: false } skills)
+        {
+            PresentInitialSkillChoice(room, skills, Connection.Ready, Connection.InitialSkillPending);
+            return;
+        }
+        var info = Connection.Preparation;
+        var cards = Connection.Hand;
+        if (info == null || (!info.Started && cards.Length != 5))
+        {
+            if (!_preparing) PresentPreparation(room, null, [], false, false);
+            _openingConnected = false; _lastDisabled = null; return;
+        }
+        // Keep the original identities/positions until the combat snapshot arrives.
+        if (info.Started)
+        {
+            if (_openingInfo?.Started != true)
+            {
+                _openingInfo = info; BuildMoves(); _combatMessage.Text = PreparationMessage();
+            }
+            return;
+        }
+        PresentPreparation(room, info, cards, Connection.Ready, Connection.ConfirmationPending);
+    }
+
+    // This is a presentation of server-authorized views, never a local rules engine.
+    internal void PresentPreparation(RoomInfo room, PreparationInfo? info, NetworkCard[] cards, bool connected, bool pending)
+    {
+        var key = $"{room.Code}:{room.MySeat}:{room.PlayerOne}:{room.PlayerTwo}:{connected}:{pending}:{info?.MyConfirmed}:{info?.OpponentConfirmed}:{info?.Started}:" +
+            $"{info?.HandCountOne}:{info?.HandCountTwo}:{info?.DeckCountOne}:{info?.DeckCountTwo}:" +
+            string.Join(',', cards.Select(c => $"{c.Id}/{c.Definition}"));
+        if (_openingKey == key && !_choosingOpeningSkill && _preparing && _openingConnected == connected && _openingPending == pending) return;
+        var deal = !_openingDealt && cards.Length == 5 && info is { MyConfirmed: false, OpponentConfirmed: false, Started: false };
+        if (cards.Length == 5) _openingDealt = true;
+        _choosingOpeningSkill = false;
+        _openingKey = key; _openingCards = cards; _openingInfo = info;
+        _openingConnected = connected; _openingPending = pending; _preparing = true;
+        if (info?.MyConfirmed == true)
+        {
+            _openingReturns.Clear(); _openingReturns.UnionWith(info.MyReturnedCards);
+        }
+        _openingReturns.IntersectWith(cards.Select(c => c.Id));
+        SyncOpeningSelection();
+        DuelPlayerView Player(int seat) => new()
+        {
+            Name = seat == 0 ? room.PlayerOne : room.PlayerTwo,
+            Health = RelikarioCatalog.Yuno.MaxHealth, MaxHealth = RelikarioCatalog.Yuno.MaxHealth, Level = 1,
+            HandCount = (int)(seat == 0 ? info?.HandCountOne ?? 0 : info?.HandCountTwo ?? 0),
+            DeckCount = (int)(seat == 0 ? info?.DeckCountOne ?? 0 : info?.DeckCountTwo ?? 0),
+            Hand = seat == room.MySeat ? cards.Select(c => (string?)c.Definition).ToArray() :
+                new string?[(int)(seat == 0 ? info?.HandCountOne ?? 0 : info?.HandCountTwo ?? 0)]
+        };
+        _snapshot = new DuelSnapshot { MySeat = room.MySeat, Phase = Phase.Preparation, Stage = Phase.Preparation,
+            DecisionPlayer = room.MySeat, Players = [Player(0), Player(1)] };
+        _needsBaseline = false;
+        // Rebuild only when preparation data changes; cancel flights tied to the previous layout.
+        ResetAnimations(); Render();
+        if (deal)
+        {
+            for (var slot = 0; slot < cards.Length; slot++)
+                foreach (var seat in new[] { room.MySeat, 1 - room.MySeat })
+                    _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.Draw, Player = seat, Value = slot }, Duration: 0.20));
+            HideOpeningDestinations(); _flightLayoutFrames = 2; _lastDisabled = null;
+        }
+    }
+
+    private void SyncOpeningSelection()
+    {
+        _selected.Clear();
+        for (var i = 0; i < _openingCards.Length; i++) if (_openingReturns.Contains(_openingCards[i].Id)) _selected.Add(i);
+    }
+
+    private string PreparationCaption() => _choosingOpeningSkill ? "PREPARACIÓN · ELIGE UNA HABILIDAD" : _openingInfo?.Started == true ? "PREPARACIÓN · COMPLETADA" :
+        _openingInfo?.MyConfirmed == true ? "PREPARACIÓN · ESPERANDO AL RIVAL" :
+        _openingPending ? "PREPARACIÓN · CONFIRMANDO" : "PREPARACIÓN · ELIGE TU MANO";
+
+    private string PreparationMessage() => _choosingOpeningSkill ? "Elige una habilidad de tu mazo" : _openingInfo?.Started == true ? "Preparación completada" :
+        _openingInfo?.MyConfirmed == true ? "Mano confirmada\nEsperando al rival…" :
+        _openingPending ? "Confirmando tu mano…" : _openingCards.Length != 5 ? "Repartiendo las manos…" : "Elige tu mano inicial";
+
+    private void BuildPreparationMoves()
+    {
+        if (_choosingOpeningSkill) { BuildInitialSkillMoves(); return; }
+        _selection.Text = _openingInfo?.Started == true ? "Entrando al combate…" : _openingInfo?.MyConfirmed == true
+            ? "Tu selección está confirmada. El combate comenzará cuando confirme tu rival."
+            : "Toca las cartas que quieres cambiar o conserva tu mano.";
+        var label = _openingInfo?.Started == true ? "Preparación completada" : _openingPending ? "Confirmando…" :
+            _openingInfo?.MyConfirmed == true ? "Mano confirmada · esperando rival" :
+            _openingReturns.Count == 0 ? "Conservar mano y confirmar" : $"Cambiar {_openingReturns.Count} carta(s) y confirmar";
+        PreparationConfirmButton = ArenaPresentation.Button(_moves, label, () =>
+        {
+            if (CanChooseOpening && !IsAnimating) Connection.Confirm(_openingReturns);
+        });
+        PreparationConfirmButton.Name = "ConfirmOpeningHand";
+        PreparationConfirmButton.SetMeta("discards", 0); _moveButtons.Add(PreparationConfirmButton);
+        if (Compact)
+        {
+            PreparationConfirmButton.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            PreparationConfirmButton.CustomMinimumSize = new(Short ? 280 : Math.Max(120, Size.X - 44), 48);
+        }
+        _lastDisabled = null; UpdateEnabled();
+    }
+
+    private List<Flight> CaptureMulliganOrigins(DuelSnapshot combat)
+    {
+        var flights = new List<Flight>();
+        for (var slot = _openingCards.Length - 1; slot >= 0; slot--)
+        {
+            if (!_openingReturns.Contains(_openingCards[slot].Id)) continue;
+            var node = ZoneNode(0, CardZone.Hand, slot);
+            if (node == null || !RectVisible(node, ZoneRect(node))) continue;
+            flights.Add(new(new DuelVisualEvent { Kind = DuelVisualKind.Return, Player = combat.MySeat, Value = slot },
+                ZoneRect(node), _openingCards[slot].Definition, Duration: 0.28));
+        }
+        return flights;
+    }
+
+    private void AnimateOpening(DuelSnapshot combat, List<Flight> returns)
+    {
+        foreach (var flight in returns) _flights.Enqueue(flight);
+        if (_openingReturns.Count > 0)
+        {
+            _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.Shuffle, Player = combat.MySeat }));
+            var kept = _openingCards.Length - _openingReturns.Count;
+            for (var slot = kept; slot < _openingCards.Length; slot++)
+                _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.Draw, Player = combat.MySeat, Value = slot }, Duration: 0.28));
+        }
+        // Opponent mulligan identities/counts are not in the authorized preparation view.
+        foreach (var seat in new[] { 0, 1 })
+            _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.BonusPlace, Player = seat }, Face: combat.Players[seat].Bonus, Duration: 0.28));
+        var starter = combat.CurrentPlayer;
+        _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.Draw, Player = starter, Value = combat.Players[starter].Hand.Length - 1 }, Duration: 0.28));
+        if (Connection.OpeningResult is { } opening)
+        {
+            _combatMessage.Text = $"Iniciativa · {combat.Players[0].Name} {opening.RollOne} · {combat.Players[1].Name} {opening.RollTwo}\nEmpieza {combat.Players[starter].Name}";
+        }
+        HideOpeningDestinations(); _flightLayoutFrames = 2; _lastDisabled = null;
+    }
+
+    private void HideOpeningDestinations() => SetQueuedDestinationsOpacity(0);
+
+    private void SetQueuedDestinationsOpacity(float alpha)
+    {
+        foreach (var flight in _flights)
+        {
+            var relative = flight.Event.Player == _snapshot!.MySeat ? 0 : 1;
+            var target = flight.Event.Kind == DuelVisualKind.Draw ? ZoneNode(relative, CardZone.Hand, flight.Event.Value) :
+                flight.Event.Kind == DuelVisualKind.BonusPlace ? ZoneNode(relative, CardZone.Bonus, -1) : null;
+            if (target != null) target.Modulate = new(1, 1, 1, alpha);
+        }
+    }
+}

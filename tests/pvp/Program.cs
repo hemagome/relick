@@ -17,7 +17,7 @@ Client Connect(string? token = null)
             client.Token = value;
             connection.SubscriptionBuilder().OnApplied(_ => client.Ready = true)
                 .OnError((_, error) => client.Fatal = error.Message)
-                .Subscribe(new[] { "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_preparation", "SELECT * FROM my_duel", "SELECT * FROM my_move_result" });
+                .Subscribe(new[] { "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_preparation", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel", "SELECT * FROM my_move_result" });
         }).OnConnectError(error => client.Fatal = error.Message);
     if (token != null) builder = builder.WithToken(token);
     client.Connection = builder.Build();
@@ -72,9 +72,22 @@ try
     Check(a.Hand.Length == 0 && b.Room == null, "Sala de espera privada y reparto aplazado");
     Rejected(a, () => a.Connection.Reducers.ConfirmPreparation(code, [], Guid.NewGuid().ToString("N")), "No se puede confirmar antes de entrar el rival");
     b.Connection.Reducers.JoinRoom(code.ToLowerInvariant(), "Beto");
+    Until(() => a.InitialSkills != null && b.InitialSkills != null);
+    Check(a.Hand.Length == 0 && b.Hand.Length == 0 && a.InitialSkills!.Options.ToHashSet().SetEquals(["destiny-shuffle", "magnet-shuffle"]), "Antes de elegir solo se ofrecen las habilidades del propio mazo");
+    Rejected(a, () => a.Connection.Reducers.ConfirmPreparation(code, [], Guid.NewGuid().ToString("N")), "Mulligan antes de elegir rechazado");
+    Rejected(a, () => a.Connection.Reducers.ChooseInitialSkill(code, "attack", Guid.NewGuid().ToString("N")), "Una carta que no es habilidad se rechaza");
+    Rejected(a, () => a.Connection.Reducers.ChooseInitialSkill(code, "missing", Guid.NewGuid().ToString("N")), "Una habilidad fuera del mazo se rechaza");
+    Rejected(outsider, () => outsider.Connection.Reducers.ChooseInitialSkill(code, "destiny-shuffle", Guid.NewGuid().ToString("N")), "Un tercero no elige habilidades ajenas");
+    var skillCommand = Guid.NewGuid().ToString("N");
+    a.Connection.Reducers.ChooseInitialSkill(code, "destiny-shuffle", skillCommand);
+    b.Connection.Reducers.ChooseInitialSkill(code, "magnet-shuffle", Guid.NewGuid().ToString("N"));
     Until(() => a.Hand.Length == 5 && b.Hand.Length == 5);
+    var skillIds = a.Hand.Select(c => c.Id).ToArray();
+    a.Connection.Reducers.ChooseInitialSkill(code, "destiny-shuffle", skillCommand);
+    Rejected(a, () => a.Connection.Reducers.ChooseInitialSkill(code, "magnet-shuffle", Guid.NewGuid().ToString("N")), "Una segunda elección no cambia la mano");
+    Check(a.Hand.Select(c => c.Id).SequenceEqual(skillIds), "Reintentar la misma elección no vuelve a repartir");
     Check(a.Room!.MySeat == 0 && b.Room!.MySeat == 1 && a.Room.Dealt && b.Room.Dealt, "Dos jugadores ven la misma sala y sus lugares");
-    Check(a.Hand[0].Definition == "magnet-shuffle" && b.Hand[0].Definition == "magnet-shuffle", "Mano inicial consistente con la práctica");
+    Check(a.Hand[0].Definition == "destiny-shuffle" && b.Hand[0].Definition == "magnet-shuffle", "Mano inicial consistente con la práctica");
     Check(!a.Hand.Select(c => c.Id).Intersect(b.Hand.Select(c => c.Id)).Any(), "Copias de cartas con identificadores únicos por jugador");
     Check(outsider.Room == null && outsider.Hand.Length == 0, "Un tercero no recibe la sala ni las manos");
     outsider.Connection.Reducers.JoinRoom(code, "Tercero");
@@ -97,7 +110,7 @@ try
     clients.Remove(a);
     var restored = Connect(token);
     Until(() => restored.Hand.Length == 5);
-    Check(restored.Room!.Code == code && restored.Hand.Select(c => c.Id).SequenceEqual(ids), "Reconexión conserva identidad, sala y cartas");
+    Check(restored.Room!.Code == code && restored.InitialSkills?.Chosen == "destiny-shuffle" && restored.Hand.Select(c => c.Id).SequenceEqual(ids), "Reconexión conserva identidad, sala y cartas");
     Rejected(outsider, () => outsider.Connection.Reducers.ConfirmPreparation(code, [], Guid.NewGuid().ToString("N")), "Una identidad ajena no puede confirmar la preparación");
     Rejected(restored, () => restored.Connection.Reducers.ConfirmPreparation(code, [b.Hand[0].Id], Guid.NewGuid().ToString("N")), "Rechazo de cartas pertenecientes al rival");
     Rejected(restored, () => restored.Connection.Reducers.ConfirmPreparation(code, [ids[0], ids[0]], Guid.NewGuid().ToString("N")), "Rechazo de identificadores repetidos");
@@ -157,6 +170,9 @@ try
     Until(() => service.Room != null);
     var nextCode = service.Room!.Code;
     b.Connection.Reducers.JoinRoom(nextCode, "Beto");
+    Until(() => b.InitialSkills?.Selected == false && service.InitialSkills?.Selected == false);
+    b.Connection.Reducers.ChooseInitialSkill(nextCode, "magnet-shuffle", Guid.NewGuid().ToString("N")); service.ChooseInitialSkill("destiny-shuffle");
+    service.Connect(server, database, serviceToken);
     Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
     Rejected(b, () => b.Connection.Reducers.ConfirmPreparation(code, [], commandB), "Una confirmación atrasada no se aplica a otra sala");
     Check(b.Preparation?.MyConfirmed == false, "La sala nueva empieza sin confirmaciones heredadas");
@@ -165,7 +181,7 @@ try
     Until(() => service.Ready && service.Preparation?.MyConfirmed == true && !service.ConfirmationPending);
     b.Connection.Reducers.ConfirmPreparation(nextCode, [], Guid.NewGuid().ToString("N"));
     Until(() => service.Duel != null && b.Preparation?.Started == true);
-    Check(service.Duel!.Players[service.Duel.MySeat].Hand[0] == "magnet-shuffle" && b.Hand[0].Definition == "magnet-shuffle", "Conservar la mano funciona en ambos lugares y con reintento del cliente real");
+    Check(service.Duel!.Players[service.Duel.MySeat].Hand[0] == "destiny-shuffle" && b.Hand[0].Definition == "magnet-shuffle", "Conservar la mano funciona en ambos lugares y con reintento del cliente real");
 
     var fighterA = Connect(serviceToken);
     Until(() => fighterA.Duel != null && b.Duel != null);
@@ -243,7 +259,10 @@ try
     }
     service.Create("Abandono"); Until(() => service.Room != null);
     var surrenderCode = service.Room!.Code;
-    b.Connection.Reducers.JoinRoom(surrenderCode, "Beto"); Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
+    b.Connection.Reducers.JoinRoom(surrenderCode, "Beto");
+    Until(() => b.InitialSkills?.Selected == false && service.InitialSkills?.Selected == false);
+    b.Connection.Reducers.ChooseInitialSkill(surrenderCode, "magnet-shuffle", Guid.NewGuid().ToString("N")); service.ChooseInitialSkill("magnet-shuffle");
+    Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
     service.Confirm([]); b.Connection.Reducers.ConfirmPreparation(surrenderCode, [], Guid.NewGuid().ToString("N"));
     Until(() => service.Duel != null && b.Duel != null);
     var surrender = b.Duel!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Concede);
@@ -267,6 +286,7 @@ sealed class Client
     public string Token = "";
     public readonly List<string> Errors = [];
     public RoomInfo? Room => Connection.Db.MyRoom.Iter().SingleOrDefault();
+    public InitialSkillInfo? InitialSkills => Connection.Db.MyInitialSkill.Iter().SingleOrDefault();
     public PreparationInfo? Preparation => Connection.Db.MyPreparation.Iter().SingleOrDefault();
     public DuelSnapshot? Duel => Connection.Db.MyDuel.Iter().SingleOrDefault() is { } row ? JsonSerializer.Deserialize(row.Json, DuelJson.Default.DuelSnapshot) : null;
     public HandCard[] Hand => Connection.Db.MyHand.Iter().OrderBy(c => c.Position).ToArray();

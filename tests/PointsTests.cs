@@ -38,7 +38,7 @@ static class PointsTests
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
         g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("points-increase"); return (g, rng);
     }
     private static string Snapshot(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);

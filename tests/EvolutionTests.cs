@@ -30,7 +30,7 @@ static class EvolutionTests
             Check(g.ResolveAttackReroll(0, false).Success && p.HasNaturalSix);
             before = Snapshot(g); Check(!g.Evolve(1).Success && !g.Evolve(-1).Success && before == Snapshot(g));
             Check(g.Advance(0).Success && g.Advance(0).Success && p.HasNaturalSix);
-            var initialRandom = new ScriptedRandom(); var initial = new GameEngine(initialRandom);
+            var initialRandom = new ScriptedRandom(); var initial = TestGame.Create(initialRandom);
             initialRandom.EnqueueDie(6); initialRandom.EnqueueDie(1); Check(initial.Start(Array.Empty<int>()).Success);
             Check(initial.State.Players.All(player => !player.HasNaturalSix));
         }),
@@ -106,7 +106,7 @@ static class EvolutionTests
     };
     private static (GameEngine, ScriptedRandom) Fixture(string? skill = null)
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); }
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add(skill ?? CardCatalog.Destiny.Id); return (g, rng);
     }

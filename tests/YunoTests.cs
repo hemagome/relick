@@ -11,7 +11,7 @@ static class YunoTests
             g.State.Phase = Phase.Actions; g.State.ActionsLeft = 2;
             g.State.Active.Health = 7; g.State.Active.Hand.Add("test-recover");
             Check(g.PlayCode(0, 1).Success && g.State.Active.Health == 8);
-            var fresh = new GameEngine(42); Check(fresh.State.Players.All(p => p.Health == 8 && !p.AttackRerollUsedThisTurn));
+            var fresh = TestGame.Create(42); Check(fresh.State.Players.All(p => p.Health == 8 && !p.AttackRerollUsedThisTurn));
         }),
         ("Yuno: 1 no permite relanzar; 2 a 6 ofrecen una elección antes del daño", () =>
         {
@@ -99,7 +99,7 @@ static class YunoTests
         }),
         ("Yuno: no se activa al sortear inicio, reciclar ni tirar por Relikia", () =>
         {
-            var rng = new ScriptedRandom(); var g = new GameEngine(rng);
+            var rng = new ScriptedRandom(); var g = TestGame.Create(rng);
             rng.EnqueueDie(6); rng.EnqueueDie(1); Check(g.Start(Array.Empty<int>()).Success);
             Check(g.State.Phase == Phase.Combat && g.State.PendingAttackRoll == null);
             g.State.CurrentPlayer = 0; g.State.Phase = Phase.Actions; g.State.ActionsLeft = 2;
@@ -114,7 +114,7 @@ static class YunoTests
 
     private static (GameEngine, ScriptedRandom) Fixture(string? skill = null)
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng);
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng);
         g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Skills.Clear(); p.Memory.Clear(); }
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add(skill ?? CardCatalog.Destiny.Id);

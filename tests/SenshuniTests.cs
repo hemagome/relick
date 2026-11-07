@@ -37,7 +37,7 @@ static class SenshuniTests
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
         g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("senshuni"); return (g, rng);
     }
     private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.Skills.Count + p.CorruptedMemory.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));

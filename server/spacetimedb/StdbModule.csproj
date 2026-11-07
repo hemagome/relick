@@ -7,6 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="SpacetimeDB.Runtime" Version="2.14.1" />
-    <Compile Include="../../core/**/*.cs" Exclude="../../core/PracticeBot.cs" Link="Core/%(Filename)%(Extension)" />
+    <Compile Include="../../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

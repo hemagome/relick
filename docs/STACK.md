@@ -4,13 +4,13 @@
 
 ## Recomendación
 
-**Godot .NET + C# y SpacetimeDB para los duelos en línea.** La práctica local sigue disponible y usa las mismas reglas de C# que el módulo del servidor.
+**Godot .NET + C# y SpacetimeDB para los duelos en línea.** El único modo jugable es PvP; el motor C# puro se ejecuta en el servidor y en las pruebas.
 
 El [tutorial oficial de SpacetimeDB para Godot](https://spacetimedb.com/docs/tutorials/godot/) soporta Godot 4.6.2 .NET o posterior. Su [instalación](https://spacetimedb.com/docs/tutorials/godot/part-1/) utiliza el paquete `SpacetimeDB.ClientSDK.Godot`. Se eligió inicialmente 4.6.2 como versión de referencia reproducible. El 6 de noviembre de 2026 se actualizó el editor y Godot.NET.Sdk a 4.7.2 estable; se mantiene .NET 8.
 
 Usar C# para el cliente y el motor evita reescribir las reglas en otro lenguaje al mover la autoridad al servidor. La interfaz de Godot solo presenta el estado y solicita jugadas. `core/` no conoce el árbol de escenas ni ejecuta animaciones; sus proyecciones de red incluyen señales de presentación sin dependencias de Godot.
 
-Práctica y PvP comparten los componentes de presentación del tablero. Sus controladores de reglas y red siguen separados; las señales visuales públicas acompañan al estado autorizado sin incluir cartas ocultas. La interfaz tiene distribución adaptable y recursos importados reducidos. [Diseño, mediciones y pruebas de interfaz](UI.md).
+La arena PvP usa componentes de presentación independientes del motor; las señales visuales públicas acompañan al estado autorizado sin incluir cartas ocultas. La interfaz tiene distribución adaptable y recursos importados reducidos. [Diseño, mediciones y pruebas de interfaz](UI.md).
 
 ## Decisión sobre navegador
 

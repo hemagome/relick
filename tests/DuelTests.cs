@@ -13,7 +13,7 @@ static class DuelTests
 
     static DuelOpening Opening(int seed)
     {
-        var game = new GameEngine(seed); game.Start([]);
+        var game = TestGame.Create(seed); game.Start([]);
         return new DuelOpening
         {
             Names = game.State.Players.Select(p => p.Name).ToArray(), StartingSeat = game.State.CurrentPlayer,

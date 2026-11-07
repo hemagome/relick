@@ -134,18 +134,11 @@ public static partial class Module
     private static void Deal(ReducerContext ctx, Member member)
     {
         var deck = CardCatalog.TrainingDeck();
-        deck.Remove(CardCatalog.Magnet.Id);
-        for (var i = deck.Count - 1; i > 0; i--)
-        {
-            var j = ctx.Rng.Next(i + 1);
-            (deck[i], deck[j]) = (deck[j], deck[i]);
-        }
-        deck.Insert(0, CardCatalog.Magnet.Id);
         for (var i = 0; i < deck.Count; i++)
             ctx.Db.Card.Insert(new Card
             {
                 Owner = member.Player, RoomCode = member.RoomCode,
-                Definition = deck[i], Position = (uint)i, InHand = i < 5
+                Definition = deck[i], Position = (uint)i, InHand = false
             });
     }
 }

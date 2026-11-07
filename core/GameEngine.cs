@@ -51,21 +51,15 @@ public sealed partial class GameEngine
     public GameEngine(IGameRandom random)
     {
         _random = random;
-        foreach (var player in State.Players)
-        {
-            player.Deck.AddRange(CardCatalog.TrainingDeck());
-            player.Deck.Remove(CardCatalog.Magnet.Id);
-            player.Hand.Add(CardCatalog.Magnet.Id);
-            Shuffle(player.Deck);
-            for (var i = 0; i < 4; i++) DrawOne(player);
-        }
-        Log("Sala de práctica: ambos relikarios empiezan con 8 vidas.");
-        Log("Elige cartas para cambiarlas, o conserva tu mano inicial.");
+        foreach (var player in State.Players) player.Deck.AddRange(CardCatalog.TrainingDeck());
+        Log("Preparación: ambos relikarios empiezan con 8 vidas.");
+        Log("Elige una habilidad de tu mazo para formar tu mano inicial.");
     }
 
     public CommandResult Start(IEnumerable<int> mulligan)
     {
         if (State.Phase != Phase.Preparation) return CommandResult.Fail("La partida ya empezó.");
+        if (State.Players.Any(p => p.Hand.Count != 5)) return CommandResult.Fail("Ambos jugadores deben elegir su habilidad inicial antes del mulligan.");
         var indices = mulligan.Distinct().OrderByDescending(i => i).ToArray();
         var player = State.Players[0];
         if (indices.Any(i => i < 0 || i >= player.Hand.Count))
@@ -81,10 +75,10 @@ public sealed partial class GameEngine
         foreach (var _ in indices) DrawOne(player);
         if (indices.Length > 0) Log($"{player.Name} cambia {indices.Length} carta(s) de su mano inicial.");
         foreach (var p in State.Players) DealBonus(p);
-        int human, bot;
-        do { human = Roll(); bot = Roll(); } while (human == bot);
-        State.CurrentPlayer = human > bot ? 0 : 1;
-        Log($"Dado inicial: {State.Players[0].Name} {human}, {State.Players[1].Name} {bot}. Empieza {State.Active.Name}.");
+        int first, second;
+        do { first = Roll(); second = Roll(); } while (first == second);
+        State.CurrentPlayer = first > second ? 0 : 1;
+        Log($"Dado inicial: {State.Players[0].Name} {first}, {State.Players[1].Name} {second}. Empieza {State.Active.Name}.");
         BeginTurn();
         return CommandResult.Ok();
     }

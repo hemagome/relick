@@ -4,7 +4,7 @@ var tests = new (string Name, Action Run)[]
 {
     ("Preparación: habilidad + cuatro cartas, mazo conservado", () =>
     {
-        var g = new GameEngine(8);
+        var g = TestGame.Create(8);
         foreach (var p in g.State.Players)
         {
             Eq(p.Hand.Count, 5);
@@ -15,7 +15,7 @@ var tests = new (string Name, Action Run)[]
     }),
     ("Mulligan único, bonus y dado de inicio", () =>
     {
-        var g = new GameEngine(15);
+        var g = TestGame.Create(15);
         var old = g.State.Players[0].Hand.Take(2).ToArray();
         Ok(g.Start(new[] { 0, 1, 1 }).Success);
         Ok(!g.Start(Array.Empty<int>()).Success);
@@ -25,7 +25,7 @@ var tests = new (string Name, Action Run)[]
     }),
     ("Mulligan inválido no modifica la preparación", () =>
     {
-        var g = new GameEngine(15);
+        var g = TestGame.Create(15);
         var before = Fingerprint(g);
         Ok(!g.Start(new[] { 99 }).Success);
         Eq(Fingerprint(g), before);
@@ -124,9 +124,9 @@ var tests = new (string Name, Action Run)[]
         p.Skills.Clear(); p.Skills.AddRange(new[] { "magnet-shuffle", "destiny-shuffle" });
         p.Hand.Clear(); p.Hand.AddRange(new[] { "magnet-shuffle", "destiny-shuffle" });
         p.Relikia = 500;
-        Ok(PracticeBot.Step(g, 0).Success); Eq(p.Skills.Count, 3); Eq(p.Relikia, 0);
+        Ok(SimulationDriver.Step(g, 0).Success); Eq(p.Skills.Count, 3); Eq(p.Relikia, 0);
         g.State.LearnedThisTurn = false; p.Relikia = 1000;
-        Ok(PracticeBot.Step(g, 0).Success); Eq(p.Skills.Count, 4); Eq(p.Relikia, 0);
+        Ok(SimulationDriver.Step(g, 0).Success); Eq(p.Skills.Count, 4); Eq(p.Relikia, 0);
     }),
     ("Un ataque por turno y premio solo cuando acierta", () =>
     {
@@ -151,7 +151,7 @@ var tests = new (string Name, Action Run)[]
         Eq(g.State.Players[1].Health, 3);
         Ok(!AttackKeepingRoll(g,0, 0, 0).Success); Eq(rolls.Count, 1);
         var startRandom = new ScriptedRandom();
-        var initial = new GameEngine(startRandom);
+        var initial = TestGame.Create(startRandom);
         var startRolls = new List<int>();
         initial.DieRolled += startRolls.Add;
         startRandom.EnqueueDie(6); startRandom.EnqueueDie(1);
@@ -456,7 +456,7 @@ var tests = new (string Name, Action Run)[]
             rival.Hand.Clear(); rival.Memory.Clear(); small.State.Active.Memory.Clear();
             if (available == 1) { rival.Hand.Add("attack"); rival.Memory.Add("test-recover"); }
             random.EnqueueDie(6); small.UseRelikiaEffect(0, RelikiaEffect.ClaimBonus); small.ChooseRelikiaReward(0, reward);
-            if (available == 1) Ok(PracticeBot.Step(small, small.State.DecisionPlayer).Success);
+            if (available == 1) Ok(SimulationDriver.Step(small, small.State.DecisionPlayer).Success);
             Eq(small.State.Phase, Phase.Actions);
         }
     }),
@@ -515,11 +515,11 @@ var tests = new (string Name, Action Run)[]
     {
         for (var seed = 0; seed < 2000; seed++)
         {
-            var g = new GameEngine(seed); g.Start(Array.Empty<int>());
+            var g = TestGame.Create(seed); g.Start(Array.Empty<int>());
             var steps = 0;
             while (!g.State.IsOver && steps++ < 1500)
             {
-                var result = PracticeBot.Step(g, g.State.DecisionPlayer);
+                var result = SimulationDriver.Step(g, g.State.DecisionPlayer);
                 Ok(result.Success, $"seed {seed}: {result.Message}");
                 foreach (var p in g.State.Players)
                 {
@@ -538,7 +538,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)
@@ -569,7 +569,7 @@ static CommandResult AttackKeepingRoll(GameEngine game, int actor, int hand, int
 static (GameEngine, ScriptedRandom) Combat()
 {
     var rng = new ScriptedRandom();
-    var g = new GameEngine(rng);
+    var g = TestGame.Create(rng);
     g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0; g.State.Turn = 1;
     g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("attack");
     g.State.Active.Skills.Add("destiny-shuffle");
@@ -582,8 +582,8 @@ static (GameEngine, ScriptedRandom) Actions()
 }
 static string Run(int seed)
 {
-    var g = new GameEngine(seed); g.Start(Array.Empty<int>());
-    for (var i = 0; i < 1500 && !g.State.IsOver; i++) PracticeBot.Step(g, g.State.DecisionPlayer);
+    var g = TestGame.Create(seed); g.Start(Array.Empty<int>());
+    for (var i = 0; i < 1500 && !g.State.IsOver; i++) SimulationDriver.Step(g, g.State.DecisionPlayer);
     return Fingerprint(g);
 }
 sealed class ScriptedRandom : IGameRandom

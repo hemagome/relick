@@ -14,3 +14,15 @@ static class TestCards
         catalogue.Add(Recover.Id, Recover); catalogue.Add(ObjectCode.Id, ObjectCode);
     }
 }
+
+static class TestGame
+{
+    public static GameEngine Create(int seed) => Prepare(new GameEngine(seed));
+    public static GameEngine Create(IGameRandom random) => Prepare(new GameEngine(random));
+    private static GameEngine Prepare(GameEngine game)
+    {
+        game.ChooseInitialSkill(0, CardCatalog.Magnet.Id);
+        game.ChooseInitialSkill(1, CardCatalog.Magnet.Id);
+        return game;
+    }
+}

@@ -13,7 +13,7 @@ public partial class OnlineLobby
             var deadline = DateTime.UtcNow.AddSeconds(25);
             while (!condition())
             {
-                if (DateTime.UtcNow > deadline) throw new Exception("Tiempo agotado esperando la preparación: " + _lobby.Message);
+                if (DateTime.UtcNow > deadline) throw new Exception($"Tiempo agotado: {_lobby.Message} / rival {rival.Message}; combate={_lobby.Duel != null}, preparación={_arena?.IsPreparing}, animando={_arena?.IsAnimating}");
                 rival.Tick();
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
@@ -29,14 +29,27 @@ public partial class OnlineLobby
             rival.Connect(_server, _database, null);
             await Until(() => rival.Ready);
             rival.Join(_lobby.Room!.Code, "Beto");
-            await Until(() => _choices.Count == 5 && !_confirm.Disabled);
-            foreach (var choice in _choices.Values.Take(2)) choice.ButtonPressed = true;
-            await Until(() => _confirm.Text.Contains("Cambiar 2"));
-            _confirm.EmitSignal(Button.SignalName.Pressed);
+            await Until(() => _arena?.IsChoosingInitialSkill == true && rival.InitialSkills?.Selected == false);
+            var selectedSkill = _arena!.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>().Single(c => c.Card.Id == "destiny-shuffle");
+            GuiInputTestDriver.Click(selectedSkill);
+            for (var frame = 0; frame < 4; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            GuiInputTestDriver.Click(_arena.InitialSkillConfirmButton!);
+            rival.ChooseInitialSkill("magnet-shuffle");
+            await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false);
+            var preparationArena = _arena;
+            if (_content.Visible || !_arena!.IsPreparing) throw new Exception("El mulligan no se abrió dentro del tablero.");
+            foreach (var card in _arena!.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().Take(2)) GuiInputTestDriver.Click(card);
+            await Until(() => _arena!.PreparationConfirmButton!.Text.Contains("Cambiar 2"));
+            GuiInputTestDriver.Click(_arena!.PreparationConfirmButton!);
             await Until(() => _lobby.Preparation?.MyConfirmed == true);
-            if (!_confirm.Disabled || _choices.Values.Any(c => !c.Disabled)) throw new Exception("La elección confirmada sigue editable.");
+            if (!_arena!.PreparationConfirmButton!.Disabled || _arena.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().Any(c => !c.Disabled)) throw new Exception("La elección confirmada sigue editable.");
+            Connect();
+            await Until(() => _lobby.Ready && _lobby.Preparation?.MyConfirmed == true && _arena?.PreparationConfirmButton?.Disabled == true);
+            if (_arena != preparationArena || _arena!.OpeningSelectionCount != 2 || _arena.IsAnimating)
+                throw new Exception("Reconectar pierde o repite la preparación confirmada.");
             rival.Confirm([]);
-            await Until(() => _lobby.Duel != null && _arena != null);
+            await Until(() => _lobby.Duel != null && _arena != null && !_arena.IsPreparing && !_arena.IsAnimating);
+            if (_arena != preparationArena) throw new Exception("El combate reemplazó el tablero de preparación.");
             if (_content.Visible) throw new Exception("La preparación sigue disponible después del inicio.");
             var expected = _lobby.Duel!.CurrentPlayer == _lobby.Room!.MySeat ? 6 : 5;
             if (_lobby.Duel!.Players[_lobby.Room.MySeat].Hand.Length != expected) throw new Exception("La mano visible no incluye el robo del primer turno.");

@@ -9,7 +9,6 @@ public partial class OnlineArena : Control
 {
     public LobbyConnection Connection { get; set; } = null!;
     public string RoomCode { get; set; } = "";
-    public event Action? ExitRequested;
     public event Action? ReconnectRequested;
     private VBoxContainer? _root;
     private HFlowContainer _moves = null!;
@@ -62,7 +61,7 @@ public partial class OnlineArena : Control
         if (_layoutQueued) return;
         _layoutQueued = true; CallDeferred(nameof(ApplyLayout));
     }
-    private void ApplyLayout() { _layoutQueued = false; if (_snapshot != null) Render(); }
+    private void ApplyLayout() { _layoutQueued = false; if (_snapshot != null) { ResetAnimations(); Render(); } }
 
     public override void _Process(double delta)
     {
@@ -75,13 +74,16 @@ public partial class OnlineArena : Control
             if (!_needsBaseline) { _needsBaseline = true; ResetAnimations(); }
         }
         var snapshot = Connection.Duel;
-        if (Connection.Ready && snapshot != null && (_needsBaseline || _snapshot?.Revision != snapshot.Revision))
+        if (snapshot == null) UpdatePreparation();
+        if (Connection.Ready && snapshot != null && (_needsBaseline || _preparing || _snapshot?.Revision != snapshot.Revision))
         {
             var previous = _snapshot;
+            var fromPreparation = _preparing;
+            var openingFlights = fromPreparation && !_needsBaseline ? CaptureMulliganOrigins(snapshot) : null;
             var animate = !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
             var origins = CaptureOrigins(snapshot, previous);
             if (animate && IsAnimating) { ResetAnimations(); _die.Value = snapshot.Die; }
-            _snapshot = snapshot; _selected.Clear();
+            _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; _selected.Clear();
             if (!animate)
             {
                 ResetAnimations(); _die.Value = snapshot.Die;
@@ -92,7 +94,8 @@ public partial class OnlineArena : Control
                 }
             }
             _needsBaseline = false; Render();
-            if (animate) Animate(snapshot.Visuals, origins);
+            if (openingFlights != null) AnimateOpening(snapshot, openingFlights);
+            else if (animate) Animate(snapshot.Visuals, origins);
         }
         if (_root == null) return;
         if (_status.Text != Connection.Message) _status.Text = Connection.Message;
@@ -124,21 +127,20 @@ public partial class OnlineArena : Control
         if (Compact)
         {
             var menu = new MenuButton { Text = "Menú", CustomMinimumSize = new(70, 48) }; header.AddChild(menu);
-            var popup = menu.GetPopup(); ArenaViewport.TouchMenu(popup); popup.AddItem("Reconectar", 0); popup.AddItem("Volver a práctica", 1);
-            if (s.Winner != null) popup.AddItem("Cerrar sala", 2);
-            popup.IdPressed += id => { if (id == 0) ReconnectRequested?.Invoke(); else if (id == 1) ExitRequested?.Invoke(); else Connection.Leave(); };
+            var popup = menu.GetPopup(); ArenaViewport.TouchMenu(popup); popup.AddItem("Reconectar", 0);
+            if (s.Winner != null || _preparing) popup.AddItem("Cerrar sala", 2);
+            popup.IdPressed += id => { if (id == 0) ReconnectRequested?.Invoke(); else Connection.Leave(); };
         }
         else
         {
             ArenaPresentation.Button(header, "Reconectar", () => ReconnectRequested?.Invoke());
-            ArenaPresentation.Button(header, "Volver a práctica", () => ExitRequested?.Invoke());
-            if (s.Winner != null) ArenaPresentation.Button(header, "Cerrar sala", Connection.Leave);
+            if (s.Winner != null || _preparing) ArenaPresentation.Button(header, "Cerrar sala", Connection.Leave);
         }
         var phase = s.Winner != null ? s.Winner == -1 ? "EMPATE" : s.Winner == s.MySeat ? "¡VICTORIA!" : "DERROTA" :
             $"TURNO {s.Turn:00} · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
-        var phaseCaption = s.Winner != null ? phase : $"{PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
+        var phaseCaption = _preparing ? PreparationCaption() : s.Winner != null ? phase : $"{PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
         if (Short) phaseCaption += $" · TÚ {s.Players[s.MySeat].Health}/{s.Players[s.MySeat].MaxHealth} · RIVAL {s.Players[1 - s.MySeat].Health}/{s.Players[1 - s.MySeat].MaxHealth}";
-        ArenaPresentation.Phases(_root, s.Stage ?? s.Phase, phaseCaption, s.Turn, s.CurrentPlayer == s.MySeat, Compact);
+        ArenaPresentation.Phases(_root, s.Stage ?? s.Phase, phaseCaption, s.Turn, _preparing || s.CurrentPlayer == s.MySeat, Compact);
         if (Compact && !Short) ArenaPresentation.Scoreline(_root, [s.Players[s.MySeat], s.Players[1 - s.MySeat]]);
         var body = ArenaPresentation.Body(_root, Short && Size.X >= 700);
         var arena = ArenaPresentation.Arena(body.Board, Compact);
@@ -149,7 +151,7 @@ public partial class OnlineArena : Control
         {
             var seat = relative == 0 ? s.MySeat : 1 - s.MySeat;
             var player = relativePlayers[relative];
-            ArenaPresentation.Player(arena, player, relative, relative == 1, s.CurrentPlayer == seat && s.Winner == null,
+            ArenaPresentation.Player(arena, player, relative, relative == 1, !_preparing && s.CurrentPlayer == seat && s.Winner == null,
                 _selectedSkill, _portraits[relative], _life[relative], new ArenaPlayerActions
                 {
                     Memory = corrupt => ShowCards(corrupt ? "Memoria corrupta" : "Memoria", corrupt ? null : player.Memory, player.CorruptedCount),
@@ -166,8 +168,8 @@ public partial class OnlineArena : Control
                 }, Compact);
         }
         Player(0);
-        var combatMessage = s.Winner != null ? phase : s.LastCombat;
-        var combat = ArenaPresentation.Combat(arena, false, s.Winner != null, combatMessage, relativePlayers, BuildOpponentHand,
+        var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? phase : s.LastCombat;
+        var combat = ArenaPresentation.Combat(arena, _preparing, s.Winner != null, combatMessage, relativePlayers, BuildOpponentHand,
             relative => { if (relativePlayers[relative].Bonus is { } id) ShowCards("Bonus", [id]); },
             (relative, slot) => { if (slot < relativePlayers[relative].Exchange.Length) ShowCards("Canje", [relativePlayers[relative].Exchange[slot]]); }, Compact);
         _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
@@ -179,7 +181,8 @@ public partial class OnlineArena : Control
         body.Controls.AddChild(movesScroll);
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 8); _moves.AddThemeConstantOverride("v_separation", 6); movesScroll.AddChild(_moves);
-        _hand = ArenaPresentation.Hand(body.Controls, relativePlayers[0].Hand.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, false, Short);
+        _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(body.Controls, _availableInitialSkills, _initialSkillCandidate,
+            id => { if (CanChooseInitialSkill) { _initialSkillCandidate = id; Render(); } }, Short) : ArenaPresentation.Hand(body.Controls, relativePlayers[0].Hand.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         BuildMoves(); MoveChild(_diceOverlay, GetChildCount() - 1);
         BoardBuildCount++;
@@ -201,6 +204,13 @@ public partial class OnlineArena : Control
 
     private void SelectCard(int index)
     {
+        if (_preparing)
+        {
+            if (!CanChooseOpening || IsAnimating || index < 0 || index >= _openingCards.Length) return;
+            var id = _openingCards[index].Id;
+            if (!_openingReturns.Add(id)) _openingReturns.Remove(id);
+            SyncOpeningSelection(); RefreshSelection(); return;
+        }
         var defense = _snapshot!.Options.Any(o => o.RequiredDiscards > 0);
         if (!defense && !_selected.Contains(index)) _selected.Clear();
         if (!_selected.Add(index)) _selected.Remove(index);
@@ -210,7 +220,7 @@ public partial class OnlineArena : Control
     {
         foreach (var card in _root!.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>())
         { card.Chosen = _selected.Contains(int.Parse(card.Name.ToString()[8..])); card.QueueRedraw(); }
-        foreach (var skill in _root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>())
+        foreach (var skill in _root!.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>())
         { skill.Chosen = skill.Skill != null && skill.Slot == _selectedSkill; skill.QueueRedraw(); }
         BuildMoves();
     }
@@ -219,6 +229,7 @@ public partial class OnlineArena : Control
         foreach (var child in _moves.GetChildren()) { _moves.RemoveChild(child); child.QueueFree(); }
         _moveButtons.Clear();
         var s = _snapshot!;
+        if (_preparing) { BuildPreparationMoves(); return; }
         var defense = s.Options.Any(o => o.RequiredDiscards > 0);
         _selection.Text = s.Winner != null ? "El duelo terminó." : _selected.Count > 0
             ? string.Join(" · ", _selected.Select(i => CardCatalog.Get(s.Players[s.MySeat].Hand[i]!).Name))
@@ -245,12 +256,15 @@ public partial class OnlineArena : Control
     }
     private void UpdateEnabled()
     {
-        var disabled = !Connection.Ready || Connection.PlayPending || IsAnimating;
+        var disabled = _preparing ? !(_choosingOpeningSkill ? CanChooseInitialSkill : CanChooseOpening) || IsAnimating : !Connection.Ready || Connection.PlayPending || IsAnimating;
         if (_lastDisabled == disabled) return;
         _lastDisabled = disabled;
         foreach (var button in _moveButtons) button.Disabled = disabled || (int)button.GetMeta("discards") > 0 && (int)button.GetMeta("discards") != _selected.Count;
         if (_root?.FindChild("EvolveRelikario", true, false) is Button evolve)
             evolve.Disabled = disabled || !_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve);
+        if (_choosingOpeningSkill && InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled |= _initialSkillCandidate == null;
+        if (_choosingOpeningSkill && _hand != null)
+            foreach (var card in _hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>()) card.Disabled = disabled;
         if (_hand != null) foreach (var card in _hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>()) card.Disabled = disabled;
     }
     private void SendKind(DuelMoveKind kind)
@@ -291,7 +305,7 @@ public partial class OnlineArena : Control
 
     private static string PhaseName(Phase phase) => phase switch
     {
-        Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Finished => "FINAL",
+        Phase.Preparation => "PREPARACIÓN", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
         Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", _ => "RESOLVER EFECTO"
     };

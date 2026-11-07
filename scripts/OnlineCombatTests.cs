@@ -28,7 +28,10 @@ public partial class OnlineLobby
             _name.Text = "Ana"; _create.EmitSignal(Button.SignalName.Pressed);
             await Until(() => _lobby.Room != null);
             rival.Connect(_server, _database, null); await Until(() => rival.Ready);
-            rival.Join(_lobby.Room!.Code, "Beto"); await Until(() => _lobby.Hand.Length == 5 && rival.Hand.Length == 5);
+            rival.Join(_lobby.Room!.Code, "Beto");
+            await Until(() => _lobby.InitialSkills?.Selected == false && rival.InitialSkills?.Selected == false);
+            _lobby.ChooseInitialSkill("magnet-shuffle"); rival.ChooseInitialSkill("destiny-shuffle");
+            await Until(() => _lobby.Hand.Length == 5 && rival.Hand.Length == 5);
             _lobby.Confirm([]); rival.Confirm([]);
             await Until(() => _arena != null && _lobby.Duel != null && rival.Duel != null);
             var path = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--pvp-screenshot="))?.Split('=', 2)[1];

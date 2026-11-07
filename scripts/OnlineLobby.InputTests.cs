@@ -29,6 +29,16 @@ public partial class OnlineLobby
             await Frame(); await Frame();
             GuiInputTestDriver.Click(control);
         }
+        async Task ClickCurrent(Func<Control> resolve)
+        {
+            await Frame(); await Frame();
+            var control = resolve();
+            for (var parent = control.GetParent(); parent != null; parent = parent.GetParent())
+                if (parent is ScrollContainer scroll) scroll.EnsureControlVisible(control);
+            await Frame(); await Frame();
+            // The other player's preparation may rebuild the controls while layout settles.
+            GuiInputTestDriver.Click(resolve());
+        }
         Button ArenaButton(string text) => _arena!.FindChildren("*", "Button", true, false).OfType<Button>().First(b => b.Text == text);
         try
         {
@@ -50,15 +60,21 @@ public partial class OnlineLobby
                 GuiInputTestDriver.ReplaceText(_code, System.IO.File.ReadAllText(session + ".room"));
                 await Click(_join);
             }
-            await Until(() => _choices.Count == 5 && !_confirm.Disabled);
+            await Until(() => _arena?.IsChoosingInitialSkill == true);
+            await ClickCurrent(() => _arena!.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>().Single(c => c.Card.Id == (host ? "destiny-shuffle" : "magnet-shuffle")));
+            await ClickCurrent(() => _arena!.InitialSkillConfirmButton!);
+            await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false);
+            var preparationArena = _arena;
+            if (_content.Visible || !_arena!.IsPreparing) throw new Exception("El mulligan sigue en la sala.");
             GD.Print($"PVP_INPUT_PEER_PROGRESS · {role} · sala compartida y cinco cartas.");
             if (_lobby.Room!.MySeat != (host ? 0 : 1) || _lobby.Room.PlayerOne != "Ana teclado" || _lobby.Room.PlayerTwo != "Beto teclado")
                 throw new Exception("Las dos instancias no tienen identidades y nombres independientes.");
-            await Click(_choices.Values.First());
-            await Until(() => _returnedCards.Count == 1 && _confirm.Text.Contains("Cambiar 1"));
+            await ClickCurrent(() => (Control)_arena!.FindChild("HandCard0", true, false));
+            await Until(() => _arena!.OpeningSelectionCount == 1 && _arena.PreparationConfirmButton!.Text.Contains("Cambiar 1"));
             GD.Print($"PVP_INPUT_PEER_PROGRESS · {role} · carta seleccionada.");
-            await Click(_confirm);
-            await Until(() => _arena != null && _lobby.Duel != null);
+            await ClickCurrent(() => _arena!.PreparationConfirmButton!);
+            await Until(() => _arena != null && !_arena.IsPreparing && _lobby.Duel != null && !_arena.IsAnimating);
+            if (_arena != preparationArena) throw new Exception("No se conservó la arena al empezar el combate.");
             GD.Print($"PVP_INPUT_PEER_PROGRESS · {role} · combate iniciado.");
             // Verify combat hit testing too, including an embedded dialog.
             await Click((Control)_arena!.FindChild("MemoryButton0", true, false));

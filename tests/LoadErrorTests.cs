@@ -66,7 +66,7 @@ static class LoadErrorTests
     };
     private static GameEngine Fixture()
     {
-        var g = new GameEngine(new ErrorRandom()); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Actions;
+        var g = TestGame.Create(new ErrorRandom()); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Actions;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); }
         return g;
     }

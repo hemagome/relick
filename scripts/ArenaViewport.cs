@@ -13,7 +13,8 @@ public static class ArenaViewport
 
     public static void Configure(Window window)
     {
-        if (OS.GetCmdlineUserArgs().Contains("--shared-arena-test")) return;
+        if (OS.GetCmdlineUserArgs().Contains("--shared-arena-test") || OS.GetCmdlineUserArgs().Contains("--pvp-ui-test") ||
+            OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--lobby-preview-dir="))) return;
         var mobile = OS.HasFeature("mobile");
         var density = mobile ? Math.Clamp(DisplayServer.ScreenGetDpi() / 160f, 1, 4) : 1;
         var size = window.Size;

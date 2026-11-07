@@ -285,7 +285,7 @@ public partial class SkillTile : Button
         {
             DrawLine(new(14, 2), new(size.X - 14, 2), Accent, 3, true);
             BoardArt.Text(this, "HABILIDAD", new(12, 20), 9, Accent);
-            BoardArt.CenterText(this, Skill.Name.Replace(" de práctica", ""), new(size.X / 2, 47), 19, BoardArt.Ink);
+            BoardArt.CenterText(this, Skill.Name, new(size.X / 2, 47), 19, BoardArt.Ink);
             BoardArt.Icon(this, GameIcon.Bolt, new(34, 83), 32, Accent);
             BoardArt.Icon(this, GameIcon.Sword, new(65, 76), 14, BoardArt.Muted);
             BoardArt.Text(this, $"{(Skill.Id == CardCatalog.Magnet.Id ? "1D6" : Skill.NormalDamage.ToString())} daño", new(78, 81), 14, BoardArt.Ink);
@@ -410,7 +410,7 @@ public partial class ZoneCardButton : Button
             var icon = Card != null ? BoardArt.CardIcon(Card) : Caption == "BONUS" ? GameIcon.Gift : GameIcon.Cards;
             BoardArt.Icon(this, icon, thumb.GetCenter(), 19, Card != null ? cardColor : BoardArt.Muted);
         }
-        var name = Card?.Name.Replace(" de práctica", "") ?? EmptyCaption;
+        var name = Card?.Name ?? EmptyCaption;
         var fontSize = 11;
         while (fontSize > 8 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 10) fontSize--;
         while (name.Length > 1 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 10) name = name[..^2] + "…";
@@ -517,7 +517,7 @@ public partial class HandCard : Button
         var center = new Vector2(DrawSize.X / 2, y + 69);
         DrawPolyline(new Vector2[] { center + new Vector2(0, -38), center + new Vector2(39, 0), center + new Vector2(0, 38), center + new Vector2(-39, 0), center + new Vector2(0, -38) }, BoardArt.Tint(accent, 0.2f), 1, true);
         BoardArt.Icon(this, icon, center, 43, accent);
-        var name = Card.Name.Replace(" de práctica", "");
+        var name = Card.Name;
         var fontSize = name.Length > 11 ? 14 : 17;
         while (fontSize > 11 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > DrawSize.X - 18) fontSize--;
         BoardArt.CenterText(this, name, new(DrawSize.X / 2, y + 122), fontSize, BoardArt.Ink);

@@ -34,6 +34,7 @@ namespace Relick.TestNetwork.Types
             AddTable(MyDuelHand = new(conn));
             AddTable(MyFixtureStats = new(conn));
             AddTable(MyHand = new(conn));
+            AddTable(MyInitialSkill = new(conn));
             AddTable(MyMoveResult = new(conn));
             AddTable(MyPreparation = new(conn));
             AddTable(MyRoom = new(conn));
@@ -539,6 +540,7 @@ namespace Relick.TestNetwork.Types
             new QueryBuilder().From.MyDuelHand().ToSql(),
             new QueryBuilder().From.MyFixtureStats().ToSql(),
             new QueryBuilder().From.MyHand().ToSql(),
+            new QueryBuilder().From.MyInitialSkill().ToSql(),
             new QueryBuilder().From.MyMoveResult().ToSql(),
             new QueryBuilder().From.MyPreparation().ToSql(),
             new QueryBuilder().From.MyRoom().ToSql(),
@@ -554,6 +556,7 @@ namespace Relick.TestNetwork.Types
         public global::SpacetimeDB.Table<DuelHand, MyDuelHandCols, MyDuelHandIxCols> MyDuelHand() => new("my_duel_hand", new MyDuelHandCols("my_duel_hand"), new MyDuelHandIxCols("my_duel_hand"));
         public global::SpacetimeDB.Table<FixtureStats, MyFixtureStatsCols, MyFixtureStatsIxCols> MyFixtureStats() => new("my_fixture_stats", new MyFixtureStatsCols("my_fixture_stats"), new MyFixtureStatsIxCols("my_fixture_stats"));
         public global::SpacetimeDB.Table<HandCard, MyHandCols, MyHandIxCols> MyHand() => new("my_hand", new MyHandCols("my_hand"), new MyHandIxCols("my_hand"));
+        public global::SpacetimeDB.Table<InitialSkillInfo, MyInitialSkillCols, MyInitialSkillIxCols> MyInitialSkill() => new("my_initial_skill", new MyInitialSkillCols("my_initial_skill"), new MyInitialSkillIxCols("my_initial_skill"));
         public global::SpacetimeDB.Table<MoveResult, MyMoveResultCols, MyMoveResultIxCols> MyMoveResult() => new("my_move_result", new MyMoveResultCols("my_move_result"), new MyMoveResultIxCols("my_move_result"));
         public global::SpacetimeDB.Table<PreparationInfo, MyPreparationCols, MyPreparationIxCols> MyPreparation() => new("my_preparation", new MyPreparationCols("my_preparation"), new MyPreparationIxCols("my_preparation"));
         public global::SpacetimeDB.Table<RoomInfo, MyRoomCols, MyRoomIxCols> MyRoom() => new("my_room", new MyRoomCols("my_room"), new MyRoomIxCols("my_room"));
@@ -639,6 +642,7 @@ namespace Relick.TestNetwork.Types
             return reducer switch
             {
                 Reducer.AttemptExpiryForTest args => Reducers.InvokeAttemptExpiryForTest(eventContext, args),
+                Reducer.ChooseInitialSkill args => Reducers.InvokeChooseInitialSkill(eventContext, args),
                 Reducer.ClearFixture args => Reducers.InvokeClearFixture(eventContext, args),
                 Reducer.CompactFixture args => Reducers.InvokeCompactFixture(eventContext, args),
                 Reducer.ConfirmPreparation args => Reducers.InvokeConfirmPreparation(eventContext, args),

@@ -5,7 +5,7 @@ namespace Relick;
 
 public partial class OnlineArena
 {
-    private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null);
+    private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45);
     private readonly Queue<Flight> _flights = new();
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
     private Control? _flight;
@@ -119,8 +119,10 @@ public partial class OnlineArena
             Rect2? destination = returning || kind == DuelVisualKind.Shuffle ? deckRect : target == null ? null : ZoneRect(target);
             var bounds = new Rect2(Vector2.Zero, Size);
             // Never draw through clipped panels/docks when a small-screen zone is offscreen.
-            if (source == null || destination == null || !bounds.Encloses(source.Value) || !bounds.Encloses(destination.Value)) return;
-            if ((!fromPrevious || returning) && !RectVisible(deck, deckRect) || target != null && !RectVisible(target, destination.Value)) return;
+            if (source == null || destination == null || !bounds.Encloses(source.Value) || !bounds.Encloses(destination.Value))
+            { if (target != null) target.Modulate = Colors.White; return; }
+            if ((!fromPrevious || returning) && !RectVisible(deck, deckRect) || target != null && !RectVisible(target, destination.Value))
+            { if (target != null) target.Modulate = Colors.White; return; }
             _flightSource = source.Value; _flightDestination = destination.Value;
             _activeFlight = next; _flightTarget = target;
             if (target != null) target.Modulate = new(1, 1, 1, 0);
@@ -153,7 +155,7 @@ public partial class OnlineArena
                 if (progress >= 1) FinishFlight();
                 return;
             }
-            var t = Math.Clamp((float)(_flightTime / 0.45), 0, 1);
+            var t = Math.Clamp((float)(_flightTime / _activeFlight!.Duration), 0, 1);
             var returning = _activeFlight!.Event.Kind == DuelVisualKind.Return;
             var reveal = Math.Clamp((t - 0.55f) / 0.3f, 0, 1);
             var startsUp = _activeFlight.Event.Kind is not (DuelVisualKind.Draw or DuelVisualKind.BonusPlace) && _activeFlight.Event.Source != CardZone.Corrupted;
@@ -183,6 +185,7 @@ public partial class OnlineArena
     }
     private void ResetAnimations()
     {
+        SetQueuedDestinationsOpacity(1);
         _flights.Clear(); _pendingPortraits.Clear(); FinishFlight(); _die.Value = 0;
         foreach (var portrait in _portraits) portrait.Play(PortraitMotion.Idle);
     }

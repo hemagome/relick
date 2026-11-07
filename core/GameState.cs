@@ -17,6 +17,8 @@ public sealed class PlayerState
     [JsonInclude]
     public bool HasNaturalSix { get; internal set; }
     public string Name { get; init; } = "";
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? InitialSkillId { get; internal set; }
     [JsonInclude]
     public int Health { get; internal set; }
     public int MaxHealth => Relikario.MaxHealth;
@@ -80,7 +82,7 @@ public sealed class GameState
 {
     [JsonInclude]
     public PlayerState[] Players { get; internal set; } =
-        { new() { Name = "Tú" }, new() { Name = "Rival de práctica" } };
+        { new() { Name = "Jugador 1" }, new() { Name = "Jugador 2" } };
     [JsonInclude]
     public int CurrentPlayer { get; internal set; }
     [JsonInclude]

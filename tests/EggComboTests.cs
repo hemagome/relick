@@ -105,7 +105,7 @@ static class EggComboTests
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); p.Deck.Clear(); p.Deck.AddRange(Enumerable.Repeat("attack", 8)); }
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add("destiny-shuffle"); return (g, rng);
     }

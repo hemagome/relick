@@ -8,7 +8,7 @@ static class EquipmentTests
         {
             var deck = CardCatalog.TrainingDeck(); Check(deck.Count == 20 && deck.Count(id => id == CardCatalog.Pendant.Id) == 2);
             Check(deck.All(id => id is "attack" or "magnet-shuffle" or "destiny-shuffle" or "lucky-pendant" or "senshuni" or "cardboard-box" or "extra-life" or "points-increase" or "blue-egg" or "reroll" or "load-error"));
-            Check(new GameEngine(42).State.Players.All(p => p.Equipment == null && p.AttachedCards.Count == 0));
+            Check(TestGame.Create(42).State.Players.All(p => p.Equipment == null && p.AttachedCards.Count == 0));
         }),
         ("Equipar cuesta una acción y reemplazar destruye el anterior sin perder cartas", () =>
         {
@@ -82,7 +82,7 @@ static class EquipmentTests
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); }
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add(CardCatalog.Destiny.Id); return (g, rng);
     }
