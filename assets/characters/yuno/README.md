@@ -1,8 +1,16 @@
-# Yuno · prueba de animación
+# Yuno · animaciones
 
-Exportaciones de Ludo.ai facilitadas por el usuario, sin quitar la marca de agua del plan gratuito.
-Se copiaron las tres hojas del paquete conjunto para conservar el mismo lienzo y alineación.
-Los originales y el ZIP siguen en `output/yuno-ludo/`.
+Exportaciones de Ludo.ai facilitadas por el usuario, con la marca de agua retirada mediante
+edición generativa con la herramienta integrada `image_gen`. Se procesaron 46 bloques de cuatro
+fotogramas para reconstruir las partes cubiertas sin reducir cada figura al tamaño de una hoja completa.
+Los bloques se separaron y ensamblaron con ImageMagick, conservando las cuadrículas, el orden,
+el lienzo de 608 × 504 por fotograma y las duraciones que utiliza el juego.
+La reconstrucción introduce pequeñas variaciones de dibujo; no es una restauración idéntica píxel a píxel.
+Los originales y el ZIP siguen en `output/yuno-ludo/` y las hojas anteriores están en el historial de Git.
+
+El prompt utilizado y la corrección de transparencia están en [cleanup-prompts.txt](cleanup-prompts.txt).
+Las pruebas, los bloques intermedios y las vistas de revisión locales quedan en
+`artifacts/yuno-watermark-review/v2/`; el juego utiliza únicamente los tres PNG de esta carpeta.
 
 | Archivo | Rejilla | Cuadro | Cuadros | Duración en el MVP | Repetición |
 | --- | --- | --- | --- | --- | --- |
@@ -21,5 +29,5 @@ el comportamiento actual del duelo y, tras la reacción de daño, se vuelve al r
 
 Las opciones de importación limitan las texturas a 2432 píxeles de ancho: Godot genera
 hojas a media resolución, con cuadros de 304 × 252 y la misma cuadrícula. Los PNG
-fuente no se modificaron. El componente calcula las regiones desde el tamaño importado
+fuente conservan las dimensiones de las exportaciones. El componente calcula las regiones desde el tamaño importado
 y conserva el lienzo lógico de 608 × 504. Véase [interfaz y optimizaciones](../../../docs/UI.md).
