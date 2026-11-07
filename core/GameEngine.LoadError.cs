@@ -1,18 +1,8 @@
 namespace Relick.Core;
 public sealed partial class GameEngine
 {
-    private sealed class ActivationFrame(int actor, string id, int actions, int pr, Phase phase)
-    {
-        public int Actor = actor, Actions = actions, Pr = pr;
-        public string CardId = id;
-        public Phase ResumePhase = phase;
-        public Action Resume = null!, Cancel = null!;
-        public bool Canceled, ReplayCorrupted, CanInterrupt = true;
-        public int CorruptedIndex;
-        public ActivationFrame? Parent;
-    }
-    private readonly List<ActivationFrame> _activationChain = new();
-    private ActivationFrame? _activeActivation;
+    private readonly List<EngineActivation> _activationChain = new();
+    private EngineActivation? _activeActivation;
     private Phase _errorResumePhase;
     private bool HasLoadError(int actor) => State.Players[actor].ActionsLeft > 0 && State.Players[actor].Hand.Any(id => CardCatalog.Get(id).CancelActivation);
     public bool CanPlayLoadError(int actor)
@@ -22,13 +12,13 @@ public sealed partial class GameEngine
         return _activeActivation is { CanInterrupt: true } frame && frame.Actor != actor &&
             State.Phase is Phase.DieRerollChoice or Phase.PointsChoice or Phase.DestroyChoice or Phase.CodeResponse;
     }
-    private void BeginActivation(ActivationFrame frame)
+    private void BeginActivation(EngineActivation frame)
     {
         _activeActivation = frame;
         if (HasLoadError(1 - frame.Actor)) OpenErrorChain(frame, frame.ResumePhase);
-        else { frame.Resume(); CompleteActivationIfFinished(); }
+        else { ResumeActivation(frame); CompleteActivationIfFinished(); }
     }
-    private void OpenErrorChain(ActivationFrame frame, Phase resume)
+    private void OpenErrorChain(EngineActivation frame, Phase resume)
     {
         _activationChain.Clear(); _activationChain.Add(frame); _errorResumePhase = resume;
         State.ActivationChain.Clear(); State.ActivationChain.Add(new(frame.Actor, frame.CardId, frame.Actions, frame.Pr));
@@ -41,15 +31,15 @@ public sealed partial class GameEngine
         {
             var original = _activeActivation!;
             var resume = State.Phase;
-            var suspended = new ActivationFrame(original.Actor, original.CardId, original.Actions, original.Pr, resume)
-            { Resume = () => State.Phase = resume, Cancel = original.Cancel, Parent = original.Parent,
-              ReplayCorrupted = original.ReplayCorrupted, CorruptedIndex = original.CorruptedIndex };
-            // Cancellation uses the original closure so memory-origin bookkeeping is preserved.
+            var suspended = new EngineActivation(original.Actor, original.CardId, original.Actions, original.Pr, resume)
+            { ResumeMode = ActivationResume.RestorePhase, CancelPhase = original.CancelPhase ?? original.ResumePhase, Kind = original.Kind, Parent = original.Parent,
+              ReplayCorrupted = original.ReplayCorrupted, CorruptedIndex = original.CorruptedIndex,
+              FromMemory = original.FromMemory, MemoryIndex = original.MemoryIndex };
             OpenErrorChain(suspended, resume);
         }
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
         SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
-        var frame = new ActivationFrame(actor, card.Id, card.ActionCost, card.PrCost, State.Phase);
+        var frame = new EngineActivation(actor, card.Id, card.ActionCost, card.PrCost, State.Phase) { Kind = ActivationKind.Counter };
         _activationChain.Add(frame); State.ActivationChain.Add(new(actor, card.Id, card.ActionCost, card.PrCost));
         Log($"{p.Name} responde con Error de Carga (1 acción).");
         State.ErrorResponder = 1 - actor;
@@ -70,8 +60,8 @@ public sealed partial class GameEngine
             if (i > 0) _activationChain[i - 1].Canceled = true;
         }
         var root = _activationChain[0]; _activationChain.Clear(); State.ActivationChain.Clear(); State.Phase = _errorResumePhase;
-        if (root.Canceled) { root.Cancel(); _activeActivation = root.Parent; State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Activación anulada · Costes devueltos"; }
-        else { root.Resume(); CompleteActivationIfFinished(); }
+        if (root.Canceled) { CancelActivation(root); _activeActivation = root.Parent; State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Activación anulada · Costes devueltos"; }
+        else { ResumeActivation(root); CompleteActivationIfFinished(); }
     }
     private void RefundActivation(int actor, int actions, int pr)
     {
@@ -80,7 +70,7 @@ public sealed partial class GameEngine
     }
     private void ClearCodeDecisions()
     {
-        State.PendingCode = null; State.PendingDieRoll = null; State.PendingPoints = null; State.DestroyActor = null; _pendingDieContinuation = null;
+        State.PendingCode = null; State.PendingDieRoll = null; State.PendingPoints = null; State.DestroyActor = null; _pendingDieEffect = null;
     }
     private void CorruptActivationCode(int actor, int index)
     {

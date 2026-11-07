@@ -18,19 +18,9 @@ public sealed partial class GameEngine
 
     private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex)
     {
-        var frame = new ActivationFrame(actor, card.Id, fromMemory ? 2 : card.ActionCost,
-            card.PrCost + (fromMemory ? 400 : 0), State.Phase);
-        frame.Resume = () => ActivateCodeAfterErrors(actor, card, fromMemory, memoryIndex);
-        frame.Cancel = () =>
-        {
-            if (frame.ReplayCorrupted)
-            {
-                NotifyPileMove(State.Players[actor], card.Id, CardZone.Corrupted, frame.CorruptedIndex);
-                State.Players[actor].CorruptedMemory.RemoveAt(frame.CorruptedIndex);
-                State.Players[actor].Memory.Insert(Math.Min(memoryIndex, State.Players[actor].Memory.Count), card.Id);
-            }
-            ClearCodeDecisions(); State.Phase = frame.ResumePhase;
-        };
+        var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : card.ActionCost,
+            card.PrCost + (fromMemory ? 400 : 0), State.Phase)
+        { Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex };
         BeginActivation(frame);
     }
 

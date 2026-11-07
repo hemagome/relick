@@ -40,21 +40,21 @@ public sealed partial class GameEngine
     }
 
     // A continuation pauses the effect before it consumes the chosen result.
-    private Action<int>? _pendingDieContinuation;
+    private DieEffect? _pendingDieEffect;
 
-    private void RollWithRelikario(PlayerState p, DiePurpose purpose, Action<int> receive)
+    private void RollWithRelikario(PlayerState p, DiePurpose purpose, DieEffect effect)
     {
         var die = Roll(purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
         if ((p.Relikario.CanRerollAnyDie && !p.AttackRerollUsedThisTurn && die != 1) || p.Equipment == CardCatalog.Pendant.Id || HasRerollCombo(Array.IndexOf(State.Players, p)))
         {
-            _pendingDieContinuation = receive;
+            _pendingDieEffect = effect;
             State.PendingDieRoll = new(Array.IndexOf(State.Players, p), purpose, die, State.Phase);
             State.Phase = Phase.DieRerollChoice;
         }
         else
         {
             RegisterNaturalSix(p, die);
-            receive(die);
+            ResolveDieEffect(effect, die);
         }
     }
 
@@ -77,11 +77,11 @@ public sealed partial class GameEngine
             if (CanRespondToEffectDie()) return CommandResult.Ok();
         }
         if (!State.PendingDieRoll!.Modified) RegisterNaturalSix(p, die);
-        var continuation = _pendingDieContinuation!;
-        _pendingDieContinuation = null;
+        var effect = _pendingDieEffect!;
+        _pendingDieEffect = null;
         State.PendingDieRoll = null;
         State.Phase = pending.ResumePhase;
-        continuation(die);
+        ResolveDieEffect(effect, die);
         CompleteActivationIfFinished();
         return CommandResult.Ok();
     }

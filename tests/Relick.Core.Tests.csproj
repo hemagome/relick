@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="pvp/**/*.cs" />
+    <Compile Remove="server/**/*.cs" />
+    <None Update="fixtures/**/*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

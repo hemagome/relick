@@ -44,10 +44,10 @@ public sealed partial class GameEngine
             case RelikiaEffect.ChangeBonus:
                 var bonus = p.Bonus!;
                 p.Bonus = null;
-                PlaceInExchange(p, bonus, () => RefillBonus(p));
+                PlaceInExchange(p, bonus, new EngineContinuation { Kind = ContinuationKind.RefillBonus, Actor = actor });
                 break;
             case RelikiaEffect.DrawAndPlace:
-                DrawOne(p, () => BeginRelikiaChoice(RelikiaChoice.PlaceHandCard));
+                DrawOne(p, new EngineContinuation { Kind = ContinuationKind.RelikiaPlacement, Actor = actor });
                 break;
             case RelikiaEffect.ReplayCode:
                 var code = CardCatalog.Get(p.Memory[memoryIndex]);
@@ -55,12 +55,7 @@ public sealed partial class GameEngine
                 break;
             case RelikiaEffect.ClaimBonus:
                 TakeBonus(p, p);
-                RefillBonus(p, () => RollWithRelikario(p, DiePurpose.Relikia, die =>
-                {
-                    State.LastCombat = $"{p.Name} · Relikia: robar el Bonus · D6 = {die}";
-                    Log($"{p.Name} lanza D6 por Relikia: {die}." + (die >= 5 ? " Elige un efecto adicional." : " Sin efecto adicional."));
-                    if (die >= 5) BeginRelikiaChoice(RelikiaChoice.BonusReward);
-                }));
+                RefillBonus(p, new EngineContinuation { Kind = ContinuationKind.RollRelikia, Actor = actor });
                 break;
         }
         return CommandResult.Ok();
@@ -132,20 +127,9 @@ public sealed partial class GameEngine
         BonusClaimed?.Invoke(Array.IndexOf(State.Players, source), Array.IndexOf(State.Players, recipient), recipient.Hand.Count - 1, id);
     }
 
-    private void DealBonus(PlayerState p, Action? completed = null) => MoveTopCard(p, id =>
-    {
-        p.Bonus = id;
-        BonusPlaced?.Invoke(Array.IndexOf(State.Players, p), id);
-    }, completed);
-
-    private void RefillBonus(PlayerState p, Action? completed = null)
-    {
-        DealBonus(p, () =>
-        {
-            if (p.Bonus != null) Log($"{p.Name} coloca {CardCatalog.Get(p.Bonus).Name} como nuevo Bonus.");
-            completed?.Invoke();
-        });
-    }
+    private void DealBonus(PlayerState p, EngineContinuation? completed = null) => MoveTopCard(p, true, completed);
+    private void RefillBonus(PlayerState p, EngineContinuation? completed = null)
+        => DealBonus(p, new EngineContinuation { Kind = ContinuationKind.RefillDone, Actor = Array.IndexOf(State.Players, p), Next = completed });
 
     private static bool IsCode(string id) => CardCatalog.Get(id).Kind == CardKind.Code;
     private bool IsMemoryCode(int owner, int index) => owner >= 0 && owner < State.Players.Length &&

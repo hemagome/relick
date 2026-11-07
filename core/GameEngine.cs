@@ -2,7 +2,7 @@ namespace Relick.Core;
 
 /// <summary>
 /// Pure C# rules: no Godot, network, timers or UI. Commands validate ownership and phase
-/// before mutating. A future server must provide the random source and call these rules.
+/// before mutating. The server supplies the random source and calls the same rules.
 /// </summary>
 public sealed partial class GameEngine
 {
@@ -21,6 +21,32 @@ public sealed partial class GameEngine
     public event Action<int, int, int, string>? BonusClaimed;
 
     public GameEngine(int seed) : this(new SeededRandom(seed)) { }
+
+    private GameEngine(GameState state, IGameRandom random)
+    {
+        State = state;
+        _random = random;
+    }
+
+    public static GameEngine FromOpening(DuelOpening opening, IGameRandom random)
+    {
+        var state = new GameState { Phase = Phase.Combat, Turn = 1, CurrentPlayer = opening.StartingSeat };
+        for (var seat = 0; seat < 2; seat++)
+        {
+            var player = new PlayerState { Name = opening.Names[seat], Bonus = opening.Bonuses[seat] };
+            player.Hand.AddRange(opening.Hands[seat]);
+            player.Deck.AddRange(opening.Decks[seat]);
+            state.Players[seat] = player;
+        }
+        return new GameEngine(state, random);
+    }
+
+    public CommandResult Concede(int actor)
+    {
+        if (actor is < 0 or > 1 || State.IsOver) return CommandResult.Fail("La partida terminó.");
+        Finish(1 - actor, $"{State.Players[actor].Name} abandona el duelo.");
+        return CommandResult.Ok();
+    }
 
     public GameEngine(IGameRandom random)
     {
@@ -169,25 +195,12 @@ public sealed partial class GameEngine
         }
         if (card.ChangePointsFromDie)
         {
-            RollWithRelikario(p, DiePurpose.PointsChange, die =>
-            {
-                var amount = die switch { 1 => 300, 2 => 400, 3 or 4 => 500, 5 => 1000, _ => 1500 };
-                State.PendingPoints = new(Array.IndexOf(State.Players, p), die, amount);
-                State.Phase = Phase.PointsChoice;
-                State.LastCombat = $"{p.Name} · Aumento de Relick Points · D6 = {die} · Elige destino de {amount} PR";
-                Log(State.LastCombat);
-            });
+            RollWithRelikario(p, DiePurpose.PointsChange, new DieEffect { Purpose = DiePurpose.PointsChange, Actor = Array.IndexOf(State.Players, p) });
             return;
         }
         if (card.HealFromDie)
         {
-            RollWithRelikario(p, DiePurpose.ExtraLife, die =>
-            {
-                var amount = die switch { 1 => 1, 2 => 2, 6 => 4, _ => 3 };
-                var healed = Heal(p, amount);
-                State.LastCombat = $"{p.Name} · Vida Extra · D6 = {die} · Recupera {healed} vida(s)";
-                Log($"{p.Name} resuelve Vida Extra: D6 = {die}, gana {amount} vida(s); recupera {healed} hasta su máximo de {p.MaxHealth}.");
-            });
+            RollWithRelikario(p, DiePurpose.ExtraLife, new DieEffect { Purpose = DiePurpose.ExtraLife, Actor = Array.IndexOf(State.Players, p) });
             return;
         }
         if (card.Heal > 0) Heal(p, card.Heal);
@@ -217,7 +230,7 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void PlaceInExchange(PlayerState p, string id, Action? completed = null)
+    private void PlaceInExchange(PlayerState p, string id, EngineContinuation? completed = null)
     {
         p.Exchange.Add(id);
         Log($"{p.Name} coloca {CardCatalog.Get(id).Name} en canje ({p.Exchange.Count}/2).");
@@ -231,7 +244,7 @@ public sealed partial class GameEngine
             Log($"{p.Name} completa el canje y obtiene su bonus.");
             RefillBonus(p, completed);
         }
-        else completed?.Invoke();
+        else Continue(completed);
     }
 
     public CommandResult Advance(int actor)
@@ -306,51 +319,38 @@ public sealed partial class GameEngine
         }
     }
 
-    private void DrawCards(PlayerState p, int count, Action? completed = null)
+    private void DrawCards(PlayerState p, int count, EngineContinuation? completed = null)
     {
         if (State.IsOver) return;
-        if (count <= 0) { completed?.Invoke(); return; }
-        DrawOne(p, () => DrawCards(p, count - 1, completed));
+        if (count <= 0) { Continue(completed); return; }
+        DrawOne(p, new EngineContinuation { Kind = ContinuationKind.Draw, Actor = Array.IndexOf(State.Players, p), Count = count - 1, Next = completed });
     }
-
-    private void DrawOne(PlayerState p, Action? completed = null) => MoveTopCard(p, id =>
-    {
-        p.Hand.Add(id);
-        CardDrawn?.Invoke(Array.IndexOf(State.Players, p), p.Hand.Count - 1);
-    }, completed);
-
-    private void MoveTopCard(PlayerState p, Action<string> receive, Action? completed = null)
+    private void DrawOne(PlayerState p, EngineContinuation? completed = null) => MoveTopCard(p, false, completed);
+    private void MoveTopCard(PlayerState p, bool bonus, EngineContinuation? completed = null)
     {
         if (State.IsOver) return;
-        void Move()
+        var actor = Array.IndexOf(State.Players, p);
+        if (p.Deck.Count == 0)
         {
-            if (State.IsOver) return;
-            receive(p.Deck[0]); p.Deck.RemoveAt(0);
-            if (p.Deck.Count == 0 && State.Phase != Phase.Preparation) Exhaust(p, completed);
-            else completed?.Invoke();
+            Exhaust(p, new EngineContinuation { Kind = bonus ? ContinuationKind.MoveBonus : ContinuationKind.MoveHand, Actor = actor, Next = completed });
+            return;
         }
-        if (p.Deck.Count == 0) Exhaust(p, Move);
-        else Move();
+        var id = p.Deck[0];
+        if (bonus) { p.Bonus = id; BonusPlaced?.Invoke(actor, id); }
+        else { p.Hand.Add(id); CardDrawn?.Invoke(actor, p.Hand.Count - 1); }
+        p.Deck.RemoveAt(0);
+        if (p.Deck.Count == 0 && State.Phase != Phase.Preparation) Exhaust(p, completed);
+        else Continue(completed);
     }
-
-    private void Exhaust(PlayerState p, Action? completed = null)
+    private void Exhaust(PlayerState p, EngineContinuation? completed = null)
     {
         if (!p.Recycled && p.Memory.Count > 0)
         {
             p.Recycled = true;
-            RollWithRelikario(p, DiePurpose.Recycling, rolled =>
-            {
-                var count = Math.Min(rolled, p.Memory.Count);
-                Shuffle(p.Memory);
-                p.Deck.AddRange(p.Memory.Take(count)); p.Memory.RemoveRange(0, count);
-                if (count > 0) CardsReturnedToDeck?.Invoke(Array.IndexOf(State.Players, p));
-                Log($"{p.Name} agota su mazo: D6 = {rolled}. Recicla {count} carta(s) al azar (demo).");
-                completed?.Invoke();
-            });
+            RollWithRelikario(p, DiePurpose.Recycling, new DieEffect { Purpose = DiePurpose.Recycling, Actor = Array.IndexOf(State.Players, p), Next = completed });
             return;
         }
-        var target = Array.IndexOf(State.Players, p);
-        DealDamage(target, 2);
+        var target = Array.IndexOf(State.Players, p); DealDamage(target, 2);
         if (State.IsOver) return;
         var a = State.Players[0].Health; var b = State.Players[1].Health;
         Finish(a == b ? -1 : a > b ? 0 : 1,

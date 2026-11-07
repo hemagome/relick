@@ -41,11 +41,7 @@ public sealed partial class GameEngine
         var p = State.Players[pending.Attacker];
         var skill = CardCatalog.Get(pending.SkillId);
         if (skill.Id == CardCatalog.Magnet.Id && die is 4 or 5)
-            RollWithRelikario(p, DiePurpose.MagnetDamage, normal =>
-            {
-                Log($"{p.Name} lanza D6 por el daño normal de Magnet Shuffle: {normal}.");
-                ResolveAttackResult(pending.Attacker, skill, die, normal, rerolled);
-            });
+            RollWithRelikario(p, DiePurpose.MagnetDamage, new DieEffect { Purpose = DiePurpose.MagnetDamage, Actor = pending.Attacker, SkillId = skill.Id, AttackDie = die, Rerolled = rerolled });
         else ResolveAttackResult(pending.Attacker, skill, die, skill.NormalDamage, rerolled);
     }
 

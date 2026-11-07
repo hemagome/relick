@@ -69,10 +69,8 @@ public sealed partial class GameEngine
     {
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
         SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
-        var frame = new ActivationFrame(actor, card.Id, card.ActionCost, card.PrCost, State.Phase);
-        frame.Parent = _activeActivation;
-        frame.Resume = () => { _activeActivation = frame.Parent; ResolveRerollComboEffect(actor, card); };
-        frame.Cancel = () => { State.Phase = frame.ResumePhase; _activeActivation = frame.Parent; };
+        var frame = new EngineActivation(actor, card.Id, card.ActionCost, card.PrCost, State.Phase)
+        { Kind = ActivationKind.Reroll, Parent = _activeActivation };
         BeginActivation(frame);
         return CommandResult.Ok();
     }
@@ -80,19 +78,15 @@ public sealed partial class GameEngine
     {
         var p = State.Players[actor];
         var phase = State.Phase; var attack = State.PendingAttackRoll; var effect = State.PendingDieRoll;
-        var continuation = _pendingDieContinuation;
+        var continuation = _pendingDieEffect;
         var die = Roll("Re-lanza · COMBO");
         if (attack != null) attack = attack with { Die = die, Modified = true, WasRerolled = true };
         if (effect != null) effect = effect with { Die = die, Modified = true, WasRerolled = true };
-        State.PendingAttackRoll = null; State.PendingDieRoll = null; _pendingDieContinuation = null;
+        State.PendingAttackRoll = null; State.PendingDieRoll = null; _pendingDieEffect = null;
         State.Phase = attack != null ? Phase.Combat : effect!.ResumePhase;
-        void Resume()
-        {
-            State.Phase = phase; State.PendingAttackRoll = attack; State.PendingDieRoll = effect; _pendingDieContinuation = continuation;
-            if (attack != null) { State.LastAttackDie = die; if (!CanRespondToAttackDie()) FinishAttackRoll(die, true); }
-            else if (!CanRespondToEffectDie()) ResolveDieReroll(actor, false);
-        }
+        var resume = new EngineContinuation { Kind = ContinuationKind.ResumeCombo, Actor = actor, Phase = phase,
+            Attack = attack, Die = effect, SavedDieEffect = continuation };
         Log($"{p.Name} activa {card.Name}: dado {die}." + (die <= 3 ? " Roba una carta." : ""));
-        if (die <= 3) DrawCards(p, 1, Resume); else Resume();
+        if (die <= 3) DrawCards(p, 1, resume); else Continue(resume);
     }
 }

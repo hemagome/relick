@@ -538,13 +538,13 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)
 {
     try { run(); Console.WriteLine($"PASS {name}"); }
-    catch (Exception e) { failures++; Console.WriteLine($"FAIL {name}: {e.Message}"); }
+    catch (Exception e) { failures++; Console.WriteLine($"FAIL {name}: {e}"); }
 }
 Console.WriteLine($"{tests.Length - failures}/{tests.Length} comprobaciones correctas.");
 return failures == 0 ? 0 : 1;

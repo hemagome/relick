@@ -14,19 +14,7 @@ public sealed partial class GameEngine
         var id = p.Hand[handIndex];
         p.RemoveHandCard(handIndex); State.ActionsLeft--;
         var memoryIndex = p.Memory.Count; p.Memory.Add(id);
-        var frame = new ActivationFrame(actor, id, 1, 0, State.Phase);
-        frame.Resume = () =>
-        {
-            p.Memory.RemoveAt(memoryIndex);
-            if (p.Equipment != null) DestroyEquipment(p);
-            p.Equipment = id;
-            Log($"{p.Name} pone {CardCatalog.Get(id).Name} en su zona de equipo (1 acción).");
-        };
-        frame.Cancel = () =>
-        {
-            NotifyPileMove(p, id, CardZone.Activation);
-            State.Phase = frame.ResumePhase;
-        };
+        var frame = new EngineActivation(actor, id, 1, 0, State.Phase) { Kind = ActivationKind.Equipment, MemoryIndex = memoryIndex };
         BeginActivation(frame);
         return CommandResult.Ok();
     }
