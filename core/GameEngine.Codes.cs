@@ -1,10 +1,30 @@
 namespace Relick.Core;
-public enum FieldZone { Equipment, Attached, Bonus, Exchange }
+public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand }
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
+    public bool IsZoneDestruction => State.Phase == Phase.DestroyChoice && _activeActivation is { Kind: ActivationKind.Code } frame &&
+        CardCatalog.Get(frame.CardId).DestroyChosenZone;
+
+    private IEnumerable<FieldTarget> TimeBombTargets(int excludedOwner = -1, int excludedHand = -1)
+    {
+        for (var owner = 0; owner < State.Players.Length; owner++)
+        {
+            var p = State.Players[owner];
+            if (p.Equipment != null) yield return new(owner, FieldZone.Equipment, -1, p.Equipment);
+            if (p.Bonus != null) yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
+            if (p.Hand.Count > (owner == excludedOwner && excludedHand >= 0 ? 1 : 0))
+                yield return new(owner, FieldZone.Hand, -1, "");
+        }
+    }
+
     public IEnumerable<FieldTarget> DestructionTargets()
     {
+        if (State.Phase == Phase.DestroyChoice && IsZoneDestruction)
+        {
+            foreach (var target in TimeBombTargets()) yield return target;
+            yield break;
+        }
         for (var owner = 0; owner < 2; owner++)
         {
             var p = State.Players[owner];
@@ -18,10 +38,12 @@ public sealed partial class GameEngine
                     yield return new(owner, FieldZone.Exchange, i, p.Exchange[i]);
         }
     }
-    private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0)
+    private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0, int excludedHand = -1)
     {
         if (p.Relikia < card.PrCost + extraCost) return $"Necesitas {card.PrCost + extraCost} PR.";
         if (card.DestroyNonSkill && !DestructionTargets().Any()) return "No hay no-habilidades en el campo para destruir.";
+        if (card.DestroyChosenZone && !TimeBombTargets(Array.IndexOf(State.Players, p), excludedHand).Any())
+            return "No hay cartas en equipos, manos o Bonus para destruir.";
         if (card.CancelActivation && !CanPlayLoadError(Array.IndexOf(State.Players, p))) return "No hay una activación que puedas anular.";
         if (card.RerollOwnDie && !OwnDiePending(Array.IndexOf(State.Players, p))) return "Requiere un dado propio pendiente.";
         return null;
@@ -34,7 +56,7 @@ public sealed partial class GameEngine
         var card = CardCatalog.Get(p.Hand[handIndex]);
         if (!card.IsCombo) { var error = ValidateTurn(actor, Phase.Actions); if (error != null) return error; }
         if (p.ActionsLeft < card.ActionCost) return "No quedan acciones disponibles.";
-        return CodeEffectUnavailable(p, card);
+        return CodeEffectUnavailable(p, card, excludedHand: handIndex);
     }
     public CommandResult ResolveDestruction(int actor, int owner, bool equipment, int index = -1)
         => ResolveDestruction(actor, owner, equipment ? FieldZone.Equipment : FieldZone.Attached, index);
@@ -42,10 +64,19 @@ public sealed partial class GameEngine
     public CommandResult ResolveDestruction(int actor, int owner, FieldZone zone, int index = -1)
     {
         if (State.Phase != Phase.DestroyChoice || State.DestroyActor != actor) return CommandResult.Fail("No te corresponde elegir objetivo.");
+        if (IsZoneDestruction && index != -1) return CommandResult.Fail("Elige una zona; la carta de la mano se escoge al azar.");
         var target = DestructionTargets().FirstOrDefault(t => t.Owner == owner && t.Zone == zone && (zone is FieldZone.Equipment or FieldZone.Bonus || t.Index == index));
-        if (target == null) return CommandResult.Fail("Elige una no-habilidad del campo.");
+        if (target == null) return CommandResult.Fail("Elige un objetivo válido para esta destrucción.");
         var p = State.Players[owner];
-        if (zone != FieldZone.Equipment)
+        var codeName = IsZoneDestruction ? CardCatalog.Get(_activeActivation!.CardId).Name : "Huevo Azul Explosivo";
+        var id = target.CardId;
+        if (zone == FieldZone.Hand)
+        {
+            index = _random.Next(p.Hand.Count);
+            id = p.Hand[index];
+            SendHandToMemory(p, index);
+        }
+        else if (zone != FieldZone.Equipment)
             NotifyPileMove(p, target.CardId, zone switch
             {
                 FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, _ => CardZone.Attached
@@ -57,7 +88,7 @@ public sealed partial class GameEngine
             case FieldZone.Exchange: p.Exchange.RemoveAt(index); p.Memory.Add(target.CardId); break;
             case FieldZone.Bonus: p.Bonus = null; p.Memory.Add(target.CardId); break;
         }
-        Log($"{State.Players[actor].Name} destruye {CardCatalog.Get(target.CardId).Name} de {p.Name} con Huevo Azul Explosivo.");
+        Log($"{State.Players[actor].Name} destruye {CardCatalog.Get(id).Name} de {p.Name} con {codeName}.");
         State.DestroyActor = null; State.Phase = Phase.Actions; CompleteActivationIfFinished();
         if (zone == FieldZone.Bonus) RefillBonus(p);
         return CommandResult.Ok();

@@ -35,6 +35,7 @@ public partial class OnlineLobby
             await online.CheckVisualCues(DuelSnapshot.For(game, 1, 8));
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
+            await online.CheckTimeBombLayout();
             await online.CheckPreparationLayout();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();

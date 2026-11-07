@@ -7,6 +7,35 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckTimeBombLayout()
+    {
+        var game = new GameEngine(43); game.State.Phase = Phase.Actions; game.State.CurrentPlayer = 0;
+        foreach (var player in game.State.Players)
+        {
+            player.Hand.Clear(); player.Hand.Add(CardCatalog.Attack.Id);
+            player.Equipment = CardCatalog.DiamondHelmet.Id; player.Bonus = CardCatalog.Magnet.Id; player.ActionsLeft = 2;
+        }
+        game.State.Active.Hand.Insert(0, CardCatalog.TimeBomb.Id);
+        if (!game.PlayCode(0, 0).Success) throw new Exception("No se prepara la elección de Bomba.");
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        foreach (var seat in new[] { 0, 1 })
+        {
+            GetWindow().ContentScaleSize = size;
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var snapshot = DuelSnapshot.For(game, seat, 11); ResetAnimations(); PresentTestSnapshot(snapshot);
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var root = (Control)FindChild("DuelInterface", true, false);
+            var minimum = root.GetCombinedMinimumSize();
+            if (minimum.X > root.Size.X + 1 || minimum.Y > root.Size.Y + 1)
+                throw new Exception($"Bomba desborda {size}: {minimum}.");
+            if (snapshot.Options.Count(o => o.Move.Kind == DuelMoveKind.Destroy) != (seat == 0 ? 6 : 0))
+                throw new Exception("Se pierden zonas de Bomba o se ofrecen al adversario.");
+            if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                throw new Exception("Bomba revela la mano rival en la interfaz.");
+        }
+        GD.Print("PVP_BOMB_LAYOUT_PASS · seis zonas, cuatro tamaños, ambos asientos y mano rival oculta.");
+    }
+
     internal async Task CheckVisualCues(DuelSnapshot snapshot)
     {
         ResetAnimations(); PresentTestSnapshot(snapshot);

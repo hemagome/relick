@@ -100,7 +100,17 @@ public sealed partial class GameEngine
 
     private void ResumeActivation(EngineActivation frame)
     {
-        if (frame.ResumeMode == ActivationResume.RestorePhase) { State.Phase = frame.ResumePhase; return; }
+        if (frame.ResumeMode == ActivationResume.RestorePhase)
+        {
+            State.Phase = frame.ResumePhase;
+            var card = CardCatalog.Get(frame.CardId);
+            if (State.Phase == Phase.DestroyChoice && card.DestroyChosenZone && !TimeBombTargets().Any())
+            {
+                State.DestroyActor = null; State.Phase = frame.CancelPhase ?? Phase.Actions;
+                ResolveCode(State.Players[frame.Actor], card);
+            }
+            return;
+        }
         var p = State.Players[frame.Actor];
         switch (frame.Kind)
         {

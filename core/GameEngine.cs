@@ -183,7 +183,12 @@ public sealed partial class GameEngine
 
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
-        if (card.DestroyNonSkill)
+        if (card.DestroyChosenZone && !TimeBombTargets().Any())
+        {
+            Log($"{card.Name} se resuelve sin objetivos disponibles.");
+            return;
+        }
+        if (card.DestroyNonSkill || card.DestroyChosenZone)
         {
             State.DestroyActor = Array.IndexOf(State.Players, p); State.Phase = Phase.DestroyChoice;
             return;

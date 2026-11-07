@@ -115,3 +115,10 @@ Es equipo normal: resta dos a cada daño, con mínimo cero. Un 1 en cualquier ti
 de ataque, también en un relanzamiento, destruye todos los cascos equipados y los
 envía a memoria de sus dueños. Unos en otros dados no lo destruyen.
 El mazo de prueba conserva 20 cartas: una copia de Casco sustituye una de Colgante.
+
+`time-bomb-clean.png` restaura Bomba de Tiempo (B04-9/15) a 697×987 con `image_gen`,
+conservando texto, ilustración y crédito del autor. Los prompts están en `time-bomb-prompt.txt`.
+Es código de tipo Objeto: elige equipo, Bonus o mano al azar, de cualquiera de los jugadores.
+La carta destruida va a memoria de su dueño; el Bonus se repone. La selección aleatoria se
+resuelve en el servidor y no enumera cartas de la mano rival. Respeta Caja de Cartón, Error
+de Carga y Relikia. Una copia sustituye una de Aumento de PR, manteniendo las 20 cartas.

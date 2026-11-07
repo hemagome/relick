@@ -92,6 +92,18 @@ public static class DuelOptions
                 case Phase.DestroyChoice:
                     foreach (var t in game.DestructionTargets())
                     {
+                        if (game.IsZoneDestruction)
+                        {
+                            var own = t.Owner == actor;
+                            var place = t.Zone switch
+                            {
+                                FieldZone.Hand => own ? "Tu mano al azar" : "Mano rival al azar",
+                                FieldZone.Equipment => own ? "Tu equipo" : "Equipo rival",
+                                _ => own ? "Tu Bonus" : "Bonus rival"
+                            };
+                            Add(DuelMoveKind.Destroy, place, -1, (int)t.Zone, t.Owner);
+                            continue;
+                        }
                         var zone = t.Zone switch { FieldZone.Equipment => "equipo", FieldZone.Attached => "sobre Yuno", FieldZone.Bonus => "Bonus", _ => "canje" };
                         Add(DuelMoveKind.Destroy, $"Destruir {Card(t.CardId)} de {s.Players[t.Owner].Name} · {zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : ""), t.Index, (int)t.Zone, t.Owner);
                     }
