@@ -90,6 +90,8 @@ static class EggComboTests
                 rng.EnqueueDie(2); Check(g.ResolveMagnet(1, true).Success && g.State.DecisionPlayer == 0);
                 rng.EnqueueDie(4); Check(g.PlayCode(0, 0).Success && p.ActionsLeft == 1 && rival.ActionsLeft == 2);
                 rng.EnqueueDie(6); Check(g.PlayCode(0, 0).Success && p.ActionsLeft == 0 && g.State.CurrentPlayer == 1);
+                Check(g.State.Phase == Phase.RecycleChoice);
+                Check(g.ResolveRecycling(0, Enumerable.Range(0, g.RecyclingCount)).Success);
                 Check(g.Advance(1).Success && rival.ActionsLeft == 2 && p.ActionsLeft == 0 && g.Advance(1).Success && p.ActionsLeft == 2 && rival.ActionsLeft == 2);
             }
             finally { catalogue.Remove("test-paid-combo"); }
@@ -99,7 +101,8 @@ static class EggComboTests
             var (g, rng) = Fixture(); var p = g.State.Active; p.Relikario = RelikarioCatalog.YunoLv2; p.Hand.Add("reroll"); p.Deck.Clear(); p.Memory.AddRange(Enumerable.Repeat("attack", 5));
             rng.EnqueueDie(1); Check(g.Attack(0, 0, 0).Success); rng.EnqueueDie(2); rng.EnqueueDie(4);
             Check(g.PlayCode(0, 0).Success && g.State.PendingDieRoll?.Purpose == DiePurpose.Recycling && g.State.PendingAttackRoll == null);
-            Check(g.ResolveDieReroll(0, false).Success && g.State.PendingAttackRoll?.Die == 2 && p.Hand.Count == 1);
+            Check(g.ResolveDieReroll(0, false).Success && g.State.Phase == Phase.RecycleChoice);
+            Check(g.ResolveRecycling(0, [0, 1, 2, 3]).Success && g.State.PendingAttackRoll?.Die == 2 && p.Hand.Count == 1);
             Check(g.ResolveAttackReroll(0, false).Success && g.State.Phase == Phase.Combat && g.State.PendingDieRoll == null);
         })
     };

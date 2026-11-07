@@ -25,7 +25,8 @@ static class SenshuniTests
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.AddRange(Enumerable.Repeat("attack", 10));
             Check(g.PlayCode(0, 0).Success && p.Hand.Count == 12);
             var (last, rng) = Fixture(); p = last.State.Active; p.Deck.Clear(); p.Deck.Add("attack"); rng.EnqueueDie(1);
-            var count = Count(last); Check(last.PlayCode(0, 0).Success && p.Recycled && last.State.IsOver && p.Hand.Count == 2 && p.Health == 6 && Count(last) == count);
+            var count = Count(last); Check(last.PlayCode(0, 0).Success && last.State.Phase == Phase.RecycleChoice);
+            Check(last.ResolveRecycling(0, [0]).Success && p.Recycled && last.State.IsOver && p.Hand.Count == 2 && p.Health == 6 && Count(last) == count);
         }),
         ("Senshuni se puede activar por Relikia y se corrompe antes de robar", () =>
         {

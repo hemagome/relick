@@ -67,6 +67,10 @@ static class DuelTests
                 var result = choice.Move.Apply(game, actor);
                 if (!result.Success) throw new Exception($"{choice.Label}: {result.Message}");
                 entries.Add(new DuelEntry { Actor = actor, Move = choice.Move, RandomValues = resumed.Random.Finish() });
+                var saved = GameEngine.FromSnapshot(game.SaveSnapshot(), resumed.Random);
+                if (saved.SaveSnapshot() != game.SaveSnapshot() ||
+                    JsonSerializer.Serialize(DuelOptions.For(saved, saved.State.DecisionPlayer)) != JsonSerializer.Serialize(DuelOptions.For(game, game.State.DecisionPlayer)))
+                    throw new Exception($"Recuperación diferente en {game.State.Phase}, seed {seed}.");
                 var stored = entries.Select(e => JsonSerializer.Deserialize(JsonSerializer.Serialize(e, DuelJson.Default.DuelEntry), DuelJson.Default.DuelEntry)!).ToArray();
                 resumed = DuelReplay.Restore(opening, stored);
                 if (JsonSerializer.Serialize(game.State) != JsonSerializer.Serialize(resumed.Game.State))
@@ -77,7 +81,7 @@ static class DuelTests
             }
             if (!resumed.Game.State.IsOver) throw new Exception("El duelo reconstruido no termina.");
         }
-        foreach (var phase in new[] { Phase.AttackRerollChoice, Phase.DieRerollChoice, Phase.ErrorResponse, Phase.PointsChoice, Phase.DestroyChoice })
+        foreach (var phase in new[] { Phase.AttackRerollChoice, Phase.DieRerollChoice, Phase.ErrorResponse, Phase.PointsChoice, Phase.DestroyChoice, Phase.RecycleChoice })
             if (!phases.Contains(phase)) throw new Exception("No se ejercitó una continuación de " + phase);
     }
 

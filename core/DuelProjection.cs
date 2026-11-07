@@ -46,7 +46,7 @@ public sealed class DuelSnapshot
             Revision = revision, MySeat = seat, CurrentPlayer = s.CurrentPlayer, DecisionPlayer = s.DecisionPlayer,
             Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.LastDie,
             Stage = s.Phase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice ? Phase.Actions :
-                s.Phase == Phase.DieRerollChoice ? s.PendingDieRoll!.ResumePhase : s.Phase == Phase.Discard ? s.DiscardResumePhase :
+                s.Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? s.PendingDieRoll!.ResumePhase : s.Phase == Phase.Discard ? s.DiscardResumePhase :
                 s.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice ? Phase.Combat : s.Phase,
             DieCaption = game.CurrentDieCaption,
             LastCombat = s.LastCombat,

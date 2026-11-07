@@ -178,9 +178,9 @@ public static class ArenaPresentation
     }
 
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
-        Action<int> pressed, bool preparing, bool shortScreen)
+        Action<int> pressed, bool preparing, bool shortScreen, string title = "TU MANO")
     {
-        parent.AddChild(Text($"TU MANO  ·  {hand.Count} CARTAS", 10));
+        parent.AddChild(Text($"{title}  ·  {hand.Count} CARTAS", 10));
         var scroll = new ScrollContainer { Name = "HandScroll", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             CustomMinimumSize = new(0, shortScreen ? 120 : 196), VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Auto, ScrollDeadzone = 12 };

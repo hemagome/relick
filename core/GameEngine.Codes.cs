@@ -118,6 +118,13 @@ public sealed partial class GameEngine
         var resume = new EngineContinuation { Kind = ContinuationKind.ResumeCombo, Actor = actor, Phase = phase,
             Attack = attack, Die = effect, SavedDieEffect = continuation };
         Log($"{p.Name} activa {card.Name}: dado {die}." + (die <= 3 ? " Roba una carta." : ""));
+        if (die <= 3 && effect?.Purpose == DiePurpose.Recycling)
+        {
+            // The first recycling has not refilled the empty deck yet. Queue the bonus
+            // draw after that selection instead of treating this same empty deck as a second depletion.
+            continuation!.Next = new EngineContinuation { Kind = ContinuationKind.Draw, Actor = actor, Count = 1, Next = continuation.Next };
+            Continue(resume); return;
+        }
         if (die <= 3) DrawCards(p, 1, resume); else Continue(resume);
     }
 }

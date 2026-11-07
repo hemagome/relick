@@ -110,7 +110,7 @@ dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --restart-prepare http
 dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --restart-verify http://127.0.0.1:3100 relick-dev /tmp/relick-restart-check.json
 ```
 
-Las pruebas de regresión incluyen 24 duelos de referencia y tres casos adicionales de efectos anidados, registrados antes de cambiar el motor. Comparan el estado después de cada comando y después de guardar/restaurar; cubren también cancelaciones de códigos de memoria y Re-lanza durante reciclaje.
+Las pruebas de regresión incluyen 24 duelos de referencia y tres casos adicionales de efectos anidados, registrados antes de cambiar el motor. Los registros antiguos se comparan hasta su primer agotamiento: su reciclaje aleatorio fue sustituido por selección manual. Los duelos completos con las reglas actuales comparan cada estado y sus opciones después de guardar/restaurar y de reproducir su historial; incluyen decisiones de reciclaje y efectos anidados.
 
 ## Validación final
 

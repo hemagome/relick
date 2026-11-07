@@ -230,7 +230,9 @@ try
         var choice = candidates.FirstOrDefault(p => p.Option.RequiredDiscards > 0);
         if (choice.Option == null) choice = candidates[0];
         var errors = actor.Errors.Count;
-        actor.Connection.Reducers.PlayDuelV2(nextCode, before.Revision, Guid.NewGuid().ToString("N"), choice.Index, Enumerable.Range(0, choice.Option.RequiredDiscards).ToList());
+        var selectionStart = choice.Option.Move.Kind == DuelMoveKind.Recycle
+            ? before.Players[before.MySeat].Memory.Length - choice.Option.RequiredDiscards : 0;
+        actor.Connection.Reducers.PlayDuelV2(nextCode, before.Revision, Guid.NewGuid().ToString("N"), choice.Index, Enumerable.Range(selectionStart, choice.Option.RequiredDiscards).ToList());
         Until(() =>
         {
             if (actor.Errors.Count > errors) throw new Exception(choice.Option.Label + ": " + actor.Errors.Last());
@@ -279,6 +281,61 @@ try
     Until(() => service.Duel?.Winner == 0 && b.Duel?.Winner == 0);
     Check(b.Duel.Options.Count == 0, "Abandonar concede la victoria al rival y termina el duelo");
     service.Leave(); Until(() => service.Room == null && b.Room == null);
+    service.Create("Agotamiento"); Until(() => service.Room != null);
+    var recycleCode = service.Room!.Code;
+    b.Connection.Reducers.JoinRoom(recycleCode, "Memoria");
+    Until(() => b.InitialSkills?.Selected == false && service.InitialSkills?.Selected == false);
+    b.Connection.Reducers.ChooseInitialSkill(recycleCode, "magnet-shuffle", Guid.NewGuid().ToString("N")); service.ChooseInitialSkill("magnet-shuffle");
+    Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
+    service.Confirm([]); b.Connection.Reducers.ConfirmPreparation(recycleCode, [], Guid.NewGuid().ToString("N"));
+    Until(() => fighterA.Duel != null && b.Duel != null);
+    var recyclingChoices = 0; var passiveSteps = 0;
+    while (fighterA.Duel!.Winner == null && passiveSteps++ < 220)
+    {
+        var actor = fighterA.Duel.DecisionPlayer == 0 ? fighterA : b;
+        var before = actor.Duel!;
+        var options = before.Options.Select((o, i) => (Option: o, Index: i)).Where(p => p.Option.Move.Kind != DuelMoveKind.Concede).ToArray();
+        var choice = options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Recycle);
+        var isRecycling = choice.Option != null;
+        if (isRecycling && recyclingChoices == 0)
+        {
+            actor.Connection.Disconnect(); var resumed = Connect(actor.Token);
+            if (actor == fighterA) fighterA = resumed; else b = resumed;
+            actor = resumed; Until(() => actor.Duel?.Revision == before.Revision);
+            Check(actor.Duel!.Phase == Phase.RecycleChoice && actor.Duel.Players[before.MySeat].Memory.SequenceEqual(before.Players[before.MySeat].Memory),
+                "Reconectar conserva el dado y la memoria durante la elección de reciclaje");
+            Rejected(actor, () => actor.Connection.Reducers.PlayDuelV2(recycleCode, before.Revision, Guid.NewGuid().ToString("N"), choice.Index, []),
+                "El servidor exige la cantidad exacta de cartas para reciclar");
+        }
+        if (!isRecycling)
+        {
+            choice = before.Phase == Phase.DieRerollChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.EffectDie) : before.Players[before.MySeat].Memory.Length < 6
+                ? options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Exchange) : default;
+            if (choice.Option == null) choice = options.First(o => o.Option.Move.Kind == DuelMoveKind.Advance);
+        }
+        var selected = isRecycling ? Enumerable.Range(before.Players[before.MySeat].Memory.Length - choice.Option!.RequiredDiscards,
+            choice.Option.RequiredDiscards).ToList() : new List<int>();
+        var errors = actor.Errors.Count;
+        actor.Connection.Reducers.PlayDuelV2(recycleCode, before.Revision, Guid.NewGuid().ToString("N"), choice.Index, selected);
+        Until(() =>
+        {
+            if (actor.Errors.Count > errors) throw new Exception(actor.Errors.Last());
+            return fighterA.Duel?.Revision == before.Revision + 1 && b.Duel?.Revision == before.Revision + 1;
+        });
+        if (isRecycling)
+        {
+            recyclingChoices++;
+            var remaining = before.Players[before.MySeat].Memory.Where((_, i) => !selected.Contains(i));
+            if (!actor.Duel!.Players[before.MySeat].Memory.SequenceEqual(remaining)) throw new Exception("El servidor recicló cartas que no fueron elegidas.");
+            Console.WriteLine($"RECYCLE_TRANSPORT · D6 {before.Die}, {selected.Count} cartas elegidas y memoria restante verificada.");
+        }
+    }
+    Check(recyclingChoices > 0, "El duelo remoto ejercita la selección manual de memoria");
+    var resultView = fighterA.Duel!;
+    Check(resultView.Winner != null && resultView.Players.Select(p => p.Health).Order().SequenceEqual(new[] { 6, 8 }) &&
+        resultView.Players[resultView.Winner.Value].Health == 8 && b.Duel!.Winner == resultView.Winner,
+        "El segundo agotamiento resta dos vidas y gana quien conserva más vida");
+    service.Leave(); Until(() => service.Room == null && b.Room == null && fighterA.Duel == null);
     Console.WriteLine("Todas las comprobaciones PvP pasaron.");
     return 0;
 }

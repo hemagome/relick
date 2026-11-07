@@ -44,6 +44,9 @@ public partial class OnlineArena : Control
     public bool IsAnimating => _die.IsBusy || _flights.Count > 0 || _flight != null;
     private bool Compact => ArenaViewport.Compact(this);
     private bool Short => ArenaViewport.Short(this);
+    private bool ChoosingRecycling => _snapshot is { Phase: Phase.RecycleChoice } s && s.DecisionPlayer == s.MySeat;
+    private IReadOnlyList<string?> SelectableCards => ChoosingRecycling
+        ? _snapshot!.Players[_snapshot.MySeat].Memory : _snapshot!.Players[_snapshot.MySeat].Hand;
 
     public override void _Ready()
     {
@@ -187,7 +190,8 @@ public partial class OnlineArena : Control
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 8); _moves.AddThemeConstantOverride("v_separation", 6); movesScroll.AddChild(_moves);
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(body.Controls, _availableInitialSkills, _initialSkillCandidate,
-            SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(body.Controls, relativePlayers[0].Hand.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short);
+            SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(body.Controls, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
+                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : "TU MANO");
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
@@ -241,11 +245,13 @@ public partial class OnlineArena : Control
         if (_preparing) { BuildPreparationMoves(); return; }
         var defense = s.Options.Any(o => o.RequiredDiscards > 0);
         _selection.Text = s.Winner != null ? "El duelo terminó." : _selected.Count > 0
-            ? string.Join(" · ", _selected.Select(i => CardCatalog.Get(s.Players[s.MySeat].Hand[i]!).Name))
-            : s.DecisionPlayer == s.MySeat ? "Toca una carta o una habilidad y elige tu jugada." : "Esperando al rival. Puedes responder si tienes un COMBO disponible.";
+            ? ChoosingRecycling ? $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas seleccionadas."
+                : string.Join(" · ", _selected.Select(i => CardCatalog.Get(SelectableCards[i]!).Name))
+            : ChoosingRecycling ? "Elige las cartas de tu memoria que volverán al mazo."
+                : s.DecisionPlayer == s.MySeat ? "Toca una carta o una habilidad y elige tu jugada." : "Esperando al rival. Puedes responder si tienes un COMBO disponible.";
         if (_selected.Count == 1)
         {
-            var card = s.Players[s.MySeat].Hand[_selected.Single()]!;
+            var card = SelectableCards[_selected.Single()]!;
             ArenaPresentation.Button(_moves, "Ver carta", () => ShowCards("Tu carta", [card]));
         }
         if (_selectedSkill < s.Players[s.MySeat].Skills.Length)
@@ -316,6 +322,6 @@ public partial class OnlineArena : Control
     {
         Phase.Preparation => "PREPARACIÓN", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
-        Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", _ => "RESOLVER EFECTO"
+        Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", Phase.RecycleChoice => "RECICLAJE", _ => "RESOLVER EFECTO"
     };
 }

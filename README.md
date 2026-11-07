@@ -26,6 +26,7 @@ La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RE
 - Trece definiciones aportadas: Ataque, Magnet Shuffle, Destiny Shuffle, Colgante de la Suerte, Senshuni, Caja de Cartón, Vida Extra, Aumento de Relick Points, Huevo Azul Explosivo, Re-lanza, Error de Carga, Casco de Diamantes y Bomba de Tiempo.
 - Mazos de desarrollo simétricos de 20 cartas, cuatro espacios de habilidad con costes 0/300/500/1000 PR, Memoria, Corruptas, Bonus, canje, respuestas, COMBO y efectos de Relikia.
 - Selección de habilidad inicial, mulligan y combate en la misma arena; manos privadas, reintentos idempotentes y recuperación de decisiones pendientes.
+- Primer agotamiento: D6, selección de cartas de la memoria y barajado. Segundo: dos vidas inevitables y comparación de vidas; igualdad es empate.
 - Interfaz horizontal adaptable a PC, tablet y teléfono. La exportación y validación en hardware Android/iOS siguen pendientes.
 - Servidor autoritativo: el cliente presenta información autorizada y envía intenciones; no decide dados, daño ni legalidad del duelo.
 

@@ -81,7 +81,8 @@ static class EvolutionTests
             Check(g.State.Phase == Phase.DieRerollChoice && p.Hand.Count == 1 && p.Deck.Count == 0);
             var before = Snapshot(g); Check(!g.ResolveDieReroll(1, true).Success && !g.Advance(0).Success && before == Snapshot(g));
             rng.EnqueueDie(4); Check(g.ResolveDieReroll(0, true).Success && p.Hand.Count == 1);
-            Check(g.ResolveDieReroll(0, false).Success && p.Hand.Count == 2 && p.Deck.Count == 3 && g.State.Phase == Phase.Actions && Count(g) == count);
+            Check(g.ResolveDieReroll(0, false).Success && g.State.Phase == Phase.RecycleChoice && g.RecyclingCount == 4);
+            Check(g.ResolveRecycling(0, [0, 1, 2, 3]).Success && p.Hand.Count == 2 && p.Deck.Count == 3 && g.State.Phase == Phase.Actions && Count(g) == count);
         }),
         ("Yuno Lv 2: Relikia usa resultado final y encadena reciclaje sin perder elecciones", () =>
         {
@@ -92,7 +93,8 @@ static class EvolutionTests
             var (second, random) = Evolved(); p = second.State.Active; second.State.Phase = Phase.Actions; second.State.ActionsLeft = 2; p.Relikia = 1000;
             p.Deck.Clear(); p.Deck.Add("attack"); p.Memory.AddRange(Enumerable.Repeat("test-recover", 5)); random.EnqueueDie(2);
             Check(second.UseRelikiaEffect(0, RelikiaEffect.DrawAndPlace).Success && second.State.Phase == Phase.DieRerollChoice);
-            Check(second.ResolveDieReroll(0, false).Success && second.State.PendingRelikia == RelikiaChoice.PlaceHandCard && second.State.Phase == Phase.RelikiaChoice);
+            Check(second.ResolveDieReroll(0, false).Success && second.State.Phase == Phase.RecycleChoice);
+            Check(second.ResolveRecycling(0, [0, 1]).Success && second.State.PendingRelikia == RelikiaChoice.PlaceHandCard && second.State.Phase == Phase.RelikiaChoice);
         }),
         ("Yuno Lv 2: reciclaje del rival puede decidirse fuera de su turno", () =>
         {
@@ -101,7 +103,8 @@ static class EvolutionTests
             rng.EnqueueDie(6); Check(g.Attack(0, 0, 0).Success && g.ResolveAttackReroll(0, false).Success);
             rng.EnqueueDie(2); Check(g.ResolveMagnet(0, true).Success && g.State.Phase == Phase.DieRerollChoice && g.State.DecisionPlayer == 1);
             var before = Snapshot(g); Check(!g.ResolveDieReroll(0, true).Success && before == Snapshot(g));
-            rng.EnqueueDie(1); Check(g.ResolveDieReroll(1, true).Success && rival.Deck.Count == 1 && g.State.Phase == Phase.Combat && g.State.CurrentPlayer == 0);
+            rng.EnqueueDie(1); Check(g.ResolveDieReroll(1, true).Success && g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1);
+            Check(g.ResolveRecycling(1, [0]).Success && rival.Deck.Count == 1 && g.State.Phase == Phase.Combat && g.State.CurrentPlayer == 0);
         })
     };
     private static (GameEngine, ScriptedRandom) Fixture(string? skill = null)

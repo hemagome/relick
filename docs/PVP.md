@@ -148,8 +148,20 @@ Ambas actualizaciones están publicadas en `relick-pvp-dev-c2006ee7` con `--dele
 
 ## Casco de Diamantes
 
-Equipo normal que resta dos a cada daño recibido, después de calcular el daño del ataque y con mínimo cero. Si absorbe todo el daño, no pierde vida, no emite impacto ni activa la derrota por daño a cero vidas. También reduce la penalización de agotamiento del mazo, aunque la comparación final de vidas sigue resolviéndose.
+Equipo normal que resta dos a cada daño recibido, después de calcular el daño del ataque y con mínimo cero. Si absorbe todo el daño, no pierde vida, no emite impacto ni activa la derrota por daño a cero vidas. No reduce las dos vidas inevitables del segundo agotamiento del mazo.
 
 Un 1 en cualquier tirada de ataque destruye inmediatamente los cascos equipados de ambos jugadores y los envía a sus respectivas memorias. Incluye relanzamientos de Yuno, Colgante y Re-lanza: cambiar después el resultado no recupera el equipo. Los unos de iniciativa, curación, reciclaje o daño secundario de Magnet no lo destruyen. Utiliza las reglas comunes de equipamiento, sustitución, cancelación y persistencia.
 
 Las salas nuevas conservan mazos de 20 cartas: una copia del Casco sustituye una de Colgante. Las partidas existentes mantienen sus cartas. Publicado sin borrado en la misma base de desarrollo; validado con 139 comprobaciones del motor, la matriz de interfaz de Godot y 65 comprobaciones PvP remotas. La imagen restaurada y el prompt están en `assets/cards/`.
+
+## Agotamiento del mazo
+
+Al retirar la última carta, o intentar robar de un mazo vacío, el primer agotamiento lanza un D6. Tras resolver los relanzamientos y modificadores permitidos, el dueño elige exactamente esa cantidad de cartas de su memoria normal, las devuelve al mazo y lo baraja. Si hay menos cartas disponibles, elige todas; las corruptas no participan. Una memoria vacía también lanza el dado y continúa sin elección. Un nuevo intento de robo sin cartas resuelve el segundo agotamiento.
+
+La elección pausa los robos pendientes y la reposición de Bonus; se reanudan una sola vez después de barajar. Si se agota el mazo rival durante tu turno, decide su dueño. Re-lanza puede modificar el dado de reciclaje; su robo adicional espera a que se reponga el mazo para no contar la misma falta de cartas como un segundo agotamiento. Error de Carga puede responder al COMBO, pero no cancelar el reciclaje obligatorio.
+
+En el segundo agotamiento, el dueño pierde dos vidas inevitables, con mínimo cero. No se aplica reducción de equipo ni la derrota ordinaria por recibir daño a cero vidas: inmediatamente se comparan ambas vidas. Gana quien tenga más; una igualdad es empate, también con ambos a cero.
+
+La arena muestra la memoria seleccionable durante esta decisión y conserva la mano habitual para el rival. El servidor valida propietario, revisión, cantidad, duplicados y límites; admite hasta seis selecciones. El estado persistido conserva el dado final y la continuación, de modo que reconectar no repite el lanzamiento ni los robos.
+
+Publicado junto con Bomba de Tiempo en `relick-pvp-dev-c2006ee7`, sin cambios de tablas ni borrado (`--delete-data=never`). Validación: 157 comprobaciones del motor y 69 PvP remotas; la partida dedicada verificó elección de cinco cartas, recuperación de la decisión al reconectar, rechazo de cantidades inválidas y comparación final de vidas. Las salas de prueba se cerraron al terminar. La matriz de interfaz cubre hasta seis cartas de memoria para ambos jugadores/asientos.

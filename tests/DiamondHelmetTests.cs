@@ -68,12 +68,12 @@ static class DiamondHelmetTests
             var init = TestGame.Create(r); foreach (var p in init.State.Players) p.Equipment = CardCatalog.DiamondHelmet.Id;
             r.EnqueueDie(1); r.EnqueueDie(2); Check(init.Start([]).Success && init.State.Players.All(p => p.Equipment != null));
         }),
-        ("Casco: reduce la penalización de agotamiento del mazo", () =>
+        ("Casco: no reduce las vidas inevitables del segundo agotamiento", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active; p.Equipment = CardCatalog.DiamondHelmet.Id;
             p.Deck.Clear(); p.Recycled = true; p.Hand.Clear(); p.Hand.Add(CardCatalog.Senshuni.Id);
             g.State.Phase = Phase.Actions; g.State.ActionsLeft = 2; var cues = DuelVisualEvents.Capture(g);
-            Check(g.PlayCode(0, 0).Success && p.Health == 8 && cues.All(c => c.Kind != DuelVisualKind.Hit));
+            Check(g.PlayCode(0, 0).Success && p.Health == 6 && g.State.IsOver && cues.Single(c => c.Kind == DuelVisualKind.Hit).Value == 2);
         }),
         ("Casco: equipar, reemplazar y recuperar conserva su efecto", () =>
         {

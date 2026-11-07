@@ -169,7 +169,7 @@ public static partial class Module
     public static void PlayDuelV2(ReducerContext ctx, string roomCode, ulong expectedRevision, string commandId, int option, List<int> selectedCards)
     {
         if (ctx.Db.Member.Player.Find(ctx.Sender) is not Member me) throw new Exception("No perteneces a esta sala.");
-        if (commandId.Length != 32 || !Guid.TryParseExact(commandId, "N", out _) || roomCode.Length != 8 || selectedCards.Count > 4 || selectedCards.Any(i => i < 0) || selectedCards.Distinct().Count() != selectedCards.Count)
+        if (commandId.Length != 32 || !Guid.TryParseExact(commandId, "N", out _) || roomCode.Length != 8 || selectedCards.Count > 6 || selectedCards.Any(i => i < 0) || selectedCards.Distinct().Count() != selectedCards.Count)
             throw new Exception("Selección de jugada inválida.");
         var selected = selectedCards.Order().ToList(); var key = roomCode + ":" + me.Seat + ":" + commandId;
         if (me.RoomCode == roomCode && ctx.Db.DuelReceipt.Key.Find(key) is DuelReceipt prior)
@@ -188,7 +188,8 @@ public static partial class Module
         var options = DuelOptions.For(game, me.Seat);
         if (option < 0 || option >= options.Count) { WriteMoveResult(ctx, commandId, false, "Esa jugada no está disponible."); return; }
         var choice = options[option];
-        if (selected.Count != choice.RequiredDiscards || selected.Any(i => i >= game.State.Players[me.Seat].Hand.Count)) { WriteMoveResult(ctx, commandId, false, $"Selecciona exactamente {choice.RequiredDiscards} carta(s) válidas."); return; }
+        var selectionCount = choice.Move.Kind == DuelMoveKind.Recycle ? game.State.Players[me.Seat].Memory.Count : game.State.Players[me.Seat].Hand.Count;
+        if (selected.Count != choice.RequiredDiscards || selected.Any(i => i >= selectionCount)) { WriteMoveResult(ctx, commandId, false, $"Selecciona exactamente {choice.RequiredDiscards} carta(s) válidas."); return; }
         choice.Move.Discards = selected.ToArray(); random.Record(max => ctx.Rng.Next(max));
         var visuals = DuelVisualEvents.Capture(game);
         var result = choice.Move.Apply(game, me.Seat);

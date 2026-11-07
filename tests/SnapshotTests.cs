@@ -7,7 +7,7 @@ static class SnapshotTests
 {
     public static IEnumerable<(string Name, Action Run)> Cases => new (string, Action)[]
     {
-        ("Persistencia: Duelos anteriores y efectos anidados conservan cada estado al guardar y restaurar", Golden),
+        ("Persistencia: fixtures anteriores conservan sus estados hasta el cambio de regla de agotamiento", Golden),
         ("Persistencia: el estado en línea excluye el registro creciente", BoundedLog),
         ("Red: paquetes separados conservan cantidades y revelaciones permitidas", PacketPrivacy)
     };
@@ -25,7 +25,12 @@ static class SnapshotTests
             for (var step = 0; step < test.Steps.Length; step++)
             {
                 var expected = test.Steps[step]; random.Replay(expected.Entry.RandomValues);
-                var result = expected.Entry.Move.Apply(game, expected.Entry.Actor); random.Finish();
+                var recycled = game.State.Players.Select(p => p.Recycled).ToArray();
+                var result = expected.Entry.Move.Apply(game, expected.Entry.Actor);
+                // These historical recordings chose random memory cards. Their suffix is
+                // intentionally obsolete; current full-duel replay/snapshot tests cover the new rule.
+                if (game.State.Players.Where((p, i) => p.Recycled && !recycled[i]).Any()) break;
+                random.Finish();
                 if (!result.Success || Hash(game) != expected.Hash) throw new Exception($"Cambio de reglas en duelo {index}, jugada {step}, {game.State.Phase}: {result.Message}");
                 game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
                 if (Hash(game) != expected.Hash) throw new Exception($"Estado incompleto en duelo {index}, jugada {step}, {game.State.Phase}");

@@ -355,18 +355,20 @@ public sealed partial class GameEngine
     }
     private void Exhaust(PlayerState p, EngineContinuation? completed = null)
     {
-        if (!p.Recycled && p.Memory.Count > 0)
+        if (!p.Recycled)
         {
             p.Recycled = true;
             RollWithRelikario(p, DiePurpose.Recycling, new DieEffect { Purpose = DiePurpose.Recycling, Actor = Array.IndexOf(State.Players, p), Next = completed });
             return;
         }
-        var penalty = DamageAfterEquipment(p, 2);
-        var target = Array.IndexOf(State.Players, p); DealDamage(target, 2);
-        if (State.IsOver) return;
+        // This is unavoidable life loss followed by a comparison, not attack damage.
+        // Equipment and the ordinary defeat-on-damage rule must not change the result.
+        p.Health = Math.Max(0, p.Health - 2);
+        if (p.Health == 0) p.HasReachedZero = true;
+        DamageReceived?.Invoke(Array.IndexOf(State.Players, p), 2, 0);
         var a = State.Players[0].Health; var b = State.Players[1].Health;
         Finish(a == b ? -1 : a > b ? 0 : 1,
-            $"{p.Name} agota su mazo y pierde {penalty} vidas. Se comparan las vidas restantes.");
+            $"{p.Name} agota su mazo por segunda vez y pierde 2 vidas inevitables. Se comparan las vidas restantes.");
     }
 
     private void Finish(int winner, string reason)

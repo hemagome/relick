@@ -55,6 +55,9 @@ public static class DuelOptions
                 case Phase.Discard:
                     for (var i = 0; i < p.Hand.Count; i++) Add(DuelMoveKind.Discard, $"Descartar {Card(p.Hand[i])} · carta {i + 1}", i);
                     break;
+                case Phase.RecycleChoice:
+                    Add(DuelMoveKind.Recycle, $"Reciclar {game.RecyclingCount} cartas de tu memoria", discards: game.RecyclingCount);
+                    break;
                 case Phase.AttackRerollChoice:
                 case Phase.DieRerollChoice:
                     var kind = s.Phase == Phase.AttackRerollChoice ? DuelMoveKind.AttackDie : DuelMoveKind.EffectDie;

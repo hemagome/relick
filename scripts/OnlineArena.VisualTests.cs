@@ -7,6 +7,50 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckRecyclingLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = new GameEngine(43); game.State.CurrentPlayer = actor;
+            game.State.Phase = Phase.RecycleChoice;
+            game.State.PendingDieRoll = new(actor, DiePurpose.Recycling, 6, Phase.Combat);
+            foreach (var p in game.State.Players) { p.Hand.Clear(); p.Hand.Add(CardCatalog.Attack.Id); }
+            game.State.Players[actor].Memory.AddRange(new[] { CardCatalog.ExtraLife.Id, CardCatalog.Destiny.Id,
+                CardCatalog.DiamondHelmet.Id, CardCatalog.Magnet.Id, CardCatalog.Pendant.Id, CardCatalog.Senshuni.Id, CardCatalog.Attack.Id });
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                GetWindow().ContentScaleSize = size;
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 12));
+                if (seat == actor)
+                {
+                    if (_handCards.Count != 7 || _handCards[0].Card.Id != CardCatalog.ExtraLife.Id)
+                        throw new Exception("El reciclaje no muestra las cartas de memoria.");
+                    foreach (var index in Enumerable.Range(1, 6)) SelectCard(index);
+                    if (_selected.Count != 6 || !_selection.Text.Contains("6/6") || _moveButtons.All(b => (int)b.GetMeta("discards") != 6))
+                        throw new Exception("No se pueden elegir seis cartas de memoria.");
+                }
+                else if (_handCards.Count != 1 || _handCards[0].Card.Id != CardCatalog.Attack.Id)
+                    throw new Exception("El espectador del reciclaje pierde su propia mano.");
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var minimum = _root!.GetCombinedMinimumSize();
+                if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                    throw new Exception($"Reciclaje desborda {size}: {minimum}.");
+                if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                    throw new Exception("Reciclaje revela la mano rival.");
+                var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+                if (directory != null && seat == actor && size.X is 1440 or 844)
+                {
+                    DirAccess.MakeDirRecursiveAbsolute(directory);
+                    GetViewport().GetTexture().GetImage().SavePng($"{directory}/recycling-{actor}-{size.X}.png");
+                }
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_RECYCLING_LAYOUT_PASS · selección de seis cartas de memoria, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckTimeBombLayout()
     {
         var game = new GameEngine(43); game.State.Phase = Phase.Actions; game.State.CurrentPlayer = 0;

@@ -241,6 +241,7 @@ var tests = new (string Name, Action Run)[]
         p.Deck.Clear(); p.Deck.Add("senshuni");
         var count = Count(p); rng.EnqueueDie(3);
         Ok(g.Exchange(0, 0).Success); Ok(g.Exchange(0, 0).Success);
+        Ok(g.ResolveRecycling(0, [0, 1]).Success);
         Eq(p.Bonus, "senshuni"); Eq(p.Hand.Single(), "destiny-shuffle"); Ok(p.Recycled);
         Eq(p.Deck.Count, 2); Eq(p.Memory.Count, 0); Eq(Count(p), count); Ok(!g.State.IsOver);
     }),
@@ -312,7 +313,7 @@ var tests = new (string Name, Action Run)[]
         g.Advance(1); g.Advance(1);
         Eq(g.State.Players[0].Hand.Count, 2);
     }),
-    ("Primer agotamiento recicla inmediatamente, conserva cartas", () =>
+    ("Primer agotamiento elige cartas de la memoria y continúa el robo", () =>
     {
         var (g, rng) = Combat();
         var p = g.State.Players[1];
@@ -320,6 +321,8 @@ var tests = new (string Name, Action Run)[]
         p.Memory.Clear(); p.Memory.AddRange(new[] { "test-recover", "senshuni", "attack", "attack" });
         var before = Count(p); rng.EnqueueDie(3);
         g.Advance(0); g.Advance(0);
+        Eq(g.State.Phase, Phase.RecycleChoice); Eq(p.Hand.Count, 1);
+        Ok(g.ResolveRecycling(1, [0, 2, 3]).Success);
         Ok(p.Recycled); Eq(p.Hand.Count, 3); Eq(p.Deck.Count, 1); Eq(p.Memory.Count, 1);
         Eq(Count(p), before);
     }),
@@ -407,6 +410,7 @@ var tests = new (string Name, Action Run)[]
         p.Memory.Clear(); p.Memory.AddRange(new[] { "senshuni", "attack", "attack", "attack" });
         p.Deck.Clear(); p.Deck.Add("test-recover"); var count = Count(p); rng.EnqueueDie(3);
         Ok(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success);
+        Ok(g.ResolveRecycling(0, [0, 1, 2]).Success);
         Eq(p.CorruptedMemory.Single(), "senshuni"); Ok(p.Recycled); Eq(p.Hand.Count, 3); Eq(Count(p), count);
         Ok(!p.Hand.Contains("senshuni") && !p.Deck.Contains("senshuni"));
     }),
@@ -538,7 +542,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)

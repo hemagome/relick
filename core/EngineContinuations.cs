@@ -87,10 +87,12 @@ public sealed partial class GameEngine
                 State.LastCombat = $"{p.Name} · Vida Extra · D6 = {die} · Recupera {healed} vida(s)";
                 Log($"{p.Name} resuelve Vida Extra: D6 = {die}, gana {amount} vida(s); recupera {healed} hasta su máximo de {p.MaxHealth}."); break;
             case DiePurpose.Recycling:
-                var count = Math.Min(die, p.Memory.Count); Shuffle(p.Memory);
-                p.Deck.AddRange(p.Memory.Take(count)); p.Memory.RemoveRange(0, count);
-                if (count > 0) CardsReturnedToDeck?.Invoke(effect.Actor);
-                Log($"{p.Name} agota su mazo: D6 = {die}. Recicla {count} carta(s) al azar (demo)."); Continue(effect.Next); break;
+                _pendingDieEffect = effect;
+                State.PendingDieRoll = new(effect.Actor, DiePurpose.Recycling, die, State.Phase);
+                State.Phase = Phase.RecycleChoice;
+                Log($"{p.Name} agota su mazo por primera vez: D6 = {die}. Elige {Math.Min(die, p.Memory.Count)} carta(s) de su memoria para devolverlas al mazo y barajarlo.");
+                if (p.Memory.Count == 0) ResolveRecycling(effect.Actor, []);
+                break;
             case DiePurpose.Relikia:
                 State.LastCombat = $"{p.Name} · Relikia: robar el Bonus · D6 = {die}";
                 Log($"{p.Name} lanza D6 por Relikia: {die}." + (die >= 5 ? " Elige un efecto adicional." : " Sin efecto adicional."));

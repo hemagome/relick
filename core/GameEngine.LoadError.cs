@@ -9,6 +9,7 @@ public sealed partial class GameEngine
     {
         if (actor < 0 || actor >= 2) return false;
         if (State.Phase == Phase.ErrorResponse) return State.ErrorResponder == actor && _activationChain.Count > 0 && _activationChain[^1].Actor != actor;
+        if (State.PendingDieRoll?.Purpose == DiePurpose.Recycling) return false;
         return _activeActivation is { CanInterrupt: true } frame && frame.Actor != actor &&
             State.Phase is Phase.DieRerollChoice or Phase.PointsChoice or Phase.DestroyChoice or Phase.CodeResponse;
     }

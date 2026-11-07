@@ -36,6 +36,7 @@ public partial class OnlineLobby
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();
+            await online.CheckRecyclingLayout();
             await online.CheckPreparationLayout();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
