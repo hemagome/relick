@@ -27,6 +27,8 @@ public partial class DiceFace : Control
     private StandardMaterial3D _shadowMaterial = null!;
     private Quaternion _start = Quaternion.Identity;
     private Quaternion _landing = Quaternion.Identity;
+    private int _renderedValue = -1;
+    private bool _renderedRolling;
 
     public event Action? RollFinished;
     public bool IsRolling { get; private set; }
@@ -268,6 +270,9 @@ public partial class DiceFace : Control
     {
         if (Is3DReady)
         {
+            if (IsRolling || _renderedRolling || _renderedValue != _value)
+                _viewport.RenderTargetUpdateMode = IsRolling ? SubViewport.UpdateMode.WhenVisible : SubViewport.UpdateMode.Once;
+            _renderedValue = _value; _renderedRolling = IsRolling;
             var seconds = (float)Math.Clamp(_elapsed, 0, RollSeconds);
             var t = seconds / (float)RollSeconds;
             var spin = Math.Clamp(seconds / 1.18f, 0, 1);

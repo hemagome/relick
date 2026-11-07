@@ -3,7 +3,8 @@
 **/obj/
 .DS_Store
 *.user
-artifacts/
+artifacts/*
+!artifacts/.gdignore
 .runtime.env
 .env
 .env.*

@@ -44,8 +44,9 @@ public partial class YunoPortrait : Control
         {
             var texture = GD.Load<Texture2D>($"res://assets/characters/yuno/{file}.png");
             var rows = motion == PortraitMotion.Attack ? 7 : 8;
-            if (texture == null || texture.GetWidth() != Columns * FrameWidth || texture.GetHeight() != rows * FrameHeight)
-                throw new InvalidOperationException($"Hoja de Yuno inválida: {file}. Se esperaba {Columns * FrameWidth} × {rows * FrameHeight}.");
+            if (texture == null || texture.GetWidth() % Columns != 0 || texture.GetHeight() % rows != 0 ||
+                texture.GetWidth() / Columns * FrameHeight != texture.GetHeight() / rows * FrameWidth)
+                throw new InvalidOperationException($"Hoja de Yuno inválida: {file}. Debe conservar la cuadrícula {Columns} × {rows} y la proporción de cada fotograma.");
             _sheets.Add(motion, texture);
         }
         QueueRedraw();
@@ -58,17 +59,22 @@ public partial class YunoPortrait : Control
         QueueRedraw();
     }
 
-    public override void _Process(double delta) => AdvancePlayback(delta);
+    public override void _Process(double delta)
+    {
+        if (IsVisibleInTree()) AdvancePlayback(delta);
+    }
 
     internal void AdvancePlayback(double delta)
     {
+        var previousFrame = CurrentFrame;
+        var previousMotion = Motion;
         _elapsed += delta;
         if (_elapsed >= DurationSeconds)
         {
             if (Motion == PortraitMotion.Idle) _elapsed %= DurationSeconds;
             else { Motion = PortraitMotion.Idle; _elapsed = 0; }
         }
-        QueueRedraw();
+        if (CurrentFrame != previousFrame || Motion != previousMotion) QueueRedraw();
     }
 
     public override void _Draw()
@@ -88,7 +94,9 @@ public partial class YunoPortrait : Control
         var scale = Math.Min(Size.X / FrameWidth, Math.Max(0, Size.Y - 24) / FrameHeight);
         var extent = new Vector2(FrameWidth, FrameHeight) * scale;
         var target = new Rect2(new Vector2((Size.X - extent.X) / 2, Size.Y - extent.Y), extent);
-        var source = new Rect2((CurrentFrame % Columns) * FrameWidth, (CurrentFrame / Columns) * FrameHeight, FrameWidth, FrameHeight);
+        var frameWidth = texture.GetWidth() / Columns;
+        var frameHeight = texture.GetHeight() / (Motion == PortraitMotion.Attack ? 7 : 8);
+        var source = new Rect2((CurrentFrame % Columns) * frameWidth, (CurrentFrame / Columns) * frameHeight, frameWidth, frameHeight);
         if (FlipHorizontal) DrawSetTransform(new Vector2(Size.X, 0), 0, new Vector2(-1, 1));
         DrawTextureRectRegion(texture, target, source);
         if (FlipHorizontal) DrawSetTransform(Vector2.Zero);
