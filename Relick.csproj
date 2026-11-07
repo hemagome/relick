@@ -7,7 +7,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="server/**/*.cs" />
     <None Remove="tests/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SpacetimeDB.ClientSDK.Godot" Version="2.14.1" />
   </ItemGroup>
 </Project>
 
