@@ -26,7 +26,7 @@ public partial class Main
 
     public override void _Input(InputEvent @event)
     {
-        if (CardsInMotion) GetViewport().SetInputAsHandled();
+        if (_onlineLobby == null && CardsInMotion) GetViewport().SetInputAsHandled();
     }
 
     private void QueueCardDraw(int player, int slot)
@@ -60,7 +60,7 @@ public partial class Main
             layer.AddChild(_drawOverlay);
             _drawOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         }
-        _drawOverlay.Show();
+        _drawOverlay.Visible = _onlineLobby == null;
     }
 
     private void QueueCardReturn(int player, int slot, string id)
@@ -199,12 +199,7 @@ public partial class Main
         {
             for (var i = 0; i < _shuffleCards.Count; i++)
             {
-                var wave = Mathf.Sin(t * Mathf.Pi * 4 + i * 0.7f) * Mathf.Sin(t * Mathf.Pi);
-                var card = _shuffleCards[i];
-                card.Size = deckRect.Size;
-                card.PivotOffset = card.Size / 2;
-                card.Position = deckRect.Position + new Vector2(wave * 26, -Math.Abs(wave) * 12 - Mathf.Sin(t * Mathf.Pi) * i * 3);
-                card.Rotation = wave * 0.17f;
+                ArenaMotion.ShuffleCard(_shuffleCards[i], deckRect, t, i);
             }
             if (t >= 1) { FinishCardDraw(); if (!CardsInMotion) Render(); }
             return;
@@ -240,15 +235,7 @@ public partial class Main
     }
 
     private static void PositionFlyingCard(Control card, Rect2 source, Rect2 destination, float t, int player, float flip = 1)
-    {
-        var eased = t * t * (3 - 2 * t);
-        var center = source.GetCenter().Lerp(destination.GetCenter(), eased);
-        center.Y -= Mathf.Sin(t * Mathf.Pi) * 66;
-        card.PivotOffset = card.Size / 2;
-        card.Scale = source.Size.Lerp(destination.Size, eased) / card.Size * new Vector2(flip, 1);
-        card.Position = center - card.Size / 2;
-        card.Rotation = Mathf.Sin(t * Mathf.Pi) * (player == 0 ? -0.12f : 0.12f);
-    }
+        => ArenaMotion.PositionCard(card, source, destination, t, player, flip);
 
     private void FinishCardDraw()
     {

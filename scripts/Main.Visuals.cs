@@ -17,7 +17,8 @@ public partial class Main
             RemoveChild(_root);
             _root.QueueFree();
         }
-        _root = new VBoxContainer { Name = "DuelInterface" };
+        _renderSnapshot = DuelSnapshot.For(_game, -1, 0);
+        _root = new VBoxContainer { Name = "DuelInterface", Visible = _onlineLobby == null };
         _root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _root.OffsetLeft = 24; _root.OffsetRight = -24;
         _root.OffsetTop = 16; _root.OffsetBottom = -14;
@@ -25,18 +26,19 @@ public partial class Main
         AddChild(_root);
         BuildHeader();
         BuildPhases();
-        var arena = new HBoxContainer { Name = "DuelArena", SizeFlagsVertical = SizeFlags.ExpandFill };
+        ArenaViewport.ApplyInsets(_root, CompactLayout ? 10 : 24, CompactLayout ? 8 : 16);
+        var body = ArenaPresentation.Body(_root, ShortLayout && Size.X >= 700);
+        var arena = ArenaPresentation.Arena(body.Board, CompactLayout);
         _arena = arena;
-        arena.AddThemeConstantOverride("separation", 12);
-        _root.AddChild(arena);
         BuildPlayer(arena, 0);
         BuildCombat(arena);
         BuildPlayer(arena, 1);
-        BuildToolbar(_root);
-        BuildHand(_root);
+        BuildToolbar(body.Controls);
+        BuildHand(body.Controls);
         MoveChild(_diceOverlay, GetChildCount() - 1);
         UpdateDiceOverlay();
         PrepareDrawTargets();
+        if (CompactLayout) ArenaViewport.EnlargeTouchTargets(_root);
     }
 
     private void BuildDiceOverlay()
@@ -66,9 +68,9 @@ public partial class Main
 
     private void UpdateDiceOverlay()
     {
-        _diceOverlay.Visible = _die.IsPresented;
+        _diceOverlay.Visible = _onlineLobby == null && _die.IsPresented;
         if (!_die.IsPresented) return;
-        if (_arena.Size.Y > 0)
+        if (!CompactLayout && _arena.Size.Y > 0)
         {
             var bounds = _arena.GetGlobalRect();
             _diceOverlay.OffsetTop = bounds.Position.Y - GlobalPosition.Y;
@@ -81,12 +83,42 @@ public partial class Main
 
     private void BuildHeader()
     {
-        var row = new HBoxContainer();
+        if (CompactLayout)
+        {
+            var header = new HBoxContainer();
+            var compactBrand = Label("R E L I C K", 21, Gold); compactBrand.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            header.AddChild(compactBrand); header.AddChild(Button("PvP", OpenOnlineLobby, false, 60));
+            var menu = new MenuButton { Text = "Menú", CustomMinimumSize = new(70, 48) }; header.AddChild(menu);
+            var popup = menu.GetPopup();
+            foreach (var title in new[] { "Registro", "Cómo jugar", "Nueva partida", "Pruebas", "Ver carta", "Ver habilidad" }) popup.AddItem(title);
+            popup.IdPressed += id =>
+            {
+                switch (id)
+                {
+                    case 0: ShowHistory(); break;
+                    case 1: ShowHelp(); break;
+                    case 2: ConfirmRestart(); break;
+                    case 3: ShowAnimationLab(); break;
+                    case 4:
+                        if (_selectedCard >= 0 && _selectedCard < _game.State.Players[0].Hand.Count)
+                            ShowCardDetails(0, CardCatalog.Get(_game.State.Players[0].Hand[_selectedCard]), "TU CARTA", "", "Detalle de carta");
+                        break;
+                    case 5:
+                        if (_selectedSkill < _game.State.Players[0].Skills.Count)
+                            ShowCardDetails(0, CardCatalog.Get(_game.State.Players[0].Skills[_selectedSkill]), "TU HABILIDAD", "", "Detalle de habilidad");
+                        break;
+                }
+            };
+            _root.AddChild(header); return;
+        }
+
+        Container row = CompactLayout ? new HFlowContainer() : new HBoxContainer();
         row.AddThemeConstantOverride("separation", 10);
         var brand = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         brand.AddThemeConstantOverride("separation", 0);
         brand.AddChild(Label("R E L I C K", 29, Gold));
         row.AddChild(brand);
+        row.AddChild(Button("PvP", OpenOnlineLobby, false, 70));
         row.AddChild(Button("Pruebas", ShowAnimationLab, false, 126));
         var errorIndex = _game.State.Players[0].Hand.FindIndex(id => CardCatalog.Get(id).CancelActivation);
         if (errorIndex >= 0 && _game.CanPlayLoadError(0) && _game.CodeUnavailableReason(0, errorIndex) == null && _game.State.Phase != Phase.ErrorResponse)
@@ -114,20 +146,10 @@ public partial class Main
     private void BuildPhases()
     {
         var state = _game.State;
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
-        row.AddChild(Pill(state.Phase == Phase.Preparation ? "PREPARACIÓN" : state.IsOver ? "DUELO TERMINADO" : state.CurrentPlayer == 0 ? "TU TURNO" : "TURNO DEL RIVAL", state.CurrentPlayer == 0 ? Mint : Coral));
-        if (state.Phase != Phase.Preparation) row.AddChild(Pill($"TURNO {state.Turn:00}", Muted));
-        var phase = state.Phase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse ? Phase.Actions : state.Phase == Phase.DieRerollChoice ? state.PendingDieRoll!.ResumePhase : state.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse ? Phase.Combat : state.Phase == Phase.Discard ? state.DiscardResumePhase : state.Phase == Phase.RelikiaChoice ? Phase.Actions : state.Phase;
-        var current = phase switch { Phase.Preparation => 0, Phase.Combat => 1, Phase.Actions => 2, _ => 3 };
-        var phases = new[] { ("Preparar", GameIcon.Cards), ("Combate", GameIcon.Sword), ("Acciones", GameIcon.Bolt), ("Final", GameIcon.Flag) };
-        for (var i = 0; i < phases.Length; i++)
-            row.AddChild(new PhaseBadge
-            {
-                Caption = phases[i].Item1, Icon = phases[i].Item2, Current = i == current, Complete = i < current,
-                SizeFlagsHorizontal = SizeFlags.ExpandFill
-            });
-        _root.AddChild(row);
+        var caption = PhaseName(state.Phase);
+        if (ShortLayout) caption += $" · TÚ {state.Players[0].Health}/{state.Players[0].MaxHealth} · RIVAL {state.Players[1].Health}/{state.Players[1].MaxHealth}";
+        ArenaPresentation.Phases(_root, _renderSnapshot.Stage ?? state.Phase, caption, state.Turn, state.CurrentPlayer == 0, CompactLayout);
+        if (CompactLayout && !ShortLayout) ArenaPresentation.Scoreline(_root, _renderSnapshot.Players);
     }
 
     private static PanelContainer BoardPanel(Node parent, string background, Color border)
@@ -141,168 +163,49 @@ public partial class Main
         return panel;
     }
 
-    private void BuildPlayer(HBoxContainer arena, int index)
+    private void BuildPlayer(BoxContainer arena, int index)
     {
         var state = _game.State;
         var owner = state.Players[index];
-        var enemy = index == 1;
-        var accent = enemy ? Coral : Mint;
-        var active = state.CurrentPlayer == index && state.Phase != Phase.Preparation && !state.IsOver;
-        var panel = BoardPanel(arena, enemy ? "1b1b30" : "12252b", active ? accent : accent.Darkened(0.65f));
-        panel.Name = enemy ? "EnemyRelikarioPanel" : "OwnRelikarioPanel";
-        panel.CustomMinimumSize = new(320, 0);
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 6);
-        panel.AddChild(col);
-        var header = new HBoxContainer();
-        var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        names.AddThemeConstantOverride("separation", 0);
-        names.AddChild(Label(enemy ? "ADVERSARIO" : "TU RELIKARIO", 9, accent));
-        var relikarioName = Label($"{owner.Relikario.Name} · Lv {owner.Level}", 18, Ink);
-        relikarioName.Name = $"RelikarioName{index}";
-        relikarioName.MouseFilter = MouseFilterEnum.Pass;
-        relikarioName.TooltipText = $"Vida máxima: {owner.MaxHealth}\n{owner.Relikario.AbilityText}";
-        names.AddChild(relikarioName);
-        header.AddChild(names);
-        header.AddChild(new ResourceBadge { Amount = owner.Relikia });
-        if (!enemy)
-        {
-            var evolve = Button(owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", () => Execute(_game.Evolve(index)),
-                !_game.CanEvolve(index) || _die.IsBusy || CardsInMotion, 64);
-            evolve.Name = "EvolveRelikario";
-            evolve.AddThemeFontSizeOverride("font_size", 12);
-            evolve.TooltipText = "Evolucionar: 1800 PR + haber obtenido un 6 natural durante la partida. Gana 2 vidas; máximo 10.\n" +
-                (owner.HasNaturalSix ? "6 natural: cumplido." : "6 natural: pendiente.") + "\n" + (_game.EvolutionUnavailableReason(index) ?? "Evolución disponible.");
-            header.AddChild(evolve);
-        }
-        col.AddChild(header);
-        var life = _lifeMeters[index];
-        life.SetHealth(owner.Health, owner.MaxHealth);
-        col.AddChild(life);
-        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        body.AddThemeConstantOverride("separation", 6);
-        var zones = new VBoxContainer { CustomMinimumSize = new(70, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        zones.AddThemeConstantOverride("separation", 6);
-        zones.AddChild(new DeckStack { Name = $"DeckStack{index}", Amount = owner.Deck.Count, Accent = accent, SizeFlagsHorizontal = SizeFlags.ShrinkCenter });
-        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Count, Accent = accent,
-            TopCard = owner.Memory.Count == 0 ? null : CardCatalog.Get(owner.Memory[^1]) };
-        memory.Pressed += () => ShowMemory(index);
-        var memories = new HBoxContainer();
-        memories.AddThemeConstantOverride("separation", 6);
-        memories.AddChild(memory);
-        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedMemory.Count, Corrupted = true };
-        corrupted.Pressed += () => ShowMemory(index, true);
-        memories.AddChild(corrupted);
-        zones.AddChild(memories);
-        var permanent = BuildPermanentZones(index);
-        body.AddChild(enemy ? zones : permanent);
-        body.AddChild(PortraitFor(index));
-        body.AddChild(enemy ? permanent : zones);
-        col.AddChild(body);
-        var skillRow = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
-        skillRow.AddThemeConstantOverride("h_separation", 6);
-        skillRow.AddThemeConstantOverride("v_separation", 6);
-        foreach (var slot in new[] { 2, 3, 0, 1 })
-        {
-            var learned = slot < owner.Skills.Count;
-            var skill = new SkillTile
+        var view = _renderSnapshot.Players[index];
+        ArenaPresentation.Player(arena, view, index, index == 1,
+            state.CurrentPlayer == index && state.Phase != Phase.Preparation && !state.IsOver,
+            _selectedSkill, PortraitFor(index), _lifeMeters[index], new ArenaPlayerActions
             {
-                Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[slot]) : null,
-                Slot = slot, Counters = owner.CountersOnSkill(slot), Chosen = !enemy && learned && _selectedSkill == slot, Accent = accent,
-                Disabled = enemy && !learned
-            };
-            skill.Pressed += () =>
-            {
-                if (enemy && learned) { ShowCardDetails(index, CardCatalog.Get(owner.Skills[slot]), "HABILIDAD RIVAL", $"Espacio {slot + 1} · {owner.CountersOnSkill(slot)}/2 contadores.", "Habilidad del rival"); return; }
-                if (enemy) return;
-                if (learned) { _selectedSkill = slot; _feedback = ""; }
-                else _feedback = "Selecciona una habilidad de tu mano y pulsa Enseñar.";
-                Render();
-            };
-            if (!enemy && learned)
-            {
-                skill.Ready += () => skill.TooltipText += "\nClic derecho para ampliar.";
-                skill.GuiInput += input =>
+                Memory = corrupted => ShowMemory(index, corrupted), Attached = () => ShowAttachedCards(index),
+                Equipment = () => ShowEquipment(index), Evolve = () => Execute(_game.Evolve(index)),
+                CanEvolve = _game.CanEvolve(index) && !_die.IsBusy && !CardsInMotion,
+                EvolutionHint = "Evolucionar: 1800 PR + haber obtenido un 6 natural durante la partida. Gana 2 vidas; máximo 10.\n" +
+                    (owner.HasNaturalSix ? "6 natural: cumplido." : "6 natural: pendiente.") + "\n" + (_game.EvolutionUnavailableReason(index) ?? "Evolución disponible."),
+                Skill = slot =>
                 {
-                    if (input is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true })
-                        ShowCardDetails(index, CardCatalog.Get(owner.Skills[slot]), "TU HABILIDAD", $"Espacio {slot + 1}", "Detalle de habilidad");
-                };
-            }
-            skillRow.AddChild(skill);
-        }
-        col.AddChild(skillRow);
+                    if (index == 1 && slot < owner.Skills.Count) { ShowCardDetails(index, CardCatalog.Get(owner.Skills[slot]), "HABILIDAD RIVAL", $"Espacio {slot + 1} · {owner.CountersOnSkill(slot)}/2 contadores.", "Habilidad del rival"); return; }
+                    if (index == 1) return;
+                    if (slot < owner.Skills.Count) { _selectedSkill = slot; _feedback = ""; }
+                    else _feedback = "Selecciona una habilidad de tu mano y pulsa Enseñar.";
+                    RefreshSelection();
+                },
+                InspectSkill = slot => ShowCardDetails(index, CardCatalog.Get(owner.Skills[slot]), "HABILIDAD", $"Espacio {slot + 1}", "Detalle de habilidad")
+            }, CompactLayout);
+        var name = (Label)arena.FindChild($"RelikarioName{index}", true, false);
+        name.Text = $"{owner.Relikario.Name} · Lv {owner.Level}";
+        name.TooltipText = $"Vida máxima: {owner.MaxHealth}\n{owner.Relikario.AbilityText}";
     }
 
-    private VBoxContainer BuildPermanentZones(int player)
-    {
-        var state = _game.State.Players[player];
-        var column = new VBoxContainer { CustomMinimumSize = new(92, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        column.AddThemeConstantOverride("separation", 6);
-        var stack = new AttachmentStack { Name = $"AttachmentStack{player}", Amount = state.AttachedCards.Count };
-        stack.Pressed += () => ShowAttachedCards(player);
-        column.AddChild(stack);
-        var equipment = new ZoneCardButton
-        {
-            Name = $"EquipmentZone{player}", Caption = state.Equipment == null ? "EQUIPO 0/1" : "EQUIPO 1/1",
-            Card = state.Equipment == null ? null : CardCatalog.Get(state.Equipment), EmptyCaption = "Sin equipo", Accent = new Color("81c8ef")
-        };
-        equipment.Pressed += () => ShowEquipment(player);
-        column.AddChild(equipment);
-        return column;
-    }
-
-    private void BuildCombat(HBoxContainer arena)
+    private void BuildCombat(BoxContainer arena)
     {
         var state = _game.State;
-        var panel = BoardPanel(arena, "111a2c", new Color("4b4350"));
-        panel.Name = "CombatCenter";
-        panel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        panel.CustomMinimumSize = new(312, 0);
-        panel.SizeFlagsStretchRatio = 1.05f;
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 4);
-        panel.AddChild(col);
-        BuildOpponentHand(col);
-        col.AddChild(new HSeparator { Modulate = new Color("38415a") });
-        var title = Label(state.IsOver ? "RESULTADO DEL DUELO" : "RESOLUCIÓN DE COMBATE", 10, Gold);
-        title.HorizontalAlignment = HorizontalAlignment.Center;
-        title.Visible = state.Phase != Phase.Preparation;
-        col.AddChild(title);
         var message = state.IsOver ? (state.Winner == -1 ? "Empate" : state.Winner == 0 ? "¡Victoria!" : "Derrota") : state.Phase == Phase.Preparation ? "" : state.LastCombat;
         if (_die.IsBusy) message = "";
         else if (_dicePreview) message = $"Resultado de prueba: {_die.Value}";
-        var status = Label(message, 20, Ink);
-        status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        status.HorizontalAlignment = HorizontalAlignment.Center;
-        status.CustomMinimumSize = new(0, 32);
-        status.Visible = message.Length > 0;
-        col.AddChild(status);
-        var divider = new HSeparator();
-        divider.Modulate = new Color("38415a");
-        col.AddChild(divider);
-        var exchangeTitle = Label("CANJE  →  BONUS", 9, Muted);
-        exchangeTitle.HorizontalAlignment = HorizontalAlignment.Center;
-        col.AddChild(exchangeTitle);
-        foreach (var index in new[] { 1, 0 })
-        {
-            var owner = state.Players[index];
-            var bonus = new ExchangeTrack
-            {
-                Name = $"BonusTrack{index}",
-                OwnerCaption = index == 0 ? "TÚ" : "RIVAL", ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(),
-                Preparing = state.Phase == Phase.Preparation, BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus),
-                Accent = index == 0 ? Mint : Coral
-            };
-            bonus.BonusInspected += () => ShowBonus(index);
-            bonus.ExchangeInspected += slot => ShowExchange(index, slot);
-            col.AddChild(bonus);
-        }
+        ArenaPresentation.Combat(arena, state.Phase == Phase.Preparation, state.IsOver, message,
+            _renderSnapshot.Players, BuildOpponentHand, ShowBonus, ShowExchange, CompactLayout);
     }
 
     private void BuildToolbar(VBoxContainer board)
     {
         var state = _game.State;
-        var column = new VBoxContainer();
+        var column = new VBoxContainer { Name = "DuelToolbar" }; _toolbar = column;
         column.AddThemeConstantOverride("separation", 4);
         var hintText = Hint();
         if (!_die.IsBusy && state.DecisionPlayer == 0 && (state.Phase is Phase.Combat or Phase.Actions) &&
@@ -314,9 +217,10 @@ public partial class Main
         var hint = Label(_feedback.Length > 0 ? _feedback : hintText, 12, _feedback.Length > 0 ? Coral : Muted);
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         hint.CustomMinimumSize = new(0, 18);
+        if (ShortLayout) { hint.MaxLinesVisible = 1; hint.TooltipText = hint.Text; }
         hint.Visible = hint.Text.Length > 0;
         column.AddChild(hint);
-        var actions = new HBoxContainer();
+        Container actions = CompactLayout ? new HFlowContainer() : new HBoxContainer();
         actions.AddThemeConstantOverride("separation", 8);
         var myTurn = state.DecisionPlayer == 0 && !state.IsOver && !_die.IsBusy;
         if (state.Phase == Phase.Preparation)
@@ -329,6 +233,22 @@ public partial class Main
         else
         {
             actions.AddChild(PrimaryButton(SelectedVerb(), UseSelected, !myTurn || !CanUseSelected()));
+            if (CompactLayout)
+            {
+                var more = new MenuButton { Text = "Más", CustomMinimumSize = new(64, 48) };
+                var popup = more.GetPopup(); popup.AddItem("Canjear carta", 0); popup.AddItem("Efectos de Relikia", 1);
+                popup.SetItemDisabled(0, !myTurn || state.Phase != Phase.Actions || state.ActionsLeft == 0 || _selectedCard < 0 || state.Players[0].Bonus == null);
+                popup.SetItemDisabled(1, !myTurn || state.Phase is not (Phase.Actions or Phase.RelikiaChoice));
+                popup.IdPressed += id =>
+                {
+                    if (id == 0) Execute(_game.Exchange(0, _selectedCard));
+                    else if (state.Phase == Phase.RelikiaChoice) ShowPendingRelikiaChoice();
+                    else ShowRelikiaEffects();
+                };
+                actions.AddChild(more);
+            }
+            else
+            {
             actions.AddChild(Button("Canjear carta", () => Execute(_game.Exchange(0, _selectedCard)),
                 !myTurn || state.Phase != Phase.Actions || state.ActionsLeft == 0 || _selectedCard < 0 || state.Players[0].Bonus == null, 154));
             var relikia = Button(state.Phase == Phase.RelikiaChoice ? "Resolver Relikia" : "Efectos de Relikia", () =>
@@ -338,6 +258,7 @@ public partial class Main
             }, !myTurn || state.Phase is not (Phase.Actions or Phase.RelikiaChoice), 166);
             relikia.Name = "RelikiaEffectsButton";
             actions.AddChild(relikia);
+            }
             if (state.Phase == Phase.Actions)
             {
                 var charges = new HBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter };
@@ -347,7 +268,7 @@ public partial class Main
                 });
                 actions.AddChild(charges);
             }
-            actions.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            if (!CompactLayout) actions.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var advance = new StageAdvanceButton
             {
                 Name = "AdvanceStageButton",
@@ -369,37 +290,37 @@ public partial class Main
     private void BuildHand(VBoxContainer board)
     {
         var state = _game.State;
-        var header = new HBoxContainer();
-        var title = Label($"TU MANO  ·  {state.Players[0].Hand.Count} CARTAS", 10, Ink);
-        title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        header.AddChild(title);
-        board.AddChild(header);
-        var scroll = new ScrollContainer
-        {
-            Name = "HandScroll", SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new(0, 196),
-            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled, HorizontalScrollMode = ScrollContainer.ScrollMode.Auto
-        };
-        var cards = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
-        cards.AddThemeConstantOverride("separation", 10);
-        for (var i = 0; i < state.Players[0].Hand.Count; i++)
-        {
-            var index = i;
-            var selected = state.Phase == Phase.Preparation ? _mulligan.Contains(i) : _selectedCard == i;
-            var card = new HandCard { Name = $"HandCard{i}", Card = CardCatalog.Get(state.Players[0].Hand[i]), Chosen = selected, Mulligan = state.Phase == Phase.Preparation };
-            card.Pressed += () =>
+        _handScroll = ArenaPresentation.Hand(board, state.Players[0].Hand,
+            index => state.Phase == Phase.Preparation ? _mulligan.Contains(index) : _selectedCard == index,
+            index =>
             {
                 if (state.Phase == Phase.Preparation) { if (!_mulligan.Add(index)) _mulligan.Remove(index); }
                 else _selectedCard = index;
                 _feedback = "";
-                Render();
-            };
-            cards.AddChild(card);
+                RefreshSelection();
+            }, state.Phase == Phase.Preparation, ShortLayout);
+        _handScroll.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, _handScrollPosition);
+    }
+
+    private void RefreshSelection()
+    {
+        foreach (var card in _root.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>())
+        {
+            var index = int.Parse(card.Name.ToString()[8..]);
+            card.Chosen = _game.State.Phase == Phase.Preparation ? _mulligan.Contains(index) : _selectedCard == index;
+            card.QueueRedraw();
         }
-        if (state.Players[0].Hand.Count == 0) cards.AddChild(Label("Mano vacía · robarás 3 cartas al empezar tu turno.", 14, Muted));
-        scroll.AddChild(cards);
-        board.AddChild(scroll);
-        _handScroll = scroll;
-        scroll.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, _handScrollPosition);
+        foreach (var skill in _root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>())
+        {
+            skill.Chosen = skill.Skill != null && skill.Slot == _selectedSkill;
+            skill.QueueRedraw();
+        }
+        if (_toolbar == null) return;
+        var position = _toolbar.GetIndex();
+        var parent = (VBoxContainer)_toolbar.GetParent();
+        parent.RemoveChild(_toolbar); _toolbar.QueueFree();
+        BuildToolbar(parent); parent.MoveChild(_toolbar!, position);
+        if (CompactLayout) ArenaViewport.EnlargeTouchTargets(_toolbar!);
     }
 
     private AcceptDialog? OpenBoardDialog(string title, Control content, Vector2I size)
@@ -411,7 +332,8 @@ public partial class Main
         dialog.Confirmed += () => DismissBoardDialog(dialog);
         dialog.Canceled += () => DismissBoardDialog(dialog);
         AddChild(dialog);
-        dialog.PopupCentered();
+        if (CompactLayout) ArenaViewport.PresentDialog(dialog, content, Size);
+        else dialog.PopupCentered();
         return dialog;
     }
 
@@ -448,6 +370,20 @@ public partial class Main
 
     private void ShowCardDetails(int player, CardDefinition card, string caption, string context, string title, Action? returnToZone = null)
     {
+        if (CompactLayout)
+        {
+            var content = new VBoxContainer();
+            content.AddChild(new HandCard { Card = card, Disabled = true, SizeFlagsHorizontal = SizeFlags.ShrinkCenter });
+            content.AddChild(Label(caption, 12, player == 0 ? Mint : Coral));
+            var compactInfo = Label(card.Name + "\n" + card.Text + "\n" + context, 16, Ink);
+            compactInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart; content.AddChild(compactInfo);
+            var scroll = new ScrollContainer { CustomMinimumSize = new(Math.Max(260, Size.X - 48), Math.Max(180, Size.Y - 130)), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            content.SizeFlagsHorizontal = SizeFlags.ExpandFill; scroll.AddChild(content);
+            var compactDialog = OpenBoardDialog(title, scroll, new(280, 200));
+            if (compactDialog != null && returnToZone != null)
+            { compactDialog.Confirmed += returnToZone; compactDialog.Canceled += returnToZone; }
+            return;
+        }
         var row = new HBoxContainer { CustomMinimumSize = new(500, 316) };
         row.AddThemeConstantOverride("separation", 20);
         var stage = new Control { CustomMinimumSize = new(218, 316) };

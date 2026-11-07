@@ -244,6 +244,7 @@ public partial class SkillTile : Button
     // The hand card canvas is 126 × 184; rotating it gives this exact footprint.
     public static readonly Vector2 CardSize = new(184, 126);
     public CardDefinition? Skill { get; set; }
+    public float PresentationScale { get; set; } = 1;
     public int Slot { get; set; }
     public bool Chosen { get; set; }
     public int Counters { get; set; }
@@ -252,7 +253,7 @@ public partial class SkillTile : Button
     public Color Accent { get; set; }
     public override void _Ready()
     {
-        CustomMinimumSize = CardSize;
+        CustomMinimumSize = CardSize * PresentationScale;
         SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         SizeFlagsVertical = SizeFlags.ShrinkCenter;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
@@ -262,33 +263,35 @@ public partial class SkillTile : Button
     }
     public override void _Draw()
     {
+        var size = Size / PresentationScale;
+        DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
         var edge = Chosen ? Accent : new Color("34425e");
         var fill = Chosen ? BoardArt.Tint(Accent, 0.13f) : new Color("11192b");
-        BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), fill, edge, 9, Chosen ? 2 : 1);
-        if (Skill == null) BoardArt.CenterText(this, $"{GameEngine.SkillSlotCosts[Slot]} PR", new(Size.X / 2, Size.Y / 2 + 8), 22, BoardArt.Muted);
+        BoardArt.Plate(this, new Rect2(0, 0, size.X, size.Y), fill, edge, 9, Chosen ? 2 : 1);
+        if (Skill == null) BoardArt.CenterText(this, $"{GameEngine.SkillSlotCosts[Slot]} PR", new(size.X / 2, size.Y / 2 + 8), 22, BoardArt.Muted);
         else if (_skillArt != null)
         {
-            var fit = Math.Min((Size.X - 4) / _skillArt.GetWidth(), (Size.Y - 4) / _skillArt.GetHeight());
+            var fit = Math.Min((size.X - 4) / _skillArt.GetWidth(), (size.Y - 4) / _skillArt.GetHeight());
             var artSize = _skillArt.GetSize() * fit;
-            DrawTextureRect(_skillArt, new Rect2((Size - artSize) / 2, artSize), false);
-            if (Chosen) BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), Colors.Transparent, Accent, 5, 3);
+            DrawTextureRect(_skillArt, new Rect2((size - artSize) / 2, artSize), false);
+            if (Chosen) BoardArt.Plate(this, new Rect2(Vector2.Zero, size), Colors.Transparent, Accent, 5, 3);
             if (Skill.Id == CardCatalog.Destiny.Id)
             {
-                BoardArt.Plate(this, new Rect2(8, Size.Y - 24, 114, 20), new Color("111a2c"), Accent, 4);
-                BoardArt.Text(this, $"CONTADORES {Counters}/2", new(14, Size.Y - 10), 10, Counters >= 2 ? new Color("ef7890") : BoardArt.Ink);
+                BoardArt.Plate(this, new Rect2(8, size.Y - 24, 114, 20), new Color("111a2c"), Accent, 4);
+                BoardArt.Text(this, $"CONTADORES {Counters}/2", new(14, size.Y - 10), 10, Counters >= 2 ? new Color("ef7890") : BoardArt.Ink);
             }
         }
         else
         {
-            DrawLine(new(14, 2), new(Size.X - 14, 2), Accent, 3, true);
+            DrawLine(new(14, 2), new(size.X - 14, 2), Accent, 3, true);
             BoardArt.Text(this, "HABILIDAD", new(12, 20), 9, Accent);
-            BoardArt.CenterText(this, Skill.Name.Replace(" de práctica", ""), new(Size.X / 2, 47), 19, BoardArt.Ink);
+            BoardArt.CenterText(this, Skill.Name.Replace(" de práctica", ""), new(size.X / 2, 47), 19, BoardArt.Ink);
             BoardArt.Icon(this, GameIcon.Bolt, new(34, 83), 32, Accent);
             BoardArt.Icon(this, GameIcon.Sword, new(65, 76), 14, BoardArt.Muted);
             BoardArt.Text(this, $"{(Skill.Id == CardCatalog.Magnet.Id ? "1D6" : Skill.NormalDamage.ToString())} daño", new(78, 81), 14, BoardArt.Ink);
             BoardArt.Text(this, $"{Skill.CriticalDamage} crítico", new(60, 105), 12, BoardArt.Gold);
-            BoardArt.Icon(this, GameIcon.Gem, new(Size.X - 52, 102), 12, BoardArt.Gold);
-            BoardArt.Text(this, Skill.Reward.ToString(), new(Size.X - 42, 107), 12, BoardArt.Gold);
+            BoardArt.Icon(this, GameIcon.Gem, new(size.X - 52, 102), 12, BoardArt.Gold);
+            BoardArt.Text(this, Skill.Reward.ToString(), new(size.X - 42, 107), 12, BoardArt.Gold);
         }
     }
 }
@@ -318,6 +321,7 @@ public partial class DiceOutcomeStrip : Control
 
 public partial class ExchangeTrack : VBoxContainer
 {
+    public bool Compact { get; set; }
     public string OwnerCaption { get; set; } = "";
     public IReadOnlyList<CardDefinition> ExchangeCards { get; set; } = Array.Empty<CardDefinition>();
     public int Filled => ExchangeCards.Count;
@@ -331,7 +335,7 @@ public partial class ExchangeTrack : VBoxContainer
     public event Action<int>? ExchangeInspected;
     public override void _Ready()
     {
-        CustomMinimumSize = new(280, 0);
+        CustomMinimumSize = new(Compact ? 252 : 280, 0);
         AddThemeConstantOverride("separation", 4);
         var label = new Label { Text = $"{OwnerCaption}  ·  {Filled}/2 EN CANJE", MouseFilter = MouseFilterEnum.Ignore };
         label.AddThemeFontSizeOverride("font_size", 9);
@@ -346,7 +350,7 @@ public partial class ExchangeTrack : VBoxContainer
             var index = slot;
             var button = new ZoneCardButton
             {
-                Name = $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent,
+                Name = $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent, Compact = Compact,
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null
             };
             button.Pressed += () => ExchangeInspected?.Invoke(index);
@@ -355,7 +359,7 @@ public partial class ExchangeTrack : VBoxContainer
         }
         BonusButton = new ZoneCardButton
         {
-            Name = "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard,
+            Name = "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard, Compact = Compact,
             Accent = BoardArt.Gold, EmptyCaption = Preparing ? "Por colocar" : "Sin carta"
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
@@ -366,6 +370,7 @@ public partial class ExchangeTrack : VBoxContainer
 /// <summary>Inspectable card shared by the exchange and Bonus zones.</summary>
 public partial class ZoneCardButton : Button
 {
+    public bool Compact { get; set; }
     public CardDefinition? Card { get; set; }
     public string Caption { get; set; } = "";
     public string EmptyCaption { get; set; } = "Vacío";
@@ -373,7 +378,7 @@ public partial class ZoneCardButton : Button
     private Texture2D? _artwork;
     public override void _Ready()
     {
-        CustomMinimumSize = new(88, 86);
+        CustomMinimumSize = new(Compact ? 80 : 88, 86);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         Disabled = Card == null;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
@@ -444,6 +449,8 @@ public partial class AttachmentStack : Button
 public partial class HandCard : Button
 {
     public CardDefinition Card { get; set; } = null!;
+    public float PresentationScale { get; set; } = 1;
+    private Vector2 DrawSize => Size / PresentationScale;
     public bool Chosen { get; set; }
     public bool Mulligan { get; set; }
     private float _hover;
@@ -459,25 +466,29 @@ public partial class HandCard : Button
                 ?? throw new InvalidOperationException("No se pudo cargar la ilustración de ataque.");
         if (Card.Kind is CardKind.Equipment or CardKind.Code) _artwork = GD.Load<Texture2D>($"res://assets/cards/{Card.Id}-clean.png");
         if (Card.Kind == CardKind.Skill) _artwork = SkillArtwork.Load(Card);
-        CustomMinimumSize = new(126, 184);
+        CustomMinimumSize = new Vector2(126, 184) * PresentationScale;
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         MouseDefaultCursorShape = CursorShape.PointingHand;
         TooltipText = $"{Card.Name}\n{Card.Text}";
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        SetProcess(false);
+        MouseEntered += () => SetProcess(true);
+        MouseExited += () => SetProcess(true);
     }
     public override void _Process(double delta)
     {
         var target = IsHovered() ? 1f : 0f;
-        if (Math.Abs(_hover - target) < 0.001f) return;
+        if (Math.Abs(_hover - target) < 0.001f) { _hover = target; SetProcess(false); return; }
         _hover = Mathf.Lerp(_hover, target, Math.Min(1, (float)delta * 14));
         QueueRedraw();
     }
     public override void _Draw()
     {
+        DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
         var accent = BoardArt.CardColor(Card);
         var icon = BoardArt.CardIcon(Card);
         var y = 7 - _hover * 5;
-        var r = new Rect2(1, y, Size.X - 2, 175);
+        var r = new Rect2(1, y, DrawSize.X - 2, 175);
         BoardArt.Plate(this, new Rect2(r.Position + new Vector2(0, 3), r.Size), new Color(0, 0, 0, 0.25f), Colors.Transparent, 12, 0);
         BoardArt.Plate(this, r, Chosen ? new Color("213247") : new Color("182238"), Chosen ? accent : new Color("3b4964"), 12, Chosen ? 2 : 1);
         if (_artwork != null)
@@ -485,9 +496,9 @@ public partial class HandCard : Button
             if (Card.Kind == CardKind.Skill)
             {
                 // Rotate landscape skills into the portrait footprint of the hand.
-                DrawSetTransform(new(r.Position.X, r.End.Y), -Mathf.Pi / 2);
+                DrawSetTransform(new Vector2(r.Position.X, r.End.Y) * PresentationScale, -Mathf.Pi / 2, Vector2.One * PresentationScale);
                 DrawTextureRect(_artwork, new Rect2(0, 0, r.Size.Y, r.Size.X), false);
-                DrawSetTransform(Vector2.Zero);
+                DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
                 if (Chosen) BoardArt.Plate(this, r, Colors.Transparent, accent, 6, 2);
                 DrawSelection(y, accent);
                 return;
@@ -500,17 +511,17 @@ public partial class HandCard : Button
             DrawSelection(y, accent);
             return;
         }
-        DrawLine(new Vector2(15, y + 1), new Vector2(Size.X - 15, y + 1), accent, 3, true);
+        DrawLine(new Vector2(15, y + 1), new Vector2(DrawSize.X - 15, y + 1), accent, 3, true);
         BoardArt.Text(this, Card.Kind == CardKind.Attachment ? "SOBRE RELIKARIO" : BoardArt.CardType(Card), new(12, y + 21), 9, accent);
-        for (var i = 3; i >= 1; i--) DrawCircle(new Vector2(Size.X / 2, y + 70), i * 12, BoardArt.Tint(accent, 0.035f));
-        var center = new Vector2(Size.X / 2, y + 69);
+        for (var i = 3; i >= 1; i--) DrawCircle(new Vector2(DrawSize.X / 2, y + 70), i * 12, BoardArt.Tint(accent, 0.035f));
+        var center = new Vector2(DrawSize.X / 2, y + 69);
         DrawPolyline(new Vector2[] { center + new Vector2(0, -38), center + new Vector2(39, 0), center + new Vector2(0, 38), center + new Vector2(-39, 0), center + new Vector2(0, -38) }, BoardArt.Tint(accent, 0.2f), 1, true);
         BoardArt.Icon(this, icon, center, 43, accent);
         var name = Card.Name.Replace(" de práctica", "");
         var fontSize = name.Length > 11 ? 14 : 17;
-        while (fontSize > 11 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 18) fontSize--;
-        BoardArt.CenterText(this, name, new(Size.X / 2, y + 122), fontSize, BoardArt.Ink);
-        DrawLine(new(12, y + 134), new(Size.X - 12, y + 134), new Color("34405a"), 1);
+        while (fontSize > 11 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > DrawSize.X - 18) fontSize--;
+        BoardArt.CenterText(this, name, new(DrawSize.X / 2, y + 122), fontSize, BoardArt.Ink);
+        DrawLine(new(12, y + 134), new(DrawSize.X - 12, y + 134), new Color("34405a"), 1);
         if (Card.Kind == CardKind.Skill)
         {
             BoardArt.Icon(this, GameIcon.Sword, new(16, y + 152), 13, accent);
@@ -523,9 +534,9 @@ public partial class HandCard : Button
         {
             BoardArt.Icon(this, Card.Heal > 0 ? GameIcon.Heart : GameIcon.Cards, new(18, y + 152), 15, accent);
             BoardArt.Text(this, "+2", new(30, y + 157), 16, BoardArt.Ink);
-            BoardArt.Text(this, "1 acción", new(Size.X - 56, y + 156), 10, BoardArt.Muted);
+            BoardArt.Text(this, "1 acción", new(DrawSize.X - 56, y + 156), 10, BoardArt.Muted);
         }
-        else BoardArt.CenterText(this, Card.Kind == CardKind.Attack ? "Usa una habilidad" : "Carta de ejemplo", new(Size.X / 2, y + 156), 11, BoardArt.Muted);
+        else BoardArt.CenterText(this, Card.Kind == CardKind.Attack ? "Usa una habilidad" : "Carta de ejemplo", new(DrawSize.X / 2, y + 156), 11, BoardArt.Muted);
         DrawSelection(y, accent);
     }
 
@@ -533,9 +544,9 @@ public partial class HandCard : Button
     {
         if (Chosen)
         {
-            DrawCircle(new Vector2(Size.X - 17, y + 18), 8, accent);
-            DrawPolyline(new Vector2[] { new(Size.X - 21, y + 18), new(Size.X - 18, y + 21), new(Size.X - 13, y + 15) }, new Color("0b1422"), 2, true);
-            if (Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(Size.X / 2, y + 99), 9, accent);
+            DrawCircle(new Vector2(DrawSize.X - 17, y + 18), 8, accent);
+            DrawPolyline(new Vector2[] { new(DrawSize.X - 21, y + 18), new(DrawSize.X - 18, y + 21), new(DrawSize.X - 13, y + 15) }, new Color("0b1422"), 2, true);
+            if (Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(DrawSize.X / 2, y + 99), 9, accent);
         }
     }
 }

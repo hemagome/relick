@@ -35,6 +35,8 @@ herido ni una animación de derrota específicos.
 
 ## Tablero visual
 
+Práctica y PvP usan los mismos componentes visuales. La distribución se adapta a pantallas pequeñas y horizontales; los detalles de cartas se consultan también con un toque. [Interfaz, optimizaciones y pruebas](docs/UI.md).
+
 - Barra de fases con la etapa activa y el dueño del turno. El botón para avanzar pulsa con un brillo dorado cuando no quedan jugadas legales (incluidos los efectos de Relikia). No avanza automáticamente ni brilla durante tiradas o elecciones pendientes.
 - **Mano del rival** sobre la resolución de combate: un reverso por carta, usando la imagen original aportada por el usuario. Sustituye los contadores laterales de mano. Se actualiza al robar, jugar, canjear o descartar. La fila se desplaza si no cabe y **Ampliar** permite recorrer todas las cartas en una cuadrícula, sin límite de mano.
   El estado admite revelaciones individuales por efectos: solo esas cartas muestran el frente, con borde dorado, y pueden ampliarse para consultar su información. Una carta oculta no expone su nombre ni efecto en controles o ayudas. La mano solo se muestra completa durante la elección autorizada por un crítico de Magnet.
@@ -210,7 +212,7 @@ La demo ya no depende de herramientas ni paquetes guardados en `/tmp`. Las insta
 - Rival con decisiones sencillas: enseña, ataca, pone equipos, juega Senshuni, usa los efectos de dado disponibles y evita canjear sus ataques.
 - Registro de jugadas y ayuda dentro del juego.
 
-**Todavía no hay integración con SpacetimeDB ni multijugador.** La primera entrega prioriza el duelo local elegido. El motor de reglas está separado para reutilizarlo después en el servidor.
+**Etapa 2: PvP funcional con SpacetimeDB.** Crea una sala por código, confirma tu mano inicial con otro jugador y completa un duelo en línea con las cartas actuales. El servidor ejecuta las mismas reglas de `core/`, resuelve los dados y envía únicamente la información permitida a cada jugador. Incluye respuestas, COMBO, evolución, abandono y recuperación del combate al reconectar. La arena PvP es una primera interfaz funcional; las animaciones completas siguen en la práctica local. Consulta [la guía PvP](docs/PVP.md).
 
 Además de las dos habilidades aportadas, no se incluye el catálogo completo, construcción de mazos, otros niveles o Relikarios, otros equipos o cartas sobre el Relikario, áreas, combos, destreza, colección, cuentas, tienda ni clasificación. Los relikarios tienen 8 vidas y, por tanto, no requieren fichas iniciales de destreza según el manual consultado.
 

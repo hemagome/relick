@@ -31,7 +31,25 @@ public partial class Main : Control
     private CenterContainer _diceOverlay = null!;
     private Label _diceTitle = null!;
     private Label _diceCaption = null!;
-    private HBoxContainer _arena = null!;
+    private BoxContainer _arena = null!;
+    private OnlineLobby? _onlineLobby;
+
+    private void OpenOnlineLobby()
+    {
+        if (_onlineLobby != null) return;
+        _onlineLobby = new OnlineLobby();
+        _root.Hide();
+        _drawOverlay?.Hide();
+        _diceOverlay.Hide();
+        _onlineLobby.Closed += () =>
+        {
+            _onlineLobby = null;
+            _root.Show();
+            if (CardsInMotion) _drawOverlay?.Show();
+            UpdateDiceOverlay();
+        };
+        AddChild(_onlineLobby);
+    }
 
     public override void _Ready()
     {
@@ -46,6 +64,7 @@ public partial class Main : Control
         theme.SetStylebox("disabled", "Button", Box("151d2d", "27334a", 10));
         theme.SetConstant("outline_size", "Label", 0);
         Theme = theme;
+        ArenaViewport.Configure(GetWindow());
         var backdrop = new ArenaBackground { Name = "ArenaBackdrop" };
         AddChild(backdrop);
         backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -64,7 +83,12 @@ public partial class Main : Control
         BuildDiceOverlay();
         _lifeMeters = new[] { new LifeMeter { Name = "OwnLifeMeter" }, new LifeMeter { Name = "EnemyLifeMeter" } };
         NewGame();
+        Resized += QueueResponsiveLayout;
+        GetWindow().SizeChanged += () => ArenaViewport.Configure(GetWindow());
         var args = OS.GetCmdlineUserArgs();
+        if (args.Contains("--pvp")) CallDeferred(nameof(OpenOnlineLobby));
+        if (args.Contains("--pvp-input-test")) CallDeferred(nameof(PvpInputSmokeTest));
+        if (args.Contains("--shared-arena-test")) CallDeferred(nameof(SharedArenaSmokeTest));
         if (args.Contains("--smoke-test")) CallDeferred(nameof(SmokeTest));
         if (args.Contains("--pile-animation-test")) CallDeferred(nameof(PileAnimationSmokeTest));
         if (args.Contains("--attack-timing-test")) CallDeferred(nameof(AttackTimingSmokeTest));
@@ -155,6 +179,7 @@ public partial class Main : Control
 
     public override void _Process(double delta)
     {
+        if (_onlineLobby != null) return;
         UpdateDiceOverlay();
         UpdateDrawAnimations(delta);
         PlayPendingCombatAnimations();
@@ -266,7 +291,14 @@ public partial class Main : Control
         popup.Confirmed += () => { _helpOpen = false; popup.QueueFree(); };
         popup.Canceled += () => { _helpOpen = false; popup.QueueFree(); };
         AddChild(popup);
-        popup.PopupCentered();
+        if (CompactLayout)
+        {
+            var text = popup.DialogText; popup.DialogText = "";
+            var scroll = new ScrollContainer { CustomMinimumSize = new(Math.Max(260, Size.X - 48), Math.Max(160, Size.Y - 130)), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            var help = Label(text, 16, Ink); help.AutowrapMode = TextServer.AutowrapMode.WordSmart; help.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            scroll.AddChild(help); popup.AddChild(scroll); ArenaViewport.PresentDialog(popup, scroll, Size);
+        }
+        else popup.PopupCentered();
     }
 
     private void ConfirmRestart()
@@ -281,7 +313,7 @@ public partial class Main : Control
         popup.Confirmed += () => { _helpOpen = false; popup.QueueFree(); NewGame(); };
         popup.Canceled += () => { _helpOpen = false; popup.QueueFree(); };
         AddChild(popup);
-        popup.PopupCentered();
+        if (CompactLayout) ArenaViewport.FitDialog(popup, Size); else popup.PopupCentered();
     }
 
     private static string PhaseName(Phase phase) => phase switch

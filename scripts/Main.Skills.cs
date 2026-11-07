@@ -24,7 +24,8 @@ public partial class Main
         dialog.AddChild(content);
         void Pass() { CloseRelikiaDialog(dialog); onPass(); }
         dialog.Confirmed += Pass; dialog.Canceled += Pass;
-        AddChild(dialog); dialog.PopupCentered();
+        AddChild(dialog);
+        if (CompactLayout) ArenaViewport.PresentDialog(dialog, content, Size); else dialog.PopupCentered();
         return dialog;
     }
 

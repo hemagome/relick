@@ -13,7 +13,7 @@ public partial class Main
         dialog.Confirmed += () => CloseRelikiaDialog(dialog);
         dialog.Canceled += () => CloseRelikiaDialog(dialog);
         AddChild(dialog);
-        dialog.PopupCentered();
+        if (CompactLayout) ArenaViewport.PresentDialog(dialog, content, Size); else dialog.PopupCentered();
         return dialog;
     }
 
