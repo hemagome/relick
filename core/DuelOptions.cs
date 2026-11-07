@@ -1,11 +1,5 @@
 namespace Relick.Core;
 
-public sealed partial class GameEngine
-{
-    public bool CanReplayMemoryCode(int actor, int index) => CanUseRelikiaEffect(actor, RelikiaEffect.ReplayCode) &&
-        IsMemoryCode(actor, index) && CodeEffectUnavailable(State.Players[actor], CardCatalog.Get(State.Players[actor].Memory[index]), 400) == null;
-}
-
 public static class DuelOptions
 {
     public static List<DuelOption> For(GameEngine game, int actor)
@@ -47,15 +41,14 @@ public static class DuelOptions
                                 Add(DuelMoveKind.Equip, $"Equipar {Card(p.Hand[i])} · carta {i + 1}", i);
                             if (p.Bonus != null) Add(DuelMoveKind.Exchange, $"Canjear {Card(p.Hand[i])} · carta {i + 1}", i);
                         }
-                    foreach (var effect in RelikiaEffects.All.Where(e => game.CanUseRelikiaEffect(actor, e.Id)))
+                    foreach (var effect in RelikiaEffects.All)
                     {
                         if (effect.Id == RelikiaEffect.ReplayCode)
                         {
-                            for (var i = 0; i < p.Memory.Count; i++)
-                                if (game.CanReplayMemoryCode(actor, i))
-                                    Add(DuelMoveKind.Relikia, $"Reciclar {Card(p.Memory[i])} · memoria {i + 1}", i, (int)effect.Id);
+                            foreach (var i in game.ReplayableMemoryCodes(actor))
+                                Add(DuelMoveKind.Relikia, $"Reciclar {Card(p.Memory[i])} · memoria {i + 1}", i, (int)effect.Id);
                         }
-                        else Add(DuelMoveKind.Relikia, $"{effect.Name} · {effect.Cost} PR", value: (int)effect.Id);
+                        else if (game.CanUseRelikiaEffect(actor, effect.Id)) Add(DuelMoveKind.Relikia, $"{effect.Name} · {effect.Cost} PR", value: (int)effect.Id);
                     }
                     Add(DuelMoveKind.Advance, "Terminar turno");
                     break;

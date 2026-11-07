@@ -4,15 +4,23 @@ public sealed partial class GameEngine
 {
     public bool CanUseRelikiaEffect(int actor, RelikiaEffect effect) => RelikiaEffectUnavailableReason(actor, effect) == null;
 
-    public string? RelikiaEffectUnavailableReason(int actor, RelikiaEffect effect)
+    private string? RelikiaCommonUnavailableReason(int actor, RelikiaEffect effect)
     {
         var error = ValidateAction(actor);
         if (error != null) return error;
         if (!Enum.IsDefined(effect)) return "Efecto desconocido.";
         var definition = RelikiaEffects.Get(effect);
-        var p = State.Active;
         if (State.ActionsLeft < definition.Actions) return $"Necesitas {definition.Actions} acciones disponibles.";
-        if (p.Relikia < definition.Cost) return $"Necesitas {definition.Cost} PR.";
+        if (State.Active.Relikia < definition.Cost) return $"Necesitas {definition.Cost} PR.";
+        return null;
+    }
+
+    public string? RelikiaEffectUnavailableReason(int actor, RelikiaEffect effect)
+    {
+        var error = RelikiaCommonUnavailableReason(actor, effect);
+        if (error != null) return error;
+        var definition = RelikiaEffects.Get(effect);
+        var p = State.Active;
         return effect switch
         {
             RelikiaEffect.ChangeBonus when p.Exchange.Count != 0 => "Tu zona de canje debe estar vacía.",
@@ -20,6 +28,21 @@ public sealed partial class GameEngine
             RelikiaEffect.ReplayCode when !p.Memory.Where(IsCode).Any(id => CodeEffectUnavailable(p, CardCatalog.Get(id), definition.Cost) == null) => "No tienes códigos sin corromper en tu memoria.",
             _ => null
         };
+    }
+
+    public bool CanReplayMemoryCode(int actor, int index) =>
+        RelikiaCommonUnavailableReason(actor, RelikiaEffect.ReplayCode) == null &&
+        IsMemoryCode(actor, index) && CodeEffectUnavailable(State.Players[actor], CardCatalog.Get(State.Players[actor].Memory[index]),
+            RelikiaEffects.Get(RelikiaEffect.ReplayCode).Cost) == null;
+
+    public IReadOnlyList<int> ReplayableMemoryCodes(int actor)
+    {
+        if (RelikiaCommonUnavailableReason(actor, RelikiaEffect.ReplayCode) != null) return Array.Empty<int>();
+        var result = new List<int>();
+        var player = State.Players[actor]; var extraCost = RelikiaEffects.Get(RelikiaEffect.ReplayCode).Cost;
+        for (var index = 0; index < player.Memory.Count; index++)
+            if (IsMemoryCode(actor, index) && CodeEffectUnavailable(player, CardCatalog.Get(player.Memory[index]), extraCost) == null) result.Add(index);
+        return result;
     }
 
     public CommandResult UseRelikiaEffect(int actor, RelikiaEffect effect, int memoryIndex = -1)
