@@ -46,7 +46,7 @@ La auditoría acotada sirve para diagnóstico reciente. Una repetición completa
 
 Los reintentos idénticos de comandos ya aceptados se resuelven con su comprobante. Los intentos de jugada bien formados pero rechazados consumen cuota y guardan un resultado privado; no lanzan una excepción que deshaga ese consumo. Los mensajes mal formados se rechazan antes de leer el estado del motor. La cuota por participante se elimina al retirar su sala; la admisión global limita la creación de salas sucesivas.
 
-Cada renovación crea un identificador de temporizador nuevo para que un aviso antiguo no elimine una sala renovada. Solo el planificador de la base puede ejecutar la expiración. Un mantenimiento en segundo plano asigna vencimientos a salas legadas que todavía no tenían temporizador, en lotes de 16; una conexión puede activar ese mantenimiento como máximo una vez por minuto. Las salas legadas preparadas reciben un plazo de 2 horas desde su incorporación al mantenimiento.
+Cada sala recibe su temporizador al crearse; las jugadas y reconexiones renuevan el vencimiento. Cada renovación crea un identificador de temporizador nuevo para que un aviso antiguo no elimine una sala renovada. Solo el planificador de la base puede ejecutar la expiración. Se retiró el mantenimiento que buscaba salas antiguas sin temporizador y sus dos tablas auxiliares; la caducidad normal continúa en `room_expiry`.
 
 Son límites operativos iniciales, no una capacidad garantizada. La protección del módulo no sustituye límites de conexiones/tráfico en infraestructura ni cuentas de usuario estables.
 

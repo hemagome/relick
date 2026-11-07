@@ -74,43 +74,10 @@ public static partial class Module
     [Reducer(ReducerKind.ClientConnected)]
     public static void ClientConnected(ReducerContext ctx)
     {
-        StartLegacyExpirySweep(ctx);
         if (ctx.Db.Member.Player.Find(ctx.Sender) is not Member me) return;
         if (ctx.Db.Opening.RoomCode.Find(me.RoomCode) != null) EnsureCurrentDuel(ctx, me.RoomCode);
         TouchRoom(ctx, me.RoomCode);
     }
-    [Table(Accessor = "LegacySweepControl")]
-    public partial struct LegacySweepControl
-    {
-        [PrimaryKey] public byte Id;
-        public long LastStart;
-    }
-    [Table(Accessor = "LegacyExpirySweep", Scheduled = nameof(SweepLegacyExpiry), ScheduledAt = nameof(LegacyExpirySweep.ScheduledAt))]
-    public partial struct LegacyExpirySweep
-    {
-        [PrimaryKey, AutoInc] public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-    private static void StartLegacyExpirySweep(ReducerContext ctx)
-    {
-        var now = ctx.Timestamp.MicrosecondsSinceUnixEpoch;
-        var old = ctx.Db.LegacySweepControl.Id.Find(0);
-        if (ctx.Db.LegacyExpirySweep.Count != 0 || (old != null && now - old.Value.LastStart < 60_000_000)) return;
-        var control = new LegacySweepControl { Id = 0, LastStart = now };
-        if (old == null) ctx.Db.LegacySweepControl.Insert(control); else ctx.Db.LegacySweepControl.Id.Update(control);
-        ctx.Db.LegacyExpirySweep.Insert(new LegacyExpirySweep { ScheduledAt = new ScheduleAt.Time(ctx.Timestamp + new TimeDuration(1_000_000)) });
-    }
-    [Reducer]
-    public static void SweepLegacyExpiry(ReducerContext ctx, LegacyExpirySweep job)
-    {
-        if (ctx.Sender != ctx.DatabaseIdentity) throw new Exception("Solo el planificador puede ejecutar el mantenimiento.");
-        // Background upgrade path only. New rooms always receive a lease on creation.
-        // The admission cap bounds this scan; at most 16 legacy rooms are changed per tick.
-        var missing = ctx.Db.Room.Iter().Where(r => ctx.Db.RoomExpiry.RoomCode.Find(r.Code) == null).Take(16).ToArray();
-        foreach (var room in missing) TouchRoom(ctx, room.Code);
-        if (missing.Length == 16) ctx.Db.LegacyExpirySweep.Insert(new LegacyExpirySweep { ScheduledAt = new ScheduleAt.Time(ctx.Timestamp + new TimeDuration(1_000_000)) });
-    }
-
     private static void DeleteRoom(ReducerContext ctx, string code)
     {
         foreach (var card in ctx.Db.Card.RoomCode.Filter(code).ToList()) ctx.Db.Card.Id.Delete(card.Id);

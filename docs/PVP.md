@@ -191,3 +191,11 @@ Las marcas de revelación siguen las copias transferidas. El resto de cartas con
 Una copia sustituye una de Vida Extra en los mazos nuevos, conservando veinte cartas. Las partidas existentes conservan sus cartas.
 
 Publicado en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin cambios de tablas. Validación: 177 comprobaciones del motor, 69 PvP remotas y tres intercambios reales con manos, destinatarios y revelaciones verificados. La interfaz completa pasó sin ventana y la matriz gráfica específica cubrió cuatro tamaños, ambos jugadores/asientos, manos vacías o desiguales y animaciones sin filtrar identidades.
+
+## Retirada del barrido de caducidad antiguo
+
+Se eliminaron `legacy_sweep_control`, `legacy_expiry_sweep` y el reducer `sweep_legacy_expiry`, además de la llamada desde `ClientConnected` y sus tipos generados de cliente y pruebas. Las salas siguen recibiendo y renovando sus vencimientos en `room_expiry`; `expire_room` conserva la renovación segura y la restricción de ejecución al planificador.
+
+La retirada se publica en dos pasos con `--delete-data=never`: primero un módulo temporal desactiva el barrido manteniendo el esquema anterior; tras vaciar únicamente la fila de control y comprobar que la cola está vacía, el módulo definitivo retira las dos tablas. No se reinicia la base ni se vacían tablas de salas o partidas. SpacetimeDB desconecta los clientes al retirar tablas; pueden volver a conectarse con su identidad habitual.
+
+Verificado en el esquema publicado de `relick-pvp-dev-c2006ee7`: las dos tablas y el reducer retirados están ausentes; `room_expiry`, `expire_room`, `room` y `current_duel` siguen presentes. El ensayo local conservó una sala y su temporizador a través de la retirada. Pasaron tres comprobaciones de caducidad, cinco de persistencia y 69 PvP remotas; el cliente y los módulos principal y de pruebas compilan correctamente.

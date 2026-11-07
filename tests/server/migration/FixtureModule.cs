@@ -42,8 +42,6 @@ public static partial class Module
         ctx.Db.DuelStep.Insert(new DuelStep { Receipt = me.RoomCode + ":" + actor + ":" + nonce, RoomCode = me.RoomCode,
             Revision = 1, Option = option, SelectedCards = [], EntryJson = JsonSerializer.Serialize(new DuelEntry { Actor = actor, Move = move, RandomValues = random.Finish() }, DuelJson.Default.DuelEntry) });
         ctx.Db.CurrentDuel.RoomCode.Delete(me.RoomCode); ctx.Db.DuelBoard.RoomCode.Delete(me.RoomCode);
-        if (ctx.Db.RoomExpiry.RoomCode.Find(me.RoomCode) is RoomExpiry expiry) ctx.Db.RoomExpiry.ScheduledId.Delete(expiry.ScheduledId);
-        ctx.Db.LegacySweepControl.Id.Delete(0); StartLegacyExpirySweep(ctx);
         foreach (var member in ctx.Db.Member.RoomCode.Filter(me.RoomCode)) { ctx.Db.DuelHand.Player.Delete(member.Player); ctx.Db.DuelChoices.Player.Delete(member.Player); }
     }
     [Reducer]

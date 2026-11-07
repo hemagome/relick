@@ -116,8 +116,7 @@ static class ScalabilityChecks
         var nonce = Guid.NewGuid().ToString("N");
         a.Connection.Reducers.SeedLegacyFixture(nonce, false);
         await h.Wait(() => a.Stats?.LegacySteps == 1 && a.Duel == null);
-        await h.Wait(() => a.Stats?.LeasePresent == true, 10);
-        Check(true, "El mantenimiento asigna vencimiento a salas legadas que no tenían temporizador");
+        Check(a.Stats!.LeasePresent, "Preparar el fixture conserva el temporizador normal de la sala");
         a.Connection.Reducers.EnsureDuel();
         await h.Wait(() => a.Duel?.Revision == 1 && b.Duel?.Revision == 1 && a.Stats?.LegacySteps == 0);
         Check(a.Stats!.Receipts == 1 && a.Stats.SnapshotBytes > 0 && actor.Duel!.Players[actor.Duel.MySeat].Skills.Length == 1,
