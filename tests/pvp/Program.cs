@@ -211,7 +211,6 @@ try
     Rejected(outsider, () => outsider.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), 0, []), "Un tercero no puede jugar ni elegir actor");
     var starter = fighterA.Duel.CurrentPlayer == 0 ? fighterA : b;
     var learn = starter.Duel!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Learn);
-    Rejected(starter, () => starter.Connection.Reducers.PlayDuel(nextCode, 0, Guid.NewGuid().ToString("N"), learn, []), "El protocolo anterior exige actualizar el cliente");
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), int.MaxValue, []), "Opción inventada rechazada por el servidor");
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), learn, [0]), "Descartes adicionales no pueden modificar una jugada normal");
     var learnId = Guid.NewGuid().ToString("N");

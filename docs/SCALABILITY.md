@@ -29,7 +29,7 @@ flowchart LR
 - Los comprobantes de comandos aceptados están separados de la auditoría y se conservan hasta cerrar o expirar la sala. Compactar la auditoría no permite ejecutar otra vez un comando antiguo.
 - La versión anterior, con `duel` y `duel_step`, se migra una sola vez al volver a conectar o al preparar la sala. Esa migración reproduce el historial compatible, crea el estado actual y los comprobantes, y retira el registro legado en una transacción.
 - Una versión de reglas o formato no reconocida se rechaza; no se sustituye silenciosamente por reglas nuevas. Los cambios futuros de balance requieren versionar reglas y definir migración o convivencia de versiones.
-- El protocolo de comandos es **2**, mediante `play_duel_v2` y su resultado privado. Una transacción puede confirmar un rechazo para conservar la cuota consumida. `play_duel` del protocolo anterior devuelve una indicación de actualizar el cliente. Es necesario volver a abrir el juego actualizado.
+- El protocolo de comandos es **2**, mediante `play_duel_v_2` y su resultado privado. Una transacción puede confirmar un rechazo para conservar la cuota consumida. Se retiró el reducer obsoleto `play_duel`; el cliente utiliza únicamente la función actual.
 
 La auditoría acotada sirve para diagnóstico reciente. Una repetición completa de partidas largas requeriría archivado adicional; no se promete conservar todo el historial después de compactarlo.
 

@@ -199,3 +199,9 @@ Se eliminaron `legacy_sweep_control`, `legacy_expiry_sweep` y el reducer `sweep_
 La retirada se publica en dos pasos con `--delete-data=never`: primero un módulo temporal desactiva el barrido manteniendo el esquema anterior; tras vaciar únicamente la fila de control y comprobar que la cola está vacía, el módulo definitivo retira las dos tablas. No se reinicia la base ni se vacían tablas de salas o partidas. SpacetimeDB desconecta los clientes al retirar tablas; pueden volver a conectarse con su identidad habitual.
 
 Verificado en el esquema publicado de `relick-pvp-dev-c2006ee7`: las dos tablas y el reducer retirados están ausentes; `room_expiry`, `expire_room`, `room` y `current_duel` siguen presentes. El ensayo local conservó una sala y su temporizador a través de la retirada. Pasaron tres comprobaciones de caducidad, cinco de persistencia y 69 PvP remotas; el cliente y los módulos principal y de pruebas compilan correctamente.
+
+## Única función para enviar jugadas
+
+Se retiró `play_duel`, que únicamente rechazaba llamadas de clientes antiguos con una indicación de actualizar. La función activa conserva su nombre `play_duel_v_2`, sus parámetros y la confirmación privada mediante `my_move_result`. Los bindings del cliente y de las pruebas se regeneraron sin la función obsoleta; se retiró también la comprobación que esperaba su mensaje de actualización. No cambian las tablas ni las reglas de las partidas.
+
+Publicado en `relick-pvp-dev-c2006ee7` con `--delete-data=never`. El esquema remoto confirma que `play_duel` está ausente y conserva `play_duel_v_2` y `my_move_result`. Pasaron 68 comprobaciones PvP remotas; el cliente y los módulos principal y de pruebas compilan correctamente.

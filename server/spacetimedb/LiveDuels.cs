@@ -159,12 +159,6 @@ public static partial class Module
         TouchRoom(ctx, me.RoomCode);
     }
 
-    // Protocol 1 assumed that every committed transaction was an accepted move.
-    // Protocol 2 observes the private result, including committed rate-limit rejections.
-    [Reducer]
-    public static void PlayDuel(ReducerContext ctx, string roomCode, ulong expectedRevision, string commandId, int option, List<int> selectedCards)
-        => throw new Exception("Actualiza y vuelve a abrir el juego para continuar esta partida.");
-
     [Reducer]
     public static void PlayDuelV2(ReducerContext ctx, string roomCode, ulong expectedRevision, string commandId, int option, List<int> selectedCards)
     {
