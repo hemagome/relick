@@ -2,34 +2,38 @@ using Godot;
 
 namespace Relick;
 
-public enum PortraitMotion { Idle, Attack, Hit }
+public enum PortraitMotion { Idle, Attack, Hit, ExhaustedIdle }
 
 /// <summary>One fixed canvas shared by all clips. UI rebuilds reparent this node, preserving playback.</summary>
 public partial class YunoPortrait : Control
 {
-    public static double DurationFor(PortraitMotion motion) => motion switch
+    private sealed record Clip(string File, int Frames, double Seconds, bool Loops);
+    private static readonly IReadOnlyDictionary<PortraitMotion, Clip> Clips = new Dictionary<PortraitMotion, Clip>
     {
-        PortraitMotion.Attack => 1.2,
-        PortraitMotion.Hit => 0.9,
-        _ => 2.0
+        [PortraitMotion.Idle] = new("idle", 64, 2.0, true),
+        [PortraitMotion.Attack] = new("attack", 56, 1.2, false),
+        [PortraitMotion.Hit] = new("hit", 64, 0.9, false),
+        [PortraitMotion.ExhaustedIdle] = new("exhausted-idle", 16, 2.8, true)
     };
+    public static double DurationFor(PortraitMotion motion) => Clips[motion].Seconds;
     private const int Columns = 8;
     private const int FrameWidth = 608;
     private const int FrameHeight = 504;
     private readonly Dictionary<PortraitMotion, Texture2D> _sheets = new();
     private double _elapsed;
+    private PortraitMotion _restMotion;
 
     public float PortraitHeight { get; set; } = 236;
     public bool FlipHorizontal { get; set; }
     public Color AccentColor { get; set; } = new("75e6bd");
 
     public PortraitMotion Motion { get; private set; }
-    public bool IsActionPlaying => Motion != PortraitMotion.Idle;
-    public int FrameCount => Motion == PortraitMotion.Attack ? 56 : 64;
+    public bool IsActionPlaying => !Clips[Motion].Loops;
+    public int FrameCount => Clips[Motion].Frames;
     public double DurationSeconds => DurationFor(Motion);
     // Stabilize exact frame boundaries reached through repeated 60/120 Hz delta additions.
     public int CurrentFrame => Math.Min(FrameCount - 1, (int)(_elapsed / DurationSeconds * FrameCount + 1e-9));
-    public bool AssetsReady => _sheets.Count == 3;
+    public bool AssetsReady => _sheets.Count == Clips.Count;
 
     public override void _Ready()
     {
@@ -37,13 +41,11 @@ public partial class YunoPortrait : Control
         TextureFilter = TextureFilterEnum.Linear;
         ClipContents = true;
         CustomMinimumSize = new Vector2(0, PortraitHeight);
-        foreach (var (motion, file) in new[]
+        foreach (var (motion, clip) in Clips)
         {
-            (PortraitMotion.Idle, "idle"), (PortraitMotion.Attack, "attack"), (PortraitMotion.Hit, "hit")
-        })
-        {
+            var file = clip.File;
             var texture = GD.Load<Texture2D>($"res://assets/characters/yuno/{file}.png");
-            var rows = motion == PortraitMotion.Attack ? 7 : 8;
+            var rows = clip.Frames / Columns;
             if (texture == null || texture.GetWidth() % Columns != 0 || texture.GetHeight() % rows != 0 ||
                 texture.GetWidth() / Columns * FrameHeight != texture.GetHeight() / rows * FrameWidth)
                 throw new InvalidOperationException($"Hoja de Yuno inválida: {file}. Debe conservar la cuadrícula {Columns} × {rows} y la proporción de cada fotograma.");
@@ -51,6 +53,17 @@ public partial class YunoPortrait : Control
         }
         QueueRedraw();
     }
+
+    public void SetHealth(int health)
+    {
+        var rest = health <= 0 ? PortraitMotion.ExhaustedIdle : PortraitMotion.Idle;
+        if (_restMotion == rest) return;
+        _restMotion = rest;
+        // Let the final hit finish before entering the zero-health breathing loop.
+        if (!IsActionPlaying) ReturnToRest();
+    }
+
+    public void ReturnToRest() => Play(_restMotion);
 
     public void Play(PortraitMotion motion)
     {
@@ -71,8 +84,8 @@ public partial class YunoPortrait : Control
         _elapsed += delta;
         if (_elapsed >= DurationSeconds)
         {
-            if (Motion == PortraitMotion.Idle) _elapsed %= DurationSeconds;
-            else { Motion = PortraitMotion.Idle; _elapsed = 0; }
+            if (!IsActionPlaying) _elapsed %= DurationSeconds;
+            else { Motion = _restMotion; _elapsed = 0; }
         }
         if (CurrentFrame != previousFrame || Motion != previousMotion) QueueRedraw();
     }
@@ -95,7 +108,7 @@ public partial class YunoPortrait : Control
         var extent = new Vector2(FrameWidth, FrameHeight) * scale;
         var target = new Rect2(new Vector2((Size.X - extent.X) / 2, Size.Y - extent.Y), extent);
         var frameWidth = texture.GetWidth() / Columns;
-        var frameHeight = texture.GetHeight() / (Motion == PortraitMotion.Attack ? 7 : 8);
+        var frameHeight = texture.GetHeight() / (FrameCount / Columns);
         var source = new Rect2((CurrentFrame % Columns) * frameWidth, (CurrentFrame / Columns) * frameHeight, frameWidth, frameHeight);
         if (FlipHorizontal) DrawSetTransform(new Vector2(Size.X, 0), 0, new Vector2(-1, 1));
         DrawTextureRectRegion(texture, target, source);

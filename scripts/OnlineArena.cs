@@ -155,6 +155,7 @@ public partial class OnlineArena : Control
         {
             var seat = relative == 0 ? s.MySeat : 1 - s.MySeat;
             var player = relativePlayers[relative];
+            _portraits[relative].SetHealth(player.Health);
             ArenaPresentation.Player(arena, player, relative, relative == 1, !_preparing && s.CurrentPlayer == seat && s.Winner == null,
                 _selectedSkill, _portraits[relative], _life[relative], new ArenaPlayerActions
                 {

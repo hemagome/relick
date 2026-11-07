@@ -36,9 +36,10 @@ La configuración contempla densidad y área segura. No constituye una exportaci
 - Reconectar invalida la caché por época y vuelve a comprobar las versiones coherentes de tablero, mano y opciones. Retirar la suscripción de preparación invalida su mano mediante las eliminaciones de filas.
 - Las señales visuales representan una revisión aceptada; tiradas consecutivas iguales siguen siendo eventos distintos. Una recuperación o salto de revisión restaura el estado sin reproducir efectos antiguos.
 - Las cartas no mantienen procesamiento de hover cuando ya no necesitan animarlo. Los personajes ocultos no avanzan; los visibles solicitan redibujado cuando cambia su fotograma. El dado deja de actualizar continuamente su viewport 3D cuando está inmóvil.
+- A cero vidas, Yuno usa un reposo agotado con respiración lenta, gesto preocupado y raspones. Se termina la reacción del último golpe antes de entrar al bucle. La vida recibida selecciona el reposo para ambos jugadores, también al recuperar la partida; volver a construir la arena no reinicia ese bucle.
 - La geometría constante del icono de vida se calcula una sola vez. No se introdujo una caché global ilimitada de estilos o colores animados.
 
-Las hojas originales de Yuno permanecen intactas. Las versiones importadas a mitad de ancho y alto mantienen su cuadrícula; en la medición original ocuparon 16,4 MiB frente a 44,6 MiB, aproximadamente un 63 % menos en recursos importados. No es una medición de RAM, VRAM ni FPS.
+Los cuatro atlas de Yuno conservan un lienzo lógico de 608×504 por cuadro. La importación limita el ancho a 2432 píxeles y mantiene la cuadrícula: reposo, ataque, daño y reposo agotado usan el mismo tamaño visual. Los clips, su procedencia y sus prompts están documentados en [las animaciones de Yuno](../assets/characters/yuno/README.md).
 
 ## Validación
 
@@ -48,7 +49,7 @@ dotnet build Relick.csproj
 ./jugar.sh --headless -- --pvp-ui-test
 ```
 
-La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
+La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. También comprueba el reposo a cero vidas para ambos jugadores/asientos, la transición tras el último golpe, la repetición, la reconstrucción del tablero y la recuperación visual. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
 
 Para capturas:
 

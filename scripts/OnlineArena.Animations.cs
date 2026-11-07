@@ -187,6 +187,6 @@ public partial class OnlineArena
     {
         SetQueuedDestinationsOpacity(1);
         _flights.Clear(); _pendingPortraits.Clear(); FinishFlight(); _die.Value = 0;
-        foreach (var portrait in _portraits) portrait.Play(PortraitMotion.Idle);
+        foreach (var portrait in _portraits) portrait.ReturnToRest();
     }
 }
