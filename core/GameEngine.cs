@@ -11,7 +11,7 @@ public sealed partial class GameEngine
     private readonly IGameRandom _random;
     public GameState State { get; } = new();
     public event Action<int>? AttackPerformed;
-    public event Action<int, int>? DamageReceived;
+    public event Action<int, int, int>? DamageReceived;
     public event Action<int, int>? HealingReceived;
     public event Action<int>? DieRolled;
     public event Action<int, int>? CardDrawn;
@@ -297,13 +297,13 @@ public sealed partial class GameEngine
         BeginTurn();
     }
 
-    private void DealDamage(int target, int amount)
+    private void DealDamage(int target, int amount, int attackDie = 0)
     {
         if (amount <= 0) return;
         var p = State.Players[target];
         var wasZero = p.Health == 0;
         p.Health = Math.Max(0, p.Health - amount);
-        DamageReceived?.Invoke(target, amount);
+        DamageReceived?.Invoke(target, amount, attackDie);
         if (wasZero || (p.Health == 0 && p.HasReachedZero))
         {
             Finish(1 - target, $"{p.Name} recibe el daño definitivo.");

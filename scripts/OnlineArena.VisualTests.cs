@@ -116,14 +116,28 @@ public partial class OnlineArena
                     _portraits[1 - relative].Motion == PortraitMotion.Idle,
                     "La vista a cero vidas no selecciona el reposo correcto para cada jugador.");
 
-                snapshot.Players[exhaustedPlayer].Health = 1; PresentTestSnapshot(snapshot);
-                Check(portrait.Motion == PortraitMotion.Idle, "El reposo agotado persiste con vida positiva.");
-                portrait.Play(PortraitMotion.Hit); portrait.AdvancePlayback(0.3);
-                snapshot.Players[exhaustedPlayer].Health = 0; PresentTestSnapshot(snapshot);
-                Check(portrait.Motion == PortraitMotion.Hit && portrait.CurrentFrame > 0,
-                    "Llegar a cero vidas interrumpe o reinicia la reacción al último golpe.");
-                portrait.AdvancePlayback(YunoPortrait.DurationFor(PortraitMotion.Hit));
-                Check(portrait.Motion == PortraitMotion.ExhaustedIdle, "El último golpe vuelve al reposo sano.");
+                foreach (var (die, motion) in new[] { (4, PortraitMotion.Hit), (5, PortraitMotion.HitNormal), (6, PortraitMotion.HitCritical) })
+                {
+                    snapshot.Players[exhaustedPlayer].Health = 1; PresentTestSnapshot(snapshot);
+                    Check(portrait.Motion == PortraitMotion.Idle, "El reposo agotado persiste con vida positiva.");
+                    // A secondary die and the amount of damage must not select the impact clip.
+                    _die.Value = 6;
+                    Animate([new() { Kind = DuelVisualKind.Hit, Player = exhaustedPlayer, Value = 6, AttackDie = die }], []);
+                    Check(portrait.Motion == motion, $"El resultado {die} elige un impacto incorrecto.");
+                    portrait.AdvancePlayback(portrait.DurationSeconds / 4);
+                    snapshot.Players[exhaustedPlayer].Health = 0; PresentTestSnapshot(snapshot);
+                    Check(portrait.Motion == motion && portrait.CurrentFrame > 0,
+                        "Llegar a cero vidas interrumpe o reinicia la reacción al último golpe.");
+                    if (directory != null && DisplayServer.GetName() != "headless")
+                    {
+                        System.IO.Directory.CreateDirectory(directory);
+                        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                        GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory,
+                            $"impact-{die}-seat{seat}-player{exhaustedPlayer}.png"));
+                    }
+                    portrait.AdvancePlayback(YunoPortrait.DurationFor(motion));
+                    Check(portrait.Motion == PortraitMotion.ExhaustedIdle, "El último golpe vuelve al reposo sano.");
+                }
                 portrait.AdvancePlayback(portrait.DurationSeconds * 2.5);
                 Check(portrait.Motion == PortraitMotion.ExhaustedIdle && portrait.CurrentFrame == portrait.FrameCount / 2,
                     "El reposo agotado no se repite correctamente.");
@@ -142,6 +156,7 @@ public partial class OnlineArena
                 }
             }
             GD.Print("PVP_ZERO_HEALTH_PASS · ambos jugadores y asientos, último golpe, bucle, reconstrucción y recuperación.");
+            GD.Print("PVP_IMPACT_PASS · 4 reducido, 5 normal, 6 crítico, ambos jugadores/asientos y transición a cero vidas.");
         }
         finally
         {

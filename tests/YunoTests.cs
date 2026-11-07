@@ -40,7 +40,7 @@ static class YunoTests
             foreach (var reroll in Enumerable.Range(1, 6))
             {
                 var (g, rng) = Fixture(); var rolls = new List<int>(); var attacks = 0; var damageEvents = 0;
-                g.DieRolled += rolls.Add; g.AttackPerformed += _ => attacks++; g.DamageReceived += (_, _) => damageEvents++;
+                g.DieRolled += rolls.Add; g.AttackPerformed += _ => attacks++; g.DamageReceived += (_, _, _) => damageEvents++;
                 rng.EnqueueDie(6); rng.EnqueueDie(reroll);
                 Check(g.Attack(0, 0, 0).Success); Check(attacks == 0);
                 Check(g.ResolveAttackReroll(0, true).Success);

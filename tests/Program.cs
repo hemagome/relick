@@ -165,7 +165,7 @@ var tests = new (string Name, Action Run)[]
         var attacks = new List<int>();
         var hits = new List<(int Target, int Amount)>();
         g.AttackPerformed += attacks.Add;
-        g.DamageReceived += (target, amount) => hits.Add((target, amount));
+        g.DamageReceived += (target, amount, _) => hits.Add((target, amount));
         Ok(!AttackKeepingRoll(g,1, 0, 0).Success); Eq(attacks.Count, 0); Eq(hits.Count, 0);
         rng.EnqueueDie(2); Ok(AttackKeepingRoll(g,0, 0, 0).Success);
         Eq(attacks.Count, 0); Eq(hits.Count, 0);

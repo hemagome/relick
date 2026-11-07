@@ -64,7 +64,7 @@ static class SkillTests
                 Check(!g.ResolveDefense(1, 0, Enumerable.Range(0, cost - 1)).Success);
                 Check(!g.ResolveDefense(1, 1, Enumerable.Range(0, cost)).Success);
                 Check(before == Fingerprint(g));
-                var damageEvents = 0; g.DamageReceived += (_, _) => damageEvents++;
+                var damageEvents = 0; g.DamageReceived += (_, _, _) => damageEvents++;
                 Check(g.ResolveDefense(1, 0, Enumerable.Range(0, cost)).Success);
                 Check(defender.Health == 8 && damageEvents == 0 && defender.Memory.Count == cost && defender.Hand.Count == 5 - cost);
                 Check(defender.CountersOnSkill(0) == 1 && g.State.Phase == Phase.Combat && g.State.PendingAttack == null);

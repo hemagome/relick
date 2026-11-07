@@ -71,7 +71,12 @@ public partial class OnlineArena
             {
                 case DuelVisualKind.Die: _die.QueueRoll(cue.Value, cue.Caption); break;
                 case DuelVisualKind.Attack: _pendingPortraits.Add((cue.Player, PortraitMotion.Attack)); break;
-                case DuelVisualKind.Hit: _pendingPortraits.Add((cue.Player, PortraitMotion.Hit)); break;
+                case DuelVisualKind.Hit:
+                    _pendingPortraits.Add((cue.Player, cue.AttackDie switch
+                    {
+                        5 => PortraitMotion.HitNormal, 6 => PortraitMotion.HitCritical, _ => PortraitMotion.Hit
+                    }));
+                    break;
                 case DuelVisualKind.Heal when cue.Value > 0: _pendingPortraits.Add((cue.Player, PortraitMotion.Heal)); break;
                 case DuelVisualKind.Draw:
                 case DuelVisualKind.Shuffle: _flights.Enqueue(new(cue)); break;

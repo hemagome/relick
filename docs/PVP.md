@@ -137,3 +137,11 @@ El arranque de `scenes/Main.tscn` carga directamente `OnlineLobby`. Se retiraron
 La consulta de candidatos de Memoria comprueba recursos y etapa una vez y realiza un recorrido. La mano de preparación se ordena por cambios de filas y la arena reacciona a una revisión local; reconectar invalida esas cachés. La selección de habilidad conserva los controles y actualiza sus referencias tipadas.
 
 El motor actualizado está publicado en la misma base de desarrollo de Maincloud sin cambios de esquema ni borrado. Pasaron 125 comprobaciones del motor y 65 de red tanto locales como remotas, un duelo completo, la preparación con reconexión en Godot, dos clientes independientes en 844×390 y la revisión gráfica de cuatro tamaños y ambos asientos. Las pruebas verifican que el ensamblado del juego no incluya ni el antiguo controlador ni el simulador de pruebas.
+
+## Curación e intensidad de los impactos
+
+El módulo publicado emite `Heal` únicamente al recuperar vidas de forma efectiva, con el jugador y la cantidad recuperada. El cliente representa una curación arcade con corazones verdes y gesto de alivio. Las curaciones anuladas, pendientes de resolver o que no recuperan vida no emiten esa señal.
+
+La señal `Hit` incluye `AttackDie`, separado de la cantidad de daño y de los dados secundarios: 4 conserva la reacción reducida anterior, 5 selecciona el impacto normal y 6 el crítico. El valor procede del resultado final del ataque después de relanzamientos/modificadores y persiste durante la decisión de defensa. El daño sin ataque utiliza 0 y conserva la reacción genérica. Estas señales no contienen identidades de cartas; una recuperación de estado no vuelve a reproducirlas.
+
+Ambas actualizaciones están publicadas en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin cambios de tablas ni borrado. La última validación pasó 131 comprobaciones del motor, 65 de red en Maincloud y la prueba de interfaz de Godot en modo gráfico y sin ventana. Se verificaron los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos, junto a la matriz de cuatro tamaños. La partida remota verificó además el transporte del dado final en tres impactos reales. Las salas de prueba se cerraron al finalizar.

@@ -25,15 +25,24 @@ la mano al pecho, se endereza con alivio y aparecen corazones verdes de píxel q
 desvanecen. Los corazones son decorativos; la vida recuperada la determina el motor y la muestra
 el marcador. Son 16 poses consecutivas, sin ida y vuelta, con regreso a la postura de reposo.
 Los prompts están en [heal-prompts.txt](heal-prompts.txt) y los intermedios y la vista previa local
-en `artifacts/yuno-heal/`. El juego utiliza únicamente los cinco atlas PNG de esta carpeta.
+en `artifacts/yuno-heal/`.
+
+Los clips `hit-normal.png` y `hit-critical.png` se crearon con `image_gen` para diferenciar los
+impactos normales y críticos. El normal hace retroceder a Yuno y protegerse el pecho; el crítico
+lo desequilibra y lo dobla de dolor, con un destello mayor y una recuperación más lenta.
+`hit.png` conserva íntegra la animación anterior para daño reducido. Sus prompts nuevos están en
+[hit-normal-prompts.txt](hit-normal-prompts.txt) y [hit-critical-prompts.txt](hit-critical-prompts.txt);
+los intermedios y las vistas previas, en `artifacts/yuno-impacts/`. El juego utiliza los siete atlas PNG.
 
 | Archivo | Rejilla | Cuadro | Cuadros | Duración en el MVP | Repetición |
 | --- | --- | --- | --- | --- | --- |
 | idle.png | 8 × 8 | 608 × 504 | 64 | 2 s | Sí |
 | attack.png | 8 × 7 | 608 × 504 | 56 | 1.2 s | No; vuelve a reposo |
-| hit.png | 8 × 8 | 608 × 504 | 64 | 0.9 s | No; vuelve a reposo |
+| hit.png (reducido) | 8 × 8 | 608 × 504 | 64 | 0.9 s | No; vuelve a reposo |
 | exhausted-idle.png | 8 × 2 | 608 × 504 | 16 | 2.8 s | Sí; solo a cero vidas |
 | heal.png | 8 × 2 | 608 × 504 | 16 | 1.2 s | No; vuelve a reposo |
+| hit-normal.png | 8 × 2 | 608 × 504 | 16 | 0.9 s | No; vuelve a reposo |
+| hit-critical.png | 8 × 2 | 608 × 504 | 16 | 1.2 s | No; vuelve a reposo |
 
 Orden: izquierda a derecha, arriba abajo. Las tres hojas procedentes de Ludo.ai se exportaron a 3 s.
 El MVP las reproduce aceleradas: reposo 1.5×, ataque 2.5× y daño aproximadamente 3.33×.
@@ -48,6 +57,10 @@ no reinicia la respiración; restablecer las animaciones conserva el reposo corr
 La curación se activa mediante la señal pública `Heal` de una revisión aceptada, con el jugador y
 la cantidad efectiva recuperada. Espera las tiradas y movimientos de cartas pendientes; al terminar
 regresa al reposo que corresponda a la vida actual. Recuperar una vista no reproduce curaciones pasadas.
+El impacto usa `Hit.AttackDie`: 4 → reducido, 5 → normal, 6 → crítico. Es el resultado final del
+ataque confirmado por el motor, conservado durante la defensa; no se deduce del número de vidas
+perdidas ni del dado adicional de daño de Magnet. Un seis convertido en cinco usa daño normal.
+El daño sin tirada de ataque tiene valor 0 y conserva la reacción genérica anterior.
 
 Las opciones de importación limitan las texturas a 2432 píxeles de ancho: Godot genera
 hojas a media resolución, con cuadros de 304 × 252 y la misma cuadrícula. Los PNG

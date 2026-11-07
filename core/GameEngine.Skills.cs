@@ -49,7 +49,8 @@ public sealed partial class GameEngine
         State.PendingAttack = null;
         State.Phase = Phase.Combat;
         if (canceled) State.LastCombat += $" · Daño cancelado por {source}";
-        else DealDamage(1 - attack.Attacker, attack.Damage);
+        // The final attack die survives secondary damage dice and the defense decision.
+        else DealDamage(1 - attack.Attacker, attack.Damage, State.LastAttackDie);
         // Canceling damage does not undo the critical result or its skill effect.
         if (!State.IsOver && attack.Critical && attack.SkillId == CardCatalog.Magnet.Id &&
             (State.Players[1 - attack.Attacker].Hand.Count > 0 || State.Players[1 - attack.Attacker].Bonus != null))

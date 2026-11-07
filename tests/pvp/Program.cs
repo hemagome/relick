@@ -219,6 +219,7 @@ try
     }
     Until(() => fighterA.Duel?.Revision == 2 && b.Duel?.Revision == 2);
     var combatSteps = 0;
+    var verifiedImpacts = 0;
     var decisions = new HashSet<Phase>();
     while (fighterA.Duel!.Winner == null && combatSteps++ < 600)
     {
@@ -235,6 +236,12 @@ try
             if (actor.Errors.Count > errors) throw new Exception(choice.Option.Label + ": " + actor.Errors.Last());
             return fighterA.Duel?.Revision == before.Revision + 1 && b.Duel?.Revision == before.Revision + 1;
         });
+        if (before.Phase is Phase.Combat or Phase.AttackRerollChoice or Phase.DefenseChoice)
+        foreach (var hit in fighterA.Duel!.Visuals.Where(v => v.Kind == DuelVisualKind.Hit && v.Player != before.CurrentPlayer))
+        {
+            if (hit.AttackDie is not (4 or 5 or 6)) throw new Exception("El servidor no transporta el resultado final del impacto.");
+            verifiedImpacts++;
+        }
         if (combatSteps % 12 == 0)
         {
             var previous = b.Duel!;
@@ -246,6 +253,7 @@ try
         if (combatSteps % 20 == 0) Console.WriteLine($"PROGRESS combate: {combatSteps} jugadas, turno {fighterA.Duel.Turn}, fase {fighterA.Duel.Phase}");
     }
     Check(fighterA.Duel.Winner != null && b.Duel!.Winner == fighterA.Duel.Winner, "Duelo completo resuelto por el servidor con ganador consistente");
+    Console.WriteLine($"IMPACT_TRANSPORT · {verifiedImpacts} impactos con resultado final verificado.");
     Check(fighterA.Duel.Options.Count == 0 && b.Duel!.Options.Count == 0, "La partida terminada no acepta nuevas jugadas");
     Check(decisions.Contains(Phase.AttackRerollChoice) || decisions.Contains(Phase.DieRerollChoice), "La partida remota ejercita decisiones de dado persistidas");
     service.Leave();

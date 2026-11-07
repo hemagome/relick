@@ -9,6 +9,8 @@ public sealed class DuelVisualEvent
     public DuelVisualKind Kind { get; set; }
     public int Player { get; set; }
     public int Value { get; set; }
+    // Final attack die, separate from damage or a secondary damage roll; zero for non-attack damage.
+    public int AttackDie { get; set; }
     public string Caption { get; set; } = "";
     public int Target { get; set; }
     public CardZone Source { get; set; }
@@ -24,7 +26,8 @@ public static class DuelVisualEvents
             => events.Add(new() { Kind = kind, Player = player, Value = value, Caption = caption });
         game.DieRolled += value => Add(DuelVisualKind.Die, -1, value, game.CurrentDieCaption);
         game.AttackPerformed += player => Add(DuelVisualKind.Attack, player);
-        game.DamageReceived += (player, amount) => Add(DuelVisualKind.Hit, player, amount);
+        game.DamageReceived += (player, amount, attackDie) => events.Add(new()
+            { Kind = DuelVisualKind.Hit, Player = player, Value = amount, AttackDie = attackDie });
         game.HealingReceived += (player, amount) => Add(DuelVisualKind.Heal, player, amount);
         game.CardDrawn += (player, slot) => Add(DuelVisualKind.Draw, player, slot);
         game.CardReturnedToDeck += (player, slot, _) => Add(DuelVisualKind.Return, player, slot);

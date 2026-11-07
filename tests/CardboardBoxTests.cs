@@ -18,7 +18,7 @@ static class CardboardBoxTests
                 var (g, rng) = Fixture(); var rival = g.State.Players[1]; rival.Equipment = CardCatalog.CardboardBox.Id;
                 rng.EnqueueDie(die); AttackKeeping(g);
                 Check(g.State.Phase == Phase.DefenseChoice && g.State.DecisionPlayer == 1 && rival.Health == 8 && rival.Hand.Count == 0 && g.CanCancelAttackWithBox(1));
-                var hits = 0; g.DamageReceived += (_, _) => hits++; var count = Count(g);
+                var hits = 0; g.DamageReceived += (_, _, _) => hits++; var count = Count(g);
                 Check(g.CancelAttackWithBox(1).Success && rival.Health == 8 && hits == 0 && rival.Equipment == null && rival.Memory.Single() == CardCatalog.CardboardBox.Id && Count(g) == count);
                 Check(g.State.Phase == Phase.Combat && g.State.PendingAttack == null && g.State.LastCombat.Contains("Caja de Cartón") && g.State.Active.Relikia == 600);
             }

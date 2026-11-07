@@ -2,7 +2,7 @@ using Godot;
 
 namespace Relick;
 
-public enum PortraitMotion { Idle, Attack, Hit, ExhaustedIdle, Heal }
+public enum PortraitMotion { Idle, Attack, Hit, ExhaustedIdle, Heal, HitNormal, HitCritical }
 
 /// <summary>One fixed canvas shared by all clips. UI rebuilds reparent this node, preserving playback.</summary>
 public partial class YunoPortrait : Control
@@ -14,7 +14,9 @@ public partial class YunoPortrait : Control
         [PortraitMotion.Attack] = new("attack", 56, 1.2, false),
         [PortraitMotion.Hit] = new("hit", 64, 0.9, false),
         [PortraitMotion.ExhaustedIdle] = new("exhausted-idle", 16, 2.8, true),
-        [PortraitMotion.Heal] = new("heal", 16, 1.2, false)
+        [PortraitMotion.Heal] = new("heal", 16, 1.2, false),
+        [PortraitMotion.HitNormal] = new("hit-normal", 16, 0.9, false),
+        [PortraitMotion.HitCritical] = new("hit-critical", 16, 1.2, false)
     };
     public static double DurationFor(PortraitMotion motion) => Clips[motion].Seconds;
     private const int Columns = 8;
@@ -103,11 +105,13 @@ public partial class YunoPortrait : Control
         {
             var caption = Motion switch
             {
-                PortraitMotion.Attack => "ATAQUE", PortraitMotion.Heal => "CURACIÓN", _ => "RECIBIENDO DAÑO"
+                PortraitMotion.Attack => "ATAQUE", PortraitMotion.Heal => "CURACIÓN",
+                PortraitMotion.HitNormal => "DAÑO NORMAL", PortraitMotion.HitCritical => "¡CRÍTICO!", _ => "RECIBIENDO DAÑO"
             };
             var color = Motion switch
             {
-                PortraitMotion.Hit => new Color("f08076"), PortraitMotion.Heal => new Color("53d49e"), _ => AccentColor
+                PortraitMotion.Hit or PortraitMotion.HitNormal => new Color("f08076"),
+                PortraitMotion.HitCritical => new Color("f4bf75"), PortraitMotion.Heal => new Color("53d49e"), _ => AccentColor
             };
             DrawCircle(new Vector2(5, 9), 3, color);
             DrawString(font, new Vector2(15, 13), caption, HorizontalAlignment.Left, -1, 11, new Color("a2afbc"));

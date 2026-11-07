@@ -8,7 +8,11 @@ static class DuelTests
         ("PvP: proyección oculta mazos, manos rivales, corruptas y registros", Privacy),
         ("PvP: reconstrucción conserva decisiones y continuaciones durante duelos completos", ReplayMatches),
         ("PvP: rechazo de un registro de azar incompleto", InvalidRandom),
-        ("PvP: señales visuales conservan tiradas repetidas sin revelar cartas ni mutar reglas", VisualPrivacy)
+        ("PvP: señales visuales conservan tiradas repetidas sin revelar cartas ni mutar reglas", VisualPrivacy),
+        ("Impactos: distinguen 4, 5 y 6 para ambos jugadores sin confundir daño ni dado secundario", VisualAttackImpact),
+        ("Impactos: usan el resultado final tras relanzar y convertir el seis de Yuno", VisualFinalAttackDie),
+        ("Impactos: conservan el resultado durante una defensa pendiente y su recuperación", VisualPendingImpact),
+        ("Impactos: el daño sin ataque no hereda un crítico anterior", VisualNonAttackDamage)
     };
 
     static DuelOpening Opening(int seed)
@@ -112,5 +116,69 @@ static class DuelTests
         if (restored.Visuals.Count != events.Count || restored.LastCombat != view.LastCombat) throw new Exception("Las señales no sobreviven al transporte.");
         if (restored.Visuals.Count(v => v.Kind == DuelVisualKind.Heal && v.Player == 0 && v.Value == 2) != 2)
             throw new Exception("Se pierden las curaciones repetidas al transportar las señales.");
+    }
+
+    static (GameEngine Game, ScriptedRandom Random) ImpactFixture(int actor = 0, string skill = "destiny-shuffle")
+    {
+        var random = new ScriptedRandom(); var game = TestGame.Create(random);
+        game.State.Phase = Phase.Combat; game.State.CurrentPlayer = actor;
+        foreach (var player in game.State.Players) { player.Hand.Clear(); player.Skills.Clear(); player.Bonus = null; }
+        game.State.Active.Hand.Add(CardCatalog.Attack.Id); game.State.Active.Skills.Add(skill);
+        return (game, random);
+    }
+    static void Require(bool value) { if (!value) throw new Exception("Señal de impacto incorrecta."); }
+
+    static void VisualAttackImpact()
+    {
+        foreach (var actor in new[] { 0, 1 }) foreach (var die in new[] { 4, 5, 6 })
+        foreach (var skill in new[] { CardCatalog.Destiny, CardCatalog.Magnet })
+        {
+            var (game, random) = ImpactFixture(actor, skill.Id); var cues = DuelVisualEvents.Capture(game);
+            random.EnqueueDie(die);
+            if (skill == CardCatalog.Magnet && die != 6) random.EnqueueDie(6);
+            Require(game.Attack(actor, 0, 0).Success && game.ResolveAttackReroll(actor, false).Success);
+            var hit = cues.Single(c => c.Kind == DuelVisualKind.Hit);
+            Require(hit.Player == 1 - actor && hit.AttackDie == die &&
+                hit.Value == GameEngine.DamageFor(die, skill == CardCatalog.Magnet ? 6 : skill.NormalDamage, skill.CriticalDamage));
+            if (skill == CardCatalog.Magnet && die != 6) Require(game.State.LastDie == 6);
+            var snapshot = DuelSnapshot.For(game, actor, 1); snapshot.Visuals = cues;
+            var copy = JsonSerializer.Deserialize(JsonSerializer.Serialize(snapshot, DuelJson.Default.DuelSnapshot), DuelJson.Default.DuelSnapshot)!;
+            Require(copy.Visuals.Single(c => c.Kind == DuelVisualKind.Hit).AttackDie == die);
+        }
+    }
+
+    static void VisualFinalAttackDie()
+    {
+        foreach (var level in new[] { 1, 2 })
+        {
+            var (game, random) = ImpactFixture();
+            if (level == 2) game.State.Active.Relikario = RelikarioCatalog.YunoLv2;
+            var cues = DuelVisualEvents.Capture(game); random.EnqueueDie(4); random.EnqueueDie(6);
+            Require(game.Attack(0, 0, 0).Success && cues.All(c => c.Kind != DuelVisualKind.Hit));
+            Require(game.ResolveAttackReroll(0, true).Success);
+            if (game.State.Phase == Phase.AttackRerollChoice) Require(game.ResolveAttackReroll(0, false).Success);
+            Require(cues.Single(c => c.Kind == DuelVisualKind.Hit).AttackDie == (level == 1 ? 5 : 6));
+        }
+    }
+
+    static void VisualPendingImpact()
+    {
+        var (game, random) = ImpactFixture(); var defender = game.State.Players[1];
+        defender.Skills.Add(CardCatalog.Destiny.Id); defender.Hand.AddRange(Enumerable.Repeat(CardCatalog.Attack.Id, 4));
+        random.EnqueueDie(5); Require(game.Attack(0, 0, 0).Success && game.ResolveAttackReroll(0, false).Success);
+        Require(game.State.Phase == Phase.DefenseChoice && game.State.LastAttackDie == 5);
+        var restored = GameEngine.FromSnapshot(game.SaveSnapshot(), new ScriptedRandom());
+        var cues = DuelVisualEvents.Capture(restored);
+        Require(restored.PassDefense(1).Success && cues.Single(c => c.Kind == DuelVisualKind.Hit).AttackDie == 5);
+    }
+
+    static void VisualNonAttackDamage()
+    {
+        var (game, _) = ImpactFixture(); var player = game.State.Active;
+        game.State.Phase = Phase.Actions; game.State.ActionsLeft = 2; game.State.LastAttackDie = 6;
+        player.Hand.Clear(); player.Hand.Add(CardCatalog.Senshuni.Id); player.Deck.Clear(); player.Recycled = true;
+        var cues = DuelVisualEvents.Capture(game); Require(game.PlayCode(0, 0).Success);
+        var hit = cues.Single(c => c.Kind == DuelVisualKind.Hit);
+        Require(hit.Player == 0 && hit.Value == 2 && hit.AttackDie == 0);
     }
 }
