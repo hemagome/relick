@@ -183,6 +183,7 @@ public sealed partial class GameEngine
 
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
+        if (card.SwapHands) { SwapHands(Array.IndexOf(State.Players, p)); return; }
         if (card.SearchNonSkill)
         {
             if (!SearchableDeckCards(Array.IndexOf(State.Players, p)).Any())

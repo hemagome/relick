@@ -40,6 +40,7 @@ public sealed partial class GameEngine
     }
     private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0, int excludedHand = -1)
     {
+        if (State.Turn < card.EarliestTurn) return $"{card.Name} solo puede activarse a partir del turno {card.EarliestTurn} de la partida.";
         if (p.Relikia < card.PrCost + extraCost) return $"Necesitas {card.PrCost + extraCost} PR.";
         if (card.SearchNonSkill && !SearchableDeckCards(Array.IndexOf(State.Players, p)).Any()) return "No hay no-habilidades en tu mazo.";
         if (card.DestroyNonSkill && !DestructionTargets().Any()) return "No hay no-habilidades en el campo para destruir.";

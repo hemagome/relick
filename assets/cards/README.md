@@ -133,3 +133,13 @@ la carta añadida son privadas. Conserva el orden del mazo restante: el texto no
 indica barajarlo. Error de Carga y Relikia utilizan sus ventanas y costes comunes;
 Caja de Cartón no cancela códigos Jugada. Una copia sustituye una de Caja de
 Cartón, conservando veinte cartas en los mazos nuevos.
+
+`mind-swap-clean.png` restaura Cambio de Mentes (B04-10/15) mediante la herramienta
+integrada `image_gen`, normalizada a 697×987. Se retiraron las marcas superpuestas,
+conservando las flechas, las reglas y los créditos de Pikisuperstar/Freepik y del
+autor. El prompt está en `mind-swap-prompt.txt`; el original permanece en Downloads.
+Es código Jugada, sin COMBO: una acción, cero PR, prohibido en el turno 1 global.
+Intercambia las manos restantes después de las respuestas, incluso con cero cartas.
+La propia carta queda en memoria o se corrompe si se activó mediante Relikia.
+Las cartas previamente reveladas conservan esa condición al cambiar de mano.
+Una copia sustituye una de Vida Extra en los mazos nuevos, conservando veinte cartas.

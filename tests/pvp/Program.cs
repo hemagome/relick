@@ -62,6 +62,26 @@ void Rejected(Client client, Action command, string message)
 string OpeningFingerprint(Client client) => System.Text.Json.JsonSerializer.Serialize(
     new { Start = client.Preparation, Hand = client.Hand }, new System.Text.Json.JsonSerializerOptions { IncludeFields = true });
 
+int VerifyHandSwap(DuelSnapshot[] before, DuelSnapshot[] after)
+{
+    var cues = after[0].Visuals;
+    if (!cues.Any(c => c.Kind == DuelVisualKind.HandTransfer)) return 0;
+    var hands = Enumerable.Range(0, 2).Select(seat => before[seat].Players[seat].Hand.ToList()).ToArray();
+    var known = Enumerable.Range(0, 2).Select(seat => before[1 - seat].Players[seat].Hand.ToList()).ToArray();
+    foreach (var cue in cues.Where(c => c.Kind == DuelVisualKind.Pile && c.Source == CardZone.Hand))
+    { hands[cue.Player].RemoveAt(cue.Value); known[cue.Player].RemoveAt(cue.Value); }
+    foreach (var seat in new[] { 0, 1 })
+    {
+        if (!after[seat].Players[seat].Hand.SequenceEqual(hands[1 - seat]) ||
+            !after[1 - seat].Players[seat].Hand.SequenceEqual(known[1 - seat]))
+            throw new Exception("El intercambio remoto pierde cartas o traslada las revelaciones a otra copia.");
+        var transfer = cues.SingleOrDefault(c => c.Kind == DuelVisualKind.HandTransfer && c.Player == seat);
+        if (hands[seat].Count > 0 && (transfer == null || transfer.Target != 1 - seat || transfer.Value != hands[seat].Count))
+            throw new Exception("La señal de intercambio no conserva la cantidad o el destinatario.");
+    }
+    return 1;
+}
+
 try
 {
     var a = Connect(); var b = Connect(); var outsider = Connect();
@@ -221,11 +241,13 @@ try
     var combatSteps = 0;
     var verifiedImpacts = 0;
     var verifiedSearches = 0;
+    var verifiedSwaps = 0;
     var decisions = new HashSet<Phase>();
     while (fighterA.Duel!.Winner == null && combatSteps++ < 600)
     {
         var actor = fighterA.Duel.DecisionPlayer == 0 ? fighterA : b;
         var before = actor.Duel!; decisions.Add(before.Phase);
+        var beforeViews = new[] { fighterA.Duel!, b.Duel! };
         var candidates = before.Options.Select((o, i) => (Option: o, Index: i)).Where(p => p.Option.Move.Kind != DuelMoveKind.Concede).ToList();
         if (candidates.Count == 0) throw new Exception("Sin jugadas legales en " + before.Phase);
         var choice = candidates.FirstOrDefault(p => p.Option.RequiredDiscards > 0);
@@ -247,6 +269,7 @@ try
                 throw new Exception("La búsqueda remota cambia el objetivo o revela la carta al rival.");
             verifiedSearches++;
         }
+        verifiedSwaps += VerifyHandSwap(beforeViews, new[] { fighterA.Duel!, b.Duel! });
         if (before.Phase is Phase.Combat or Phase.AttackRerollChoice or Phase.DefenseChoice)
         foreach (var hit in fighterA.Duel!.Visuals.Where(v => v.Kind == DuelVisualKind.Hit && v.Player != before.CurrentPlayer))
         {
@@ -303,6 +326,7 @@ try
     {
         var actor = fighterA.Duel.DecisionPlayer == 0 ? fighterA : b;
         var before = actor.Duel!;
+        var beforeViews = new[] { fighterA.Duel!, b.Duel! };
         var options = before.Options.Select((o, i) => (Option: o, Index: i)).Where(p => p.Option.Move.Kind != DuelMoveKind.Concede).ToArray();
         var choice = options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Recycle);
         var isRecycling = choice.Option != null;
@@ -321,7 +345,9 @@ try
             choice = before.Phase == Phase.ErrorResponse ? options.First(o => o.Option.Move.Kind == DuelMoveKind.PassError) :
                 before.Phase == Phase.DeckSearchChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.SearchDeck) :
                 before.Phase == Phase.DieRerollChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.EffectDie) :
-                options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.PlayCode && before.Players[before.MySeat].Hand[o.Option.Move.Index] == CardCatalog.KonamyCode.Id);
+                options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.PlayCode &&
+                    (before.Players[before.MySeat].Hand[o.Option.Move.Index] == CardCatalog.KonamyCode.Id ||
+                     before.Players[before.MySeat].Hand[o.Option.Move.Index] == CardCatalog.MindSwap.Id));
             if (choice.Option == null && (before.Players[before.MySeat].Memory.Length < 6 || before.Players[before.MySeat].Bonus == CardCatalog.KonamyCode.Id))
                 choice = options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Exchange);
             if (choice.Option == null) choice = options.First(o => o.Option.Move.Kind == DuelMoveKind.Advance);
@@ -350,6 +376,7 @@ try
                 throw new Exception("La búsqueda revela opciones o la carta añadida a otro jugador.");
             verifiedSearches++;
         }
+        verifiedSwaps += VerifyHandSwap(beforeViews, new[] { fighterA.Duel!, b.Duel! });
     }
     Check(recyclingChoices > 0, "El duelo remoto ejercita la selección manual de memoria");
     var resultView = fighterA.Duel!;
@@ -358,6 +385,7 @@ try
         "El segundo agotamiento resta dos vidas y gana quien conserva más vida");
     service.Leave(); Until(() => service.Room == null && b.Room == null && fighterA.Duel == null);
     Console.WriteLine($"SEARCH_TRANSPORT · {verifiedSearches} búsquedas privadas verificadas.");
+    Console.WriteLine($"HAND_SWAP_TRANSPORT · {verifiedSwaps} intercambios con manos, destinatarios y revelaciones verificados.");
     Console.WriteLine("Todas las comprobaciones PvP pasaron.");
     return 0;
 }

@@ -1,0 +1,11 @@
+Tool: built-in image_gen
+Input: /home/hemagome/Downloads/cambio-de-mentes.png
+
+Use case: precise-object-edit
+Asset type: existing trading card image for the Relick game.
+Input image 1 is the edit target. Remove ONLY the large translucent diagonal repeated RELICK watermark over the picture and border. Restore the underlying blue/purple horizontal light streaks, circuitry, and two black exchange arrows with white outlines.
+Keep the original artwork, full border, portrait proportions, positions, colors, illustration, and all printed text unchanged. Do not redesign, crop, or add elements.
+Preserve the exact title CAMBIO DE MENTES, header JUGADA and CÓDIGO, red restriction NO PUEDES ACTIVAR ESTA CARTA EN EL PRIMER TURNO DEL JUEGO., and rule CAMBIA TODAS LAS CARTAS DE TU MANO (MÍN. 0) POR LAS DE TU OPONENTE.
+Preserve ALL small footer information: card code B04-10/15, credit BKGD BY PIKISUPERSTAR/FREEPIK, and copyright ©2018 FUYUHIRO GUSHIKEN. Do not remove credits or copyright. Keep the complete opaque portrait card and match the reference aspect ratio.
+
+Project asset normalized to 697x987 with ImageMagick.

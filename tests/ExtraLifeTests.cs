@@ -4,9 +4,9 @@ static class ExtraLifeTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
-        ("Vida Extra: código objeto real con dos copias; los seis resultados curan 1/2/3/3/3/4", () =>
+        ("Vida Extra: código objeto real con una copia; los seis resultados curan 1/2/3/3/3/4", () =>
         {
-            Check(CardCatalog.ExtraLife.Kind == CardKind.Code && CardCatalog.ExtraLife.CodeType == CodeType.Object && CardCatalog.TrainingDeck().Count(id => id == "extra-life") == 2);
+            Check(CardCatalog.ExtraLife.Kind == CardKind.Code && CardCatalog.ExtraLife.CodeType == CodeType.Object && CardCatalog.TrainingDeck().Count(id => id == "extra-life") == 1);
             var expected = new[] { 1, 2, 3, 3, 3, 4 };
             foreach (var die in Enumerable.Range(1, 6))
             {

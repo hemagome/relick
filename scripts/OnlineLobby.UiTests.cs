@@ -17,6 +17,11 @@ public partial class OnlineLobby
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+            if (OS.GetCmdlineUserArgs().Contains("--mind-swap-only"))
+            {
+                await online.CheckMindSwapLayout(); online.QueueFree(); await Layout();
+                GD.Print("PVP_MIND_SWAP_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--deck-search-only"))
             {
                 await online.CheckDeckSearchLayout(); online.QueueFree(); await Layout();
@@ -42,6 +47,7 @@ public partial class OnlineLobby
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();
             await online.CheckDeckSearchLayout();
+            await online.CheckMindSwapLayout();
             await online.CheckRecyclingLayout();
             await online.CheckPreparationLayout();
             online.QueueFree(); await Layout();

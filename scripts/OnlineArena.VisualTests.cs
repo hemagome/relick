@@ -7,6 +7,59 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckMindSwapLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        foreach (var (ownCount, otherCount) in new[] { (0, 3), (4, 0), (5, 8) })
+        {
+            var game = new GameEngine(43); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions; game.State.Turn = 2;
+            game.State.Active.Hand.Add(CardCatalog.MindSwap.Id);
+            game.State.Active.Hand.AddRange(Enumerable.Repeat(CardCatalog.Attack.Id, ownCount));
+            game.State.Players[1 - actor].Hand.AddRange(Enumerable.Repeat(CardCatalog.ExtraLife.Id, otherCount));
+            var previous = new[] { DuelSnapshot.For(game, 0, 20), DuelSnapshot.For(game, 1, 20) };
+            var cues = DuelVisualEvents.Capture(game);
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("No se resuelve Cambio de Mentes.");
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                GetWindow().ContentScaleSize = size;
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                _selected.Clear(); ResetAnimations(); PresentTestSnapshot(previous[seat]);
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var snapshot = DuelSnapshot.For(game, seat, 21); snapshot.Visuals = cues;
+                var origins = CaptureOrigins(snapshot, previous[seat]); PresentTestSnapshot(snapshot); Animate(cues, origins);
+                var frames = 0;
+                while (IsAnimating && frames++ < 30)
+                {
+                    _die.AdvancePlayback(0.5); UpdateFlights(0.5);
+                    if (_activeFlight?.Event.Kind == DuelVisualKind.HandTransfer)
+                    {
+                        if (_flightFront != null) throw new Exception("La transferencia de manos expone una identidad en la animación.");
+                        var prefix = _activeFlight.Event.Target == seat ? "HandCard" : "OpponentHandCard";
+                        if (_flightTarget != null && !_flightTarget.Name.ToString().StartsWith(prefix))
+                            throw new Exception("La mano viaja al jugador equivocado.");
+                    }
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+                if (IsAnimating || !_handCards.Select(c => c.Card.Id).SequenceEqual(game.State.Players[seat].Hand))
+                    throw new Exception("La mano intercambiada no se presenta o no termina su animación.");
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var minimum = _root!.GetCombinedMinimumSize();
+                if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1) throw new Exception($"Cambio de Mentes desborda {size}: {minimum}.");
+                if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                    throw new Exception("El intercambio revela cartas que estaban ocultas.");
+                var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+                if (directory != null && ownCount == 5 && otherCount == 8 && seat == actor && size.X is 1440 or 844)
+                {
+                    DirAccess.MakeDirRecursiveAbsolute(directory);
+                    GetViewport().GetTexture().GetImage().SavePng($"{directory}/mind-swap-{actor}-{size.X}.png");
+                }
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_MIND_SWAP_LAYOUT_PASS · manos vacías y desiguales, transferencias sin identidades, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckDeckSearchLayout()
     {
         foreach (var actor in new[] { 0, 1 })

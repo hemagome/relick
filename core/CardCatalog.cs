@@ -10,10 +10,14 @@ public sealed record CardDefinition(
     string Id, string Name, CardKind Kind, string Text,
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, bool ChangePointsFromDie = false, int PrCost = 0, bool DestroyNonSkill = false, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
-    int DamageReduction = 0, bool DestroyOnAttackOne = false, bool DestroyChosenZone = false, bool SearchNonSkill = false);
+    int DamageReduction = 0, bool DestroyOnAttackOne = false, bool DestroyChosenZone = false, bool SearchNonSkill = false,
+    bool SwapHands = false, int EarliestTurn = 0);
 
 public static class CardCatalog
 {
+    public static readonly CardDefinition MindSwap = new("mind-swap", "Cambio de Mentes", CardKind.Code,
+        "No puedes activar esta carta en el primer turno del juego. Cambia todas las cartas de tu mano (mín. 0) por las de tu oponente.",
+        CodeType: CodeType.Play, SwapHands: true, EarliestTurn: 2);
     public static readonly CardDefinition KonamyCode = new("konamy-code", "Código Konamy", CardKind.Code,
         "Busca en tu mazo una no-habilidad y añádela a tu mano.", CodeType: CodeType.Play, SearchNonSkill: true);
     public static readonly CardDefinition TimeBomb = new("time-bomb", "Bomba de Tiempo", CardKind.Code,
@@ -53,13 +57,13 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o resolviendo, o un equipo esté siendo equipado: cancélalo y envíalo a memoria. La activación anulada recupera sus costes.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode }.ToDictionary(c => c.Id);
+        new[] { Attack, Magnet, Destiny, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 
     public static List<string> TrainingDeck() =>
         Enumerable.Repeat(Attack.Id, 3)
             .Concat(new[] { Magnet.Id, Magnet.Id, Destiny.Id, Destiny.Id,
-                Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Senshuni.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, ExtraLife.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id }).ToList();
+                Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Senshuni.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, MindSwap.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id }).ToList();
 }
 

@@ -39,18 +39,20 @@ public partial class OnlineArena
     {
         var result = new Dictionary<DuelVisualEvent, Flight>();
         if (previous == null || _root == null) return result;
-        foreach (var cue in current.Visuals.Where(v => v.Kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile))
+        foreach (var cue in current.Visuals.Where(v => v.Kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer))
         {
             var relative = cue.Player == current.MySeat ? 0 : 1;
-            var source = cue.Kind == DuelVisualKind.Return ? CardZone.Hand : cue.Kind == DuelVisualKind.BonusClaim ? CardZone.Bonus : cue.Source;
-            var node = ZoneNode(relative, source, cue.Value);
+            var source = cue.Kind is DuelVisualKind.Return or DuelVisualKind.HandTransfer ? CardZone.Hand : cue.Kind == DuelVisualKind.BonusClaim ? CardZone.Bonus : cue.Source;
+            var slot = cue.Kind == DuelVisualKind.HandTransfer ? 0 : cue.Value;
+            var node = ZoneNode(relative, source, slot);
             var player = previous.Players[cue.Player];
             string? id = source switch
             {
-                CardZone.Hand => player.Hand.ElementAtOrDefault(cue.Value), CardZone.Bonus => player.Bonus,
+                CardZone.Hand => player.Hand.ElementAtOrDefault(slot), CardZone.Bonus => player.Bonus,
                 CardZone.Equipment => player.Equipment, CardZone.Attached => player.Attached.ElementAtOrDefault(cue.Value),
                 CardZone.Exchange => player.Exchange.ElementAtOrDefault(cue.Value), CardZone.Memory => player.Memory.ElementAtOrDefault(cue.Value), _ => null
             };
+            if (cue.Kind == DuelVisualKind.HandTransfer) id = null; // One face-down packet per hand, regardless of its size.
             var origin = node != null && RectVisible(node, ZoneRect(node)) ? ZoneRect(node) : (Rect2?)null;
             if (source == CardZone.Activation && _root.FindChild("CombatCenter", true, false) is Control center)
             {
@@ -84,6 +86,7 @@ public partial class OnlineArena
                 case DuelVisualKind.Pile:
                 case DuelVisualKind.BonusClaim:
                 case DuelVisualKind.Return:
+                case DuelVisualKind.HandTransfer:
                     if (origins.TryGetValue(cue, out var flight)) _flights.Enqueue(flight);
                     break;
             }
@@ -118,9 +121,10 @@ public partial class OnlineArena
                 DuelVisualKind.Pile => ZoneNode(relative, next.Event.Destination, -1),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.BonusClaim => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, next.Event.Value),
+                DuelVisualKind.HandTransfer => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, 0),
                 _ => ZoneNode(relative, CardZone.Hand, next.Event.Value)
             };
-            var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile;
+            var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer;
             var source = fromPrevious ? next.Origin : deckRect;
             Rect2? destination = returning || kind == DuelVisualKind.Shuffle ? deckRect : target == null ? null : ZoneRect(target);
             var bounds = new Rect2(Vector2.Zero, Size);

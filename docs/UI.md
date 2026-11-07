@@ -36,6 +36,7 @@ La configuración contempla densidad y área segura. No constituye una exportaci
 - Reconectar invalida la caché por época y vuelve a comprobar las versiones coherentes de tablero, mano y opciones. Retirar la suscripción de preparación invalida su mano mediante las eliminaciones de filas.
 - Durante el reciclaje, la fila de cartas muestra la memoria propia y permite elegir hasta seis cartas con un contador de selección. El rival conserva su propia mano; la elección pendiente se recupera al reconectar.
 - Código Konamy muestra en esa fila solo las no-habilidades del mazo propio. Seleccionar una ilustración ofrece la opción autorizada correspondiente; la mano del adversario y su vista del mazo permanecen ocultas.
+- Cambio de Mentes reconstruye ambas manos desde el estado autorizado. Anima un paquete boca abajo por cada mano no vacía, sin identidades en las señales y con duración independiente de la cantidad de cartas. Conserva las revelaciones de cada copia y comprueba los destinos de ambos asientos, también con manos vacías o desiguales.
 - Las señales visuales representan una revisión aceptada; tiradas consecutivas iguales siguen siendo eventos distintos. Una recuperación o salto de revisión restaura el estado sin reproducir efectos antiguos.
 - Las cartas no mantienen procesamiento de hover cuando ya no necesitan animarlo. Los personajes ocultos no avanzan; los visibles solicitan redibujado cuando cambia su fotograma. El dado deja de actualizar continuamente su viewport 3D cuando está inmóvil.
 - A cero vidas, Yuno usa un reposo agotado con respiración lenta, gesto preocupado y raspones. Se termina la reacción del último golpe antes de entrar al bucle. La vida recibida selecciona el reposo para ambos jugadores, también al recuperar la partida; volver a construir la arena no reinicia ese bucle.
@@ -53,7 +54,7 @@ dotnet build Relick.csproj
 ./jugar.sh --headless -- --pvp-ui-test
 ```
 
-Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-search-only` a los argumentos de la prueba. Se puede combinar con `--ui-screenshot-dir=/tmp/relick-ui` para guardar las capturas de PC y móvil horizontal.
+Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-search-only` a los argumentos de la prueba; para Cambio de Mentes, usa `--mind-swap-only`. Se puede combinar con `--ui-screenshot-dir=/tmp/relick-ui` para guardar las capturas de PC y móvil horizontal.
 
 La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. Incluye las seis zonas de Bomba de Tiempo y la selección de seis cartas de memoria para reciclar, con una memoria mayor que la mano. También comprueba los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos: orden tras el dado, repetición, reconstrucción y recuperación visual sin reproducir efectos pasados. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
 

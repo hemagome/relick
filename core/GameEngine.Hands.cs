@@ -1,0 +1,23 @@
+namespace Relick.Core;
+
+public sealed partial class GameEngine
+{
+    // Presentation signal: owner, recipient, number of cards. Never carries identities.
+    public event Action<int, int, int>? HandTransferred;
+
+    private void SwapHands(int actor)
+    {
+        var p = State.Players[actor]; var rival = State.Players[1 - actor];
+        var ownCount = p.Hand.Count; var rivalCount = rival.Hand.Count;
+        // The code and any countereffects have already left the hands. Revelations
+        // travel with those exact copies, not with the slots on their old owner.
+        (p.Hand, rival.Hand) = (rival.Hand, p.Hand);
+        var revealed = p.RevealedHandSlots;
+        p.RevealedHandSlots = rival.RevealedHandSlots;
+        rival.RevealedHandSlots = revealed;
+        if (ownCount > 0) HandTransferred?.Invoke(actor, 1 - actor, ownCount);
+        if (rivalCount > 0) HandTransferred?.Invoke(1 - actor, actor, rivalCount);
+        State.LastCombat = $"{p.Name} intercambia su mano de {ownCount} carta(s) por la de {rival.Name}, de {rivalCount} carta(s).";
+        Log(State.LastCombat);
+    }
+}

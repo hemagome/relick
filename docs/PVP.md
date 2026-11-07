@@ -177,3 +177,17 @@ Error de Carga puede anularla antes o durante la búsqueda, devolviendo los cost
 También se corrigió un bloqueo previo de Relikia: si un COMBO consume la última carta de la mano durante el reciclaje, la colocación posterior termina sin pedir una carta inexistente.
 
 Publicado en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin cambios de tablas. Validación: 167 comprobaciones del motor, 69 PvP remotas y cinco búsquedas con identidades de cartas privadas verificadas entre ambos clientes. La interfaz pasó la matriz completa sin ventana y la matriz gráfica específica de búsqueda en cuatro tamaños, para ambos jugadores/asientos, con la confirmación visible antes de la inspección de carta.
+
+## Cambio de Mentes
+
+Código Jugada, sin COMBO: cuesta una acción y cero PR. No puede activarse en el turno 1 global de la partida, tampoco mediante Relikia. Está disponible desde el turno 2, aunque sea el primer turno personal de ese jugador.
+
+Intercambia ambas manos completas al resolver, incluyendo manos vacías o de tamaños distintos. La carta jugada ya está en memoria y los códigos usados para responder también han salido de las manos: únicamente se intercambian las cartas restantes. No roba, descarta ni baraja y no activa agotamiento. Las demás zonas, vidas, PR y acciones de cada jugador permanecen en su sitio, con los costes habituales de la activación.
+
+Error de Carga puede cancelarla antes de resolver; un contraerror permite resolver con las manos resultantes. Caja de Cartón no responde a códigos Jugada. Desde memoria exige dos acciones y 400 PR y corrompe el código; si se anula, conserva la restitución común de costes.
+
+Las marcas de revelación siguen las copias transferidas. El resto de cartas continúa oculto en la vista del rival y los robos posteriores no heredan las marcas de los antiguos espacios. El estado y las versiones de ambas manos se recuperan al reconectar. Las señales de transferencia solo transportan origen, destinatario y cantidad, sin identidades; la interfaz anima un paquete boca abajo por mano para mantener una duración acotada con manos grandes.
+
+Una copia sustituye una de Vida Extra en los mazos nuevos, conservando veinte cartas. Las partidas existentes conservan sus cartas.
+
+Publicado en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin cambios de tablas. Validación: 177 comprobaciones del motor, 69 PvP remotas y tres intercambios reales con manos, destinatarios y revelaciones verificados. La interfaz completa pasó sin ventana y la matriz gráfica específica cubrió cuatro tamaños, ambos jugadores/asientos, manos vacías o desiguales y animaciones sin filtrar identidades.
