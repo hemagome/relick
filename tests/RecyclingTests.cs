@@ -88,6 +88,15 @@ static class RecyclingTests
                 Check(cues.Single(c => c.Kind == DuelVisualKind.Hit) is { Value: 2, AttackDie: 0 });
             }
         }),
+        ("Relikia: consumir su última carta con un COMBO durante reciclaje no deja una elección sin cartas", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active; p.Relikario = RelikarioCatalog.YunoLv2;
+            p.Hand.Clear(); p.Deck.Clear(); p.Deck.Add(CardCatalog.Reroll.Id); p.Relikia = 300;
+            rng.EnqueueDie(4); Check(g.UseRelikiaEffect(0, RelikiaEffect.DrawAndPlace).Success && g.State.Phase == Phase.DieRerollChoice);
+            rng.EnqueueDie(4); Check(g.PlayCode(0, 0).Success && p.Hand.Count == 0);
+            Check(g.ResolveDieReroll(0, false).Success && g.ResolveRecycling(0, [0, 1, 2, 3]).Success);
+            Check(g.State.Phase == Phase.Actions && g.State.PendingRelikia == null && g.State.Active.Hand.Count == 0);
+        }),
         ("Agotamiento: el robo de Re-lanza espera a reciclar antes de intentar robar del mazo vacío", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; p.Hand.Add(CardCatalog.Reroll.Id);

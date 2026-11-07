@@ -168,6 +168,12 @@ public sealed partial class GameEngine
     }
     private void BeginRelikiaChoice(RelikiaChoice choice)
     {
+        if (choice == RelikiaChoice.PlaceHandCard && State.Active.Hand.Count == 0)
+        {
+            Log($"{State.Active.Name} no tiene cartas en la mano para colocar por Relikia.");
+            State.Phase = Phase.Actions;
+            return;
+        }
         State.PendingRelikia = choice;
         State.Phase = Phase.RelikiaChoice;
     }
