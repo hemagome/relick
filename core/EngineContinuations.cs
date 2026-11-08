@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -21,7 +21,7 @@ public sealed class DieEffect
     public bool Rerolled { get; set; }
     public EngineContinuation? Next { get; set; }
 }
-public enum ActivationKind { Code, Equipment, Reroll, Counter }
+public enum ActivationKind { Code, Equipment, Reroll, Counter, MindReset }
 public enum ActivationResume { Original, RestorePhase }
 public sealed class EngineActivation
 {
@@ -62,6 +62,9 @@ public sealed partial class GameEngine
             case ContinuationKind.RefillBonus: RefillBonus(p, next.Next); break;
             case ContinuationKind.RelikiaPlacement: BeginRelikiaChoice(RelikiaChoice.PlaceHandCard); break;
             case ContinuationKind.RollRelikia: RollWithRelikario(p, DiePurpose.Relikia, new DieEffect { Purpose = DiePurpose.Relikia, Actor = next.Actor }); break;
+            case ContinuationKind.ResumeMindReset:
+                State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
+                break;
             case ContinuationKind.ResumeCombo:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
                 if (next.Attack != null) { State.LastAttackDie = next.Attack.Die; if (!CanRespondToAttackDie()) FinishAttackRoll(next.Attack.Die, next.Attack.WasRerolled); }
@@ -125,12 +128,14 @@ public sealed partial class GameEngine
             case ActivationKind.Equipment:
                 p.Memory.RemoveAt(frame.MemoryIndex); if (p.Equipment != null) DestroyEquipment(p); p.Equipment = frame.CardId;
                 Log($"{p.Name} pone {CardCatalog.Get(frame.CardId).Name} en su zona de equipo (1 acción)."); break;
+            case ActivationKind.MindReset: BeginMindReset(frame.Actor); break;
             case ActivationKind.Reroll: _activeActivation = frame.Parent; ResolveRerollComboEffect(frame.Actor, CardCatalog.Get(frame.CardId)); break;
             default: throw new InvalidOperationException("Activación pendiente desconocida.");
         }
     }
     private void CancelActivation(EngineActivation frame)
     {
+        if (frame.Kind == ActivationKind.MindReset) State.PendingMindReset = null;
         if (frame.Kind == ActivationKind.Code)
         {
             if (frame.ReplayCorrupted)

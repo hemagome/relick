@@ -7,6 +7,50 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckMindResetLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = new GameEngine(91); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
+            foreach (var player in game.State.Players)
+            {
+                player.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id]);
+                player.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Pendant.Id, CardCatalog.Magnet.Id]);
+            }
+            game.State.Active.Hand.Insert(0, CardCatalog.MindReset.Id);
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("Resetear no se activa.");
+            for (var step = 0; step < 4; step++)
+            {
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, (ulong)(30 + step)));
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var minimum = _root!.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1) throw new Exception($"Resetear desborda {size}: {minimum}.");
+                    if (seat == actor && step > 0)
+                    {
+                        if (!ChoosingResetCards || _handCards.Count == 0) throw new Exception("Faltan las cartas seleccionables de Resetear.");
+                        SelectCard(0);
+                        if (!_moves.GetChildren().OfType<Button>().Any(b => b.Text.StartsWith(step < 3 ? "Memoria" : "Devolver")))
+                            throw new Exception("Falta el botón para confirmar la carta de Resetear.");
+                    }
+                    if (seat != actor && ChoosingResetCards) throw new Exception("El rival recibe las selecciones privadas de Resetear.");
+                }
+                var result = step switch
+                {
+                    0 => game.ChooseMindResetTarget(actor, 1 - actor),
+                    1 => game.ChooseMindResetMemory(actor, 0, 0),
+                    2 => game.ChooseMindResetMemory(actor, 1, 0),
+                    _ => game.ResolveMindReset(actor, 0)
+                };
+                if (!result.Success) throw new Exception(result.Message);
+            }
+        }
+        GD.Print("PVP_MIND_RESET_LAYOUT_PASS · objetivo, dos memorias y mano privada, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckMindSwapLayout()
     {
         foreach (var actor in new[] { 0, 1 })

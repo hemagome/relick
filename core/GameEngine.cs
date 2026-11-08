@@ -91,7 +91,7 @@ public sealed partial class GameEngine
     {
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
-        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse)
+        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice)
             return actor == State.DecisionPlayer;
         if (ValidateTurn(actor) != null) return false;
         var p = State.Active;
@@ -171,6 +171,7 @@ public sealed partial class GameEngine
         if (error != null) return CommandResult.Fail(error);
         var p = State.Players[actor];
         var card = CardCatalog.Get(p.Hand[handIndex]);
+        if (card.ResetMind) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
         SendHandToMemory(p, handIndex);
@@ -183,6 +184,7 @@ public sealed partial class GameEngine
 
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
+        if (card.ResetMind) { BeginMindReset(Array.IndexOf(State.Players, p)); return; }
         if (card.SwapHands) { SwapHands(Array.IndexOf(State.Players, p)); return; }
         if (card.SearchNonSkill)
         {

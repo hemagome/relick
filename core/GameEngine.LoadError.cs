@@ -11,7 +11,7 @@ public sealed partial class GameEngine
         if (State.Phase == Phase.ErrorResponse) return State.ErrorResponder == actor && _activationChain.Count > 0 && _activationChain[^1].Actor != actor;
         if (State.PendingDieRoll?.Purpose == DiePurpose.Recycling) return false;
         return _activeActivation is { CanInterrupt: true } frame && frame.Actor != actor &&
-            State.Phase is Phase.DieRerollChoice or Phase.PointsChoice or Phase.DestroyChoice or Phase.CodeResponse or Phase.DeckSearchChoice;
+            State.Phase is Phase.DieRerollChoice or Phase.PointsChoice or Phase.DestroyChoice or Phase.CodeResponse or Phase.DeckSearchChoice or Phase.MindResetChoice;
     }
     private void BeginActivation(EngineActivation frame)
     {
@@ -71,6 +71,7 @@ public sealed partial class GameEngine
     }
     private void ClearCodeDecisions()
     {
+        State.PendingMindReset = null;
         State.PendingCode = null; State.PendingDieRoll = null; State.PendingPoints = null; State.DestroyActor = null; _pendingDieEffect = null;
     }
     private void CorruptActivationCode(int actor, int index)

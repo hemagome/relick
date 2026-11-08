@@ -153,3 +153,20 @@ diferencias en la ilustración. El original y el prompt están en
 `output/imagegen/agility-100-original.jpg` y `agility-100-prompt.txt`. Es código Jugada con COMBO, cuesta una acción incluso durante el ataque:
 fija en 5 un dado propio pendiente de ataque o efecto, sin relanzarlo ni robar cartas.
 Admite Error de Carga. Una copia sustituye una de Ataque en el mazo de 20 cartas.
+
+## Resetear la Mente
+
+`mind-reset-clean.png` restaura el JPG aportado mediante `image_gen`, normalizado a
+697×987. Se retiró la marca de agua diagonal, conservando texto, consola, marco y
+crédito impreso. La reconstrucción generativa puede introducir pequeñas diferencias.
+El original y el prompt están en `output/imagegen/mind-reset-original.jpg` y
+`mind-reset-prompt.txt`.
+
+Código Jugada con COMBO, una acción. El activador elige un jugador y mira su mano
+solo en su vista privada. Selecciona dos copias distintas de las memorias normales
+(propias, rivales o una de cada una) y una no-habilidad de la mano objetivo. Las tres
+regresan al mazo de su dueño; se barajan los mazos afectados y solo el objetivo roba
+una carta. Las memorias corruptas no son seleccionables. Si al mirar solo hay
+habilidades, el efecto termina sin devolver cartas ni robar. Error de Carga puede
+anularlo y devolver el coste; Caja de Cartón no responde a códigos Jugada.
+Una copia sustituye una de Ataque, manteniendo el mazo de veinte cartas.

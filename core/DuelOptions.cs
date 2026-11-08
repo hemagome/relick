@@ -58,6 +58,36 @@ public static class DuelOptions
                 case Phase.RecycleChoice:
                     Add(DuelMoveKind.Recycle, $"Reciclar {game.RecyclingCount} cartas de tu memoria", discards: game.RecyclingCount);
                     break;
+                case Phase.MindResetChoice:
+                    var reset = s.PendingMindReset!;
+                    if (reset.Target < 0)
+                    {
+                        for (var owner = 0; owner < 2; owner++)
+                            if (s.Players[owner].Hand.Count > 0)
+                                Add(DuelMoveKind.MindResetTarget, "Mirar mano de " + s.Players[owner].Name, target: owner);
+                        if (s.Players.All(player => player.Hand.Count == 0))
+                            Add(DuelMoveKind.MindResetHand, "No quedan manos objetivo: finalizar");
+                    }
+                    else if (!s.Players[reset.Target].Hand.Any(id => CardCatalog.Get(id).Kind != CardKind.Skill))
+                        Add(DuelMoveKind.MindResetHand, "No hay no-habilidades: finalizar sin devolver cartas");
+                    else if (reset.Memories.Count < 2)
+                    {
+                        for (var owner = 0; owner < 2; owner++)
+                            for (var i = 0; i < s.Players[owner].Memory.Count; i++)
+                                if (!reset.Memories.Contains(new(owner, i)) && game.MindResetMemories().Contains(new(owner, i)))
+                                {
+                                    Add(DuelMoveKind.MindResetMemory, $"Memoria {reset.Memories.Count + 1}/2: {Card(s.Players[owner].Memory[i])} · {s.Players[owner].Name} · carta {i + 1}", i, target: owner);
+                                    result[^1].CardId = s.Players[owner].Memory[i];
+                                }
+                    }
+                    else
+                        for (var i = 0; i < s.Players[reset.Target].Hand.Count; i++)
+                            if (CardCatalog.Get(s.Players[reset.Target].Hand[i]).Kind != CardKind.Skill)
+                            {
+                                Add(DuelMoveKind.MindResetHand, $"Devolver {Card(s.Players[reset.Target].Hand[i])} · mano de {s.Players[reset.Target].Name} · carta {i + 1}", i);
+                                result[^1].CardId = s.Players[reset.Target].Hand[i];
+                            }
+                    break;
                 case Phase.DeckSearchChoice:
                     foreach (var index in game.SearchableDeckCards(actor))
                     {

@@ -45,7 +45,7 @@ public sealed class DuelSnapshot
         {
             Revision = revision, MySeat = seat, CurrentPlayer = s.CurrentPlayer, DecisionPlayer = s.DecisionPlayer,
             Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.LastDie,
-            Stage = s.Phase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice ? Phase.Actions :
+            Stage = s.Phase == Phase.MindResetChoice ? s.PendingMindReset!.ResumePhase : s.Phase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice ? Phase.Actions :
                 s.Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? s.PendingDieRoll!.ResumePhase : s.Phase == Phase.Discard ? s.DiscardResumePhase :
                 s.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice ? Phase.Combat : s.Phase,
             DieCaption = game.CurrentDieCaption,
@@ -56,7 +56,8 @@ public sealed class DuelSnapshot
                 Name = p.Name, Health = p.Health, MaxHealth = p.MaxHealth, Level = p.Level, Pr = p.Relikia,
                 Actions = p.ActionsLeft, DeckCount = p.Deck.Count, HandCount = p.Hand.Count,
                 Hand = p.Hand.Select((id, i) => index == seat || p.IsHandCardRevealed(i) ||
-                    (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ? id : null).ToArray(),
+                    (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ||
+                    (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == seat && s.PendingMindReset.Target == index) ? id : null).ToArray(),
                 Skills = p.Skills.ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
                 Equipment = p.Equipment, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
                 Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
