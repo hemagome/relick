@@ -223,3 +223,6 @@ el reciclaje no añade objetivos nuevos a esta búsqueda. Las manos siguen siend
 El mazo de desarrollo pasa a 23 cartas: tres Ataques y una copia de cada otra carta,
 sin retirar cartas existentes. Las notas anteriores de veinte cartas describen los
 mazos usados al incorporar cada carta en aquel momento.
+
+El mazo de desarrollo actual se amplió después a 32 cartas: doce Ataques y una
+copia de cada otra carta. Triple Ataque Cruzado sigue buscando como máximo tres.

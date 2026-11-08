@@ -77,7 +77,7 @@ public static class CardCatalog
     public static CardDefinition Get(string id) => All[id];
 
     public static List<string> TrainingDeck() =>
-        Enumerable.Repeat(Attack.Id, 3)
+        Enumerable.Repeat(Attack.Id, 12)
             .Concat(new[] { TripleAttack.Id, MindReset.Id, Agility.Id, Pc.Id, Magnet.Id, Destiny.Id, Sniper.Id,
                 Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Dodge.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, MindSwap.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id }).ToList();
 }

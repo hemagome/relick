@@ -4,11 +4,11 @@ static class MindResetTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
-        ("Resetear: Jugada COMBO cuesta una acción y mazo conserva 23 cartas", () =>
+        ("Resetear: Jugada COMBO cuesta una acción y mazo conserva 32 cartas", () =>
         {
             var c = CardCatalog.MindReset;
             Check(c.IsCombo && c.CodeType == CodeType.Play && c.ActionCost == 1 && c.ResetMind);
-            Check(CardCatalog.TrainingDeck().Count == 23 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 32 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Resetear: memorias propias, rivales o mixtas; baraja solo mazos afectados y roba solo objetivo", () =>
         {

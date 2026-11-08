@@ -109,10 +109,10 @@ var tests = new (string Name, Action Run)[]
         var rejected = g.Learn(0, 0);
         Ok(!rejected.Success && rejected.Message.Contains("cuatro")); Eq(Fingerprint(g), full);
     }),
-    ("El mazo conserva 23 cartas y contiene ambas habilidades y los equipos", () =>
+    ("El mazo conserva 32 cartas y contiene ambas habilidades y los equipos", () =>
     {
         var deck = CardCatalog.TrainingDeck();
-        Eq(deck.Count, 23);
+        Eq(deck.Count, 32);
         var skills = deck.Where(id => CardCatalog.Get(id).Kind == CardKind.Skill).ToArray();
         Eq(skills.Length, 2); Eq(skills.Distinct().Count(), 2);
         Eq(skills.Count(id => id == CardCatalog.Magnet.Id), 1); Eq(skills.Count(id => id == CardCatalog.Destiny.Id), 1);
