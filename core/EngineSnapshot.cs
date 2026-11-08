@@ -52,6 +52,13 @@ public sealed partial class GameEngine
     {
         var saved = JsonSerializer.Deserialize(json, EngineJson.Default.EngineSnapshot) ?? throw new InvalidOperationException("Estado de partida vacío.");
         if (saved.FormatVersion != 1 || saved.State.Players.Length != 2) throw new InvalidOperationException("Formato de estado no compatible.");
+        // Earlier saves stored Yuno Lv 2 with ten maximum lives. Restore its corrected cap.
+        foreach (var player in saved.State.Players)
+            if (player.Relikario.Id == RelikarioCatalog.YunoLv2.Id)
+            {
+                player.Relikario = RelikarioCatalog.YunoLv2;
+                player.Health = Math.Min(player.Health, player.MaxHealth);
+            }
         EngineActivation? Frame(int index) => index == -1 ? null : index >= 0 && index < saved.Frames.Count ? saved.Frames[index].Frame :
             throw new InvalidOperationException("Activación persistida inválida.");
         for (var i = 0; i < saved.Frames.Count; i++) saved.Frames[i].Frame.Parent = Frame(saved.Frames[i].Parent);

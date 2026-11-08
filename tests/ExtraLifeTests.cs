@@ -17,14 +17,14 @@ static class ExtraLifeTests
                 Check(p.HasNaturalSix == (die == 6) && !p.AttackRerollUsedThisTurn && g.State.Phase == Phase.Actions);
             }
         }),
-        ("Vida Extra respeta máximos 8 y 10, puede curar desde cero y conserva el historial", () =>
+        ("Vida Extra respeta el máximo ocho en ambos niveles de Yuno, cura desde cero y conserva el historial", () =>
         {
             foreach (var level in new[] { 1, 2 }) foreach (var health in new[] { 0, 7, 8 })
             {
                 var (g, rng) = Fixture(); var p = g.State.Active;
                 if (level == 2) p.Relikario = RelikarioCatalog.YunoLv2;
                 p.Health = health; p.HasReachedZero = health == 0; p.AttackRerollUsedThisTurn = true;
-                rng.EnqueueDie(6); Check(g.PlayCode(0, 0).Success && p.Health == Math.Min(health + 4, p.MaxHealth) && p.HasReachedZero == (health == 0));
+                rng.EnqueueDie(6); Check(g.PlayCode(0, 0).Success && p.MaxHealth == 8 && p.Health == Math.Min(health + 4, 8) && p.HasReachedZero == (health == 0));
             }
         }),
         ("Vida Extra: Caja cancela antes de lanzar, o permite resolver conservando equipo", () =>

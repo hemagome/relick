@@ -69,7 +69,7 @@ public sealed partial class GameEngine
         var die = attack ? State.PendingAttackRoll!.Die : State.PendingDieRoll!.Die;
         DestroyEquipment(p);
         die = effect switch { PendantEffect.AddOne => die + 1, PendantEffect.AddTwo => die + 2,
-            _ => attack ? RollAttack("Colgante · Relanzamiento") : Roll("Colgante · Relanzamiento") };
+            _ => attack ? RollAttack(out _, "Colgante · Relanzamiento") : Roll("Colgante · Relanzamiento") };
         Log($"{p.Name} usa Colgante de la Suerte ({effect}): el dado queda en {die}.");
         if (attack)
         {

@@ -102,7 +102,7 @@ static class EggComboTests
             rng.EnqueueDie(1); Check(g.Attack(0, 0, 0).Success); rng.EnqueueDie(2); rng.EnqueueDie(4);
             Check(g.PlayCode(0, 0).Success && g.State.PendingDieRoll?.Purpose == DiePurpose.Recycling && g.State.PendingAttackRoll == null);
             Check(g.ResolveDieReroll(0, false).Success && g.State.Phase == Phase.RecycleChoice);
-            Check(g.ResolveRecycling(0, [0, 1, 2, 3]).Success && g.State.PendingAttackRoll?.Die == 2 && p.Hand.Count == 1);
+            Check(g.ResolveRecycling(0, [0, 1, 2, 3]).Success && g.State.PendingAttackRoll?.Die == 3 && p.Hand.Count == 1);
             Check(g.ResolveAttackReroll(0, false).Success && g.State.Phase == Phase.Combat && g.State.PendingDieRoll == null);
         })
     };

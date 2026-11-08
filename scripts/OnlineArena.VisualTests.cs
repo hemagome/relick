@@ -7,6 +7,43 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckYunoEvolutionLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var random = new DuelRandom(); random.Replay([3]);
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor,
+                Hands = [["attack"], ["attack"]], Decks = [["attack"], ["attack"]], Bonuses = [null, null]
+            }, random);
+            var p = game.State.Active; p.Relikario = RelikarioCatalog.YunoLv2; p.AttackRerollUsedThisTurn = true; p.Dexterity = 0;
+            p.Skills.Add(CardCatalog.Destiny.Id);
+            var cues = DuelVisualEvents.Capture(game);
+            if (!game.Attack(actor, 0, 0).Success) throw new Exception("No se resuelve el ataque de Yuno Lv 2.");
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                GetWindow().ContentScaleSize = size;
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 70)); Animate(cues, []);
+                if (!_die.IsRolling || _die.LatestResult != 5) throw new Exception("El +1 oculta o sustituye la tirada original.");
+                var frames = 0;
+                while (IsAnimating && frames++ < 30)
+                {
+                    _die.AdvancePlayback(0.5); UpdateFlights(0.5);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+                if (IsAnimating || _die.DisplayedValue != 5 || !_die.RollCaption.Contains("+1"))
+                    throw new Exception($"El dado de Yuno no presenta el aumento: animando={IsAnimating}, dado={_die.DisplayedValue}, texto={_die.RollCaption}, fotogramas={frames}.");
+                var minimum = _root!.GetCombinedMinimumSize();
+                if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                    throw new Exception($"Yuno Lv 2 desborda {size}: {minimum}.");
+            }
+        }
+        GD.Print("PVP_YUNO_EVOLUTION_LAYOUT_PASS · tirada seguida del +1, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckDexterityLayout()
     {
         foreach (var actor in new[] { 0, 1 })

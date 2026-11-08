@@ -19,7 +19,7 @@ public sealed partial class GameEngine
             return CommandResult.Ok();
         }
         p.AttackRerollUsedThisTurn = true;
-        var rolled = RollAttack($"Yuno Lv {p.Level} · Relanzamiento", p.Relikario.ConvertRerolledSix);
+        var rolled = RollAttack(out _, $"Yuno Lv {p.Level} · Relanzamiento", p.Relikario.ConvertRerolledSix);
         var die = rolled == 6 && p.Relikario.ConvertRerolledSix ? 5 : rolled;
         var count = pending.Rerolls + 1;
         Log($"{p.Name} activa Yuno Lv {p.Level}: relanza {pending.Die} y obtiene {rolled}." +

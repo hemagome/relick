@@ -26,9 +26,10 @@ public sealed partial class GameEngine
         var next = RelikarioCatalog.EvolutionFor(p.Relikario)!;
         p.Relikia -= next.EvolutionCost;
         p.Relikario = next;
-        p.Health = Math.Min(p.MaxHealth, p.Health + 2);
+        var previousHealth = p.Health;
+        p.Health = Math.Min(p.MaxHealth, p.Health + next.EvolutionHealing);
         // Evolution does not refresh an ability already used during this turn.
-        Log($"{p.Name} evoluciona a {p.Relikario.Name} Lv {p.Level}: paga {next.EvolutionCost} PR, gana 2 vidas y su máximo sube a {p.MaxHealth}.");
+        Log($"{p.Name} evoluciona a {p.Relikario.Name} Lv {p.Level}: paga {next.EvolutionCost} PR, recupera {p.Health - previousHealth} vida(s), hasta el máximo de {p.MaxHealth} de su nivel 1.");
         return CommandResult.Ok();
     }
 

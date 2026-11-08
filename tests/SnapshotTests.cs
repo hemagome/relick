@@ -7,7 +7,7 @@ static class SnapshotTests
 {
     public static IEnumerable<(string Name, Action Run)> Cases => new (string, Action)[]
     {
-        ("Persistencia: fixtures anteriores conservan sus estados hasta el cambio de regla de agotamiento", Golden),
+        ("Persistencia: fixtures anteriores conservan sus estados hasta evolucionar o agotar el mazo", Golden),
         ("Persistencia: el estado en línea excluye el registro creciente", BoundedLog),
         ("Red: paquetes separados conservan cantidades y revelaciones permitidas", PacketPrivacy)
     };
@@ -27,6 +27,9 @@ static class SnapshotTests
         {
             var random = new DuelRandom(); var game = test.InitialState == null ? GameEngine.FromOpening(test.Opening!, random) :
                 GameEngine.FromSnapshot("{\"State\":" + test.InitialState + "}", random);
+            // Already-evolved legacy fixtures start under the replaced health/dice rules.
+            // Current evolution tests cover their corrected snapshot recovery explicitly.
+            if (game.State.Players.Any(p => p.Relikario.Id == RelikarioCatalog.YunoLv2.Id)) continue;
             foreach (var player in game.State.Players) player.Dexterity = 0;
             for (var step = 0; step < test.Steps.Length; step++)
             {
@@ -37,6 +40,8 @@ static class SnapshotTests
                 // intentionally obsolete; current full-duel replay/snapshot tests cover the new rule.
                 if (game.State.Players.Where((p, i) => p.Recycled && !recycled[i]).Any()) break;
                 random.Finish();
+                // Evolution now caps healing at level-one health and changes Yuno's attack dice.
+                if (result.Success && expected.Entry.Move.Kind == DuelMoveKind.Evolve) break;
                 if (!result.Success || Hash(game) != expected.Hash) throw new Exception($"Cambio de reglas en duelo {index}, jugada {step}, {game.State.Phase}: {result.Message}");
                 game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
                 if (Hash(game) != expected.Hash) throw new Exception($"Estado incompleto en duelo {index}, jugada {step}, {game.State.Phase}");

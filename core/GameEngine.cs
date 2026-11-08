@@ -147,16 +147,16 @@ public sealed partial class GameEngine
         var skill = CardCatalog.Get(p.Skills[skillIndex]);
         SendHandToMemory(p, handIndex);
         State.AttackedThisTurn = true;
-        var die = RollAttack();
+        var die = RollAttack(out var levelModified);
         State.LastAttackDie = die;
-        State.PendingAttackRoll = new(actor, skill.Id, die);
+        State.PendingAttackRoll = new(actor, skill.Id, die, Modified: levelModified);
         State.Phase = Phase.AttackRerollChoice;
         if (CanRespondToAttackDie())
         {
             State.Phase = Phase.AttackRerollChoice;
             State.LastCombat = $"{p.Name} · Dado de ataque {die} · Decide si relanza con Yuno";
         }
-        else { RegisterNaturalSix(p, die); FinishAttackRoll(die); }
+        else { if (!levelModified) RegisterNaturalSix(p, die); FinishAttackRoll(die); }
         return CommandResult.Ok();
     }
 
@@ -457,12 +457,23 @@ public sealed partial class GameEngine
 
     private static bool InHand(PlayerState p, int index) => index >= 0 && index < p.Hand.Count;
     public string CurrentDieCaption { get; private set; } = "";
-    private int RollAttack(string caption = "", bool convertSix = false)
+    private int RollAttack(out bool levelModified, string caption = "", bool convertSix = false)
     {
         var die = Roll(caption, convertSix);
         if (die == 1)
             foreach (var player in State.Players)
                 if (player.Equipment is { } id && CardCatalog.Get(id).DestroyOnAttackOne) DestroyEquipment(player);
+        var bonus = State.Active.Relikario.AttackDieBonusExceptOne;
+        levelModified = bonus > 0 && die is >= 2 and < 6;
+        if (levelModified)
+        {
+            var previous = die;
+            die = Math.Min(6, die + bonus);
+            State.LastDie = die;
+            CurrentDieCaption = $"{State.Active.Relikario.Name} Lv {State.Active.Level} · +{bonus} al ataque";
+            DieAdjusted?.Invoke(die);
+            Log($"{State.Active.Name} suma +{bonus} por {State.Active.Relikario.Name} Lv {State.Active.Level} al dado de ataque: {previous} → {die}.");
+        }
         return die;
     }
     private int Roll(string caption = "", bool convertSix = false)
