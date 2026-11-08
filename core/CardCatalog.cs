@@ -11,10 +11,13 @@ public sealed record CardDefinition(
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, bool ChangePointsFromDie = false, int PrCost = 0, bool DestroyNonSkill = false, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
     int DamageReduction = 0, bool DestroyOnAttackOne = false, bool DestroyChosenZone = false, bool SearchNonSkill = false,
-    bool SwapHands = false, int EarliestTurn = 0);
+    bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0);
 
 public static class CardCatalog
 {
+    public static readonly CardDefinition Agility = new("agility-100", "Agilidad al 100%", CardKind.Code,
+        "COMBO. Cambia el resultado de uno de tus dados a 5.",
+        CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, SetOwnDie: 5);
     public static readonly CardDefinition MindSwap = new("mind-swap", "Cambio de Mentes", CardKind.Code,
         "No puedes activar esta carta en el primer turno del juego. Cambia todas las cartas de tu mano (mín. 0) por las de tu oponente.",
         CodeType: CodeType.Play, SwapHands: true, EarliestTurn: 2);
@@ -57,13 +60,13 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o resolviendo, o un equipo esté siendo equipado: cancélalo y envíalo a memoria. La activación anulada recupera sus costes.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap }.ToDictionary(c => c.Id);
+        new[] { Attack, Magnet, Destiny, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 
     public static List<string> TrainingDeck() =>
-        Enumerable.Repeat(Attack.Id, 3)
-            .Concat(new[] { Magnet.Id, Magnet.Id, Destiny.Id, Destiny.Id,
+        Enumerable.Repeat(Attack.Id, 2)
+            .Concat(new[] { Agility.Id, Magnet.Id, Magnet.Id, Destiny.Id, Destiny.Id,
                 Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Senshuni.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, MindSwap.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id }).ToList();
 }
 

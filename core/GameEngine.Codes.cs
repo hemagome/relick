@@ -47,7 +47,7 @@ public sealed partial class GameEngine
         if (card.DestroyChosenZone && !TimeBombTargets(Array.IndexOf(State.Players, p), excludedHand).Any())
             return "No hay cartas en equipos, manos o Bonus para destruir.";
         if (card.CancelActivation && !CanPlayLoadError(Array.IndexOf(State.Players, p))) return "No hay una activación que puedas anular.";
-        if (card.RerollOwnDie && !OwnDiePending(Array.IndexOf(State.Players, p))) return "Requiere un dado propio pendiente.";
+        if ((card.RerollOwnDie || card.SetOwnDie > 0) && !OwnDiePending(Array.IndexOf(State.Players, p))) return "Requiere un dado propio pendiente.";
         return null;
     }
     public string? CodeUnavailableReason(int actor, int handIndex)
@@ -97,7 +97,7 @@ public sealed partial class GameEngine
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
         : State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor;
-    private bool HasRerollCombo(int actor) => State.Players[actor].Hand.Any(id => { var c = CardCatalog.Get(id); return c.IsCombo && c.RerollOwnDie && State.Players[actor].ActionsLeft >= c.ActionCost; });
+    private bool HasRerollCombo(int actor) => State.Players[actor].Hand.Any(id => { var c = CardCatalog.Get(id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && State.Players[actor].ActionsLeft >= c.ActionCost; });
     private CommandResult PlayRerollCombo(int actor, int index)
     {
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
@@ -112,6 +112,15 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var phase = State.Phase; var attack = State.PendingAttackRoll; var effect = State.PendingDieRoll;
         var continuation = _pendingDieEffect;
+        if (card.SetOwnDie > 0)
+        {
+            if (attack != null) attack = attack with { Die = card.SetOwnDie, Modified = true };
+            if (effect != null) effect = effect with { Die = card.SetOwnDie, Modified = true };
+            Log($"{p.Name} activa {card.Name}: dado {card.SetOwnDie}.");
+            Continue(new EngineContinuation { Kind = ContinuationKind.ResumeCombo, Actor = actor, Phase = phase,
+                Attack = attack, Die = effect, SavedDieEffect = continuation });
+            return;
+        }
         var die = attack != null ? RollAttack("Re-lanza · COMBO") : Roll("Re-lanza · COMBO");
         if (attack != null) attack = attack with { Die = die, Modified = true, WasRerolled = true };
         if (effect != null) effect = effect with { Die = die, Modified = true, WasRerolled = true };

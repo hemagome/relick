@@ -25,7 +25,9 @@ static class SimulationDriver
         {
             var attack = s.Phase == Phase.AttackRerollChoice;
             var die = attack ? s.PendingAttackRoll!.Die : s.PendingDieRoll!.Die;
-            var combo = p.Hand.FindIndex(id => CardCatalog.Get(id).RerollOwnDie);
+            var combo = p.Hand.FindIndex(id => CardCatalog.Get(id).SetOwnDie > 0);
+            if (die < 5 && combo >= 0 && game.CodeUnavailableReason(actor, combo) == null) return game.PlayCode(actor, combo);
+            combo = p.Hand.FindIndex(id => CardCatalog.Get(id).RerollOwnDie);
             if (die < 4 && combo >= 0 && game.CodeUnavailableReason(actor, combo) == null) return game.PlayCode(actor, combo);
             if (die < 5 && game.CanUseYunoOnPendingDie(actor))
                 return attack ? game.ResolveAttackReroll(actor, true) : game.ResolveDieReroll(actor, true);

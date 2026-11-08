@@ -143,3 +143,13 @@ Intercambia las manos restantes después de las respuestas, incluso con cero car
 La propia carta queda en memoria o se corrompe si se activó mediante Relikia.
 Las cartas previamente reveladas conservan esa condición al cambiar de mano.
 Una copia sustituye una de Vida Extra en los mazos nuevos, conservando veinte cartas.
+
+## Agilidad al 100%
+
+`agility-100-clean.png` es la restauración del JPG aportado mediante `image_gen`,
+normalizada a 697×987. Se retiró la marca diagonal, conservando el diseño, el texto
+y los créditos impresos. La reconstrucción generativa puede introducir pequeñas
+diferencias en la ilustración. El original y el prompt están en
+`output/imagegen/agility-100-original.jpg` y `agility-100-prompt.txt`. Es código Jugada con COMBO, cuesta una acción incluso durante el ataque:
+fija en 5 un dado propio pendiente de ataque o efecto, sin relanzarlo ni robar cartas.
+Admite Error de Carga. Una copia sustituye una de Ataque en el mazo de 20 cartas.

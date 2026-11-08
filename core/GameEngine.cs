@@ -172,7 +172,7 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var card = CardCatalog.Get(p.Hand[handIndex]);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
-        if (card.RerollOwnDie) return PlayRerollCombo(actor, handIndex);
+        if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
         SendHandToMemory(p, handIndex);
         p.ActionsLeft -= card.ActionCost;
         p.Relikia -= card.PrCost;

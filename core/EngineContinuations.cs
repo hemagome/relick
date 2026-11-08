@@ -64,7 +64,7 @@ public sealed partial class GameEngine
             case ContinuationKind.RollRelikia: RollWithRelikario(p, DiePurpose.Relikia, new DieEffect { Purpose = DiePurpose.Relikia, Actor = next.Actor }); break;
             case ContinuationKind.ResumeCombo:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
-                if (next.Attack != null) { State.LastAttackDie = next.Attack.Die; if (!CanRespondToAttackDie()) FinishAttackRoll(next.Attack.Die, true); }
+                if (next.Attack != null) { State.LastAttackDie = next.Attack.Die; if (!CanRespondToAttackDie()) FinishAttackRoll(next.Attack.Die, next.Attack.WasRerolled); }
                 else if (!CanRespondToEffectDie()) ResolveDieReroll(next.Actor, false);
                 break;
         }
