@@ -21,6 +21,10 @@ public static class DuelOptions
         {
             switch (s.Phase)
             {
+                case Phase.SniperChoice:
+                    Add(DuelMoveKind.Sniper, "Equipar gratis Mira de Sniper", flag: true);
+                    Add(DuelMoveKind.Sniper, "Colocar Mira de Sniper en canje");
+                    break;
                 case Phase.Combat:
                     for (var i = 0; i < p.Hand.Count; i++)
                     {

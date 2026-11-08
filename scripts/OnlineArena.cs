@@ -334,6 +334,6 @@ public partial class OnlineArena : Control
     {
         Phase.Preparation => "PREPARACIÓN", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
-        Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MindResetChoice => "RESETEAR LA MENTE", _ => "RESOLVER EFECTO"
+        Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", _ => "RESOLVER EFECTO"
     };
 }

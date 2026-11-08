@@ -63,6 +63,7 @@ public sealed partial class GameEngine
         var root = _activationChain[0]; _activationChain.Clear(); State.ActivationChain.Clear(); State.Phase = _errorResumePhase;
         if (root.Canceled) { CancelActivation(root); _activeActivation = root.Parent; State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Activación anulada · Costes devueltos"; }
         else { ResumeActivation(root); CompleteActivationIfFinished(); }
+        if (root.Canceled && root.FinishSniperExchange) CompleteExchange(State.Players[root.Actor]);
     }
     private void RefundActivation(int actor, int actions, int pr)
     {

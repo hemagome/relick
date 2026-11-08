@@ -49,6 +49,7 @@ public sealed partial class GameEngine
     {
         var p = State.Players[actor];
         var damage = DamageFor(die, normal, skill.CriticalDamage);
+        if (die >= 4 && p.Equipment is { } equipment) damage += CardCatalog.Get(equipment).DamageBonus;
         var outcome = die < 4 ? "Fallido" : die == 4 ? "Reducido" : die == 5 ? "Normal" : "Crítico";
         State.LastCombat = $"{p.Name} · {outcome} · {damage} de daño" +
             (rerolled ? $" · Dado final: {die}" : "");

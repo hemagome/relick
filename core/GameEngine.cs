@@ -91,7 +91,7 @@ public sealed partial class GameEngine
     {
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
-        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice)
+        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice)
             return actor == State.DecisionPlayer;
         if (ValidateTurn(actor) != null) return false;
         var p = State.Active;
@@ -251,15 +251,21 @@ public sealed partial class GameEngine
     {
         p.Exchange.Add(id);
         Log($"{p.Name} coloca {CardCatalog.Get(id).Name} en canje ({p.Exchange.Count}/2).");
-        if (p.Exchange.Count == 2 && p.Bonus != null)
+        CompleteExchange(p, completed);
+    }
+
+    private void CompleteExchange(PlayerState p, EngineContinuation? completed = null)
+    {
+        if (State.PendingSniper?.Actor == Array.IndexOf(State.Players, p)) { Continue(completed); return; }
+        if (p.Exchange.Count >= 2 && p.Bonus != null)
         {
-            for (var slot = 0; slot < p.Exchange.Count; slot++)
+            for (var slot = 0; slot < 2; slot++)
                 NotifyPileMove(p, p.Exchange[slot], CardZone.Exchange, slot);
-            p.Memory.AddRange(p.Exchange);
-            p.Exchange.Clear();
+            p.Memory.AddRange(p.Exchange.Take(2));
+            p.Exchange.RemoveRange(0, 2);
             TakeBonus(p, p);
             Log($"{p.Name} completa el canje y obtiene su bonus.");
-            RefillBonus(p, completed);
+            RefillBonus(p, new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = Array.IndexOf(State.Players, p), Next = completed });
         }
         else Continue(completed);
     }
@@ -295,6 +301,7 @@ public sealed partial class GameEngine
             State.Phase = State.DiscardResumePhase;
             State.DiscardPlayer = null;
         }
+        if (CardCatalog.Get(id).EquipOnDiscard) BeginSniperChoices(actor, [p.Memory.Count - 1]);
         return CommandResult.Ok();
     }
 
@@ -329,6 +336,11 @@ public sealed partial class GameEngine
             State.LastCombat += $" · {CardCatalog.Get(p.Equipment!).Name}: {reduced} daño recibido";
             amount = reduced;
             if (amount == 0) return;
+        }
+        if (p.Equipment is { } equipment && CardCatalog.Get(equipment).DamageCounterLimit > 0)
+        {
+            p.EquipmentCounters++;
+            if (p.EquipmentCounters >= CardCatalog.Get(equipment).DamageCounterLimit) DestroyEquipment(p);
         }
         var wasZero = p.Health == 0;
         p.Health = Math.Max(0, p.Health - amount);

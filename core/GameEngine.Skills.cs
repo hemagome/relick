@@ -34,13 +34,17 @@ public sealed partial class GameEngine
         if (!AvailableDefenses(actor).Contains(skillSlot) || indices.Length != DefenseDiscardCost ||
             indices.Distinct().Count() != indices.Length || indices.Any(i => !InHand(p, i)))
             return CommandResult.Fail($"Elige una copia disponible de Destiny y exactamente {DefenseDiscardCost} cartas para descartar.");
+        var sniperIndices = new List<int>();
         foreach (var index in indices.OrderDescending())
         {
+            var sniper = CardCatalog.Get(p.Hand[index]).EquipOnDiscard;
             SendHandToMemory(p, index);
+            if (sniper) sniperIndices.Add(p.Memory.Count - 1);
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
         Log($"{p.Name} activa Relick Destiny Shuffle (espacio {skillSlot + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");
         ResolveAttackDamage(true);
+        BeginSniperChoices(actor, sniperIndices);
         return CommandResult.Ok();
     }
 

@@ -26,7 +26,7 @@ public sealed partial class GameEngine
         if (p.Equipment == null) return;
         var id = p.Equipment;
         NotifyPileMove(p, id, CardZone.Equipment);
-        p.Equipment = null; p.EquipmentDie = 0; p.Memory.Add(id);
+        p.Equipment = null; p.EquipmentDie = 0; p.EquipmentCounters = 0; p.Memory.Add(id);
         Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: va a su memoria.");
     }
 

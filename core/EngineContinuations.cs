@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -35,6 +35,7 @@ public sealed class EngineActivation
     public ActivationResume ResumeMode { get; set; }
     public bool Canceled { get; set; }
     public bool ReplayCorrupted { get; set; }
+    public bool FinishSniperExchange { get; set; }
     public bool CanInterrupt { get; set; } = true;
     public int CorruptedIndex { get; set; }
     public bool FromMemory { get; set; }
@@ -53,6 +54,7 @@ public sealed partial class GameEngine
         var p = State.Players[next.Actor];
         switch (next.Kind)
         {
+            case ContinuationKind.CompleteExchange: CompleteExchange(p, next.Next); break;
             case ContinuationKind.Draw: DrawCards(p, next.Count, next.Next); break;
             case ContinuationKind.MoveHand: MoveTopCard(p, false, next.Next); break;
             case ContinuationKind.MoveBonus: MoveTopCard(p, true, next.Next); break;
@@ -146,9 +148,10 @@ public sealed partial class GameEngine
         {
             case ActivationKind.Code: ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex); break;
             case ActivationKind.Equipment:
-                p.Memory.RemoveAt(frame.MemoryIndex); if (p.Equipment != null) DestroyEquipment(p); p.Equipment = frame.CardId; p.EquipmentDie = 0;
+                p.Memory.RemoveAt(frame.MemoryIndex); ShiftSniperIndices(frame.Actor, frame.MemoryIndex); if (p.Equipment != null) DestroyEquipment(p); p.Equipment = frame.CardId; p.EquipmentDie = 0; p.EquipmentCounters = 0;
                 Log($"{p.Name} pone {CardCatalog.Get(frame.CardId).Name} en su zona de equipo (1 acción).");
                 frame.CanInterrupt = false;
+                if (frame.FinishSniperExchange) CompleteExchange(p);
                 if (CardCatalog.Get(frame.CardId).StoreDie)
                     RollWithRelikario(p, DiePurpose.PcStore, new DieEffect { Purpose = DiePurpose.PcStore, Actor = frame.Actor });
                 break;

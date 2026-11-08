@@ -195,3 +195,16 @@ ni convierte el resultado modificado en seis natural. La destrucción no cuesta 
 acción; manda PC a memoria y elimina el valor guardado. Reemplazarlo también lo limpia.
 El dado al equipar admite los modificadores ya disponibles. Una copia sustituye
 una de Magnet Shuffle, conservando veinte cartas y ambos tipos de habilidad inicial.
+
+## Mira de Sniper
+
+`sniper-scope-clean.png` restaura el PNG aportado con `image_gen`, sin marca diagonal,
+a 697×987. Conserva texto y créditos; puede presentar pequeñas diferencias generativas.
+Original y prompt: `output/imagegen/sniper-scope-original.png` y `sniper-scope-prompt.txt`.
+Equipada suma uno al daño de ataques acertados, después del cálculo de mitad/normal/crítico.
+Cada ocasión de daño recibido añade un contador; al tercero se destruye a memoria.
+Los contadores se muestran públicamente, se guardan al reconectar y se reinician al equipar.
+Los descartes por efectos y por Destiny permiten equiparla gratis o colocarla en canje.
+Destrucción, canje y devolución al mazo no son descartes. El equipo gratuito admite
+Error de Carga, que no devuelve acciones al dueño porque no se gastaron.
+Una copia sustituye la segunda Destiny, manteniendo veinte cartas y ambas habilidades.
