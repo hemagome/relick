@@ -64,6 +64,7 @@ public sealed partial class GameEngine
         if (root.Canceled) { CancelActivation(root); _activeActivation = root.Parent; State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Activación anulada · Costes devueltos"; }
         else { ResumeActivation(root); CompleteActivationIfFinished(); }
         if (root.Canceled && root.FinishSniperExchange) CompleteExchange(State.Players[root.Actor]);
+        CompleteEndTurnIfReady();
     }
     private void RefundActivation(int actor, int actions, int pr)
     {
@@ -82,6 +83,7 @@ public sealed partial class GameEngine
     }
     private void CompleteActivationIfFinished()
     {
-        if (State.Phase is Phase.Actions or Phase.Combat or Phase.Finished) _activeActivation = null;
+        if (State.Phase is Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished) _activeActivation = null;
+        CompleteEndTurnIfReady();
     }
 }

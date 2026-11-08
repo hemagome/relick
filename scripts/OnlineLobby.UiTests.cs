@@ -55,6 +55,7 @@ public partial class OnlineLobby
             await online.CheckMindResetLayout();
             await online.CheckMindSwapLayout();
             await online.CheckRecyclingLayout();
+            await online.CheckHandLimitLayout();
             await online.CheckPreparationLayout();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();

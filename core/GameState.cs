@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Relick.Core;
 
-public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice }
+public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final }
 
 public sealed class PlayerState
 {
@@ -98,7 +98,7 @@ public sealed class GameState
     public bool LearnedThisTurn { get; internal set; }
     [JsonInclude]
     public bool AttackedThisTurn { get; internal set; }
-    // Only explicit card effects may request discards; hand size has no default limit.
+    // Fixed discards requested by effects; Phase.Final checks the current hand size instead.
     [JsonInclude]
     public int DiscardsRemaining { get; internal set; }
     [JsonInclude]

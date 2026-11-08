@@ -7,6 +7,36 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckHandLimitLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = new GameEngine(7); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
+            game.State.Active.Hand.AddRange(Enumerable.Repeat(CardCatalog.Attack.Id, 9));
+            if (!game.Advance(actor).Success) throw new Exception("No se inicia el descarte final.");
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                GetWindow().ContentScaleSize = size;
+                _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 50));
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var minimum = _root!.GetCombinedMinimumSize();
+                if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                    throw new Exception($"Descarte final desborda {size}: {minimum}.");
+                if (seat == actor)
+                {
+                    if (!_selection.Text.Contains("Descarta 2")) throw new Exception("Falta la indicación del límite de mano.");
+                    SelectCard(0);
+                    if (!_moves.GetChildren().OfType<Button>().Any(b => b.Text.StartsWith("Descartar ")))
+                        throw new Exception("Falta la opción para descartar la carta elegida.");
+                }
+                else if (_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Discard))
+                    throw new Exception("El rival puede descartar la mano activa.");
+            }
+        }
+        GD.Print("PVP_HAND_LIMIT_LAYOUT_PASS · descarte final, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckMindResetLayout()
     {
         foreach (var actor in new[] { 0, 1 })

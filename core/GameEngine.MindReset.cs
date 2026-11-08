@@ -49,7 +49,7 @@ public sealed partial class GameEngine
         if (State.Players.All(p => p.Hand.Count == 0) || MindResetMemories().Count() < 2)
         {
             Log("Resetear la Mente se resuelve sin objetivos suficientes después de las respuestas.");
-            FinishMindReset(); return;
+            FinishMindReset(); CompleteEndTurnIfReady(); return;
         }
         State.LastCombat = $"{State.Players[actor].Name} · Resetear la Mente · Elige un jugador para mirar su mano";
     }
@@ -86,14 +86,14 @@ public sealed partial class GameEngine
         {
             if (handIndex != -1 || State.Players.Any(p => p.Hand.Count > 0))
                 return CommandResult.Fail("Elige un jugador objetivo.");
-            FinishMindReset(); return CommandResult.Ok();
+            FinishMindReset(); CompleteEndTurnIfReady(); return CommandResult.Ok();
         }
         var target = State.Players[pending.Target];
         var hasTarget = target.Hand.Any(id => CardCatalog.Get(id).Kind != CardKind.Skill);
         if (!hasTarget)
         {
             if (handIndex != -1) return CommandResult.Fail("No hay no-habilidades en esa mano.");
-            FinishMindReset(); return CommandResult.Ok();
+            FinishMindReset(); CompleteEndTurnIfReady(); return CommandResult.Ok();
         }
         if (pending.Memories.Count != 2 || !InHand(target, handIndex) || CardCatalog.Get(target.Hand[handIndex]).Kind == CardKind.Skill)
             return CommandResult.Fail("Elige una no-habilidad de la mano objetivo después de seleccionar dos cartas de memoria.");

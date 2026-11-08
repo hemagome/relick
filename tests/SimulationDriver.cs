@@ -104,7 +104,7 @@ static class SimulationDriver
             }
             return game.Advance(actor);
         }
-        if (s.Phase == Phase.Discard)
+        if (s.Phase is Phase.Discard or Phase.Final)
         {
             var index = p.Hand.FindIndex(id => p.Skills.Contains(id));
             if (index < 0) index = p.Hand.FindIndex(id => id != CardCatalog.Attack.Id);

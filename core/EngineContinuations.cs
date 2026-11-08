@@ -50,7 +50,8 @@ public sealed partial class GameEngine
 {
     private void Continue(EngineContinuation? next)
     {
-        if (next == null || State.IsOver) return;
+        if (State.IsOver) return;
+        if (next == null) { CompleteEndTurnIfReady(); return; }
         var p = State.Players[next.Actor];
         switch (next.Kind)
         {
@@ -66,6 +67,7 @@ public sealed partial class GameEngine
             case ContinuationKind.RollRelikia: RollWithRelikario(p, DiePurpose.Relikia, new DieEffect { Purpose = DiePurpose.Relikia, Actor = next.Actor }); break;
             case ContinuationKind.ResumeMindReset:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
+                CompleteEndTurnIfReady();
                 break;
             case ContinuationKind.ResumeCombo:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;

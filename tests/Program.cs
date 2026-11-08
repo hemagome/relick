@@ -256,7 +256,7 @@ var tests = new (string Name, Action Run)[]
         Eq(p.Bonus, "senshuni"); Eq(p.Hand.Single(), "destiny-shuffle"); Eq(p.Health, 6);
         Ok(g.State.IsOver); Eq(g.State.Winner, 1); Eq(Count(p), count);
     }),
-    ("Ambos jugadores terminan con manos grandes sin descartar", () =>
+    ("Límite de mano: ambos jugadores eligen descartes antes de pasar el turno", () =>
     {
         foreach (var actor in new[] { 0, 1 })
         foreach (var size in new[] { 8, 20, 100 })
@@ -265,11 +265,22 @@ var tests = new (string Name, Action Run)[]
             g.State.CurrentPlayer = actor; g.State.Phase = Phase.Actions;
             var p = g.State.Active;
             p.Hand.Clear(); p.Hand.AddRange(Enumerable.Repeat("attack", size));
-            var hand = p.Hand.ToArray(); var memory = p.Memory.ToArray();
+            var memoryCount = p.Memory.Count;
+            var rivalHand = g.State.Players[1 - actor].Hand.Count;
             Ok(g.Advance(actor).Success);
+            Eq(g.State.Phase, Phase.Final); Eq(g.State.CurrentPlayer, actor);
+            Eq(g.State.Players[1 - actor].Hand.Count, rivalHand);
+            var before = Fingerprint(g);
+            Ok(!g.Advance(actor).Success && !g.Discard(1 - actor, 0).Success && !g.Discard(actor, size).Success);
+            Eq(Fingerprint(g), before);
+            while (p.Hand.Count > GameEngine.MaxHandSize)
+            {
+                Ok(g.HasAvailablePlay(actor));
+                Ok(g.Discard(actor, p.Hand.Count - 1).Success);
+            }
+            Eq(p.Hand.Count, 7); Eq(p.Memory.Count, memoryCount + size - 7);
             Eq(g.State.Phase, Phase.Combat); Eq(g.State.CurrentPlayer, 1 - actor);
-            Ok(p.Hand.SequenceEqual(hand)); Ok(p.Memory.SequenceEqual(memory)); Eq(g.State.DiscardsRemaining, 0);
-            Ok(!g.State.Log.Any(line => line.Contains("descarta")));
+            Eq(g.State.DiscardsRemaining, 0);
         }
     }),
     ("Sin efecto pendiente no se permite descartar voluntariamente", () =>
@@ -296,13 +307,15 @@ var tests = new (string Name, Action Run)[]
         Ok(g.Discard(0, 0).Success); Eq(p.Hand.Count, 10); Eq(p.Memory.Count, 2);
         Eq(g.State.CurrentPlayer, 0); Eq(g.State.Phase, Phase.Combat); Eq(g.State.DiscardsRemaining, 0);
     }),
-    ("Recarga conserva cartas por encima de siete y permite terminar", () =>
+    ("Recarga permite superar siete durante acciones y exige descartar al terminar", () =>
     {
         var (g, _) = Combat(); g.Advance(0);
         var p = g.State.Active;
         p.Hand.Clear(); p.Hand.Add("senshuni"); p.Hand.AddRange(Enumerable.Repeat("attack", 8));
         Ok(g.PlayCode(0, 0).Success); Eq(p.Hand.Count, 10);
-        Ok(g.Advance(0).Success); Eq(p.Hand.Count, 10); Eq(g.State.CurrentPlayer, 1);
+        Ok(g.Advance(0).Success); Eq(p.Hand.Count, 10); Eq(g.State.Phase, Phase.Final); Eq(g.State.CurrentPlayer, 0);
+        for (var i = 0; i < 3; i++) Ok(g.Discard(0, 0).Success);
+        Eq(p.Hand.Count, 7); Eq(g.State.CurrentPlayer, 1);
     }),
     ("Mano vacía roba tres, mano no vacía roba una", () =>
     {
@@ -542,7 +555,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(HandLimitTests.Cases).Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)

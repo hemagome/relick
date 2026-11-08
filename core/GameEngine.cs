@@ -8,6 +8,7 @@ public sealed partial class GameEngine
 {
     public static IReadOnlyList<int> SkillSlotCosts { get; } = Array.AsReadOnly(new[] { 0, 300, 500, 1000 });
     public static int MaxSkills => SkillSlotCosts.Count;
+    public const int MaxHandSize = 7;
     private readonly IGameRandom _random;
     public GameState State { get; } = new();
     public event Action<int>? AttackPerformed;
@@ -105,6 +106,7 @@ public sealed partial class GameEngine
             Phase.Actions => (State.ActionsLeft > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment || CodeUnavailableReason(actor, c.i) == null)) ||
                 RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
             Phase.Discard => State.DiscardsRemaining > 0 && p.Hand.Count > 0,
+            Phase.Final => p.Hand.Count > MaxHandSize,
             Phase.RelikiaChoice => true,
             _ => false
         };
@@ -297,22 +299,28 @@ public sealed partial class GameEngine
 
     public CommandResult Discard(int actor, int handIndex)
     {
-        if (State.Phase != Phase.Discard || actor != State.DecisionPlayer)
+        var handLimit = State.Phase == Phase.Final;
+        if ((!handLimit && State.Phase != Phase.Discard) || actor != State.DecisionPlayer)
             return CommandResult.Fail("No te corresponde descartar ahora.");
-        if (State.DiscardsRemaining <= 0) return CommandResult.Fail("Solo puedes descartar cuando un efecto de carta lo indique.");
         var p = State.Players[actor];
+        if (handLimit ? p.Hand.Count <= MaxHandSize : State.DiscardsRemaining <= 0)
+            return CommandResult.Fail("No tienes descartes pendientes.");
         if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
         var id = p.Hand[handIndex];
         SendHandToMemory(p, handIndex);
         Log($"{p.Name} descarta {CardCatalog.Get(id).Name}.");
-        State.DiscardsRemaining--;
-        if (p.Hand.Count == 0) State.DiscardsRemaining = 0;
-        if (State.DiscardsRemaining == 0)
+        if (!handLimit)
         {
-            State.Phase = State.DiscardResumePhase;
-            State.DiscardPlayer = null;
+            State.DiscardsRemaining--;
+            if (p.Hand.Count == 0) State.DiscardsRemaining = 0;
+            if (State.DiscardsRemaining == 0)
+            {
+                State.Phase = State.DiscardResumePhase;
+                State.DiscardPlayer = null;
+            }
         }
         if (CardCatalog.Get(id).EquipOnDiscard) BeginSniperChoices(actor, [p.Memory.Count - 1]);
+        CompleteEndTurnIfReady();
         return CommandResult.Ok();
     }
 
@@ -331,6 +339,18 @@ public sealed partial class GameEngine
 
     private void EndTurn()
     {
+        CompleteActivationIfFinished();
+        State.Phase = Phase.Final;
+        if (State.Active.Hand.Count > MaxHandSize)
+            Log($"{State.Active.Name} debe descartar hasta tener {MaxHandSize} cartas en la mano.");
+        CompleteEndTurnIfReady();
+    }
+
+    private void CompleteEndTurnIfReady()
+    {
+        // Discard triggers, responses and their draws finish before checking the limit again.
+        if (State.Phase != Phase.Final || _activeActivation != null || State.PendingSniper != null ||
+            State.Active.Hand.Count > MaxHandSize) return;
         State.CurrentPlayer = 1 - State.CurrentPlayer;
         BeginTurn();
     }

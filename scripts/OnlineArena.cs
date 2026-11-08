@@ -256,6 +256,7 @@ public partial class OnlineArena : Control
             : ChoosingRecycling ? "Elige las cartas de tu memoria que volverán al mazo."
                 : ChoosingResetCards ? "Elige una carta y confirma su selección para Resetear la Mente."
                 : ChoosingDeckSearch ? "Elige una carta del mazo para añadirla a tu mano."
+                : s.Phase == Phase.Final && s.DecisionPlayer == s.MySeat ? $"Descarta {s.Players[s.MySeat].HandCount - GameEngine.MaxHandSize} carta(s) para terminar con un máximo de {GameEngine.MaxHandSize}."
                 : s.DecisionPlayer == s.MySeat ? "Toca una carta o una habilidad y elige tu jugada." : "Esperando al rival. Puedes responder si tienes un COMBO disponible.";
         void PreviewSelectedCard()
         {
@@ -332,7 +333,7 @@ public partial class OnlineArena : Control
 
     private static string PhaseName(Phase phase) => phase switch
     {
-        Phase.Preparation => "PREPARACIÓN", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Finished => "FINAL",
+        Phase.Preparation => "PREPARACIÓN", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
         Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", _ => "RESOLVER EFECTO"
     };

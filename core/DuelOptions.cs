@@ -57,6 +57,7 @@ public static class DuelOptions
                     Add(DuelMoveKind.Advance, "Terminar turno");
                     break;
                 case Phase.Discard:
+                case Phase.Final:
                     for (var i = 0; i < p.Hand.Count; i++) Add(DuelMoveKind.Discard, $"Descartar {Card(p.Hand[i])} · carta {i + 1}", i);
                     break;
                 case Phase.RecycleChoice:
