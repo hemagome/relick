@@ -87,6 +87,10 @@ public static class ArenaPresentation
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · Vida máxima: {owner.MaxHealth}";
         names.AddChild(name); header.AddChild(names);
+        var dexterity = Text($"DEST {owner.Dexterity}", compact ? 11 : 12, accent);
+        dexterity.Name = $"Dexterity{index}";
+        dexterity.TooltipText = "Destreza: gasta una ficha para sumar +1 a uno de tus dados. No se puede usar con 1 ni para alcanzar 6.";
+        header.AddChild(dexterity);
         header.AddChild(new ResourceBadge { Amount = owner.Pr });
         if (!enemy)
         {

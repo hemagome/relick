@@ -27,6 +27,7 @@ public partial class OnlineArena
         PreparationConfirmButton = null;
         DuelPlayerView Player(int seat) => new() { Name = seat == 0 ? room.PlayerOne : room.PlayerTwo,
             Level = 1, Health = RelikarioCatalog.Yuno.MaxHealth, MaxHealth = RelikarioCatalog.Yuno.MaxHealth,
+            Dexterity = RelikarioCatalog.Yuno.StartingDexterity,
             DeckCount = (int)(seat == 0 ? preparation?.DeckCountOne ?? 0 : preparation?.DeckCountTwo ?? 0),
             HandCount = (int)(seat == 0 ? preparation?.HandCountOne ?? 0 : preparation?.HandCountTwo ?? 0),
             Hand = new string?[(int)(seat == 0 ? preparation?.HandCountOne ?? 0 : preparation?.HandCountTwo ?? 0)] };

@@ -72,6 +72,7 @@ public partial class OnlineArena
             switch (cue.Kind)
             {
                 case DuelVisualKind.Die: _die.QueueRoll(cue.Value, cue.Caption); break;
+                case DuelVisualKind.DieAdjustment: _die.ShowAdjustedResult(cue.Value, cue.Caption); break;
                 case DuelVisualKind.Attack: _pendingPortraits.Add((cue.Player, PortraitMotion.Attack)); break;
                 case DuelVisualKind.Hit:
                     _pendingPortraits.Add((cue.Player, cue.AttackDie switch

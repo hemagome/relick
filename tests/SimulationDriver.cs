@@ -27,6 +27,7 @@ static class SimulationDriver
         {
             var attack = s.Phase == Phase.AttackRerollChoice;
             var die = attack ? s.PendingAttackRoll!.Die : s.PendingDieRoll!.Die;
+            if (die is 3 or 4 && game.CanUseDexterity(actor)) return game.UseDexterity(actor);
             var combo = p.Hand.FindIndex(id => CardCatalog.Get(id).SetOwnDie > 0);
             if (die < 5 && combo >= 0 && game.CodeUnavailableReason(actor, combo) == null) return game.PlayCode(actor, combo);
             combo = p.Hand.FindIndex(id => CardCatalog.Get(id).RerollOwnDie);

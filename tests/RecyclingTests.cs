@@ -112,6 +112,7 @@ static class RecyclingTests
     static (GameEngine, ScriptedRandom) Fixture(int actor = 0)
     {
         var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = actor;
+        foreach (var player in g.State.Players) player.Dexterity = 0;
         var p = g.State.Active; p.Hand.Add(CardCatalog.Senshuni.Id); p.Deck.Clear(); p.Deck.Add(CardCatalog.Attack.Id);
         p.Memory.AddRange(new[] { CardCatalog.Magnet.Id, CardCatalog.Attack.Id, CardCatalog.ExtraLife.Id,
             CardCatalog.Attack.Id, CardCatalog.Attack.Id, CardCatalog.DiamondHelmet.Id });

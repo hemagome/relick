@@ -15,6 +15,7 @@ public sealed partial class GameEngine
     public event Action<int, int, int>? DamageReceived;
     public event Action<int, int>? HealingReceived;
     public event Action<int>? DieRolled;
+    public event Action<int>? DieAdjusted;
     public event Action<int, int>? CardDrawn;
     public event Action<int, int, string>? CardReturnedToDeck;
     // Signals the end of a batch for the deck animation; does not change deck order.

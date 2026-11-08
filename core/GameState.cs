@@ -10,6 +10,7 @@ public sealed class PlayerState
     {
         Relikario = relikario ?? RelikarioCatalog.Yuno;
         Health = Relikario.MaxHealth;
+        Dexterity = Relikario.StartingDexterity;
     }
     [JsonInclude]
     public RelikarioDefinition Relikario { get; internal set; }
@@ -32,6 +33,9 @@ public sealed class PlayerState
     public int ActionsLeft { get; internal set; } = 2;
     [JsonInclude]
     public int Relikia { get; internal set; }
+    // Zero must also be serialized: an omitted spent counter would be initialized again on restore.
+    [JsonInclude]
+    public int Dexterity { get; internal set; }
     [JsonInclude]
     public bool HasReachedZero { get; internal set; }
     [JsonInclude]

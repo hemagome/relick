@@ -28,6 +28,7 @@ La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RE
 - Selección de habilidad inicial, mulligan y combate en la misma arena; manos privadas, reintentos idempotentes y recuperación de decisiones pendientes.
 - Primer agotamiento: D6, selección de cartas de la memoria y barajado. Segundo: dos vidas inevitables y comparación de vidas; igualdad es empate.
 - Al terminar el turno, el jugador elige qué cartas descartar hasta tener un máximo de siete. Los efectos del descarte se resuelven antes de pasar el turno.
+- Destreza: Yuno empieza con una ficha por partida. Puedes gastarla sin acciones ni PR para sumar +1 a un dado propio pendiente de 2, 3 o 4; no se recupera al cambiar de turno o evolucionar.
 - Interfaz horizontal adaptable a PC, tablet y teléfono. La exportación y validación en hardware Android/iOS siguen pendientes.
 - Servidor autoritativo: el cliente presenta información autorizada y envía intenciones; no decide dados, daño ni legalidad del duelo.
 

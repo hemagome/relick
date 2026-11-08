@@ -104,6 +104,7 @@ public static class DuelOptions
                 case Phase.DieRerollChoice:
                     var kind = s.Phase == Phase.AttackRerollChoice ? DuelMoveKind.AttackDie : DuelMoveKind.EffectDie;
                     Add(kind, "Conservar el dado");
+                    if (game.CanUseDexterity(actor)) Add(DuelMoveKind.Dexterity, "Usar destreza · +1 al dado · 1 ficha");
                     if (game.CanUsePc(actor)) Add(DuelMoveKind.Pc, $"Destruir PC 8BITS · valor guardado {p.EquipmentDie}");
                     if (game.CanUseYunoOnPendingDie(actor)) Add(kind, "Relanzar con Yuno", flag: true);
                     foreach (var effect in Enum.GetValues<PendantEffect>().Where(e => game.CanUsePendant(actor, e)))

@@ -21,6 +21,9 @@ static class TestGame
     public static GameEngine Create(IGameRandom random) => Prepare(new GameEngine(random));
     private static GameEngine Prepare(GameEngine game)
     {
+        // Isolate existing card-effect tests from the optional dexterity decision.
+        // DexterityTests and UI tests use the real initial counters.
+        foreach (var player in game.State.Players) player.Dexterity = 0;
         game.ChooseInitialSkill(0, CardCatalog.Magnet.Id);
         game.ChooseInitialSkill(1, CardCatalog.Magnet.Id);
         return game;

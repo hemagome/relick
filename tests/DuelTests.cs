@@ -108,6 +108,7 @@ static class DuelTests
         var before = JsonSerializer.Serialize(game.State);
         if (events.Count != 0 || before != JsonSerializer.Serialize(game.State)) throw new Exception("Capturar señales cambia la partida.");
         if (!game.PlayCode(0, 0).Success) throw new Exception("No se ejecutó Vida Extra.");
+        if (!game.ResolveDieReroll(0, false).Success) throw new Exception("No se conservó el dado sin gastar destreza.");
         if (events.Count(v => v.Kind == DuelVisualKind.Die && v.Value == 2) != 1) throw new Exception("Falta el dado visual.");
         var json = JsonSerializer.Serialize(events);
         if (json.Contains("secret-") || json.Contains("extra-life")) throw new Exception("Una señal visual revela cartas.");
@@ -115,6 +116,7 @@ static class DuelTests
         game.State.Players[0].Hand.Add("extra-life"); random.Replay([1]);
         if (!game.PlayCode(0, 0).Success || events.Count(v => v.Kind == DuelVisualKind.Die && v.Value == 2) != 2)
             throw new Exception("Se pierde una tirada que repite el mismo valor.");
+        if (!game.ResolveDieReroll(0, false).Success) throw new Exception("No se resolvió la curación repetida.");
         var view = DuelSnapshot.For(game, 0, 2); view.Visuals = events;
         var restored = JsonSerializer.Deserialize(JsonSerializer.Serialize(view, DuelJson.Default.DuelSnapshot), DuelJson.Default.DuelSnapshot)!;
         if (restored.Visuals.Count != events.Count || restored.LastCombat != view.LastCombat) throw new Exception("Las señales no sobreviven al transporte.");

@@ -7,6 +7,7 @@ public sealed class DuelPlayerView
     public int MaxHealth { get; set; }
     public int Level { get; set; }
     public int Pr { get; set; }
+    public int Dexterity { get; set; }
     public int Actions { get; set; }
     public int DeckCount { get; set; }
     public int HandCount { get; set; }
@@ -55,7 +56,7 @@ public sealed class DuelSnapshot
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
             Players = s.Players.Select((p, index) => new DuelPlayerView
             {
-                Name = p.Name, Health = p.Health, MaxHealth = p.MaxHealth, Level = p.Level, Pr = p.Relikia,
+                Name = p.Name, Health = p.Health, MaxHealth = p.MaxHealth, Level = p.Level, Pr = p.Relikia, Dexterity = p.Dexterity,
                 Actions = p.ActionsLeft, DeckCount = p.Deck.Count, HandCount = p.Hand.Count,
                 Hand = p.Hand.Select((id, i) => index == seat || p.IsHandCardRevealed(i) ||
                     (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ||

@@ -44,9 +44,9 @@ public sealed partial class GameEngine
     }
 
     private bool CanRespondToAttackDie() => CanUseYunoOnPendingDie(State.CurrentPlayer) ||
-        State.Players[State.CurrentPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer);
+        State.Players[State.CurrentPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
     private bool CanRespondToEffectDie() => CanUseYunoOnPendingDie(State.DecisionPlayer) ||
-        State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer);
+        State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)
     {

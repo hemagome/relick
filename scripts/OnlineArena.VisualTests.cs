@@ -7,6 +7,43 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckDexterityLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = new GameEngine(19); game.State.CurrentPlayer = actor; game.State.Turn = 1;
+            game.State.Phase = Phase.AttackRerollChoice;
+            game.State.Active.AttackRerollUsedThisTurn = true;
+            game.State.PendingAttackRoll = new(actor, CardCatalog.Destiny.Id, 3);
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                GetWindow().ContentScaleSize = size;
+                _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 60));
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var minimum = _root!.GetCombinedMinimumSize();
+                if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                    throw new Exception($"Destreza desborda {size}: {minimum}.");
+                foreach (var relative in new[] { 0, 1 })
+                    if ((_root.FindChild($"Dexterity{relative}", true, false) as Label)?.Text != "DEST 1")
+                        throw new Exception("Falta el contador público de destreza.");
+                if (_moveButtons.Any(b => b.Text.StartsWith("Usar destreza")) != (seat == actor))
+                    throw new Exception("La opción de destreza no corresponde al dueño del dado.");
+            }
+            var cues = DuelVisualEvents.Capture(game);
+            if (!game.UseDexterity(actor).Success) throw new Exception("No se puede usar destreza.");
+            foreach (var seat in new[] { 0, 1 })
+            {
+                ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 61)); Animate(cues, []);
+                var relative = actor == seat ? 0 : 1;
+                if ((_root!.FindChild($"Dexterity{relative}", true, false) as Label)?.Text != "DEST 0" ||
+                    _die.IsRolling || _die.DisplayedValue != 4 || !_die.RollCaption.Contains("Destreza"))
+                    throw new Exception("Gastar destreza no actualiza la ficha y el dado sin relanzarlo.");
+            }
+        }
+        GD.Print("PVP_DEXTERITY_LAYOUT_PASS · fichas públicas, opción del dueño y dado modificado sin relanzar, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckHandLimitLayout()
     {
         foreach (var actor in new[] { 0, 1 })

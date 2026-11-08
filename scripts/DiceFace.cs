@@ -11,7 +11,7 @@ public partial class DiceFace : Control
     private const float HalfSize = 0.68f;
     private static readonly Vector3[] FaceNormals =
         { Vector3.Zero, Vector3.Back, Vector3.Up, Vector3.Right, Vector3.Left, Vector3.Down, Vector3.Forward };
-    private readonly Queue<(int Value, string Caption)> _queuedRolls = new();
+    private readonly Queue<(int Value, string Caption, bool Adjusted)> _queuedRolls = new();
     internal int LatestResult => _queuedRolls.Count > 0 ? _queuedRolls.Last().Value : Value;
     public string RollCaption { get; private set; } = "";
     public bool HasPendingRolls => _queuedRolls.Count > 0;
@@ -60,6 +60,20 @@ public partial class DiceFace : Control
             var rotation = Is3DReady ? _cube.Quaternion : _landing;
             return Enumerable.Range(1, 6).MaxBy(face => (rotation * FaceNormals[face]).Dot(Vector3.Up));
         }
+    }
+    internal void ShowAdjustedResult(int value, string caption)
+    {
+        if (IsBusy) { _queuedRolls.Enqueue((value, caption, true)); return; }
+        ApplyAdjustedResult(value, caption);
+    }
+    private void ApplyAdjustedResult(int value, string caption)
+    {
+        _value = Math.Clamp(value, 0, 6);
+        IsRolling = false; _elapsed = 0; _glow = 0;
+        _landing = LandingRotation(Math.Max(1, _value));
+        RollCaption = caption;
+        _resultRemaining = ResultSeconds;
+        UpdatePose();
     }
     public int DisplayedValue => _value == 0 ? 0 : TopFaceValue;
     internal float ResultUpAlignment => _value == 0 ? 0 : (_cube.Quaternion * FaceNormals[_value]).Dot(Vector3.Up);
@@ -210,7 +224,7 @@ public partial class DiceFace : Control
     public void QueueRoll(int result, string caption = "")
     {
         if (result is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(result));
-        if (IsBusy) _queuedRolls.Enqueue((result, caption));
+        if (IsBusy) _queuedRolls.Enqueue((result, caption, false));
         else StartRoll(result, caption);
     }
 
@@ -242,7 +256,8 @@ public partial class DiceFace : Control
         if (!IsRolling && _resultRemaining <= 0 && _queuedRolls.Count > 0)
         {
             var next = _queuedRolls.Dequeue();
-            StartRoll(next.Value, next.Caption);
+            if (next.Adjusted) { ApplyAdjustedResult(next.Value, next.Caption); RollFinished?.Invoke(); }
+            else StartRoll(next.Value, next.Caption);
         }
         if (!IsRolling && _resultRemaining <= 0 && _glow <= 0) return;
         delta = Math.Max(0, delta);

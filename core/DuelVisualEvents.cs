@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer }
+public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer, DieAdjustment }
 
 // Public presentation cues for ONE accepted revision. Never include card identities,
 // deck order, random tapes or hidden state. Clients discard cues on recovery/gaps.
@@ -25,6 +25,7 @@ public static class DuelVisualEvents
         void Add(DuelVisualKind kind, int player, int value = 0, string caption = "")
             => events.Add(new() { Kind = kind, Player = player, Value = value, Caption = caption });
         game.DieRolled += value => Add(DuelVisualKind.Die, -1, value, game.CurrentDieCaption);
+        game.DieAdjusted += value => Add(DuelVisualKind.DieAdjustment, -1, value, game.CurrentDieCaption);
         game.AttackPerformed += player => Add(DuelVisualKind.Attack, player);
         game.DamageReceived += (player, amount, attackDie) => events.Add(new()
             { Kind = DuelVisualKind.Hit, Player = player, Value = amount, AttackDie = attackDie });

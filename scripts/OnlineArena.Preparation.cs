@@ -78,6 +78,7 @@ public partial class OnlineArena
         {
             Name = seat == 0 ? room.PlayerOne : room.PlayerTwo,
             Health = RelikarioCatalog.Yuno.MaxHealth, MaxHealth = RelikarioCatalog.Yuno.MaxHealth, Level = 1,
+            Dexterity = RelikarioCatalog.Yuno.StartingDexterity,
             HandCount = (int)(seat == 0 ? info?.HandCountOne ?? 0 : info?.HandCountTwo ?? 0),
             DeckCount = (int)(seat == 0 ? info?.DeckCountOne ?? 0 : info?.DeckCountTwo ?? 0),
             Hand = seat == room.MySeat ? cards.Select(c => (string?)c.Definition).ToArray() :

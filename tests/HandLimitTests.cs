@@ -114,6 +114,7 @@ static class HandLimitTests
         g.State.CurrentPlayer = seat; g.State.Phase = Phase.Actions; g.State.Turn = 1;
         foreach (var p in g.State.Players)
         {
+            p.Dexterity = 0;
             p.Hand.Clear(); p.Memory.Clear(); p.Deck.Clear(); p.Deck.AddRange(Enumerable.Repeat("attack", 12));
         }
         g.State.Active.Hand.AddRange(Enumerable.Repeat("attack", size));

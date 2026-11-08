@@ -1,7 +1,11 @@
 namespace Relick.Core;
 
 public sealed record RelikarioDefinition(string Id, string Name, int MaxHealth, string AbilityText, bool CanRerollAttack = false, int Level = 1, int MaxRerolls = 1,
-    bool CanRerollAnyDie = false, bool ConvertRerolledSix = true, int EvolutionCost = 0);
+    bool CanRerollAnyDie = false, bool ConvertRerolledSix = true, int EvolutionCost = 0)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int StartingDexterity => MaxHealth <= 7 ? 2 : MaxHealth <= 9 ? 1 : 0;
+}
 
 public static class RelikarioCatalog
 {
