@@ -109,13 +109,13 @@ var tests = new (string Name, Action Run)[]
         var rejected = g.Learn(0, 0);
         Ok(!rejected.Success && rejected.Message.Contains("cuatro")); Eq(Fingerprint(g), full);
     }),
-    ("El mazo conserva 20 cartas y contiene dos copias de cada habilidad", () =>
+    ("El mazo conserva 20 cartas y contiene las habilidades y PC 8BITS", () =>
     {
         var deck = CardCatalog.TrainingDeck();
         Eq(deck.Count, 20);
         var skills = deck.Where(id => CardCatalog.Get(id).Kind == CardKind.Skill).ToArray();
-        Eq(skills.Length, 4); Eq(skills.Distinct().Count(), 2);
-        Eq(skills.Count(id => id == CardCatalog.Magnet.Id), 2); Eq(skills.Count(id => id == CardCatalog.Destiny.Id), 2);
+        Eq(skills.Length, 3); Eq(skills.Distinct().Count(), 2);
+        Eq(skills.Count(id => id == CardCatalog.Magnet.Id), 1); Eq(skills.Count(id => id == CardCatalog.Destiny.Id), 2);
     }),
     ("El rival puede enseñar en los espacios de 500 y 1000 PR", () =>
     {
@@ -542,7 +542,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)

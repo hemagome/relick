@@ -78,6 +78,10 @@ public sealed partial class GameEngine
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {
+            case DiePurpose.PcStore:
+                if (p.Equipment == CardCatalog.Pc.Id) p.EquipmentDie = die;
+                Log($"{p.Name} guarda un {die} sobre PC 8BITS.");
+                break;
             case DiePurpose.Dodge:
                 _activeActivation = null;
                 if (die <= 3)
@@ -142,8 +146,12 @@ public sealed partial class GameEngine
         {
             case ActivationKind.Code: ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex); break;
             case ActivationKind.Equipment:
-                p.Memory.RemoveAt(frame.MemoryIndex); if (p.Equipment != null) DestroyEquipment(p); p.Equipment = frame.CardId;
-                Log($"{p.Name} pone {CardCatalog.Get(frame.CardId).Name} en su zona de equipo (1 acción)."); break;
+                p.Memory.RemoveAt(frame.MemoryIndex); if (p.Equipment != null) DestroyEquipment(p); p.Equipment = frame.CardId; p.EquipmentDie = 0;
+                Log($"{p.Name} pone {CardCatalog.Get(frame.CardId).Name} en su zona de equipo (1 acción).");
+                frame.CanInterrupt = false;
+                if (CardCatalog.Get(frame.CardId).StoreDie)
+                    RollWithRelikario(p, DiePurpose.PcStore, new DieEffect { Purpose = DiePurpose.PcStore, Actor = frame.Actor });
+                break;
             case ActivationKind.MindReset: BeginMindReset(frame.Actor); break;
             case ActivationKind.Reroll: _activeActivation = frame.Parent; ResolveRerollComboEffect(frame.Actor, CardCatalog.Get(frame.CardId)); break;
             default: throw new InvalidOperationException("Activación pendiente desconocida.");

@@ -20,7 +20,7 @@ static class InitialSkillTests
                 Check(game.ChooseInitialSkill(0, id).Success);
                 Check(game.State.Players[0].Hand.Count == 5 && game.State.Players[0].Hand[0] == id);
                 Check(game.State.Players[0].Deck.Count == 15 && game.State.Players[1].Hand.Count == 0);
-                Check(game.State.Players[0].Hand.Concat(game.State.Players[0].Deck).Count(c => c == id) == 2);
+                Check(game.State.Players[0].Hand.Concat(game.State.Players[0].Deck).Count(c => c == id) == CardCatalog.TrainingDeck().Count(c => c == id));
                 Check(!game.Start([]).Success);
                 Check(game.ChooseInitialSkill(1, CardCatalog.Destiny.Id).Success && game.Start([]).Success);
             }

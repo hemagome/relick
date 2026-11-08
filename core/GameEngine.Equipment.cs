@@ -26,7 +26,7 @@ public sealed partial class GameEngine
         if (p.Equipment == null) return;
         var id = p.Equipment;
         NotifyPileMove(p, id, CardZone.Equipment);
-        p.Equipment = null; p.Memory.Add(id);
+        p.Equipment = null; p.EquipmentDie = 0; p.Memory.Add(id);
         Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: va a su memoria.");
     }
 
@@ -44,9 +44,9 @@ public sealed partial class GameEngine
     }
 
     private bool CanRespondToAttackDie() => CanUseYunoOnPendingDie(State.CurrentPlayer) ||
-        State.Players[State.CurrentPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer);
+        State.Players[State.CurrentPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer);
     private bool CanRespondToEffectDie() => CanUseYunoOnPendingDie(State.DecisionPlayer) ||
-        State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer);
+        State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)
     {

@@ -170,7 +170,7 @@ public partial class OnlineArena : Control
                 {
                     Memory = corrupt => ShowCards(corrupt ? "Memoria corrupta" : "Memoria", corrupt ? null : player.Memory, player.CorruptedCount),
                     Attached = () => ShowCards("Sobre Yuno", player.Attached),
-                    Equipment = () => ShowCards("Equipo", player.Equipment == null ? [] : [player.Equipment]),
+                    Equipment = () => ShowCards(player.EquipmentDie > 0 ? $"Equipo · D6 guardado: {player.EquipmentDie}" : "Equipo", player.Equipment == null ? [] : [player.Equipment]),
                     Skill = slot =>
                     {
                         if (slot >= player.Skills.Length) return;

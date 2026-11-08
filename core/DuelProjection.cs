@@ -13,6 +13,7 @@ public sealed class DuelPlayerView
     public string?[] Hand { get; set; } = [];
     public string[] Skills { get; set; } = [];
     public int[] Counters { get; set; } = [];
+    public int EquipmentDie { get; set; }
     public string? Equipment { get; set; }
     public string? Bonus { get; set; }
     public string[] Attached { get; set; } = [];
@@ -59,7 +60,7 @@ public sealed class DuelSnapshot
                     (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ||
                     (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == seat && s.PendingMindReset.Target == index) ? id : null).ToArray(),
                 Skills = p.Skills.ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
-                Equipment = p.Equipment, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
+                Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
                 Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
             }).ToArray()
         };

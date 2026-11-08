@@ -181,3 +181,17 @@ Código Jugada COMBO, una acción del defensor. Ante un ataque pendiente lanza D
 sin daño ni efecto crítico de Magnet y retirando el premio de ese ataque.
 Admite Error de Carga y modificadores del dado. Una copia sustituye una de Senshuni
 para conservar el mazo de veinte cartas.
+
+## PC 8BITS
+
+`pc-8bits-clean.png` restaura la imagen aportada en Downloads/pc con `image_gen`,
+a 697×987, sin la marca diagonal, conservando diseño, reglas y créditos impresos.
+Original y prompt: `output/imagegen/pc-8bits-original.png` y `pc-8bits-prompt.txt`.
+Al equiparse, después de las respuestas de Error de Carga, lanza un dado y guarda
+su resultado sobre la carta. El valor es público y persiste al reconectar.
+Al decidir un dado propio de ataque o efecto puede destruirse: con 1–3 suma el valor
+guardado (máximo 5); con 4–6 sustituye el resultado por ese valor. No es relanzamiento
+ni convierte el resultado modificado en seis natural. La destrucción no cuesta otra
+acción; manda PC a memoria y elimina el valor guardado. Reemplazarlo también lo limpia.
+El dado al equipar admite los modificadores ya disponibles. Una copia sustituye
+una de Magnet Shuffle, conservando veinte cartas y ambos tipos de habilidad inicial.

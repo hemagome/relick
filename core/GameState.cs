@@ -13,6 +13,8 @@ public sealed class PlayerState
     }
     [JsonInclude]
     public RelikarioDefinition Relikario { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int EquipmentDie { get; internal set; }
     public int Level => Relikario.Level;
     [JsonInclude]
     public bool HasNaturalSix { get; internal set; }
@@ -141,7 +143,7 @@ public sealed class GameState
 
 public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false);
 
 public sealed record ActivationInfo(int Actor, string CardId, int ActionsPaid, int PrPaid);

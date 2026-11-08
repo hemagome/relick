@@ -16,7 +16,7 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -62,6 +62,7 @@ public sealed class DuelMove
         DuelMoveKind.MindResetTarget => game.ChooseMindResetTarget(actor, Target),
         DuelMoveKind.MindResetMemory => game.ChooseMindResetMemory(actor, Target, Index),
         DuelMoveKind.MindResetHand => game.ResolveMindReset(actor, Index),
+        DuelMoveKind.Pc => game.UsePc(actor),
         _ => CommandResult.Fail("Jugada desconocida.")
     };
 }
