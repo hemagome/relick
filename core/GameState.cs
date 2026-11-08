@@ -160,7 +160,10 @@ public sealed record PendingPoints(int Actor, int Die, int Amount);
 
 public sealed record PendingCode(int Actor, string CardId, bool FromMemory, int MemoryIndex, Phase ResumePhase);
 
-public sealed record PendingAttack(int Attacker, string SkillId, int Damage, bool Critical);
+public sealed record PendingAttack(int Attacker, string SkillId, int Damage, bool Critical,
+    // Older saves have already paid the reward; missing flags retain that behavior on recovery.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool RewardPending = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool DamageResolved = false);
 
 public readonly record struct CommandResult(bool Success, string Message)
 {

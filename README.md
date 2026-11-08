@@ -30,6 +30,7 @@ La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RE
 - Al terminar el turno, el jugador elige qué cartas descartar hasta tener un máximo de siete. Los efectos del descarte se resuelven antes de pasar el turno.
 - Destreza: Yuno empieza con una ficha por partida. Puedes gastarla sin acciones ni PR para sumar +1 a un dado propio pendiente de 2, 3 o 4; no se recupera al cambiar de turno o evolucionar.
 - Evolucionar a Yuno Lv 2 recupera hasta dos vidas sin superar las ocho iniciales. En cada tirada o relanzamiento del D6 de ataque, Yuno Lv 2 suma +1 salvo si sale 1; el resultado máximo es 6. Es un efecto de su evolución: los dados de daño, otros efectos y otros Relikarios no reciben ese aumento automáticamente.
+- El premio del ataque se entrega después de resolver el daño y las decisiones pendientes del combate. Cancelar solo el daño conserva el premio; negar el ataque completo lo impide.
 - Interfaz horizontal adaptable a PC, tablet y teléfono. La exportación y validación en hardware Android/iOS siguen pendientes.
 - Servidor autoritativo: el cliente presenta información autorizada y envía intenciones; no decide dados, daño ni legalidad del duelo.
 

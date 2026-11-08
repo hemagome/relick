@@ -43,23 +43,36 @@ public sealed partial class GameEngine
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
         Log($"{p.Name} activa Relick Destiny Shuffle (espacio {skillSlot + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");
-        ResolveAttackDamage(true);
+        ResolveAttackDamage(true, deferCompletion: sniperIndices.Count > 0);
         BeginSniperChoices(actor, sniperIndices);
         return CommandResult.Ok();
     }
 
-    private void ResolveAttackDamage(bool canceled, string source = "Destiny")
+    private void ResolveAttackDamage(bool canceled, string source = "Destiny", bool deferCompletion = false)
     {
         var attack = State.PendingAttack!;
-        State.PendingAttack = null;
         State.Phase = Phase.Combat;
         if (canceled) State.LastCombat += $" · Daño cancelado por {source}";
         // The final attack die survives secondary damage dice and the defense decision.
         else DealDamage(1 - attack.Attacker, attack.Damage, State.LastAttackDie);
+        State.PendingAttack = attack with { DamageResolved = true };
+        if (State.IsOver) { State.PendingAttack = null; return; }
         // Canceling damage does not undo the critical result or its skill effect.
         if (!State.IsOver && attack.Critical && attack.SkillId == CardCatalog.Magnet.Id &&
             (State.Players[1 - attack.Attacker].Hand.Count > 0 || State.Players[1 - attack.Attacker].Bonus != null))
             State.Phase = Phase.MagnetChoice;
+        if (!deferCompletion) CompleteAttackIfReady();
+    }
+
+    private void CompleteAttackIfReady()
+    {
+        if (State.Phase != Phase.Combat || State.PendingAttack is not { DamageResolved: true } attack ||
+            State.PendingSniper != null || _activeActivation != null) return;
+        State.PendingAttack = null;
+        if (!attack.RewardPending) return;
+        var p = State.Players[attack.Attacker]; var reward = CardCatalog.Get(attack.SkillId).Reward;
+        p.Relikia += reward;
+        Log($"{p.Name} obtiene {reward} PR.");
     }
 
     public CommandResult SkipMagnet(int actor)
@@ -68,6 +81,7 @@ public sealed partial class GameEngine
         if (error != null) return CommandResult.Fail(error);
         State.Phase = Phase.Combat;
         Log($"{State.Active.Name} decide no tomar carta por Magnet Shuffle.");
+        CompleteAttackIfReady();
         return CommandResult.Ok();
     }
 
@@ -88,6 +102,7 @@ public sealed partial class GameEngine
         State.Phase = Phase.Combat;
         Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
         if (fromBonus) RefillBonus(rival);
+        CompleteAttackIfReady();
         return CommandResult.Ok();
     }
 }

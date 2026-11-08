@@ -55,10 +55,8 @@ public sealed partial class GameEngine
             (rerolled ? $" · Dado final: {die}" : "");
         Log($"{p.Name} usa {skill.Name} contra {State.Players[1 - actor].Name}: dado {die}, {outcome.ToLowerInvariant()}, {damage} de daño.");
         if (die >= 4) AttackPerformed?.Invoke(actor);
-        if (damage <= 0) return;
-        p.Relikia += skill.Reward;
-        Log($"{p.Name} obtiene {skill.Reward} PR.");
-        State.PendingAttack = new(actor, skill.Id, damage, die == 6);
+        if (die < 4) return;
+        State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true);
         if (CanDefend(1 - actor, die == 6)) State.Phase = Phase.DefenseChoice;
         else ResolveAttackDamage(false);
     }

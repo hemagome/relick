@@ -7,7 +7,7 @@ static class SnapshotTests
 {
     public static IEnumerable<(string Name, Action Run)> Cases => new (string, Action)[]
     {
-        ("Persistencia: fixtures anteriores conservan sus estados hasta evolucionar o agotar el mazo", Golden),
+        ("Persistencia: fixtures anteriores conservan sus estados hasta una regla de combate o agotamiento modificada", Golden),
         ("Persistencia: el estado en línea excluye el registro creciente", BoundedLog),
         ("Red: paquetes separados conservan cantidades y revelaciones permitidas", PacketPrivacy)
     };
@@ -42,6 +42,8 @@ static class SnapshotTests
                 random.Finish();
                 // Evolution now caps healing at level-one health and changes Yuno's attack dice.
                 if (result.Success && expected.Entry.Move.Kind == DuelMoveKind.Evolve) break;
+                // The former recordings paid prizes before defense and critical-effect choices.
+                if (game.State.PendingAttack is { RewardPending: true }) break;
                 if (!result.Success || Hash(game) != expected.Hash) throw new Exception($"Cambio de reglas en duelo {index}, jugada {step}, {game.State.Phase}: {result.Message}");
                 game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
                 if (Hash(game) != expected.Hash) throw new Exception($"Estado incompleto en duelo {index}, jugada {step}, {game.State.Phase}");

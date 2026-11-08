@@ -51,7 +51,7 @@ public sealed partial class GameEngine
     private void Continue(EngineContinuation? next)
     {
         if (State.IsOver) return;
-        if (next == null) { CompleteEndTurnIfReady(); return; }
+        if (next == null) { CompleteAttackIfReady(); CompleteEndTurnIfReady(); return; }
         var p = State.Players[next.Actor];
         switch (next.Kind)
         {
@@ -67,6 +67,7 @@ public sealed partial class GameEngine
             case ContinuationKind.RollRelikia: RollWithRelikario(p, DiePurpose.Relikia, new DieEffect { Purpose = DiePurpose.Relikia, Actor = next.Actor }); break;
             case ContinuationKind.ResumeMindReset:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
+                CompleteAttackIfReady();
                 CompleteEndTurnIfReady();
                 break;
             case ContinuationKind.ResumeCombo:
@@ -97,7 +98,8 @@ public sealed partial class GameEngine
                 {
                     var attack = State.PendingAttack!;
                     var attacker = State.Players[attack.Attacker];
-                    attacker.Relikia = Math.Max(0, attacker.Relikia - CardCatalog.Get(attack.SkillId).Reward);
+                    if (!attack.RewardPending)
+                        attacker.Relikia = Math.Max(0, attacker.Relikia - CardCatalog.Get(attack.SkillId).Reward);
                     State.PendingAttack = null; State.Phase = Phase.Combat;
                     State.LastCombat = $"{p.Name} niega el ataque con Esquivar (dado {die})."; Log(State.LastCombat);
                 }

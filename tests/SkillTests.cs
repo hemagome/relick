@@ -23,7 +23,7 @@ static class SkillTests
             var rival = g.State.Players[1]; rival.Hand.AddRange(new[] { "attack", "test-recover", "senshuni" });
             rival.RevealHandCard(2);
             rng.EnqueueDie(6); Check(AttackKeepingRoll(g,0, 0, 0).Success);
-            Check(g.State.Phase == Phase.MagnetChoice && rival.Health == 3 && g.State.Active.Relikia == 500);
+            Check(g.State.Phase == Phase.MagnetChoice && rival.Health == 3 && g.State.Active.Relikia == 0);
             var before = Fingerprint(g);
             Check(!g.ResolveMagnet(1, false, 0).Success && !g.ResolveMagnet(0, false, 99).Success);
             Check(!g.Advance(0).Success && !g.ResolveMagnet(0, true).Success);
@@ -31,7 +31,7 @@ static class SkillTests
             Check(g.ResolveMagnet(0, false, 1).Success);
             Check(g.State.Active.Hand.Single() == "test-recover" && rival.Hand.SequenceEqual(new[] { "attack", "senshuni" }));
             Check(rival.RevealedHandCard(1) == "senshuni" && rival.RevealedHandCard(0) == null);
-            Check(g.State.Phase == Phase.Combat && !g.ResolveMagnet(0, false, 0).Success);
+            Check(g.State.Phase == Phase.Combat && g.State.Active.Relikia == 500 && !g.ResolveMagnet(0, false, 0).Success);
         }),
         ("Magnet: Bonus se transfiere y repone; efecto opcional; fallo sin efecto", () =>
         {
