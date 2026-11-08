@@ -9,12 +9,12 @@ static class InitialSkillTests
         {
             var game = new GameEngine(8);
             Check(game.State.Players.All(p => p.Hand.Count == 0 && p.Deck.Count == CardCatalog.TrainingDeck().Count));
-            Check(game.InitialSkillsFor(0).ToHashSet().SetEquals([CardCatalog.Magnet.Id, CardCatalog.Destiny.Id]));
+            Check(game.InitialSkillsFor(0).ToHashSet().SetEquals([CardCatalog.Magnet.Id, CardCatalog.Destiny.Id, CardCatalog.Reverse.Id]));
             Check(!game.Start([]).Success);
         }),
         ("Habilidad inicial: elección de Destiny, una copia extraída y otras cuatro cartas", () =>
         {
-            foreach (var id in new[] { CardCatalog.Destiny.Id, CardCatalog.Magnet.Id })
+            foreach (var id in new[] { CardCatalog.Destiny.Id, CardCatalog.Magnet.Id, CardCatalog.Reverse.Id })
             {
                 var game = new GameEngine(3);
                 Check(game.ChooseInitialSkill(0, id).Success);
@@ -60,10 +60,10 @@ static class InitialSkillTests
         ("Habilidad inicial: guardar y recuperar antes y después de elegir", () =>
         {
             var game = GameEngine.FromSnapshot(new GameEngine(9).SaveSnapshot(), new SeededRandom(9));
-            Check(game.InitialSkillsFor(0).Length == 2 && game.ChooseInitialSkill(0, CardCatalog.Destiny.Id).Success);
+            Check(game.InitialSkillsFor(0).Length == 3 && game.ChooseInitialSkill(0, CardCatalog.Destiny.Id).Success);
             game = GameEngine.FromSnapshot(game.SaveSnapshot(), new SeededRandom(10));
             Check(game.InitialSkillsFor(0).Length == 0 && game.State.Players[0].InitialSkillId == CardCatalog.Destiny.Id);
-            Check(game.InitialSkillsFor(1).Length == 2 && game.ChooseInitialSkill(1, CardCatalog.Magnet.Id).Success && game.Start([]).Success);
+            Check(game.InitialSkillsFor(1).Length == 3 && game.ChooseInitialSkill(1, CardCatalog.Magnet.Id).Success && game.Start([]).Success);
         })
     };
     static void Check(bool condition) { if (!condition) throw new Exception("Habilidad inicial incorrecta."); }

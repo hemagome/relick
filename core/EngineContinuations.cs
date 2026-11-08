@@ -1,11 +1,16 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
     public int Actor { get; set; }
     public int Count { get; set; }
+    public int Value { get; set; }
+    public bool Flag { get; set; }
+    public bool Prevented { get; set; }
+    public FieldTarget? Target { get; set; }
+    public string Text { get; set; } = "";
     public EngineContinuation? Next { get; set; }
     public Phase Phase { get; set; }
     public PendingAttackRoll? Attack { get; set; }
@@ -55,6 +60,19 @@ public sealed partial class GameEngine
         var p = State.Players[next.Actor];
         switch (next.Kind)
         {
+            case ContinuationKind.AttackDieReady: ContinueAttackDie(); break;
+            case ContinuationKind.AttackOneEquipment: DestroyAttackOneEquipment(next.Actor, next.Next); break;
+            case ContinuationKind.FinishCodeDestruction: FinishCodeDestruction(next); break;
+            case ContinuationKind.UsePendant: FinishPendant(next.Actor, (PendantEffect)next.Value); break;
+            case ContinuationKind.UsePc: FinishPc(next.Actor, next.Value); break;
+            case ContinuationKind.BoxDefense:
+                Log($"{p.Name} usa Caja de Cartón y cancela el daño del ataque.");
+                ResolveAttackDamage(true, "Caja de Cartón"); break;
+            case ContinuationKind.BoxCode: FinishBoxCode(next.Actor); break;
+            case ContinuationKind.EquipInstall: FinishEquipmentInstall(); break;
+            case ContinuationKind.ApplyDamage: ApplyHealthDamage(next.Actor, next.Count, next.Value, next.Next); break;
+            case ContinuationKind.FinishAttackDamage: FinishAttackDamage(next.Flag); break;
+            case ContinuationKind.RerollDraw: FinishRerollDraw(next); break;
             case ContinuationKind.CompleteExchange: CompleteExchange(p, next.Next); break;
             case ContinuationKind.Draw: DrawCards(p, next.Count, next.Next); break;
             case ContinuationKind.MoveHand: MoveTopCard(p, false, next.Next); break;
@@ -83,6 +101,10 @@ public sealed partial class GameEngine
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {
+            case DiePurpose.SkillLearning:
+                Log($"{p.Name} resuelve el aprendizaje de Reverse Shuffle: D6 = {die}, roba {(die + 1) / 2} carta(s).");
+                DrawCards(p, (die + 1) / 2, effect.Next);
+                break;
             case DiePurpose.PcStore:
                 if (p.Equipment == CardCatalog.Pc.Id) p.EquipmentDie = die;
                 Log($"{p.Name} guarda un {die} sobre PC 8BITS.");
@@ -152,12 +174,9 @@ public sealed partial class GameEngine
         {
             case ActivationKind.Code: ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex); break;
             case ActivationKind.Equipment:
-                p.Memory.RemoveAt(frame.MemoryIndex); ShiftSniperIndices(frame.Actor, frame.MemoryIndex); if (p.Equipment != null) DestroyEquipment(p); p.Equipment = frame.CardId; p.EquipmentDie = 0; p.EquipmentCounters = 0;
-                Log($"{p.Name} pone {CardCatalog.Get(frame.CardId).Name} en su zona de equipo (1 acción).");
                 frame.CanInterrupt = false;
-                if (frame.FinishSniperExchange) CompleteExchange(p);
-                if (CardCatalog.Get(frame.CardId).StoreDie)
-                    RollWithRelikario(p, DiePurpose.PcStore, new DieEffect { Purpose = DiePurpose.PcStore, Actor = frame.Actor });
+                if (p.Equipment != null) DestroyEquipment(p, new EngineContinuation { Kind = ContinuationKind.EquipInstall, Actor = frame.Actor });
+                else FinishEquipmentInstall();
                 break;
             case ActivationKind.MindReset: BeginMindReset(frame.Actor); break;
             case ActivationKind.Reroll: _activeActivation = frame.Parent; ResolveRerollComboEffect(frame.Actor, CardCatalog.Get(frame.CardId)); break;

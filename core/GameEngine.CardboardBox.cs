@@ -10,9 +10,7 @@ public sealed partial class GameEngine
     {
         if (!CanCancelAttackWithBox(actor)) return CommandResult.Fail("No puedes cancelar este daño con Caja de Cartón.");
         var p = State.Players[actor];
-        DestroyEquipment(p);
-        Log($"{p.Name} usa Caja de Cartón y cancela el daño del ataque.");
-        ResolveAttackDamage(true, "Caja de Cartón");
+        DestroyEquipment(p, new EngineContinuation { Kind = ContinuationKind.BoxDefense, Actor = actor });
         return CommandResult.Ok();
     }
 
@@ -47,23 +45,28 @@ public sealed partial class GameEngine
         var card = CardCatalog.Get(pending.CardId);
         if (cancel && (State.Players[actor].Equipment != CardCatalog.CardboardBox.Id || card.Kind != CardKind.Code || card.CodeType != CodeType.Object))
             return CommandResult.Fail("Caja de Cartón solo puede cancelar códigos de tipo objeto.");
-        State.PendingCode = null;
         State.Phase = pending.ResumePhase;
         if (cancel)
         {
-            DestroyEquipment(State.Players[actor]);
-            RefundActivation(pending.Actor, pending.FromMemory ? 2 : card.ActionCost, card.PrCost + (pending.FromMemory ? 400 : 0));
-            _activeActivation = null;
-            // Played codes already entered their owner's memory. A memory activation
-            // is left there, instead of being corrupted, when the activation is canceled.
-            Log($"{State.Players[actor].Name} usa Caja de Cartón: cancela {card.Name}, que queda en la memoria de {State.Players[pending.Actor].Name}.");
+            DestroyEquipment(State.Players[actor], new EngineContinuation { Kind = ContinuationKind.BoxCode, Actor = actor });
         }
         else
         {
+            State.PendingCode = null;
             if (pending.FromMemory) CorruptActivationCode(pending.Actor, pending.MemoryIndex);
             ResolveCode(State.Players[pending.Actor], card);
         }
         CompleteActivationIfFinished();
         return CommandResult.Ok();
+    }
+
+    private void FinishBoxCode(int actor)
+    {
+        var pending = State.PendingCode!; var card = CardCatalog.Get(pending.CardId);
+        State.PendingCode = null;
+        RefundActivation(pending.Actor, pending.FromMemory ? 2 : card.ActionCost, card.PrCost + (pending.FromMemory ? 400 : 0));
+        _activeActivation = null;
+        Log($"{State.Players[actor].Name} usa Caja de Cartón: cancela {card.Name}, que queda en la memoria de {State.Players[pending.Actor].Name}.");
+        CompleteActivationIfFinished();
     }
 }

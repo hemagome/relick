@@ -8,7 +8,7 @@ static class CardboardBoxTests
         {
             var (g, _) = Fixture(); var p = g.State.Active; g.State.Phase = Phase.Actions; g.State.ActionsLeft = 2;
             p.Hand.Clear(); p.Hand.Add(CardCatalog.CardboardBox.Id); p.Equipment = CardCatalog.Pendant.Id;
-            Check(CardCatalog.TrainingDeck().Count == 32 && CardCatalog.TrainingDeck().Count(id => id == CardCatalog.CardboardBox.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 33 && CardCatalog.TrainingDeck().Count(id => id == CardCatalog.CardboardBox.Id) == 1);
             Check(g.Equip(0, 0).Success && p.Equipment == CardCatalog.CardboardBox.Id && p.Memory.Single() == CardCatalog.Pendant.Id && g.State.ActionsLeft == 1);
         }),
         ("Caja cancela daño reducido, normal y crítico sin requerir Destiny ni descartes", () =>

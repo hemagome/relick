@@ -13,6 +13,9 @@ public sealed class DuelPlayerView
     public int HandCount { get; set; }
     public string?[] Hand { get; set; } = [];
     public string[] Skills { get; set; } = [];
+    public int[] SkillPositions { get; set; } = [];
+    public int SkillPosition(int index) => SkillPositions.Length == Skills.Length ? SkillPositions[index] : index;
+    public int SkillIndexAtPosition(int position) => Enumerable.Range(0, Skills.Length).FirstOrDefault(index => SkillPosition(index) == position, -1);
     public int[] Counters { get; set; } = [];
     public int EquipmentCounters { get; set; }
     public int EquipmentDie { get; set; }
@@ -44,13 +47,14 @@ public sealed class DuelSnapshot
     public static DuelSnapshot For(GameEngine game, int seat, ulong revision)
     {
         var s = game.State;
+        var stagePhase = s.Phase == Phase.DestructionResponse ? s.PendingDestruction!.ResumePhase : s.Phase;
         return new DuelSnapshot
         {
             Revision = revision, MySeat = seat, CurrentPlayer = s.CurrentPlayer, DecisionPlayer = s.DecisionPlayer,
             Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.LastDie,
-            Stage = s.Phase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : s.Phase == Phase.MindResetChoice ? s.PendingMindReset!.ResumePhase : s.Phase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice ? Phase.Actions :
-                s.Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? s.PendingDieRoll!.ResumePhase : s.Phase == Phase.Discard ? s.DiscardResumePhase :
-                s.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice ? Phase.Combat : s.Phase,
+            Stage = stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? s.PendingMindReset!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice ? Phase.Actions :
+                stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? s.PendingDieRoll!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
+                stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice ? Phase.Combat : stagePhase,
             DieCaption = game.CurrentDieCaption,
             LastCombat = s.LastCombat,
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
@@ -61,7 +65,7 @@ public sealed class DuelSnapshot
                 Hand = p.Hand.Select((id, i) => index == seat || p.IsHandCardRevealed(i) ||
                     (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ||
                     (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == seat && s.PendingMindReset.Target == index) ? id : null).ToArray(),
-                Skills = p.Skills.ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
+                Skills = p.Skills.ToArray(), SkillPositions = Enumerable.Range(0, p.Skills.Count).Select(p.SkillPosition).ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
                 Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
                 Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
             }).ToArray()

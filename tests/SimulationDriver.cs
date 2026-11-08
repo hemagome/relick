@@ -8,6 +8,7 @@ static class SimulationDriver
         var s = game.State;
         if (s.IsOver || s.DecisionPlayer != actor) return CommandResult.Fail("El rival no puede jugar ahora.");
         var p = s.Players[actor];
+        if (s.Phase == Phase.DestructionResponse) return game.ResolveDestructionProtection(actor, game.DestructionProtectors(actor).FirstOrDefault(-1));
         if (s.Phase == Phase.SniperChoice) return game.ResolveSniper(actor, true);
         if (s.Phase == Phase.RecycleChoice) return game.ResolveRecycling(actor, Enumerable.Range(0, game.RecyclingCount));
         if (s.Phase == Phase.MindResetChoice) return DuelOptions.For(game, actor).First(o => o.Move.Kind is DuelMoveKind.MindResetTarget or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand).Move.Apply(game, actor);
@@ -27,6 +28,7 @@ static class SimulationDriver
         {
             var attack = s.Phase == Phase.AttackRerollChoice;
             var die = attack ? s.PendingAttackRoll!.Die : s.PendingDieRoll!.Die;
+            if (!attack && die < 5 && game.CanRerollLearningDie(actor)) return game.RerollLearningDie(actor);
             if (die is 3 or 4 && game.CanUseDexterity(actor)) return game.UseDexterity(actor);
             var combo = p.Hand.FindIndex(id => CardCatalog.Get(id).SetOwnDie > 0);
             if (die < 5 && combo >= 0 && game.CodeUnavailableReason(actor, combo) == null) return game.PlayCode(actor, combo);

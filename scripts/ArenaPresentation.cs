@@ -121,15 +121,16 @@ public static class ArenaPresentation
         skills.AddThemeConstantOverride("h_separation", 6); skills.AddThemeConstantOverride("v_separation", 6);
         foreach (var slot in new[] { 2, 3, 0, 1 })
         {
-            var learned = slot < owner.Skills.Length;
-            var skill = new SkillTile { Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[slot]) : null,
-                Slot = slot, Counters = slot < owner.Counters.Length ? owner.Counters[slot] : 0,
-                Chosen = !enemy && learned && selectedSkill == slot, Accent = accent, Disabled = enemy && !learned,
+            var learnedIndex = owner.SkillIndexAtPosition(slot);
+            var learned = learnedIndex >= 0;
+            var skill = new SkillTile { Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[learnedIndex]) : null,
+                Slot = slot, SkillIndex = learnedIndex, Counters = learnedIndex >= 0 && learnedIndex < owner.Counters.Length ? owner.Counters[learnedIndex] : 0,
+                Chosen = !enemy && learned && selectedSkill == learnedIndex, Accent = accent, Disabled = enemy && !learned,
                 PresentationScale = compact ? 0.7f : 1 };
-            skill.Pressed += () => actions.Skill(slot);
+            skill.Pressed += () => { if (learned) actions.Skill(learnedIndex); };
             skill.GuiInput += input =>
             {
-                if (learned && input is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }) actions.InspectSkill(slot);
+                if (learned && input is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }) actions.InspectSkill(learnedIndex);
             };
             skills.AddChild(skill);
         }

@@ -25,7 +25,7 @@ public sealed partial class GameEngine
 
     private string? MindResetUnavailable(int actor, int excludedHand)
     {
-        if (State.PendingSniper != null || State.PendingMindReset != null || State.Phase == Phase.ErrorResponse)
+        if (State.PendingDestruction != null || State.PendingSniper != null || State.PendingMindReset != null || State.Phase == Phase.ErrorResponse)
             return "Completa la decisión pendiente antes de activar Resetear la Mente.";
         if (MindResetMemories().Count() - (excludedHand < 0 ? 1 : 0) < 2) return "Se requieren dos cartas en las memorias.";
         if (!Enumerable.Range(0, 2).Any(owner => State.Players[owner].Hand.Count > (owner == actor && excludedHand >= 0 ? 1 : 0)))

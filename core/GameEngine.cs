@@ -86,11 +86,12 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    public int SkillCost(PlayerState player) => player.Skills.Count < MaxSkills ? SkillSlotCosts[player.Skills.Count] : int.MaxValue;
+    public int SkillCost(PlayerState player) => player.NextSkillPosition() is var position && position >= 0 ? SkillSlotCosts[position] : int.MaxValue;
 
     /// <summary>Read-only query for plays other than advancing; never consumes cards or randomness.</summary>
     public bool HasAvailablePlay(int actor)
     {
+        if (State.Phase == Phase.DestructionResponse) return actor == State.DecisionPlayer;
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
         if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice)
@@ -125,12 +126,20 @@ public sealed partial class GameEngine
             return CommandResult.Fail("Solo puedes enseñar una habilidad, antes de atacar.");
         if (p.Skills.Count >= MaxSkills) return CommandResult.Fail("Los cuatro espacios de habilidad están ocupados.");
         var cost = SkillCost(p);
+        var position = p.NextSkillPosition();
         if (p.Relikia < cost) return CommandResult.Fail($"Necesitas {cost} PR para enseñar otra habilidad.");
         p.Relikia -= cost;
         p.RemoveHandCard(handIndex);
         p.Skills.Add(id);
+        if (p.SkillPositions != null || position != p.Skills.Count - 1)
+        {
+            p.SkillPositions ??= new();
+            p.SkillPositions[p.Skills.Count - 1] = position;
+        }
         State.LearnedThisTurn = true;
         Log($"{p.Name} enseña {CardCatalog.Get(id).Name} ({cost} PR).");
+        if (CardCatalog.Get(id).DrawOnExpensiveLearn && cost is 500 or 1000)
+            RollWithRelikario(p, DiePurpose.SkillLearning, new DieEffect { Purpose = DiePurpose.SkillLearning, Actor = actor });
         return CommandResult.Ok();
     }
 
@@ -149,14 +158,13 @@ public sealed partial class GameEngine
         State.AttackedThisTurn = true;
         var die = RollAttack(out var levelModified);
         State.LastAttackDie = die;
-        State.PendingAttackRoll = new(actor, skill.Id, die, Modified: levelModified);
+        State.PendingAttackRoll = new(actor, skill.Id, die, Modified: levelModified,
+            SkillSlot: skill.DamagePerReroll > 0 ? skillIndex : null,
+            NormalDamage: skill.DamagePerReroll > 0 ? skill.NormalDamageAt(p.CountersOnSkill(skillIndex)) : null,
+            CriticalDamage: skill.DamagePerReroll > 0 ? skill.CriticalDamageAt(p.CountersOnSkill(skillIndex)) : null);
         State.Phase = Phase.AttackRerollChoice;
-        if (CanRespondToAttackDie())
-        {
-            State.Phase = Phase.AttackRerollChoice;
-            State.LastCombat = $"{p.Name} · Dado de ataque {die} · Decide si relanza con Yuno";
-        }
-        else { if (!levelModified) RegisterNaturalSix(p, die); FinishAttackRoll(die); }
+        State.LastCombat = $"{p.Name} · Dado de ataque {die} · Decide si relanza con Yuno";
+        ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
         return CommandResult.Ok();
     }
 
@@ -356,9 +364,9 @@ public sealed partial class GameEngine
         BeginTurn();
     }
 
-    private void DealDamage(int target, int amount, int attackDie = 0)
+    private void DealDamage(int target, int amount, int attackDie = 0, EngineContinuation? completed = null)
     {
-        if (amount <= 0) return;
+        if (amount <= 0) { Continue(completed); return; }
         var p = State.Players[target];
         var reduction = p.Equipment == null ? 0 : CardCatalog.Get(p.Equipment).DamageReduction;
         if (reduction > 0)
@@ -367,19 +375,30 @@ public sealed partial class GameEngine
             Log($"{p.Name} reduce el daño de {amount} a {reduced} con {CardCatalog.Get(p.Equipment!).Name}.");
             State.LastCombat += $" · {CardCatalog.Get(p.Equipment!).Name}: {reduced} daño recibido";
             amount = reduced;
-            if (amount == 0) return;
+            if (amount == 0) { Continue(completed); return; }
         }
         if (p.Equipment is { } equipment && CardCatalog.Get(equipment).DamageCounterLimit > 0)
         {
             p.EquipmentCounters++;
-            if (p.EquipmentCounters >= CardCatalog.Get(equipment).DamageCounterLimit) DestroyEquipment(p);
+            if (p.EquipmentCounters >= CardCatalog.Get(equipment).DamageCounterLimit)
+            {
+                DestroyEquipment(p, new EngineContinuation { Kind = ContinuationKind.ApplyDamage, Actor = target, Count = amount, Value = attackDie, Next = completed });
+                return;
+            }
         }
+        ApplyHealthDamage(target, amount, attackDie, completed);
+    }
+
+    private void ApplyHealthDamage(int target, int amount, int attackDie, EngineContinuation? completed)
+    {
+        var p = State.Players[target];
         var wasZero = p.Health == 0;
         p.Health = Math.Max(0, p.Health - amount);
         DamageReceived?.Invoke(target, amount, attackDie);
         if (wasZero || (p.Health == 0 && p.HasReachedZero))
         {
             Finish(1 - target, $"{p.Name} recibe el daño definitivo.");
+            State.PendingAttack = null;
             return;
         }
         if (p.Health == 0)
@@ -387,6 +406,7 @@ public sealed partial class GameEngine
             p.HasReachedZero = true;
             Log($"{p.Name} queda en 0 vidas: un nuevo daño terminará la partida.");
         }
+        Continue(completed);
     }
 
     private void DrawCards(PlayerState p, int count, EngineContinuation? completed = null)
@@ -460,9 +480,6 @@ public sealed partial class GameEngine
     private int RollAttack(out bool levelModified, string caption = "", bool convertSix = false)
     {
         var die = Roll(caption, convertSix);
-        if (die == 1)
-            foreach (var player in State.Players)
-                if (player.Equipment is { } id && CardCatalog.Get(id).DestroyOnAttackOne) DestroyEquipment(player);
         var bonus = State.Active.Relikario.AttackDieBonusExceptOne;
         levelModified = bonus > 0 && die is >= 2 and < 6;
         if (levelModified)

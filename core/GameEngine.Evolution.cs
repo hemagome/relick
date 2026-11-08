@@ -45,8 +45,8 @@ public sealed partial class GameEngine
 
     private void RollWithRelikario(PlayerState p, DiePurpose purpose, DieEffect effect)
     {
-        var die = Roll(purpose == DiePurpose.PcStore ? "PC 8BITS · Valor guardado" : purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
-        if ((p.Relikario.CanRerollAnyDie && !p.AttackRerollUsedThisTurn && die != 1) || p.Equipment == CardCatalog.Pendant.Id || HasRerollCombo(Array.IndexOf(State.Players, p)) || (p.Equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
+        var die = Roll(purpose == DiePurpose.SkillLearning ? "Reverse Shuffle · Aprendizaje" : purpose == DiePurpose.PcStore ? "PC 8BITS · Valor guardado" : purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
+        if (purpose == DiePurpose.SkillLearning || (p.Relikario.CanRerollAnyDie && !p.AttackRerollUsedThisTurn && die != 1) || p.Equipment == CardCatalog.Pendant.Id || HasRerollCombo(Array.IndexOf(State.Players, p)) || (p.Equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
         {
             _pendingDieEffect = effect;
             State.PendingDieRoll = new(Array.IndexOf(State.Players, p), purpose, die, State.Phase);
@@ -71,6 +71,7 @@ public sealed partial class GameEngine
         var count = pending.Rerolls;
         if (reroll)
         {
+            OnOwnDieRerolled(actor);
             p.AttackRerollUsedThisTurn = true;
             die = Roll("Yuno Lv 2 · Relanzamiento"); count++;
             Log($"{p.Name} usa Yuno Lv 2: relanzamiento {count}/2 de {pending.Purpose}, resultado {die}.");

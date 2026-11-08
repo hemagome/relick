@@ -246,6 +246,7 @@ public partial class SkillTile : Button
     public CardDefinition? Skill { get; set; }
     public float PresentationScale { get; set; } = 1;
     public int Slot { get; set; }
+    public int SkillIndex { get; set; } = -1;
     public bool Chosen { get; set; }
     public int Counters { get; set; }
     public bool HasSkillArtwork => _skillArt != null;
@@ -259,7 +260,7 @@ public partial class SkillTile : Button
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         MouseDefaultCursorShape = CursorShape.PointingHand;
         _skillArt = SkillArtwork.Load(Skill);
-        TooltipText = Skill == null ? $"Enseñar una habilidad · {GameEngine.SkillSlotCosts[Slot]} PR." : Skill.Text + (Skill.Id == CardCatalog.Destiny.Id ? $"\nEsta copia: {Counters}/2 contadores." : "");
+        TooltipText = Skill == null ? $"Enseñar una habilidad · {GameEngine.SkillSlotCosts[Slot]} PR." : Skill.Text + (Skill.Id == CardCatalog.Destiny.Id ? $"\nEsta copia: {Counters}/2 contadores." : Skill.DamagePerReroll > 0 ? $"\nEsta copia: {Counters} aumentos · {Skill.NormalDamageAt(Counters)} normal / {Skill.CriticalDamageAt(Counters)} crítico." : "");
     }
     public override void _Draw()
     {
@@ -279,6 +280,11 @@ public partial class SkillTile : Button
             {
                 BoardArt.Plate(this, new Rect2(8, size.Y - 24, 114, 20), new Color("111a2c"), Accent, 4);
                 BoardArt.Text(this, $"CONTADORES {Counters}/2", new(14, size.Y - 10), 10, Counters >= 2 ? new Color("ef7890") : BoardArt.Ink);
+            }
+            else if (Skill.DamagePerReroll > 0)
+            {
+                BoardArt.Plate(this, new Rect2(8, size.Y - 24, 156, 20), new Color("111a2c"), Accent, 4);
+                BoardArt.Text(this, $"NORMAL {Skill.NormalDamageAt(Counters)} · CRÍTICO {Skill.CriticalDamageAt(Counters)}", new(14, size.Y - 10), 10, BoardArt.Ink);
             }
         }
         else

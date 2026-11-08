@@ -17,6 +17,11 @@ public partial class OnlineLobby
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+            if (OS.GetCmdlineUserArgs().Contains("--reverse-only"))
+            {
+                await online.CheckReverseLayout(); online.QueueFree(); await Layout();
+                GD.Print("PVP_REVERSE_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--evolution-only"))
             {
                 await online.CheckYunoEvolutionLayout(); online.QueueFree(); await Layout();
@@ -63,6 +68,7 @@ public partial class OnlineLobby
             await online.CheckHandLimitLayout();
             await online.CheckDexterityLayout();
             await online.CheckYunoEvolutionLayout();
+            await online.CheckReverseLayout();
             await online.CheckPreparationLayout();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();

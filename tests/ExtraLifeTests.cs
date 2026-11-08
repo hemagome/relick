@@ -110,6 +110,7 @@ static class ExtraLifeTests
     {
         var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
         g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("extra-life"); g.State.Active.Health = 1;
+        g.State.Players[1].Hand.Clear();
         return (g, rng);
     }
     private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));

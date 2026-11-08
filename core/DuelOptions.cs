@@ -21,6 +21,11 @@ public static class DuelOptions
         {
             switch (s.Phase)
             {
+                case Phase.DestructionResponse:
+                    Add(DuelMoveKind.ProtectDestruction, "Permitir la destrucción");
+                    foreach (var slot in game.DestructionProtectors(actor))
+                        Add(DuelMoveKind.ProtectDestruction, $"Sacrificar Reverse Shuffle · espacio {p.SkillPosition(slot) + 1} · proteger carta propia", slot);
+                    break;
                 case Phase.SniperChoice:
                     Add(DuelMoveKind.Sniper, "Equipar gratis Mira de Sniper", flag: true);
                     Add(DuelMoveKind.Sniper, "Colocar Mira de Sniper en canje");
@@ -33,7 +38,7 @@ public static class DuelOptions
                             Add(DuelMoveKind.Learn, $"Enseñar {card.Name} · {game.SkillCost(p)} PR · carta {i + 1}", i);
                         if (card.Kind == CardKind.Attack && !s.AttackedThisTurn)
                             for (var skill = 0; skill < p.Skills.Count; skill++)
-                                Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {skill + 1} · carta {i + 1}", i, skill);
+                                Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {p.SkillPosition(skill) + 1} · carta {i + 1}", i, skill);
                     }
                     Add(DuelMoveKind.Advance, "Ir a acciones");
                     break;
@@ -104,6 +109,7 @@ public static class DuelOptions
                 case Phase.DieRerollChoice:
                     var kind = s.Phase == Phase.AttackRerollChoice ? DuelMoveKind.AttackDie : DuelMoveKind.EffectDie;
                     Add(kind, "Conservar el dado");
+                    if (game.CanRerollLearningDie(actor)) Add(DuelMoveKind.LearningDie, $"Relanzar por Reverse Shuffle · {2 - s.PendingDieRoll!.LearningRerolls} restantes");
                     if (game.CanUseDexterity(actor)) Add(DuelMoveKind.Dexterity, "Usar destreza · +1 al dado · 1 ficha");
                     if (game.CanUsePc(actor)) Add(DuelMoveKind.Pc, $"Destruir PC 8BITS · valor guardado {p.EquipmentDie}");
                     if (game.CanUseYunoOnPendingDie(actor)) Add(kind, "Relanzar con Yuno", flag: true);
@@ -114,7 +120,7 @@ public static class DuelOptions
                     Add(DuelMoveKind.PassDefense, "Recibir el daño");
                     if (game.CanCancelAttackWithBox(actor)) Add(DuelMoveKind.BoxDefense, "Cancelar daño con Caja de Cartón");
                     foreach (var slot in game.AvailableDefenses(actor))
-                        Add(DuelMoveKind.DestinyDefense, $"Defender con Destiny · espacio {slot + 1} · selecciona {game.DefenseDiscardCost} cartas", slot, discards: game.DefenseDiscardCost);
+                        Add(DuelMoveKind.DestinyDefense, $"Defender con Destiny · espacio {p.SkillPosition(slot) + 1} · selecciona {game.DefenseDiscardCost} cartas", slot, discards: game.DefenseDiscardCost);
                     break;
                 case Phase.MagnetChoice:
                     Add(DuelMoveKind.SkipMagnet, "No tomar ninguna carta");

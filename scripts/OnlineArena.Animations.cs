@@ -25,6 +25,7 @@ public partial class OnlineArena
         CardZone.Bonus => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.BonusButton,
         CardZone.Exchange => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.ExchangeButtons.ElementAtOrDefault(slot),
         CardZone.Equipment => _root?.FindChild("EquipmentZone" + relative, true, false) as Control,
+        CardZone.Skill => _root?.FindChild($"Skill{relative}_{_snapshot!.Players[relative == 0 ? _snapshot.MySeat : 1 - _snapshot.MySeat].SkillPosition(slot)}", true, false) as Control,
         CardZone.Attached => _root?.FindChild("AttachmentStack" + relative, true, false) as Control,
         _ => null
     };
@@ -49,7 +50,7 @@ public partial class OnlineArena
             string? id = source switch
             {
                 CardZone.Hand => player.Hand.ElementAtOrDefault(slot), CardZone.Bonus => player.Bonus,
-                CardZone.Equipment => player.Equipment, CardZone.Attached => player.Attached.ElementAtOrDefault(cue.Value),
+                CardZone.Equipment => player.Equipment, CardZone.Skill => player.Skills.ElementAtOrDefault(cue.Value), CardZone.Attached => player.Attached.ElementAtOrDefault(cue.Value),
                 CardZone.Exchange => player.Exchange.ElementAtOrDefault(cue.Value), CardZone.Memory => player.Memory.ElementAtOrDefault(cue.Value), _ => null
             };
             if (cue.Kind == DuelVisualKind.HandTransfer) id = null; // One face-down packet per hand, regardless of its size.

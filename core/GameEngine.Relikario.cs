@@ -19,6 +19,8 @@ public sealed partial class GameEngine
             return CommandResult.Ok();
         }
         p.AttackRerollUsedThisTurn = true;
+        OnOwnDieRerolled(actor);
+        pending = State.PendingAttackRoll!;
         var rolled = RollAttack(out _, $"Yuno Lv {p.Level} · Relanzamiento", p.Relikario.ConvertRerolledSix);
         var die = rolled == 6 && p.Relikario.ConvertRerolledSix ? 5 : rolled;
         var count = pending.Rerolls + 1;
@@ -26,10 +28,18 @@ public sealed partial class GameEngine
             (rolled != die ? " El 6 se convierte en 5; no es crítico." : ""));
         State.PendingAttackRoll = pending with { Die = die, Rerolls = count, WasRerolled = true, Modified = true, YunoStopped = die == 1 };
         State.LastAttackDie = die;
-        if (CanRespondToAttackDie())
-            State.LastCombat = $"{p.Name} · Dado {die} · Elige si conservas el resultado";
-        else FinishAttackRoll(die, true);
+        State.LastCombat = $"{p.Name} · Dado {die} · Elige si conservas el resultado";
+        ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
         return CommandResult.Ok();
+    }
+
+    private void ContinueAttackDie()
+    {
+        var pending = State.PendingAttackRoll!;
+        State.Phase = Phase.AttackRerollChoice;
+        if (CanRespondToAttackDie()) return;
+        if (!pending.Modified) RegisterNaturalSix(State.Players[pending.Attacker], pending.Die);
+        FinishAttackRoll(pending.Die, pending.WasRerolled);
     }
 
     private void FinishAttackRoll(int die, bool rerolled = false)
@@ -40,6 +50,8 @@ public sealed partial class GameEngine
         State.Phase = Phase.Combat;
         var p = State.Players[pending.Attacker];
         var skill = CardCatalog.Get(pending.SkillId);
+        if (pending.NormalDamage is int normal && pending.CriticalDamage is int critical)
+            skill = skill with { NormalDamage = normal, CriticalDamage = critical };
         if (skill.Id == CardCatalog.Magnet.Id && die is 4 or 5)
             RollWithRelikario(p, DiePurpose.MagnetDamage, new DieEffect { Purpose = DiePurpose.MagnetDamage, Actor = pending.Attacker, SkillId = skill.Id, AttackDie = die, Rerolled = rerolled });
         else ResolveAttackResult(pending.Attacker, skill, die, skill.NormalDamage, rerolled);

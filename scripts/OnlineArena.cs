@@ -240,7 +240,7 @@ public partial class OnlineArena : Control
         foreach (var card in _handCards)
         { card.Chosen = _selected.Contains(int.Parse(card.Name.ToString()[8..])); card.QueueRedraw(); }
         foreach (var skill in _ownSkills)
-        { skill.Chosen = skill.Skill != null && skill.Slot == _selectedSkill; skill.QueueRedraw(); }
+        { skill.Chosen = skill.Skill != null && skill.SkillIndex == _selectedSkill; skill.QueueRedraw(); }
         BuildMoves();
     }
     private void BuildMoves()
@@ -335,6 +335,6 @@ public partial class OnlineArena : Control
     {
         Phase.Preparation => "PREPARACIÓN", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
-        Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", _ => "RESOLVER EFECTO"
+        Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", _ => "RESOLVER EFECTO"
     };
 }

@@ -7,6 +7,95 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckReverseLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var random = new DuelRandom(); random.Replay([0]);
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor,
+                Hands = [[CardCatalog.Reverse.Id], [CardCatalog.Reverse.Id]],
+                Decks = [Enumerable.Repeat("attack", 12).ToList(), Enumerable.Repeat("attack", 12).ToList()], Bonuses = [null, null]
+            }, random);
+            var player = game.State.Active; player.Dexterity = 0; player.Relikia = 500;
+            player.Skills.AddRange([CardCatalog.Destiny.Id, CardCatalog.Magnet.Id]);
+            if (!game.Learn(actor, 0).Success) throw new Exception("No empieza el aprendizaje de Reverse.");
+            for (var step = 0; step < 3; step++)
+            {
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, (ulong)(80 + step)));
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var relative = actor == seat ? 0 : 1;
+                    var skill = _root!.FindChild($"Skill{relative}_2", true, false) as SkillTile;
+                    if (skill is not { HasSkillArtwork: true } || skill.Skill?.Id != CardCatalog.Reverse.Id || skill.Counters != (step == 0 ? 0 : 1))
+                        throw new Exception("Reverse no presenta la ilustración o los aumentos públicos de esta copia.");
+                    if (step == 0 && _moveButtons.Any(b => b.Text.StartsWith("Relanzar por Reverse")) != (actor == seat))
+                        throw new Exception("El aprendizaje no ofrece su relanzamiento al dueño correcto.");
+                    if (step == 2 && _moveButtons.Any(b => b.Text.StartsWith("Sacrificar Reverse")) != (actor == seat))
+                        throw new Exception("La protección no ofrece la elección al dueño correcto.");
+                    var minimum = _root.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Reverse desborda {size}: {minimum}.");
+                }
+                if (step == 0)
+                {
+                    random.Replay([5]);
+                    if (!game.RerollLearningDie(actor).Success || !game.ResolveDieReroll(actor, false).Success)
+                        throw new Exception("No se resuelven el relanzamiento y robo de Reverse.");
+                }
+                else if (step == 1)
+                {
+                    game.Advance(actor); player.Hand.Clear(); player.Hand.Add(CardCatalog.BlueEgg.Id); player.Relikia = 200; player.Equipment = CardCatalog.Pc.Id;
+                    if (!game.PlayCode(actor, 0).Success || !game.ResolveDestruction(actor, actor, FieldZone.Equipment).Success)
+                        throw new Exception("No se ofrece la protección de Reverse.");
+                }
+                else
+                {
+                    var cues = DuelVisualEvents.Capture(game);
+                    if (!game.ResolveDestructionProtection(actor, 2).Success || player.Skills.Count != 2 || player.Equipment != CardCatalog.Pc.Id ||
+                        cues.Count(c => c.Kind == DuelVisualKind.Pile && c.Source == CardZone.Skill) != 1)
+                        throw new Exception("El sacrificio no conserva el equipo ni mueve la habilidad a memoria.");
+                }
+            }
+        }
+        await CheckReverseVacantSlotLayout();
+        GD.Print("PVP_REVERSE_LAYOUT_PASS · ilustración, aumentos, aprendizaje, protección y espacios libres, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
+    private async Task CheckReverseVacantSlotLayout()
+    {
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = new GameEngine(17); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Combat;
+            var p = game.State.Active; p.Skills.Add(CardCatalog.Destiny.Id); p.SkillPositions = new() { [0] = 1 }; p.SkillCounters[0] = 1;
+            p.Hand.Add("attack");
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                GetWindow().ContentScaleSize = size;
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 90));
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var relative = actor == seat ? 0 : 1;
+                var empty = _root!.FindChild($"Skill{relative}_0", true, false) as SkillTile;
+                var remaining = _root.FindChild($"Skill{relative}_1", true, false) as SkillTile;
+                if (empty?.Skill != null || remaining?.Skill?.Id != CardCatalog.Destiny.Id || remaining.Counters != 1 || remaining.SkillIndex != 0)
+                    throw new Exception("Sacrificar Reverse desplaza otra habilidad o pierde sus contadores.");
+                if (seat == actor)
+                {
+                    remaining.EmitSignal(Button.SignalName.Pressed); SelectCard(0);
+                    if (!_moveButtons.Any(b => b.Text.StartsWith("Atacar con") && b.Text.Contains("espacio 2")))
+                        throw new Exception("El espacio físico no selecciona su habilidad para atacar.");
+                }
+            }
+        }
+    }
+
     internal async Task CheckYunoEvolutionLayout()
     {
         foreach (var actor in new[] { 0, 1 })

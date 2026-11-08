@@ -42,7 +42,7 @@ public sealed partial class GameEngine
             if (sniper) sniperIndices.Add(p.Memory.Count - 1);
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
-        Log($"{p.Name} activa Relick Destiny Shuffle (espacio {skillSlot + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");
+        Log($"{p.Name} activa Relick Destiny Shuffle (espacio {p.SkillPosition(skillSlot) + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");
         ResolveAttackDamage(true, deferCompletion: sniperIndices.Count > 0);
         BeginSniperChoices(actor, sniperIndices);
         return CommandResult.Ok();
@@ -54,7 +54,18 @@ public sealed partial class GameEngine
         State.Phase = Phase.Combat;
         if (canceled) State.LastCombat += $" · Daño cancelado por {source}";
         // The final attack die survives secondary damage dice and the defense decision.
-        else DealDamage(1 - attack.Attacker, attack.Damage, State.LastAttackDie);
+        else
+        {
+            DealDamage(1 - attack.Attacker, attack.Damage, State.LastAttackDie,
+                new EngineContinuation { Kind = ContinuationKind.FinishAttackDamage, Actor = attack.Attacker, Flag = deferCompletion });
+            return;
+        }
+        FinishAttackDamage(deferCompletion);
+    }
+
+    private void FinishAttackDamage(bool deferCompletion)
+    {
+        var attack = State.PendingAttack!;
         State.PendingAttack = attack with { DamageResolved = true };
         if (State.IsOver) { State.PendingAttack = null; return; }
         // Canceling damage does not undo the critical result or its skill effect.

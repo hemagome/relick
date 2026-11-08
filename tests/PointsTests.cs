@@ -39,7 +39,7 @@ static class PointsTests
     private static (GameEngine, ScriptedRandom) Fixture()
     {
         var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
-        g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("points-increase"); return (g, rng);
+        g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("points-increase"); g.State.Players[1].Hand.Clear(); return (g, rng);
     }
     private static string Snapshot(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);
     private static void Check(bool value) { if (!value) throw new Exception("Regla de Aumento de PR no satisfecha"); }

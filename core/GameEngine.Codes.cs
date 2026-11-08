@@ -1,5 +1,5 @@
 namespace Relick.Core;
-public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand }
+public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill }
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
@@ -79,23 +79,9 @@ public sealed partial class GameEngine
         {
             index = _random.Next(p.Hand.Count);
             id = p.Hand[index];
-            SendHandToMemory(p, index);
         }
-        else if (zone != FieldZone.Equipment)
-            NotifyPileMove(p, target.CardId, zone switch
-            {
-                FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, _ => CardZone.Attached
-            }, index);
-        switch (zone)
-        {
-            case FieldZone.Equipment: DestroyEquipment(p); break;
-            case FieldZone.Attached: p.AttachedCards.RemoveAt(index); p.Memory.Add(target.CardId); break;
-            case FieldZone.Exchange: p.Exchange.RemoveAt(index); p.Memory.Add(target.CardId); break;
-            case FieldZone.Bonus: p.Bonus = null; p.Memory.Add(target.CardId); break;
-        }
-        Log($"{State.Players[actor].Name} destruye {CardCatalog.Get(id).Name} de {p.Name} con {codeName}.");
-        State.DestroyActor = null; State.Phase = Phase.Actions; CompleteActivationIfFinished();
-        if (zone == FieldZone.Bonus) RefillBonus(p);
+        var chosen = target with { Index = index, CardId = id };
+        RequestDestruction(chosen, new EngineContinuation { Kind = ContinuationKind.FinishCodeDestruction, Actor = actor, Target = chosen, Text = codeName });
         return CommandResult.Ok();
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
@@ -113,6 +99,7 @@ public sealed partial class GameEngine
     private void ResolveRerollComboEffect(int actor, CardDefinition card)
     {
         var p = State.Players[actor];
+        if (card.RerollOwnDie) OnOwnDieRerolled(actor);
         var phase = State.Phase; var attack = State.PendingAttackRoll; var effect = State.PendingDieRoll;
         var continuation = _pendingDieEffect;
         if (card.SetOwnDie > 0)
@@ -132,6 +119,14 @@ public sealed partial class GameEngine
         var resume = new EngineContinuation { Kind = ContinuationKind.ResumeCombo, Actor = actor, Phase = phase,
             Attack = attack, Die = effect, SavedDieEffect = continuation };
         Log($"{p.Name} activa {card.Name}: dado {die}." + (die <= 3 ? " Roba una carta." : ""));
+        var draw = new EngineContinuation { Kind = ContinuationKind.RerollDraw, Actor = actor, Value = die, Die = effect, SavedDieEffect = continuation, Next = resume };
+        if (attack != null) ProcessAttackDie(die, draw); else Continue(draw);
+    }
+
+    private void FinishRerollDraw(EngineContinuation next)
+    {
+        var die = next.Value; var effect = next.Die; var continuation = next.SavedDieEffect;
+        var resume = next.Next!; var actor = next.Actor; var p = State.Players[actor];
         if (die <= 3 && effect?.Purpose == DiePurpose.Recycling)
         {
             // The first recycling has not refilled the empty deck yet. Queue the bonus

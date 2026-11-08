@@ -226,3 +226,38 @@ mazos usados al incorporar cada carta en aquel momento.
 
 El mazo de desarrollo actual se amplió después a 32 cartas: doce Ataques y una
 copia de cada otra carta. Triple Ataque Cruzado sigue buscando como máximo tres.
+
+## Relick Reverse Shuffle
+
+`reverse-shuffle-clean.png` restaura la imagen horizontal aportada por el usuario
+con la herramienta integrada `image_gen`. Se elimina la marca diagonal y se
+conservan los textos, valores, código LR-70/82 y crédito ©2018 FG. La reconstrucción
+generativa puede introducir pequeñas diferencias en la ilustración. El original
+y el prompt están en `output/imagegen/reverse-shuffle-original.png` y
+`output/imagegen/reverse-shuffle-prompt.txt`.
+
+Habilidad de Yuno: daño normal 2 (máximo 5), crítico 4 y premio 600 PR. Cada dado
+propio relanzado mientras está enseñada aumenta en uno ambos daños de cada copia.
+Los aumentos persisten al cambiar de turno y al reconectar; un cambio de resultado
+sin relanzar no los aumenta. El crítico no tiene el máximo cinco del daño normal.
+
+Al aprenderla en el tercer o cuarto espacio (500/1000 PR), lanza D6, permite hasta
+dos relanzamientos gratuitos y roba la mitad del resultado final redondeada arriba.
+Los relanzamientos gratuitos admiten el uno, son independientes de Yuno y también
+aumentan el daño. El dado admite los otros modificadores disponibles.
+
+Una copia enseñada puede sacrificarse para sustituir la destrucción de una carta
+propia: equipos, Bonus, canje, mano y cartas sobre el Relikario. También sustituye
+costes de PC, Colgante y Caja, conservando el equipo y resolviendo su efecto, según
+lo confirmado por el usuario. La decisión es opcional y se guarda al reconectar.
+No protege cartas rivales, cartas descartadas ni cartas meramente devueltas al mazo.
+Si se protege el equipo anterior al equipar otro, el anterior ocupa la única zona
+y el nuevo queda en memoria; no se permite tener dos equipos normales.
+
+Cada copia guarda sus propios aumentos; sacrificar una elimina sus contadores y
+conserva los de las restantes. Su espacio físico queda libre, sin mover las demás
+habilidades; enseñar otra utiliza el primer espacio libre y su coste correspondiente.
+Un ataque declarado conserva su daño aunque su
+habilidad salga del campo. La carta sacrificada va a memoria, sin activar descartes.
+Los daños y premios esperan las elecciones pendientes. Una copia se añade a cada
+mazo nuevo de desarrollo, que ahora contiene 33 cartas, incluidos doce Ataques.

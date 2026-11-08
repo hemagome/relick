@@ -11,10 +11,18 @@ public sealed record CardDefinition(
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, bool ChangePointsFromDie = false, int PrCost = 0, bool DestroyNonSkill = false, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
     int DamageReduction = 0, bool DestroyOnAttackOne = false, bool DestroyChosenZone = false, bool SearchNonSkill = false,
-    bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false, int SearchAttacks = 0);
+    bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false, int SearchAttacks = 0,
+    int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false)
+{
+    public int NormalDamageAt(int counters) => MaxNormalDamage > 0 ? Math.Min(MaxNormalDamage, NormalDamage + counters * DamagePerReroll) : NormalDamage + counters * DamagePerReroll;
+    public int CriticalDamageAt(int counters) => CriticalDamage + counters * DamagePerReroll;
+}
 
 public static class CardCatalog
 {
+    public static readonly CardDefinition Reverse = new("reverse-shuffle", "Relick Reverse Shuffle", CardKind.Skill,
+        "Al relanzar un dado propio: +1 al daño normal (máx. 5) y crítico de esta copia. Si una carta propia va a ser destruida, puedes destruir esta habilidad enseñada en su lugar, incluidos costes de equipos. Al enseñarla en el espacio de 500 o 1000 PR: lanza D6, puedes relanzarlo hasta dos veces y roba la mitad del resultado final, redondeada hacia arriba.",
+        NormalDamage: 2, CriticalDamage: 4, Reward: 600, DamagePerReroll: 1, MaxNormalDamage: 5, ProtectOwnCard: true, DrawOnExpensiveLearn: true);
     public static readonly CardDefinition TripleAttack = new("triple-cross-attack", "Triple Ataque Cruzado", CardKind.Code,
         "Busca 3 ataques de tu mazo a tu mano.", CodeType: CodeType.Play, SearchAttacks: 3);
     public static readonly CardDefinition Sniper = new("sniper-scope", "Mira de Sniper", CardKind.Equipment,
@@ -72,13 +80,13 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o resolviendo, o un equipo esté siendo equipado: cancélalo y envíalo a memoria. La activación anulada recupera sus costes.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack }.ToDictionary(c => c.Id);
+        new[] { Attack, Magnet, Destiny, Reverse, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 
     public static List<string> TrainingDeck() =>
         Enumerable.Repeat(Attack.Id, 12)
-            .Concat(new[] { TripleAttack.Id, MindReset.Id, Agility.Id, Pc.Id, Magnet.Id, Destiny.Id, Sniper.Id,
+            .Concat(new[] { TripleAttack.Id, MindReset.Id, Agility.Id, Pc.Id, Magnet.Id, Destiny.Id, Reverse.Id, Sniper.Id,
                 Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Dodge.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, MindSwap.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id }).ToList();
 }
 

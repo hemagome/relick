@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Relick.Core;
 
-public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final }
+public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse }
 
 public sealed class PlayerState
 {
@@ -80,6 +80,11 @@ public sealed class PlayerState
     [JsonInclude]
     public Dictionary<int, int> SkillCounters { get; internal set; } = new();
     public int CountersOnSkill(int slot) => SkillCounters.GetValueOrDefault(slot);
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<int, int>? SkillPositions { get; internal set; }
+    public int SkillPosition(int index) => SkillPositions?.GetValueOrDefault(index, index) ?? index;
+    public int NextSkillPosition() => Enumerable.Range(0, GameEngine.MaxSkills)
+        .FirstOrDefault(position => !Enumerable.Range(0, Skills.Count).Any(index => SkillPosition(index) == position), -1);
     [JsonInclude]
     public List<string> Exchange { get; internal set; } = new();
     [JsonInclude]
@@ -135,7 +140,9 @@ public sealed class GameState
     public PendingMindReset? PendingMindReset { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingSniper? PendingSniper { get; internal set; }
-    public int DecisionPlayer => Phase == Phase.SniperChoice ? PendingSniper!.Actor : Phase == Phase.MindResetChoice ? PendingMindReset!.Actor : Phase == Phase.ErrorResponse ? ErrorResponder : Phase == Phase.CodeResponse ? 1 - PendingCode!.Actor : Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? PendingDieRoll!.Player : Phase == Phase.DefenseChoice ? 1 - CurrentPlayer
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PendingDestruction? PendingDestruction { get; internal set; }
+    public int DecisionPlayer => Phase == Phase.DestructionResponse ? PendingDestruction!.Target.Owner : Phase == Phase.SniperChoice ? PendingSniper!.Actor : Phase == Phase.MindResetChoice ? PendingMindReset!.Actor : Phase == Phase.ErrorResponse ? ErrorResponder : Phase == Phase.CodeResponse ? 1 - PendingCode!.Actor : Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? PendingDieRoll!.Player : Phase == Phase.DefenseChoice ? 1 - CurrentPlayer
         : Phase == Phase.Discard ? DiscardPlayer ?? CurrentPlayer : CurrentPlayer;
     [JsonInclude]
     public int? Winner { get; internal set; } // -1 = draw, null = still playing
@@ -149,10 +156,14 @@ public sealed class GameState
     public bool IsOver => Phase == Phase.Finished;
 }
 
-public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false);
+public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? SkillSlot = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? NormalDamage = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? CriticalDamage = null);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore }
-public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false);
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning }
+public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 
 public sealed record ActivationInfo(int Actor, string CardId, int ActionsPaid, int PrPaid);
 

@@ -21,7 +21,27 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void DestroyEquipment(PlayerState p)
+    private void FinishEquipmentInstall()
+    {
+        var frame = _activeActivation!; var p = State.Players[frame.Actor];
+        if (p.Equipment == null)
+        {
+            p.Memory.RemoveAt(frame.MemoryIndex); ShiftSniperIndices(frame.Actor, frame.MemoryIndex);
+            p.Equipment = frame.CardId; p.EquipmentDie = 0; p.EquipmentCounters = 0;
+            Log($"{p.Name} pone {CardCatalog.Get(frame.CardId).Name} en su zona de equipo (1 acción).");
+            if (frame.FinishSniperExchange) CompleteExchange(p);
+            if (CardCatalog.Get(frame.CardId).StoreDie)
+                RollWithRelikario(p, DiePurpose.PcStore, new DieEffect { Purpose = DiePurpose.PcStore, Actor = frame.Actor });
+        }
+        else
+        {
+            Log($"{p.Name} conserva su equipo protegido; {CardCatalog.Get(frame.CardId).Name} queda en memoria porque la zona sigue ocupada.");
+            if (frame.FinishSniperExchange) CompleteExchange(p);
+        }
+        CompleteActivationIfFinished();
+    }
+
+    private void DestroyEquipmentNow(PlayerState p)
     {
         if (p.Equipment == null) return;
         var id = p.Equipment;
@@ -46,7 +66,7 @@ public sealed partial class GameEngine
     private bool CanRespondToAttackDie() => CanUseYunoOnPendingDie(State.CurrentPlayer) ||
         State.Players[State.CurrentPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
     private bool CanRespondToEffectDie() => CanUseYunoOnPendingDie(State.DecisionPlayer) ||
-        State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer);
+        State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)
     {
@@ -64,10 +84,16 @@ public sealed partial class GameEngine
     public CommandResult UsePendant(int actor, PendantEffect effect)
     {
         if (!CanUsePendant(actor, effect)) return CommandResult.Fail("El Colgante no puede aplicar ese efecto a este dado.");
+        DestroyEquipment(State.Players[actor], new EngineContinuation { Kind = ContinuationKind.UsePendant, Actor = actor, Value = (int)effect });
+        return CommandResult.Ok();
+    }
+
+    private void FinishPendant(int actor, PendantEffect effect)
+    {
         var attack = State.Phase == Phase.AttackRerollChoice;
         var p = State.Players[actor];
+        if (effect == PendantEffect.Reroll) OnOwnDieRerolled(actor);
         var die = attack ? State.PendingAttackRoll!.Die : State.PendingDieRoll!.Die;
-        DestroyEquipment(p);
         die = effect switch { PendantEffect.AddOne => die + 1, PendantEffect.AddTwo => die + 2,
             _ => attack ? RollAttack(out _, "Colgante · Relanzamiento") : Roll("Colgante · Relanzamiento") };
         Log($"{p.Name} usa Colgante de la Suerte ({effect}): el dado queda en {die}.");
@@ -76,14 +102,13 @@ public sealed partial class GameEngine
             var pending = State.PendingAttackRoll!;
             State.PendingAttackRoll = pending with { Die = die, WasRerolled = true, Modified = true };
             State.LastAttackDie = die;
-            if (!CanRespondToAttackDie()) FinishAttackRoll(die, true);
+            ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
         }
         else
         {
             var pending = State.PendingDieRoll!;
             State.PendingDieRoll = pending with { Die = die, WasRerolled = true, Modified = true };
-            if (!CanRespondToEffectDie()) return ResolveDieReroll(actor, false);
+            if (!CanRespondToEffectDie()) ResolveDieReroll(actor, false);
         }
-        return CommandResult.Ok();
     }
 }
