@@ -4,11 +4,11 @@ static class MindResetTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
-        ("Resetear: Jugada COMBO cuesta una acción y mazo conserva 20 cartas", () =>
+        ("Resetear: Jugada COMBO cuesta una acción y mazo conserva 23 cartas", () =>
         {
             var c = CardCatalog.MindReset;
             Check(c.IsCombo && c.CodeType == CodeType.Play && c.ActionCost == 1 && c.ResetMind);
-            Check(CardCatalog.TrainingDeck().Count == 20 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 23 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Resetear: memorias propias, rivales o mixtas; baraja solo mazos afectados y roba solo objetivo", () =>
         {
@@ -123,7 +123,7 @@ static class MindResetTests
             g.State.Players[1].Deck.Clear(); rng.EnqueueDie(2);
             Check(g.ResolveMindReset(0, 0).Success && g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
-            Check(g.ResolveRecycling(1, [0, 1]).Success && g.State.Phase == Phase.DieRerollChoice);
+            Check(g.ResolveRecycling(1, Enumerable.Range(0, g.RecyclingCount)).Success && g.State.Phase == Phase.DieRerollChoice);
             Check(g.State.PendingDieRoll is { Player: 0, Die: 4, Purpose: DiePurpose.ExtraLife });
             Check(g.ResolveDieReroll(0, false).Success && g.State.Players[0].Health == 4 && g.State.Players[0].ActionsLeft == 0);
         }),

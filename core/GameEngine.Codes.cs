@@ -42,6 +42,7 @@ public sealed partial class GameEngine
     {
         if (State.Turn < card.EarliestTurn) return $"{card.Name} solo puede activarse a partir del turno {card.EarliestTurn} de la partida.";
         if (p.Relikia < card.PrCost + extraCost) return $"Necesitas {card.PrCost + extraCost} PR.";
+        if (card.SearchAttacks > 0 && !p.Deck.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack)) return "No hay ataques en tu mazo.";
         if (card.SearchNonSkill && !SearchableDeckCards(Array.IndexOf(State.Players, p)).Any()) return "No hay no-habilidades en tu mazo.";
         if (card.DestroyNonSkill && !DestructionTargets().Any()) return "No hay no-habilidades en el campo para destruir.";
         if (card.DestroyChosenZone && !TimeBombTargets(Array.IndexOf(State.Players, p), excludedHand).Any())

@@ -187,6 +187,17 @@ public sealed partial class GameEngine
         if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p) }); return; }
         if (card.ResetMind) { BeginMindReset(Array.IndexOf(State.Players, p)); return; }
         if (card.SwapHands) { SwapHands(Array.IndexOf(State.Players, p)); return; }
+        if (card.SearchAttacks > 0)
+        {
+            var count = Math.Min(card.SearchAttacks, p.Deck.Count(id => CardCatalog.Get(id).Kind == CardKind.Attack));
+            if (_activeActivation != null) _activeActivation.CanInterrupt = false;
+            Log($"{p.Name} añade {count} ataque(s) de su mazo a su mano con {card.Name}.");
+            // All current Attack cards are identical. Choose their first copies in deck order.
+            // Freeze the count so recycling cannot add further targets to this effect.
+            for (var i = 0; i < count; i++)
+                MoveDeckCard(p, p.Deck.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Attack), false);
+            return;
+        }
         if (card.SearchNonSkill)
         {
             if (!SearchableDeckCards(Array.IndexOf(State.Players, p)).Any())

@@ -8,7 +8,7 @@ static class InitialSkillTests
         ("Habilidad inicial: antes de elegir no se reparte ni se permite mulligan", () =>
         {
             var game = new GameEngine(8);
-            Check(game.State.Players.All(p => p.Hand.Count == 0 && p.Deck.Count == 20));
+            Check(game.State.Players.All(p => p.Hand.Count == 0 && p.Deck.Count == CardCatalog.TrainingDeck().Count));
             Check(game.InitialSkillsFor(0).ToHashSet().SetEquals([CardCatalog.Magnet.Id, CardCatalog.Destiny.Id]));
             Check(!game.Start([]).Success);
         }),
@@ -19,7 +19,7 @@ static class InitialSkillTests
                 var game = new GameEngine(3);
                 Check(game.ChooseInitialSkill(0, id).Success);
                 Check(game.State.Players[0].Hand.Count == 5 && game.State.Players[0].Hand[0] == id);
-                Check(game.State.Players[0].Deck.Count == 15 && game.State.Players[1].Hand.Count == 0);
+                Check(game.State.Players[0].Deck.Count == CardCatalog.TrainingDeck().Count - 5 && game.State.Players[1].Hand.Count == 0);
                 Check(game.State.Players[0].Hand.Concat(game.State.Players[0].Deck).Count(c => c == id) == CardCatalog.TrainingDeck().Count(c => c == id));
                 Check(!game.Start([]).Success);
                 Check(game.ChooseInitialSkill(1, CardCatalog.Destiny.Id).Success && game.Start([]).Success);

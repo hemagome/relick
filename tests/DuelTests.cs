@@ -77,7 +77,7 @@ static class DuelTests
                     throw new Exception($"Reconstrucción diferente en {game.State.Phase}, seed {seed}.");
                 var count = game.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count +
                     p.Skills.Count + p.AttachedCards.Count + p.Exchange.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));
-                if (count != 40) throw new Exception("Se perdió una carta al ejecutar el duelo.");
+                if (count != 2 * CardCatalog.TrainingDeck().Count) throw new Exception("Se perdió una carta al ejecutar el duelo.");
             }
             if (!resumed.Game.State.IsOver) throw new Exception("El duelo reconstruido no termina.");
         }

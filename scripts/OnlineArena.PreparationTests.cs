@@ -43,7 +43,7 @@ public partial class OnlineArena
             var hand = new[] { "magnet-shuffle", "magnet-shuffle", "senshuni", "extra-life", "attack" }
                 .Select((id, index) => new NetworkCard((ulong)(100 + index), id, (uint)index)).ToArray();
             var skills = new InitialSkillInfo(false, "", ["destiny-shuffle", "magnet-shuffle"]);
-            var beforeDeal = new PreparationInfo { DeckCountOne = 20, DeckCountTwo = 20 };
+            var beforeDeal = new PreparationInfo { DeckCountOne = CardCatalog.TrainingDeck().Count, DeckCountTwo = CardCatalog.TrainingDeck().Count };
             PresentInitialSkillChoice(room, skills, true, false, beforeDeal); await Layout();
             Check(InitialSkillConfirmButton!.Disabled && _snapshot!.Players[seat].Hand.Length == 0, "Se reparte antes de elegir habilidad.");
             var buildCount = BoardBuildCount; var confirmId = InitialSkillConfirmButton.GetInstanceId();

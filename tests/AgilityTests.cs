@@ -53,7 +53,7 @@ static class AgilityTests
             Check(g.Attack(0, 1, 0).Success && g.PlayCode(0, 0).Success);
             Check(g.State.Phase == Phase.ErrorResponse && g.PlayCode(1, 0).Success);
             Check(g.State.PendingAttackRoll is { Die: 2, Modified: false } && p.ActionsLeft == 2);
-            Check(CardCatalog.TrainingDeck().Count == 20 && CardCatalog.TrainingDeck().Contains(CardCatalog.Agility.Id));
+            Check(CardCatalog.TrainingDeck().Count == 23 && CardCatalog.TrainingDeck().Contains(CardCatalog.Agility.Id));
         })
     };
     private static (GameEngine, ScriptedRandom) Fixture()

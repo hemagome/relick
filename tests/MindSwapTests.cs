@@ -9,7 +9,7 @@ static class MindSwapTests
         {
             var c = CardCatalog.MindSwap;
             Check(c.Kind == CardKind.Code && c.CodeType == CodeType.Play && c.ActionCost == 1 && c.PrCost == 0 && !c.IsCombo && c.EarliestTurn == 2);
-            Check(CardCatalog.TrainingDeck().Count == 20 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 23 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Cambio de Mentes: prohíbe el primer turno global, también desde memoria, sin cobrar costes", () =>
         {

@@ -5,11 +5,11 @@ static class KonamyCodeTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
-        ("Konamy: Jugada sin COMBO, una acción, cero PR y mazo de veinte cartas", () =>
+        ("Konamy: Jugada sin COMBO, una acción, cero PR y mazo de desarrollo", () =>
         {
             var c = CardCatalog.KonamyCode;
             Check(c.Kind == CardKind.Code && c.CodeType == CodeType.Play && !c.IsCombo && c.ActionCost == 1 && c.PrCost == 0);
-            Check(CardCatalog.TrainingDeck().Count == 20 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 23 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Konamy: permite ataques, equipos y códigos, excluye habilidades y conserva el orden del mazo", () =>
         {

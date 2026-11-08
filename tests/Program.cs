@@ -9,7 +9,7 @@ var tests = new (string Name, Action Run)[]
         {
             Eq(p.Hand.Count, 5);
             Eq(p.Hand[0], "magnet-shuffle");
-            Eq(Count(p), 20);
+            Eq(Count(p), CardCatalog.TrainingDeck().Count);
         }
         Ok(!g.Advance(0).Success);
     }),
@@ -19,7 +19,7 @@ var tests = new (string Name, Action Run)[]
         var old = g.State.Players[0].Hand.Take(2).ToArray();
         Ok(g.Start(new[] { 0, 1, 1 }).Success);
         Ok(!g.Start(Array.Empty<int>()).Success);
-        foreach (var p in g.State.Players) { Eq(Count(p), 20); Ok(p.Bonus != null); }
+        foreach (var p in g.State.Players) { Eq(Count(p), CardCatalog.TrainingDeck().Count); Ok(p.Bonus != null); }
         Ok(g.State.Players[0].Deck.TakeLast(2).Order().SequenceEqual(old.Order()));
         Eq(g.State.Turn, 1);
     }),
@@ -109,10 +109,10 @@ var tests = new (string Name, Action Run)[]
         var rejected = g.Learn(0, 0);
         Ok(!rejected.Success && rejected.Message.Contains("cuatro")); Eq(Fingerprint(g), full);
     }),
-    ("El mazo conserva 20 cartas y contiene ambas habilidades y los equipos", () =>
+    ("El mazo conserva 23 cartas y contiene ambas habilidades y los equipos", () =>
     {
         var deck = CardCatalog.TrainingDeck();
-        Eq(deck.Count, 20);
+        Eq(deck.Count, 23);
         var skills = deck.Where(id => CardCatalog.Get(id).Kind == CardKind.Skill).ToArray();
         Eq(skills.Length, 2); Eq(skills.Distinct().Count(), 2);
         Eq(skills.Count(id => id == CardCatalog.Magnet.Id), 1); Eq(skills.Count(id => id == CardCatalog.Destiny.Id), 1);
@@ -527,7 +527,7 @@ var tests = new (string Name, Action Run)[]
                 Ok(result.Success, $"seed {seed}: {result.Message}");
                 foreach (var p in g.State.Players)
                 {
-                    Eq(g.State.Players.Sum(Count), 40);
+                    Eq(g.State.Players.Sum(Count), 2 * CardCatalog.TrainingDeck().Count);
                     Ok(p.Health >= 0 && p.Health <= p.MaxHealth);
                     Ok(p.Relikia >= 0);
                     Ok(p.Skills.Count <= GameEngine.MaxSkills);
@@ -542,7 +542,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)
@@ -575,7 +575,8 @@ static (GameEngine, ScriptedRandom) Combat()
     var rng = new ScriptedRandom();
     var g = TestGame.Create(rng);
     g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0; g.State.Turn = 1;
-    g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("attack");
+    foreach (var player in g.State.Players) player.Hand.Clear();
+    g.State.Active.Hand.Add("attack");
     g.State.Active.Skills.Add("destiny-shuffle");
     return (g, rng);
 }

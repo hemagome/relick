@@ -162,7 +162,7 @@ try
     Check(restored.Hand.Length == (opening.StartingSeat == 0 ? 6 : 5) && b.Hand.Length == (opening.StartingSeat == 1 ? 6 : 5), "El jugador inicial roba una carta al empezar el primer turno");
     Check(!restored.Hand.Select(c => c.Id).Intersect(selectedA).Any() && ids.Skip(2).All(id => restored.Hand.Any(c => c.Id == id)), "Cambio parcial conserva las cartas elegidas para mantener");
     Check(!b.Hand.Select(c => c.Id).Intersect(originalB).Any(), "Se pueden cambiar las cinco cartas de la mano inicial");
-    Check(opening.HandCountOne + opening.DeckCountOne + 1 == 20 && opening.HandCountTwo + opening.DeckCountTwo + 1 == 20, "Se conservan las veinte cartas por jugador con Bonus fuera del mazo");
+    Check(opening.HandCountOne + opening.DeckCountOne + 1 == CardCatalog.TrainingDeck().Count && opening.HandCountTwo + opening.DeckCountTwo + 1 == CardCatalog.TrainingDeck().Count, "Se conservan las cartas del mazo por jugador con Bonus fuera del mazo");
     var snapshot = OpeningFingerprint(restored);
     restored.Connection.Reducers.ConfirmPreparation(code, selectedA, commandA);
     b.Connection.Reducers.ConfirmPreparation(code, originalB, commandB);

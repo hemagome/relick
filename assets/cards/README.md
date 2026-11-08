@@ -208,3 +208,18 @@ Los descartes por efectos y por Destiny permiten equiparla gratis o colocarla en
 Destrucción, canje y devolución al mazo no son descartes. El equipo gratuito admite
 Error de Carga, que no devuelve acciones al dueño porque no se gastaron.
 Una copia sustituye la segunda Destiny, manteniendo veinte cartas y ambas habilidades.
+
+## Triple Ataque Cruzado
+
+`triple-cross-attack-clean.png` restaura el PNG aportado con `image_gen`, a 697×987,
+sin la marca diagonal y conservando reglas y créditos. Original y prompt:
+`output/imagegen/triple-cross-attack-original.png` y `triple-cross-attack-prompt.txt`.
+Jugada sin COMBO: una acción, cero PR. Añade tres cartas de tipo Ataque del mazo
+propio a la mano; si quedan menos, recupera las disponibles. Sin Ataques no se puede
+activar. No busca habilidades, no baraja y conserva el orden de las cartas restantes.
+Error de Carga puede cancelarla antes de la búsqueda; Caja de Cartón no responde.
+Admite Relikia. Si se toma la última carta del mazo, continúa el agotamiento normal;
+el reciclaje no añade objetivos nuevos a esta búsqueda. Las manos siguen siendo privadas.
+El mazo de desarrollo pasa a 23 cartas: tres Ataques y una copia de cada otra carta,
+sin retirar cartas existentes. Las notas anteriores de veinte cartas describen los
+mazos usados al incorporar cada carta en aquel momento.

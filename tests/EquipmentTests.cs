@@ -6,7 +6,7 @@ static class EquipmentTests
     {
         ("Catálogo jugable solo real; equipo y cartas sobre Relikario empiezan vacíos", () =>
         {
-            var deck = CardCatalog.TrainingDeck(); Check(deck.Count == 20 && deck.Count(id => id == CardCatalog.Pendant.Id) == 1 && deck.Count(id => id == CardCatalog.DiamondHelmet.Id) == 1);
+            var deck = CardCatalog.TrainingDeck(); Check(deck.Count == 23 && deck.Count(id => id == CardCatalog.Pendant.Id) == 1 && deck.Count(id => id == CardCatalog.DiamondHelmet.Id) == 1);
             Check(deck.All(id => CardCatalog.All.ContainsKey(id)));
             Check(TestGame.Create(42).State.Players.All(p => p.Equipment == null && p.AttachedCards.Count == 0));
         }),
