@@ -184,6 +184,7 @@ public sealed partial class GameEngine
 
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
+        if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p) }); return; }
         if (card.ResetMind) { BeginMindReset(Array.IndexOf(State.Players, p)); return; }
         if (card.SwapHands) { SwapHands(Array.IndexOf(State.Players, p)); return; }
         if (card.SearchNonSkill)

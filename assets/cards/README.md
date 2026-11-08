@@ -170,3 +170,14 @@ una carta. Las memorias corruptas no son seleccionables. Si al mirar solo hay
 habilidades, el efecto termina sin devolver cartas ni robar. Error de Carga puede
 anularlo y devolver el coste; Caja de Cartón no responde a códigos Jugada.
 Una copia sustituye una de Ataque, manteniendo el mazo de veinte cartas.
+
+## Esquivar
+
+`dodge-clean.png` restaura la imagen aportada en Downloads/esquivar con `image_gen`,
+a 697×987, sin la marca diagonal y conservando reglas y créditos impresos.
+Original y prompt: `output/imagegen/dodge-original.jpg` y `dodge-prompt.txt`.
+Código Jugada COMBO, una acción del defensor. Ante un ataque pendiente lanza D6:
+1–3 roba una carta y conserva la decisión de defensa; 4–6 niega el ataque completo,
+sin daño ni efecto crítico de Magnet y retirando el premio de ese ataque.
+Admite Error de Carga y modificadores del dado. Una copia sustituye una de Senshuni
+para conservar el mazo de veinte cartas.

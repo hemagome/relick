@@ -44,7 +44,7 @@ public sealed partial class GameEngine
 
     private void RollWithRelikario(PlayerState p, DiePurpose purpose, DieEffect effect)
     {
-        var die = Roll(purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
+        var die = Roll(purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
         if ((p.Relikario.CanRerollAnyDie && !p.AttackRerollUsedThisTurn && die != 1) || p.Equipment == CardCatalog.Pendant.Id || HasRerollCombo(Array.IndexOf(State.Players, p)))
         {
             _pendingDieEffect = effect;

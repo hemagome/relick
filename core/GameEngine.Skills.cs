@@ -13,7 +13,8 @@ public sealed partial class GameEngine
             .Where(i => p.Skills[i] == CardCatalog.Destiny.Id && p.CountersOnSkill(i) < 2);
     }
 
-    private bool CanDefend(int actor, bool critical) => State.Players[actor].Equipment == CardCatalog.CardboardBox.Id ||
+    private bool CanDefend(int actor, bool critical) =>
+        State.Players[actor].Hand.Any(id => CardCatalog.Get(id).DodgeAttack && State.Players[actor].ActionsLeft >= CardCatalog.Get(id).ActionCost) || State.Players[actor].Equipment == CardCatalog.CardboardBox.Id ||
         (State.Players[actor].Hand.Count >= (critical ? 4 : 3) && AvailableDefenses(actor).Any());
 
     public CommandResult PassDefense(int actor)

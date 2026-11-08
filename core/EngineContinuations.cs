@@ -78,6 +78,22 @@ public sealed partial class GameEngine
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {
+            case DiePurpose.Dodge:
+                _activeActivation = null;
+                if (die <= 3)
+                {
+                    Log($"{p.Name} resuelve Esquivar: dado {die}, roba una carta; el ataque sigue pendiente.");
+                    DrawCards(p, 1);
+                }
+                else
+                {
+                    var attack = State.PendingAttack!;
+                    var attacker = State.Players[attack.Attacker];
+                    attacker.Relikia = Math.Max(0, attacker.Relikia - CardCatalog.Get(attack.SkillId).Reward);
+                    State.PendingAttack = null; State.Phase = Phase.Combat;
+                    State.LastCombat = $"{p.Name} niega el ataque con Esquivar (dado {die})."; Log(State.LastCombat);
+                }
+                break;
             case DiePurpose.MagnetDamage:
                 Log($"{p.Name} lanza D6 por el daño normal de Magnet Shuffle: {die}.");
                 ResolveAttackResult(effect.Actor, CardCatalog.Get(effect.SkillId), effect.AttackDie, die, effect.Rerolled); break;
