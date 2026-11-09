@@ -52,6 +52,7 @@ public partial class OnlineArena
     internal async Task CheckContextActionBar()
     {
         await CheckLoadErrorChoices();
+        await CheckPointsChoices();
         void Check(bool value, string message) { if (!value) throw new Exception(message); }
         async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
         async Task TapCard(int index)
@@ -214,5 +215,51 @@ public partial class OnlineArena
         }
         ResetInteraction();
         GD.Print("PVP_LOAD_ERROR_CHOICES_PASS · Error y contraerror con ambas respuestas visibles tras recuperar, en cuatro tamaños y ambos jugadores/asientos.");
+    }
+
+    private async Task CheckPointsChoices()
+    {
+        void Check(bool value, string message) { if (!value) throw new Exception(message); }
+        async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+        foreach (var actor in new[] { 0, 1 })
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        {
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size; await Layout();
+            var points = PendingCodeFixture(actor, CardCatalog.PointsIncrease.Id);
+            Check(points.PlayCode(actor, 0).Success && points.State.Phase == Phase.PointsChoice, "No empieza la elección de PR.");
+            points = GameEngine.FromSnapshot(points.SaveSnapshot(), new SeededRandom(31));
+            foreach (var seat in new[] { 0, 1 })
+            {
+                ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(points, seat, 320)); await Layout();
+                CheckPendingCodeBounds();
+                Button[] Targets() => _moves.GetChildren().OfType<Button>().Where(b => b.Text is "Mis PR" or "PR del rival").ToArray();
+                if (seat != actor)
+                {
+                    Check(Targets().Length == 0 && !PresentsKind(DuelMoveKind.Points), "El rival ve el selector de Aumento de Relick Points.");
+                    Check(_selection.Text.Contains("rival"), "El rival no ve la espera de la elección de PR.");
+                    continue;
+                }
+                Check(Targets().Length == 2, "El dueño no puede elegir ambos destinos de PR.");
+                foreach (var target in new[] { actor, 1 - actor })
+                {
+                    var before = points.SaveSnapshot();
+                    GuiInputTestDriver.Click(Targets().Single(b => b.Text == (target == actor ? "Mis PR" : "PR del rival"))); await Layout();
+                    CheckPendingCodeBounds();
+                    var options = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.Points && PresentsOption(o)).ToArray();
+                    Check(options.Length == 2 && options.All(o => o.Move.Target == target) && options.Select(o => o.Move.Flag).Distinct().Count() == 2,
+                        "La elección de PR muestra otro destino o pierde uno de los signos.");
+                    foreach (var option in options)
+                    {
+                        var copy = GameEngine.FromSnapshot(before, new SeededRandom(31));
+                        Check(option.Move.Apply(copy, actor).Success && copy.State.Phase == Phase.Actions &&
+                            copy.State.Players[target].Relikia == (option.Move.Flag ? points.State.PendingPoints!.Amount : 0), "El botón de PR resuelve otra opción.");
+                    }
+                    GuiInputTestDriver.Click(_moves.GetChildren().OfType<Button>().Single(b => b.Text == "×")); await Layout();
+                    Check(Targets().Length == 2 && points.SaveSnapshot() == before, "Seleccionar PR altera el duelo o pierde los destinos.");
+                }
+            }
+        }
+        ResetInteraction();
+        GD.Print("PVP_POINTS_CHOICES_PASS · PR privado con ambos destinos/signos tras recuperar, en cuatro tamaños y ambos jugadores/asientos.");
     }
 }

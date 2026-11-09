@@ -167,7 +167,7 @@ public partial class OnlineArena
                 s.Options.Select((o, i) => (o, i)).Where(c => c.o.Move.Kind == DuelMoveKind.DestinyDefense || c.o.Move.Kind == DuelMoveKind.ProtectDestruction && c.o.Move.Index >= 0).Select(c => c.i), true);
         }
         if (s.Phase == Phase.PointsChoice && _pointsTarget == null)
-            foreach (var player in new[] { s.MySeat, 1 - s.MySeat })
+            foreach (var player in s.Options.Where(o => o.Move.Kind == DuelMoveKind.Points).Select(o => o.Move.Target).Distinct().OrderBy(p => p != s.MySeat))
             {
                 var seat = player;
                 AddLocalButton(_moves, seat == s.MySeat ? "Mis PR" : "PR del rival", () => { _pointsTarget = seat; BuildMoves(); });
