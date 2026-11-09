@@ -51,6 +51,7 @@ public partial class OnlineArena
 
     internal async Task CheckContextActionBar()
     {
+        await CheckLoadErrorChoices();
         void Check(bool value, string message) { if (!value) throw new Exception(message); }
         async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
         async Task TapCard(int index)
@@ -145,5 +146,73 @@ public partial class OnlineArena
         }
         ResetInteraction();
         GD.Print("PVP_CONTEXT_ACTION_BAR_PASS · barra breve, costes, selección real de habilidades y zonas, índice/revisión, menús separados y cuatro tamaños para ambos asientos.");
+    }
+
+    private static GameEngine PendingCodeFixture(int actor, string card)
+    {
+        var hands = new List<string>[] { [CardCatalog.Attack.Id], [CardCatalog.Attack.Id] };
+        hands[actor] = [card, CardCatalog.Attack.Id];
+        var random = new DuelRandom(); random.Replay([4]);
+        var game = GameEngine.FromOpening(new DuelOpening { Names = ["Ana", "Beto"], StartingSeat = actor, Hands = hands,
+            Decks = [Enumerable.Repeat("attack", 30).ToList(), Enumerable.Repeat("attack", 30).ToList()], Bonuses = [null, null] }, random);
+        foreach (var p in game.State.Players) p.Dexterity = 0;
+        game.State.Phase = Phase.Actions;
+        return game;
+    }
+
+    private void CheckPendingCodeBounds()
+    {
+        var minimum = _root!.GetCombinedMinimumSize();
+        if (!(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1 && _hand!.GetGlobalRect().End.Y <= Size.Y + 1))
+            throw new Exception($"La decisión de código desborda la arena: mínimo {minimum}, raíz {_root.Size}.");
+    }
+
+    private async Task CheckLoadErrorChoices()
+    {
+        void Check(bool value, string message) { if (!value) throw new Exception(message); }
+        async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+        foreach (var actor in new[] { 0, 1 })
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        {
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size; await Layout();
+            var error = PendingCodeFixture(actor, CardCatalog.Senshuni.Id);
+            foreach (var p in error.State.Players) p.Hand.Add(CardCatalog.LoadError.Id);
+            Check(error.PlayCode(actor, 0).Success && error.State.Phase == Phase.ErrorResponse, "No empieza la ventana de Error de Carga.");
+            for (var step = 0; step < 2; step++)
+            {
+                error = GameEngine.FromSnapshot(error.SaveSnapshot(), new SeededRandom(32));
+                var responder = error.State.DecisionPlayer;
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(error, seat, (ulong)(321 + step))); await Layout();
+                    CheckPendingCodeBounds();
+                    if (seat != responder)
+                    {
+                        Check(!PresentsKind(DuelMoveKind.PlayCode) && !PresentsKind(DuelMoveKind.PassError), "El jugador en espera puede responder con Error.");
+                        continue;
+                    }
+                    void CheckResponse()
+                    {
+                        Check(PresentsKind(DuelMoveKind.PlayCode) && PresentsKind(DuelMoveKind.PassError),
+                            "Error de Carga no ofrece Anular y Dejar resolver sin depender de la selección de mano.");
+                        Check(_contextCost.Text == "1 acción", "Error de Carga oculta el coste de anular.");
+                    }
+                    CheckResponse();
+                    foreach (var index in new[] { 0, error.State.Players[seat].Hand.IndexOf(CardCatalog.LoadError.Id) })
+                    {
+                        var card = _handCards[index]; _hand!.EnsureControlVisible(card); await Layout();
+                        card.Disabled = false; GuiInputTestDriver.Click(card); await Layout(); CheckResponse();
+                    }
+                    var pass = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PassError);
+                    var copy = GameEngine.FromSnapshot(error.SaveSnapshot(), new SeededRandom(32));
+                    Check(pass.Move.Apply(copy, responder).Success && copy.State.Phase == Phase.Actions, "Dejar resolver no cierra la ventana de Error.");
+                }
+                var counter = DuelOptions.For(error, responder).Single(o => o.Move.Kind == DuelMoveKind.PlayCode);
+                Check(counter.Move.Apply(error, responder).Success, "No se puede anular con la opción presentada.");
+            }
+            Check(error.State.Phase == Phase.Actions && error.State.Players[actor].Hand.Count == 3, "El contraerror no permite resolver Senshuni.");
+        }
+        ResetInteraction();
+        GD.Print("PVP_LOAD_ERROR_CHOICES_PASS · Error y contraerror con ambas respuestas visibles tras recuperar, en cuatro tamaños y ambos jugadores/asientos.");
     }
 }

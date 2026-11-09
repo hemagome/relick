@@ -132,7 +132,10 @@ public partial class OnlineArena
     {
         var s = _snapshot!;
         var indices = Enumerable.Range(0, s.Options.Count).Where(i => s.Options[i].Move.Kind is not (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve)).ToList();
-        if (ChoosingEffectCards)
+        // Responses must remain visible even with no hand card (or another card) selected.
+        if (s.Phase == Phase.ErrorResponse)
+            indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
+        else if (ChoosingEffectCards)
             indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i])).ToList();
         else if (_fieldSelection is { } field)
             indices = indices.Where(i => MatchesField(s.Options[i].Move, field)).ToList();
@@ -221,6 +224,7 @@ public partial class OnlineArena
         var s = _snapshot!;
         if (s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name;
         if (s.Phase == Phase.GoldenTotemChoice && s.DecisionPlayer == s.MySeat) return "Tótem de Oro";
+        if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.LoadError.Name;
         var id = SelectedCardId(); if (id != null) return CardCatalog.Get(id).Name;
         if (s.Winner != null) return "Duelo terminado";
         if (_selected.Count > 1) return $"{_selected.Count} cartas seleccionadas";
@@ -241,6 +245,7 @@ public partial class OnlineArena
     {
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
+        if (s.Phase == Phase.ErrorResponse && myTurn) return "Anula la activación o deja que se resuelva.";
         if (ChoosingRecycling) return $"Selecciona {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas para reciclar.";
         if (s.Phase == Phase.GoldenTotemChoice && myTurn) return $"Elige hasta dos Tótems · {_selected.Count}/2 seleccionados.";
         if (s.Phase == Phase.TurnBuffDiscard && myTurn) return $"Faltan {s.ActivationDiscardsRemaining} descarte(s) · " + (_selected.Count == 1 ? CardCatalog.Get(SelectableCards[_selected.Single()]!).Name : "elige una carta");
