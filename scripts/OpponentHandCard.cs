@@ -10,6 +10,8 @@ public partial class OpponentHandCard : Button
     public Vector2 FaceSize { get; init; } = new(54, 76.4f);
     public bool IsFaceDown => PublicCard == null;
     public bool HasBackArtwork => _back != null;
+    public bool Targetable { get; set; }
+    public bool Chosen { get; set; }
     private Texture2D? _back;
 
     public override void _Ready()
@@ -46,10 +48,10 @@ public partial class OpponentHandCard : Button
             var extent = _back.GetSize() * scale;
             DrawTextureRect(_back, new Rect2((Size - extent) / 2, extent), false);
         }
-        if (PublicCard != null || IsHovered() || HasFocus())
+        if (PublicCard != null || IsHovered() || HasFocus() || Targetable || Chosen)
             DrawStyleBox(new StyleBoxFlat
             {
-                DrawCenter = false, BorderColor = PublicCard != null ? BoardArt.Gold : new Color("ef7890"),
+                DrawCenter = false, BorderColor = Chosen ? BoardArt.Gold : Targetable ? ArenaPresentation.Mint : PublicCard != null ? BoardArt.Gold : new Color("ef7890"),
                 BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
                 CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3
             }, new Rect2(Vector2.Zero, Size));

@@ -31,7 +31,7 @@ public partial class OnlineArena : Control
     private bool _needsBaseline = true;
     private ulong _connectionEpoch;
     private bool _layoutQueued;
-    private int _selectedSkill;
+    private int _selectedSkill = -1;
     private bool? _lastDisabled;
     private readonly List<HandCard> _handCards = [];
     private readonly List<HandCard> _initialSkillCards = [];
@@ -48,11 +48,12 @@ public partial class OnlineArena : Control
     private bool ChoosingDeckSearch => _snapshot is { Phase: Phase.DeckSearchChoice } s && s.DecisionPlayer == s.MySeat;
     private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat;
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);
-    private bool ChoosingEffectCards => ChoosingDeckSearch || ChoosingResetCards || ChoosingMemoryRecovery;
+    private bool ChoosingCorruption => _snapshot is { Phase: Phase.RelikiaChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Corrupt);
+    private bool ChoosingEffectCards => ChoosingDeckSearch || ChoosingResetCards || ChoosingMemoryRecovery || ChoosingCorruption || _showReplayMemory;
     private DuelOption[] _deckSearchOptions = [];
     private IReadOnlyList<string?> SelectableCards => ChoosingRecycling
         ? _snapshot!.Players[_snapshot.MySeat].Memory : ChoosingEffectCards
-            ? _deckSearchOptions.Select(o => o.CardId).ToArray() : _snapshot!.Players[_snapshot.MySeat].Hand;
+            ? _deckSearchOptions.Select(OptionCardId).ToArray() : _snapshot!.Players[_snapshot.MySeat].Hand;
 
     public override void _Ready()
     {
@@ -96,7 +97,7 @@ public partial class OnlineArena : Control
             var animate = !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
             var origins = CaptureOrigins(snapshot, previous);
             if (animate && IsAnimating) { ResetAnimations(); _die.Value = snapshot.Die; }
-            _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; _selected.Clear();
+            _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
             if (!animate)
             {
                 ResetAnimations(); _die.Value = snapshot.Die;
@@ -130,26 +131,16 @@ public partial class OnlineArena : Control
         _root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); ArenaViewport.ApplyInsets(_root, Compact ? 10 : 24, Compact ? 8 : 16);
         _root.AddThemeConstantOverride("separation", Short ? 4 : 8);
         var s = _snapshot!;
-        _deckSearchOptions = s.Options.Where(o => o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory).ToArray();
-        _selectedSkill = Math.Clamp(_selectedSkill, 0, Math.Max(0, s.Players[s.MySeat].Skills.Length - 1));
+        _deckSearchOptions = s.Options.Where(o => o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory ||
+            ChoosingCorruption && o.Move.Kind == DuelMoveKind.Corrupt || _showReplayMemory && o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode).ToArray();
+        if (_selectedSkill >= s.Players[s.MySeat].Skills.Length) _selectedSkill = -1;
         var header = new HBoxContainer(); _root.AddChild(header);
         var brand = ArenaPresentation.Text("R E L I C K", Compact ? 21 : 29, BoardArt.Gold);
         var brandColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         brandColumn.AddThemeConstantOverride("separation", 0); brandColumn.AddChild(brand); header.AddChild(brandColumn);
         _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;
         _status.Visible = !Short; brandColumn.AddChild(_status);
-        if (Compact)
-        {
-            var menu = new MenuButton { Text = "Menú", CustomMinimumSize = new(70, 48) }; header.AddChild(menu);
-            var popup = menu.GetPopup(); ArenaViewport.TouchMenu(popup); popup.AddItem("Reconectar", 0);
-            if (s.Winner != null || _preparing) popup.AddItem("Cerrar sala", 2);
-            popup.IdPressed += id => { if (id == 0) ReconnectRequested?.Invoke(); else Connection.Leave(); };
-        }
-        else
-        {
-            ArenaPresentation.Button(header, "Reconectar", () => ReconnectRequested?.Invoke());
-            if (s.Winner != null || _preparing) ArenaPresentation.Button(header, "Cerrar sala", Connection.Leave);
-        }
+        BuildArenaMenu(header);
         var phase = s.Winner != null ? s.Winner == -1 ? "EMPATE" : s.Winner == s.MySeat ? "¡VICTORIA!" : "DERROTA" :
             $"TURNO {s.Turn:00} · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
         var phaseCaption = _preparing ? PreparationCaption() : s.Winner != null ? phase : $"{PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
@@ -170,14 +161,14 @@ public partial class OnlineArena : Control
                 _selectedSkill, _portraits[relative], _life[relative], new ArenaPlayerActions
                 {
                     Memory = corrupt => ShowCards(corrupt ? "Memoria corrupta" : "Memoria", corrupt ? null : player.Memory, player.CorruptedCount),
-                    Attached = () => ShowCards("Sobre Yuno", player.Attached),
-                    Equipment = () => ShowCards(player.EquipmentDie > 0 ? $"Equipo · D6 guardado: {player.EquipmentDie}" : "Zona de equipos",
-                        (player.Equipment == null ? Array.Empty<string>() : Enumerable.Repeat(player.Equipment, player.EquipmentStackedCopies + 1)).Concat(player.EquipmentCovers ?? []).ToArray()),
+                    Attached = () => SelectFieldPile(seat, FieldZone.Attached),
+                    Equipment = () => SelectEquipment(seat),
+                    EquipmentCovers = () => SelectFieldPile(seat, FieldZone.EquipmentCover),
                     Skill = slot =>
                     {
                         if (slot >= player.Skills.Length) return;
                         if (relative == 1) ShowCards("Habilidad rival", [player.Skills[slot]]);
-                        else { _selectedSkill = slot; RefreshSelection(); }
+                        else SelectSkill(slot);
                     },
                     InspectSkill = slot => ShowCards("Habilidad", [player.Skills[slot]]),
                     Evolve = () => SendKind(DuelMoveKind.Evolve), CanEvolve = s.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve) && !Connection.PlayPending && !IsAnimating
@@ -186,20 +177,19 @@ public partial class OnlineArena : Control
         Player(0);
         var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? phase : s.LastCombat;
         var combat = ArenaPresentation.Combat(arena, _preparing, s.Winner != null, combatMessage, relativePlayers, BuildOpponentHand,
-            relative => { if (relativePlayers[relative].Bonus is { } id) ShowCards("Bonus", [id]); },
-            (relative, slot) => { if (slot < relativePlayers[relative].Exchange.Length) ShowCards("Canje", [relativePlayers[relative].Exchange[slot]]); }, Compact);
+            relative => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Bonus, -1),
+            (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), Compact);
         _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
         Player(1);
-        _selection = ArenaPresentation.Text("", 12, BoardArt.Muted); _selection.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        if (Short) _selection.MaxLinesVisible = 1;
-        body.Controls.AddChild(_selection);
-        var movesScroll = new ScrollContainer { Name = "MovesScroll", CustomMinimumSize = new(0, Short ? 56 : Compact ? 106 : 56), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        body.Controls.AddChild(movesScroll);
-        _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _moves.AddThemeConstantOverride("h_separation", 8); _moves.AddThemeConstantOverride("v_separation", 6); movesScroll.AddChild(_moves);
+        BuildActionArea(body.Controls);
+        if (Short)
+        {
+            _turnControls.GetParent().RemoveChild(_turnControls); header.AddChild(_turnControls);
+            header.MoveChild(_turnControls, header.GetChildCount() - 2);
+        }
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(body.Controls, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(body.Controls, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
-                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO");
+                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO");
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
@@ -219,7 +209,8 @@ public partial class OnlineArena : Control
         {
             var id = hand[i];
             var card = new OpponentHandCard { Name = $"OpponentHandCard{i}", PublicCard = id == null ? null : CardCatalog.Get(id), FaceSize = new(54, 76.4f) };
-            card.Pressed += () => ShowCards("Mano del rival", hand, hand.Length); row.AddChild(card);
+            var index = i;
+            card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);
         }
     }
 
@@ -232,6 +223,11 @@ public partial class OnlineArena : Control
             if (!_openingReturns.Add(id)) _openingReturns.Remove(id);
             SyncOpeningSelection(); RefreshSelection(); return;
         }
+        if (IsAnimating || index < 0 || index >= SelectableCards.Count) return;
+        if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == _snapshot.MySeat && o.Move.Value == (int)FieldZone.Hand))
+        { SelectField(_snapshot.MySeat, FieldZone.Hand, -1); return; }
+        _fieldSelection = null;
+        _skillContext = _skillContext && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.DestinyDefense && o.Move.Index == _selectedSkill);
         var defense = _snapshot!.Options.Any(o => o.RequiredDiscards > 0);
         if (!defense && !_selected.Contains(index)) _selected.Clear();
         if (!_selected.Add(index)) _selected.Remove(index);
@@ -241,54 +237,24 @@ public partial class OnlineArena : Control
     {
         foreach (var card in _handCards)
         { card.Chosen = _selected.Contains(int.Parse(card.Name.ToString()[8..])); card.QueueRedraw(); }
-        foreach (var skill in _ownSkills)
-        { skill.Chosen = skill.Skill != null && skill.SkillIndex == _selectedSkill; skill.QueueRedraw(); }
         BuildMoves();
     }
     private void BuildMoves()
     {
-        foreach (var child in _moves.GetChildren()) { _moves.RemoveChild(child); child.QueueFree(); }
-        _moveButtons.Clear();
-        var s = _snapshot!;
-        if (_preparing) { BuildPreparationMoves(); return; }
-        var defense = s.Options.Any(o => o.RequiredDiscards > 0);
-        _selection.Text = s.Winner != null ? "El duelo terminó." : _selected.Count > 0
-            ? ChoosingRecycling ? $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas seleccionadas."
-                : string.Join(" · ", _selected.Select(i => CardCatalog.Get(SelectableCards[i]!).Name))
-            : ChoosingRecycling ? "Elige las cartas de tu memoria que volverán al mazo."
-                : s.Phase == Phase.GoldenTotemChoice && s.DecisionPlayer == s.MySeat ? "Elige hasta dos Tótems de Salvación de tu mano y confirma cuántos colocar. Oro necesita un equipo debajo."
-                : ChoosingResetCards ? "Elige una carta y confirma su selección para Resetear la Mente."
-                : ChoosingDeckSearch ? "Elige una carta del mazo para añadirla a tu mano."
-                : ChoosingMemoryRecovery ? "Elige una carta de cualquier memoria para añadirla a tu mano."
-                : s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat ? $"Elige una carta de tu mano para pagar {CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name} · faltan {s.ActivationDiscardsRemaining} descarte(s)."
-                : s.Phase == Phase.Discard && s.DecisionPlayer == s.MySeat ? $"Descarta {s.DiscardsRemaining} carta(s) para resolver el efecto."
-                : s.Phase == Phase.Final && s.DecisionPlayer == s.MySeat ? $"Descarta {s.Players[s.MySeat].HandCount - GameEngine.MaxHandSize} carta(s) para terminar con un máximo de {GameEngine.MaxHandSize}."
-                : s.DecisionPlayer == s.MySeat ? "Toca una carta o una habilidad y elige tu jugada." : "Esperando al rival. Puedes responder si tienes un COMBO disponible.";
-        void PreviewSelectedCard()
+        foreach (var node in new[] { (Node)_moves, _turnControls })
+            foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); }
+        _moveButtons.Clear(); _actionMenus.Clear(); _advanceButton = null;
+        if (_preparing)
         {
-            var card = SelectableCards[_selected.Single()]!;
-            ArenaPresentation.Button(_moves, "Ver carta", () => ShowCards("Tu carta", [card]));
+            _contextTitle.Text = _choosingOpeningSkill ? "Habilidad inicial" : "Mano inicial";
+            _contextTitle.Visible = false;
+            _contextCost.Visible = false; _turnControls.Visible = false;
+            BuildPreparationMoves(); return;
         }
-        if (_selected.Count == 1 && !ChoosingEffectCards) PreviewSelectedCard();
-        if (!ChoosingEffectCards && _selectedSkill < s.Players[s.MySeat].Skills.Length)
-            ArenaPresentation.Button(_moves, "Ver habilidad", () => ShowCards("Tu habilidad", [s.Players[s.MySeat].Skills[_selectedSkill]]));
-        for (var i = 0; i < s.Options.Count; i++)
-        {
-            var optionIndex = i; var option = s.Options[i];
-            var handMove = option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange or DuelMoveKind.Discard or DuelMoveKind.Placement or DuelMoveKind.TurnBuffDiscard;
-            if (!defense && handMove && !_selected.Contains(option.Move.Index)) continue;
-            if (option.Move.Kind == DuelMoveKind.Attack && option.Move.Value != _selectedSkill) continue;
-            if (ChoosingEffectCards && option.CardId != null &&
-                (_selected.Count != 1 || !ReferenceEquals(_deckSearchOptions[_selected.Single()], option))) continue;
-            if (ChoosingEffectCards && option.Move.Kind == DuelMoveKind.Concede && _selected.Count == 1) PreviewSelectedCard();
-            var button = ArenaPresentation.Button(_moves, option.Label, () => PlayOption(optionIndex, s));
-            if (Compact) { button.AutowrapMode = TextServer.AutowrapMode.WordSmart; button.CustomMinimumSize = new(Short && Size.X >= 700 ? 280 : Math.Max(120, Size.X - 44), 48); }
-            button.SetMeta("discards", option.RequiredDiscards); _moveButtons.Add(button);
-            button.SetMeta("golden_totem", option.Move.Kind == DuelMoveKind.GoldenTotem);
-        }
-        if (s.Winner != null) ArenaPresentation.Button(_moves, "Cerrar sala", Connection.Leave);
+        RefreshBoardTargets(); BuildTurnControls(); BuildContextMoves();
         _lastDisabled = null; UpdateEnabled();
     }
+
     private void UpdateEnabled()
     {
         var disabled = _preparing ? !(_choosingOpeningSkill ? CanChooseInitialSkill : CanChooseOpening) || IsAnimating : !Connection.Ready || Connection.PlayPending || IsAnimating;
@@ -300,12 +266,29 @@ public partial class OnlineArena : Control
             button.Disabled = disabled || ((int)button.GetMeta("discards") > 0 || gold) && (int)button.GetMeta("discards") != _selected.Count ||
                 gold && _selected.Any(i => _snapshot!.Players[_snapshot.MySeat].Hand[i] != CardCatalog.Totem.Id);
         }
+        foreach (var menu in _actionMenus)
+        {
+            menu.Disabled = disabled;
+            var popup = menu.GetPopup();
+            for (var i = 0; i < popup.ItemCount; i++)
+            {
+                var option = popup.GetItemId(i);
+                var source = (bool)menu.GetMeta("choose_source", false);
+                popup.SetItemDisabled(i, disabled || !source && option < _snapshot!.Options.Count &&
+                    _snapshot.Options[option].RequiredDiscards > 0 && _snapshot.Options[option].RequiredDiscards != _selected.Count);
+            }
+        }
+        if (_arenaMenu != null)
+        {
+            var popup = _arenaMenu.GetPopup(); var abandon = popup.GetItemIndex(1);
+            if (abandon >= 0) popup.SetItemDisabled(abandon, disabled);
+        }
         if (_evolveButton is Button evolve)
             evolve.Disabled = disabled || !_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve);
         if (_choosingOpeningSkill && InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled |= _initialSkillCandidate == null;
+        if (_hand != null) foreach (var card in _handCards) card.Disabled = disabled;
         if (_choosingOpeningSkill && _hand != null)
             foreach (var card in _initialSkillCards) card.Disabled = disabled;
-        if (_hand != null) foreach (var card in _handCards) card.Disabled = disabled;
     }
     private void SendKind(DuelMoveKind kind)
     {
@@ -324,18 +307,21 @@ public partial class OnlineArena : Control
         else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode);
     }
 
-    private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0)
+    private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null)
     {
         if (GetChildren().OfType<Window>().Any(w => w.Visible)) return;
         var dialog = new AcceptDialog { Title = title, OkButtonText = "Volver al duelo" };
         var scroll = new ScrollContainer { CustomMinimumSize = new(Math.Min(620, Size.X - 48), Math.Min(390, Size.Y - 110)), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; scroll.AddChild(list);
         if (ids == null) list.AddChild(ArenaPresentation.Text($"{hiddenCount} cartas corruptas boca abajo. Su identidad permanece oculta."));
-        else foreach (var id in ids)
+        else for (var index = 0; index < ids.Count; index++)
         {
+            var id = ids[index];
             if (id == null) { list.AddChild(ArenaPresentation.Text("Carta oculta · mano del rival")); continue; }
             var card = CardCatalog.Get(id);
-            list.AddChild(new HandCard { Card = card, Disabled = true });
+            var item = new HandCard { Card = card, Disabled = select == null }; list.AddChild(item);
+            var chosen = index;
+            if (select != null) item.Pressed += () => { select(chosen); dialog.QueueFree(); };
             var text = ArenaPresentation.Text(card.Name + "\n" + card.Text); text.AutowrapMode = TextServer.AutowrapMode.WordSmart; list.AddChild(text);
         }
         if (ids?.Count == 0) list.AddChild(ArenaPresentation.Text("No hay cartas en esta zona."));

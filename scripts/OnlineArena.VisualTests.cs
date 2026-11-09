@@ -5,7 +5,7 @@ namespace Relick;
 
 public partial class OnlineArena
 {
-    internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
+    internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; ResetInteraction(); Render(); }
 
     internal async Task CheckGoldenTotemLayout()
     {
@@ -53,7 +53,7 @@ public partial class OnlineArena
                         var choices = current.Options.Where(o => o.Move.Kind == DuelMoveKind.GoldenTotem).ToArray();
                         if (choices.Length != 3 || !_selection.Text.Contains("hasta dos")) throw new Exception("Oro no explica la selección de cero a dos copias.");
                         SelectCard(0); SelectCard(1);
-                        if (_selected.Count != 2 || _moveButtons.Count(b => b.Text == choices.Single(o => o.RequiredDiscards == 2).Label) != 1)
+                        if (_selected.Count != 2 || _moveButtons.Count(b => ReferenceEquals(PresentedOption(b), choices.Single(o => o.RequiredDiscards == 2))) != 1)
                             throw new Exception("No se pueden seleccionar dos Tótems distintos sin descartar.");
                     }
                     if (step == 1)
@@ -133,7 +133,7 @@ public partial class OnlineArena
                     {
                         var options = snapshot.Options.Where(o => o.Move.Kind == DuelMoveKind.Totem).ToArray();
                         if (snapshot.DecisionPlayer != owner || options.Length != (owner == seat ? 2 : 0) ||
-                            options.Any(o => _moveButtons.Count(b => b.Text == o.Label) != 1))
+                            options.Any(o => _moveButtons.Count(b => ReferenceEquals(PresentedOption(b), o)) != 1))
                             throw new Exception("Tótem no presenta la decisión opcional al dueño correcto.");
                         if (snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance)) throw new Exception("Se permite saltar la protección del Tótem.");
                     }
@@ -194,11 +194,11 @@ public partial class OnlineArena
                             throw new Exception("Doblador pierde la cantidad o el origen del coste.");
                         if (seat == actor)
                         {
-                            if (!_selection.Text.Contains((2 - step).ToString()) || !_selection.Text.Contains(CardCatalog.TimeBender.Name))
+                            if (!_selection.Text.Contains((2 - step).ToString()) || !_contextTitle.Text.Contains(CardCatalog.TimeBender.Name))
                                 throw new Exception("Doblador no explica los descartes pendientes.");
                             SelectCard(0);
                             var label = _snapshot.Options.Single(o => o.Move.Kind == DuelMoveKind.TurnBuffDiscard && o.Move.Index == 0).Label;
-                            if (_moveButtons.Count(b => b.Text == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
+                            if (_moveButtons.Count(b => PresentedOption(b)?.Label == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
                                 throw new Exception("Doblador permite saltar el coste o selecciona otra carta.");
                         }
                         else if (_snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.TurnBuffDiscard))
@@ -263,7 +263,7 @@ public partial class OnlineArena
                     {
                         var decision = step == 1 ? actor : 1 - actor;
                         if (current.DecisionPlayer != decision || _handCards.Count != 0 ||
-                            _moveButtons.Count(b => b.Text == "Equipar gratis Mira de Sniper") != (seat == decision ? 1 : 0))
+                            _moveButtons.Count(b => PresentedOption(b)?.Move is { Kind: DuelMoveKind.Sniper, Flag: true }) != (seat == decision ? 1 : 0))
                             throw new Exception("Cartucho no conserva el dueño del descarte o roba antes de las Miras.");
                     }
                     if (step == 1)
@@ -329,7 +329,7 @@ public partial class OnlineArena
                             throw new Exception("La interfaz no presenta los descartes pendientes.");
                         var index = _handCards.Count - 1; SelectCard(index);
                         var label = _snapshot.Options.Single(o => o.Move.Kind == DuelMoveKind.Discard && o.Move.Index == index).Label;
-                        if (_moveButtons.Count(b => b.Text == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
+                        if (_moveButtons.Count(b => PresentedOption(b)?.Label == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
                             throw new Exception("La selección de descarte no corresponde a la carta o permite saltar el efecto.");
                     }
                     var minimum = _root!.GetCombinedMinimumSize();
@@ -376,8 +376,15 @@ public partial class OnlineArena
                     if (track == null || track.BonusButton.Caption.Contains("USADA") != (step is 1 or 2) ||
                         track.ExchangeButtons[0].Caption.Contains("USADA") != (step == 2))
                         throw new Exception("Jessica no presenta correctamente el uso de cada copia pública.");
-                    if (_moveButtons.Count(b => b.Text.StartsWith("Activar Jessica Lee")) != (step == 0 && actor == seat ? 2 : 0))
-                        throw new Exception("Jessica no ofrece cada zona al dueño en su combate, o permite repetir el efecto.");
+                    if ((track.BonusButton.Targetable ? 1 : 0) + (track.ExchangeButtons[0].Targetable ? 1 : 0) != (step == 0 && actor == seat ? 2 : 0))
+                        throw new Exception("Jessica no ilumina sus zonas al dueño en su combate, o permite repetir el efecto.");
+                    if (step == 0 && actor == seat)
+                    {
+                        SelectField(actor, FieldZone.Bonus, -1);
+                        if (!_moveButtons.Any(b => PresentedOption(b)?.Move is { Kind: DuelMoveKind.FieldCode, Value: (int)FieldZone.Bonus }))
+                            throw new Exception("Jessica no presenta la activación de la copia tocada.");
+                        ClearContext();
+                    }
                     if (step == 1 && _snapshot!.Die != 5) throw new Exception("La reconexión pierde el dado pendiente de Jessica.");
                     var minimum = _root.GetCombinedMinimumSize();
                     if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
@@ -442,7 +449,7 @@ public partial class OnlineArena
                         if (_handCards.Count != 2) throw new Exception("El coste no muestra la mano restante.");
                         SelectCard(0);
                         var label = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.TurnBuffDiscard && o.Move.Index == 0).Label;
-                        if (_moveButtons.Count(b => b.Text == label) != 1 || !_selection.Text.Contains(CardCatalog.Senshuni.Name))
+                        if (_moveButtons.Count(b => PresentedOption(b)?.Label == label) != 1 || !_selection.Text.Contains(CardCatalog.Senshuni.Name))
                             throw new Exception("La selección de descarte no corresponde a su opción autorizada.");
                     }
                     var minimum = _root.GetCombinedMinimumSize();
@@ -493,7 +500,7 @@ public partial class OnlineArena
                         throw new Exception("Disquete no distingue las otras copias de su copia activa.");
                     var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == 1);
                     SelectCard(index); var option = _deckSearchOptions[index];
-                    if (_moveButtons.Count(b => b.Text == option.Label) != 1 || !_selection.Text.Contains(CardCatalog.Bonfire.Name))
+                    if (_moveButtons.Count(b => ReferenceEquals(PresentedOption(b), option)) != 1 || !_contextTitle.Text.Contains(CardCatalog.Bonfire.Name))
                         throw new Exception("La selección de memoria no corresponde a su opción autorizada.");
                 }
                 else if (_handCards.Count != 1 || _deckSearchOptions.Length != 0 || _handCards[0].Card.Id != CardCatalog.Attack.Id)
@@ -544,9 +551,9 @@ public partial class OnlineArena
                     var skill = _root!.FindChild($"Skill{relative}_2", true, false) as SkillTile;
                     if (skill is not { HasSkillArtwork: true } || skill.Skill?.Id != CardCatalog.Reverse.Id || skill.Counters != (step == 0 ? 0 : 1))
                         throw new Exception("Reverse no presenta la ilustración o los aumentos públicos de esta copia.");
-                    if (step == 0 && _moveButtons.Any(b => b.Text.StartsWith("Relanzar por Reverse")) != (actor == seat))
+                    if (step == 0 && PresentsKind(DuelMoveKind.LearningDie) != (actor == seat))
                         throw new Exception("El aprendizaje no ofrece su relanzamiento al dueño correcto.");
-                    if (step == 2 && _moveButtons.Any(b => b.Text.StartsWith("Sacrificar Reverse")) != (actor == seat))
+                    if (step == 2 && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.ProtectDestruction && o.Move.Index >= 0 && PresentsOption(o)) != (actor == seat))
                         throw new Exception("La protección no ofrece la elección al dueño correcto.");
                     var minimum = _root.GetCombinedMinimumSize();
                     if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
@@ -599,7 +606,7 @@ public partial class OnlineArena
                 if (seat == actor)
                 {
                     remaining.EmitSignal(Button.SignalName.Pressed); SelectCard(0);
-                    if (!_moveButtons.Any(b => b.Text.StartsWith("Atacar con") && b.Text.Contains("espacio 2")))
+                    if (!_moveButtons.Any(b => PresentedOption(b)?.Move is { Kind: DuelMoveKind.Attack, Value: 0 }))
                         throw new Exception("El espacio físico no selecciona su habilidad para atacar.");
                 }
             }
@@ -663,7 +670,7 @@ public partial class OnlineArena
                 foreach (var relative in new[] { 0, 1 })
                     if ((_root.FindChild($"Dexterity{relative}", true, false) as Label)?.Text != "DEST 1")
                         throw new Exception("Falta el contador público de destreza.");
-                if (_moveButtons.Any(b => b.Text.StartsWith("Usar destreza")) != (seat == actor))
+                if (PresentsKind(DuelMoveKind.Dexterity) != (seat == actor))
                     throw new Exception("La opción de destreza no corresponde al dueño del dado.");
             }
             var cues = DuelVisualEvents.Capture(game);
@@ -700,7 +707,7 @@ public partial class OnlineArena
                 {
                     if (!_selection.Text.Contains("Descarta 2")) throw new Exception("Falta la indicación del límite de mano.");
                     SelectCard(0);
-                    if (!_moves.GetChildren().OfType<Button>().Any(b => b.Text.StartsWith("Descartar ")))
+                    if (!_moves.GetChildren().OfType<Button>().Any(b => b.Text == "Descartar"))
                         throw new Exception("Falta la opción para descartar la carta elegida.");
                 }
                 else if (_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Discard))
@@ -736,7 +743,7 @@ public partial class OnlineArena
                     {
                         if (!ChoosingResetCards || _handCards.Count == 0) throw new Exception("Faltan las cartas seleccionables de Resetear.");
                         SelectCard(0);
-                        if (!_moves.GetChildren().OfType<Button>().Any(b => b.Text.StartsWith(step < 3 ? "Memoria" : "Devolver")))
+                        if (!_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Move.Kind == (step < 3 ? DuelMoveKind.MindResetMemory : DuelMoveKind.MindResetHand)))
                             throw new Exception("Falta el botón para confirmar la carta de Resetear.");
                     }
                     if (seat != actor && ChoosingResetCards) throw new Exception("El rival recibe las selecciones privadas de Resetear.");
@@ -830,9 +837,9 @@ public partial class OnlineArena
                         throw new Exception("La búsqueda no filtra las habilidades del mazo.");
                     SelectCard(2);
                     var label = _deckSearchOptions[2].Label;
-                    if (_selected.Single() != 2 || _moveButtons.Count(b => b.Text == label) != 1 ||
-                        _deckSearchOptions[2].Move.Index != 3 || !_selection.Text.Contains(CardCatalog.ExtraLife.Name) ||
-                        _moves.GetChildren().OfType<Button>().First().Text != label)
+                    if (_selected.Single() != 2 || _moveButtons.Count(b => PresentedOption(b)?.Label == label) != 1 ||
+                        _deckSearchOptions[2].Move.Index != 3 || !_contextTitle.Text.Contains(CardCatalog.ExtraLife.Name) ||
+                        _moves.GetChildren().OfType<Button>().First().Text != "Añadir a mano")
                         throw new Exception("La carta ilustrada no corresponde a la opción autorizada del mazo.");
                 }
                 else if (_handCards.Count != 1 || _deckSearchOptions.Length != 0 || _handCards[0].Card.Id != CardCatalog.Attack.Id)

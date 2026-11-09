@@ -39,7 +39,15 @@ public partial class OnlineLobby
             // The other player's preparation may rebuild the controls while layout settles.
             GuiInputTestDriver.Click(resolve());
         }
-        Button ArenaButton(string text) => _arena!.FindChildren("*", "Button", true, false).OfType<Button>().First(b => b.Text == text);
+        async Task ArenaMenu(int id)
+        {
+            var menu = (MenuButton)_arena!.FindChild("ArenaMenu", true, false);
+            await Click(menu); var popup = menu.GetPopup(); await Until(() => popup.Visible);
+            popup.SetFocusedItem(popup.GetItemIndex(id));
+            popup.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = true }, true);
+            popup.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = false }, true);
+            await Frame();
+        }
         try
         {
             // Headless runs need embedded popups to exercise their GUI routing.
@@ -86,8 +94,7 @@ public partial class OnlineLobby
             if (host)
             {
                 await Until(() => System.IO.File.Exists(session + ".guest.ready"));
-                var concede = _lobby.Duel!.Options.Single(o => o.Move.Kind == DuelMoveKind.Concede);
-                await Click(ArenaButton(concede.Label));
+                await ArenaMenu(1);
                 var confirmation = _arena.GetChildren().OfType<ConfirmationDialog>().Single();
                 await Until(() => confirmation.Visible);
                 await Click(confirmation.GetOkButton());
@@ -97,7 +104,7 @@ public partial class OnlineLobby
             if (host)
             {
                 await Until(() => System.IO.File.Exists(session + ".guest.result"));
-                await Click(ArenaButton("Cerrar sala"));
+                await ArenaMenu(2);
             }
             else System.IO.File.WriteAllText(session + ".guest.result", "seen");
             await Until(() => _lobby.Room == null);

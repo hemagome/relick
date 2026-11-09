@@ -1,0 +1,127 @@
+using Godot;
+using Relick.Core;
+
+namespace Relick;
+
+public partial class OnlineArena
+{
+    private MenuButton? _arenaMenu;
+
+    private void BuildArenaMenu(Node header)
+    {
+        var s = _snapshot!;
+        _arenaMenu = new MenuButton { Name = "ArenaMenu", Text = "Menú", CustomMinimumSize = new(70, 48) };
+        header.AddChild(_arenaMenu); var popup = _arenaMenu.GetPopup(); ArenaViewport.TouchMenu(popup);
+        popup.AddItem("Reconectar", 0);
+        if (s.Options.Any(o => o.Move.Kind == DuelMoveKind.Concede)) popup.AddItem("Abandonar duelo", 1);
+        if (s.Winner != null || _preparing) popup.AddItem("Cerrar sala", 2);
+        popup.IdPressed += id =>
+        {
+            if (id == 0) ReconnectRequested?.Invoke();
+            if (id == 1) { var option = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Concede); if (option >= 0) PlayOption(option, s); }
+            if (id == 2) Connection.Leave();
+        };
+    }
+
+    private bool MatchesField(DuelMove move, (int Owner, FieldZone Zone, int Index) field)
+    {
+        var s = _snapshot!;
+        return move.Kind switch
+        {
+            DuelMoveKind.Destroy => move.Target == field.Owner && move.Value == (int)field.Zone &&
+                (move.Index == field.Index || field.Zone == FieldZone.Hand && move.Index < 0),
+            DuelMoveKind.FieldCode => field.Owner == s.MySeat && move.Value == (int)field.Zone && move.Index == field.Index,
+            DuelMoveKind.Magnet => field.Owner != s.MySeat && (move.Flag ? field.Zone == FieldZone.Bonus : field.Zone == FieldZone.Hand && move.Index == field.Index),
+            DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
+            DuelMoveKind.CodeResponse => move.Flag && field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
+            _ => false
+        };
+    }
+
+    private string? FieldCardId((int Owner, FieldZone Zone, int Index) field)
+    {
+        var p = _snapshot!.Players[field.Owner];
+        return field.Zone switch
+        {
+            FieldZone.Equipment => p.Equipment, FieldZone.EquipmentCover => p.EquipmentCovers?.ElementAtOrDefault(field.Index),
+            FieldZone.Bonus => p.Bonus, FieldZone.Exchange => p.Exchange.ElementAtOrDefault(field.Index),
+            FieldZone.Hand => p.Hand.ElementAtOrDefault(field.Index), FieldZone.Skill => p.Skills.ElementAtOrDefault(field.Index),
+            FieldZone.Attached => p.Attached.ElementAtOrDefault(field.Index), _ => null
+        };
+    }
+
+    private void SelectField(int owner, FieldZone zone, int index)
+    {
+        if (IsAnimating) return;
+        if (zone == FieldZone.Hand && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)FieldZone.Hand && o.Move.Index < 0)) index = -1;
+        var field = (owner, zone, index);
+        if (_snapshot!.Options.Any(o => MatchesField(o.Move, field)))
+        {
+            _selected.Clear(); _skillContext = false; _fieldSelection = field; RefreshSelection();
+        }
+        else if (FieldCardId(field) is { } id) ShowCards("Carta en juego", [id]);
+        else if (zone == FieldZone.Hand) ShowCards("Mano rival", _snapshot.Players[owner].Hand);
+    }
+
+    private void SelectEquipment(int owner) => SelectField(owner, FieldZone.Equipment, -1);
+
+    private void SelectFieldPile(int owner, FieldZone zone)
+    {
+        var ids = zone == FieldZone.EquipmentCover ? _snapshot!.Players[owner].EquipmentCovers ?? [] : _snapshot!.Players[owner].Attached;
+        var targetable = _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)zone);
+        if (ids.Length == 1 && targetable) { SelectField(owner, zone, 0); return; }
+        ShowCards(zone == FieldZone.EquipmentCover ? "Sobre el equipo" : "Sobre Yuno", ids, select: targetable ? index => SelectField(owner, zone, index) : null);
+    }
+
+    private void SelectSkill(int index)
+    {
+        if (IsAnimating) return;
+        var s = _snapshot!; _selectedSkill = index; _fieldSelection = null;
+        var attacking = !ChoosingEffectCards && _selected.Count == 1 && s.Players[s.MySeat].Hand.ElementAtOrDefault(_selected.Single()) == CardCatalog.Attack.Id;
+        _skillContext = !attacking;
+        if (!attacking && !s.Options.Any(o => o.Move.Kind == DuelMoveKind.DestinyDefense)) _selected.Clear();
+        RefreshSelection();
+    }
+
+    private void RefreshBoardTargets()
+    {
+        var s = _snapshot!;
+        var attack = !ChoosingEffectCards && !ChoosingRecycling && _selected.Count == 1 &&
+            s.Players[s.MySeat].Hand.ElementAtOrDefault(_selected.Single()) == CardCatalog.Attack.Id;
+        var attackOptions = attack ? s.Options.Where(o => o.Move.Kind == DuelMoveKind.Attack && o.Move.Index == _selected.Single()).ToArray() : [];
+        var available = attackOptions.Select(o => o.Move.Value).Distinct().ToArray();
+        if (attack && !available.Contains(_selectedSkill)) _selectedSkill = available.Length == 1 ? available[0] : -1;
+        foreach (var tile in _ownSkills)
+        {
+            tile.Targetable = tile.Skill != null && (available.Contains(tile.SkillIndex) || s.Options.Any(o =>
+                o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && o.Move.Index >= 0 && o.Move.Index == tile.SkillIndex));
+            tile.Chosen = tile.Skill != null && tile.SkillIndex == _selectedSkill && (attack || _skillContext);
+            tile.QueueRedraw();
+        }
+        for (var relative = 0; relative < 2; relative++)
+        {
+            var owner = relative == 0 ? s.MySeat : 1 - s.MySeat;
+            void Mark(ZoneCardButton? node, FieldZone zone, int index)
+            {
+                if (node == null) return;
+                node.Targetable = s.Options.Any(o => MatchesField(o.Move, (owner, zone, index)));
+                node.Chosen = _fieldSelection == (owner, zone, index); node.QueueRedraw();
+            }
+            Mark(_root!.FindChild("EquipmentZone" + relative, true, false) as ZoneCardButton, FieldZone.Equipment, -1);
+            var covers = s.Players[owner].EquipmentCovers;
+            Mark(_root.FindChild("EquipmentCoverZone" + relative, true, false) as ZoneCardButton, FieldZone.EquipmentCover, (covers?.Length ?? 0) - 1);
+            if (_root.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track)
+            {
+                Mark(track.BonusButton, FieldZone.Bonus, -1);
+                for (var i = 0; i < track.ExchangeButtons.Length; i++) Mark(track.ExchangeButtons[i], FieldZone.Exchange, i);
+            }
+        }
+        foreach (var card in _root!.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>())
+        {
+            var index = int.Parse(card.Name.ToString()[16..]);
+            card.Targetable = s.Options.Any(o => MatchesField(o.Move, (1 - s.MySeat, FieldZone.Hand, index)));
+            card.Chosen = _fieldSelection is { } field && field.Owner != s.MySeat && field.Zone == FieldZone.Hand && (field.Index < 0 || field.Index == index);
+            card.QueueRedraw();
+        }
+    }
+}

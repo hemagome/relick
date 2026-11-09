@@ -50,21 +50,12 @@ public partial class OnlineLobby
                 if (choice.option == null) choice = choices[0];
                 if (ownTurn)
                 {
-                    var cards = _arena!.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().ToArray();
-                    if (choice.option.RequiredDiscards > 0)
-                        foreach (var card in cards.Take(choice.option.RequiredDiscards)) card.EmitSignal(Button.SignalName.Pressed);
-                    else if (choice.option.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.RecoverMemory)
-                    {
-                        var searchOptions = snapshot.Options.Where(o => o.Move.Kind == choice.option.Move.Kind).ToArray();
-                        cards[Array.FindIndex(searchOptions, o => o.Move.Index == choice.option.Move.Index && o.Move.Target == choice.option.Move.Target)].EmitSignal(Button.SignalName.Pressed);
-                    }
-                    else if (choice.option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange or DuelMoveKind.Discard or DuelMoveKind.Placement or DuelMoveKind.TurnBuffDiscard)
-                        cards[choice.option.Move.Index].EmitSignal(Button.SignalName.Pressed);
-                    var button = _arena.FindChildren("*", "Button", true, false).OfType<Button>().FirstOrDefault(b => b.Text == choice.option.Label);
-                    if (button == null || button.Disabled) throw new Exception("No hay botón activo para " + choice.option.Label);
-                    button.EmitSignal(Button.SignalName.Pressed);
+                    _arena!.PrepareTestOption(choice.index);
+                    if (!_arena.PressTestOption(choice.index)) throw new Exception("No hay control activo para " + choice.option.Label);
                 }
-                else rival.Play(choice.index, Enumerable.Range(0, choice.option.RequiredDiscards));
+                else rival.Play(choice.index, choice.option.Move.Kind == DuelMoveKind.GoldenTotem
+                    ? snapshot.Players[snapshot.MySeat].Hand.Select((id, i) => (id, i)).Where(c => c.id == CardCatalog.Totem.Id).Take(choice.option.RequiredDiscards).Select(c => c.i)
+                    : Enumerable.Range(0, choice.option.RequiredDiscards));
                 await Until(() => _lobby.Duel?.Revision == current.Revision + 1 && rival.Duel?.Revision == current.Revision + 1 && !_lobby.PlayPending && !rival.PlayPending);
                 if (!recoveryChecked && _lobby.Duel!.Visuals.Any(v => v.Kind == DuelVisualKind.Die))
                 {

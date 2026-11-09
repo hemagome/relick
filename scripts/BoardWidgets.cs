@@ -248,6 +248,7 @@ public partial class SkillTile : Button
     public int Slot { get; set; }
     public int SkillIndex { get; set; } = -1;
     public bool Chosen { get; set; }
+    public bool Targetable { get; set; }
     public int Counters { get; set; }
     public bool HasSkillArtwork => _skillArt != null;
     private Texture2D? _skillArt;
@@ -266,7 +267,7 @@ public partial class SkillTile : Button
     {
         var size = Size / PresentationScale;
         DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
-        var edge = Chosen ? Accent : new Color("34425e");
+        var edge = Chosen || Targetable ? Accent : new Color("34425e");
         var fill = Chosen ? BoardArt.Tint(Accent, 0.13f) : new Color("11192b");
         BoardArt.Plate(this, new Rect2(0, 0, size.X, size.Y), fill, edge, 9, Chosen ? 2 : 1);
         if (Skill == null) BoardArt.CenterText(this, $"{GameEngine.SkillSlotCosts[Slot]} PR", new(size.X / 2, size.Y / 2 + 8), 22, BoardArt.Muted);
@@ -275,7 +276,7 @@ public partial class SkillTile : Button
             var fit = Math.Min((size.X - 4) / _skillArt.GetWidth(), (size.Y - 4) / _skillArt.GetHeight());
             var artSize = _skillArt.GetSize() * fit;
             DrawTextureRect(_skillArt, new Rect2((size - artSize) / 2, artSize), false);
-            if (Chosen) BoardArt.Plate(this, new Rect2(Vector2.Zero, size), Colors.Transparent, Accent, 5, 3);
+            if (Chosen || Targetable) BoardArt.Plate(this, new Rect2(Vector2.Zero, size), Colors.Transparent, Chosen ? BoardArt.Gold : Accent, 5, Chosen ? 3 : 2);
             if (Skill.Id == CardCatalog.Destiny.Id)
             {
                 BoardArt.Plate(this, new Rect2(8, size.Y - 24, 114, 20), new Color("111a2c"), Accent, 4);
@@ -378,6 +379,8 @@ public partial class ExchangeTrack : VBoxContainer
 /// <summary>Inspectable card shared by the exchange and Bonus zones.</summary>
 public partial class ZoneCardButton : Button
 {
+    public bool Targetable { get; set; }
+    public bool Chosen { get; set; }
     public bool Compact { get; set; }
     public CardDefinition? Card { get; set; }
     public string Caption { get; set; } = "";
@@ -401,7 +404,7 @@ public partial class ZoneCardButton : Button
     }
     public override void _Draw()
     {
-        var edge = Card != null ? Accent.Darkened(IsHovered() || HasFocus() ? 0 : 0.55f) : new Color("303b51");
+        var edge = Chosen ? BoardArt.Gold : Card != null ? Accent.Darkened(IsHovered() || HasFocus() || Targetable ? 0 : 0.55f) : new Color("303b51");
         BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), Card == null ? new Color("111a2c") : new Color("172238"), edge, 8);
         BoardArt.CenterText(this, Caption, new(Size.X / 2, 13), 9, Card == null ? BoardArt.Muted : Accent);
         var thumb = new Rect2((Size.X - 28) / 2, 20, 28, 39);

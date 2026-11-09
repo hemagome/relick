@@ -9,6 +9,7 @@ public sealed class ArenaPlayerActions
     public Action<bool> Memory { get; init; } = _ => { };
     public Action Attached { get; init; } = () => { };
     public Action Equipment { get; init; } = () => { };
+    public Action EquipmentCovers { get; init; } = () => { };
     public Action<int> Skill { get; init; } = _ => { };
     public Action<int> InspectSkill { get; init; } = _ => { };
     public Action Evolve { get; init; } = () => { };
@@ -125,7 +126,7 @@ public static class ArenaPresentation
             var cover = new ZoneCardButton { Name = $"EquipmentCoverZone{index}", Caption = $"ORO ×{covers.Length}",
                 Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold,
                 TooltipText = "Tótem de Oro: se destruye en lugar de un Tótem de Salvación equipado." };
-            cover.Pressed += actions.Equipment; permanent.AddChild(cover);
+            cover.Pressed += actions.EquipmentCovers; permanent.AddChild(cover);
         }
         var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : owner.EquipmentStackedCopies > 0 ? $"EQUIPO ×{owner.EquipmentStackedCopies + 1}" : owner.Equipment == CardCatalog.Sniper.Id ? $"EQUIPO · {owner.EquipmentCounters}/3" : owner.EquipmentDie > 0 ? $"EQUIPO · D6: {owner.EquipmentDie}" : "EQUIPO 1/1",
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), EmptyCaption = "Sin equipo", Accent = new("81c8ef") };

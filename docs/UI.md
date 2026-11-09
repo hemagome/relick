@@ -22,6 +22,31 @@ El mulligan usa identificadores de copias: dos cartas iguales pueden seleccionar
 
 ## Distribución horizontal
 
+La barra contextual muestra el nombre de la carta elegida, el coste de su acción
+principal y verbos breves como Jugar, Equipar, Canjear o Atacar. Los índices de
+carta y espacio del protocolo no se usan como etiquetas de interfaz. Las consultas
+se agrupan en el botón de información y la selección se puede limpiar sin ejecutar
+una jugada. El avance de etapa ocupa un control separado, Relikia tiene su propio
+menú y Abandonar está en el menú general con su confirmación habitual.
+
+Al elegir un Ataque se iluminan las habilidades autorizadas; tocar una escoge la
+copia real para la confirmación. Una sola habilidad disponible se selecciona sin
+anunciar el ataque. Jessica se selecciona en su Bonus o canje, y las destrucciones
+y el crítico de Magnet eligen objetivos sobre sus zonas del tablero. La mano al
+azar se identifica como zona, aunque se haya tocado una de sus cartas. Las pilas
+con varias cartas conservan su selector e inspección.
+
+Los modificadores del dado se agrupan en Modificar. Los descartes y selecciones
+obligatorias mantienen sus cantidades y confirmaciones; Oro muestra una sola
+confirmación para la cantidad elegida. La recuperación, corrupción y activación
+desde memoria presentan una galería con el origen de cada copia. Solo se muestran
+identidades que ya estén autorizadas para el asiento.
+
+La presentación conserva el índice de opción original y la revisión del tablero
+para cada botón o entrada de menú. Los rótulos breves son locales al cliente y no
+modifican costes, efectos, mensajes del servidor ni el protocolo de red. Se bloquean
+los envíos durante animaciones, desconexión o una jugada pendiente, igual que antes.
+
 PC, tablet y teléfono comparten alcance horizontal. El proyecto permite girar entre ambos lados del teléfono. Una ventana de escritorio alta conserva un lienzo horizontal con bandas.
 
 Con menos de 1100 unidades lógicas de ancho, el campo admite desplazamiento vertical y los controles secundarios pasan al menú. En pantallas cortas —altura menor de 600— el tablero queda a la izquierda y mano/acciones a la derecha. La mano tiene desplazamiento horizontal independiente. Los objetivos táctiles principales miden al menos 48 unidades lógicas; los diálogos se ajustan al área disponible y admiten desplazamiento.
