@@ -39,6 +39,8 @@ public sealed class DuelPlayerView
 
 public sealed class DuelSnapshot
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AutoPassCombos { get; set; }
     public ulong Revision { get; set; }
     public int MySeat { get; set; }
     public int CurrentPlayer { get; set; }
@@ -79,6 +81,7 @@ public sealed class DuelSnapshot
         if (s.PendingGoldenTotem != null && !s.IsOver) stagePhase = Phase.Actions;
         return new DuelSnapshot
         {
+            AutoPassCombos = seat >= 0 && s.Players[seat].AutoPassCombos,
             Revision = revision, MySeat = seat, CurrentPlayer = s.CurrentPlayer, DecisionPlayer = s.DecisionPlayer,
             DiscardsRemaining = s.DiscardsRemaining,
             ExtraDrawStages = s.ExtraDrawStages, ExtraCombatStages = s.ExtraCombatStages,

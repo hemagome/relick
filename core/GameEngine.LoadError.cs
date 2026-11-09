@@ -4,7 +4,7 @@ public sealed partial class GameEngine
     private readonly List<EngineActivation> _activationChain = new();
     private EngineActivation? _activeActivation;
     private Phase _errorResumePhase;
-    private bool HasLoadError(int actor) => State.Players[actor].ActionsLeft > 0 && !HandReservedForActivation(actor) &&
+    private bool HasLoadError(int actor) => ComboResponsesEnabled(actor) && State.Players[actor].ActionsLeft > 0 && !HandReservedForActivation(actor) &&
         State.Players[actor].Hand.Any(id => CardCatalog.Get(id).CancelActivation);
     public bool CanPlayLoadError(int actor)
     {

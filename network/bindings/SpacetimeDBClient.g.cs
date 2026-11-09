@@ -645,6 +645,7 @@ namespace Relick.Network.Types
                 Reducer.JoinRoom args => Reducers.InvokeJoinRoom(eventContext, args),
                 Reducer.LeaveRoom args => Reducers.InvokeLeaveRoom(eventContext, args),
                 Reducer.PlayDuelV2 args => Reducers.InvokePlayDuelV2(eventContext, args),
+                Reducer.SetComboResponses args => Reducers.InvokeSetComboResponses(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
         }

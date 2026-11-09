@@ -16,7 +16,7 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -73,6 +73,7 @@ public sealed class DuelMove
         DuelMoveKind.EffectDamage => game.ResolveEffectDamage(actor),
         DuelMoveKind.Totem => game.ResolveTotem(actor, Flag),
         DuelMoveKind.GoldenTotem => game.ResolveGoldenTotem(actor, Discards),
+        DuelMoveKind.ComboResponses => game.SetComboResponses(actor, Flag),
         _ => CommandResult.Fail("Jugada desconocida.")
     };
 }

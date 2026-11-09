@@ -91,3 +91,31 @@ Para capturas:
 ```
 
 La vista previa de salas no se conecta a ningún servidor. Las pruebas de preparación, combate y dos procesos con entrada real están descritas en [PvP](PVP.md).
+
+## Respuestas COMBO
+
+El encabezado del duelo incluye un control táctil de dos estados, disponible
+para ambos jugadores durante su propio turno o el del rival:
+
+- **COMBO: preguntar** permite las respuestas opcionales de cartas COMBO.
+- **COMBO: pasar** omite esas respuestas y conserva las cartas, incluidos los
+  contraerrores. No consume acciones ni PR. Los COMBO pueden seguir jugándose
+  como jugadas voluntarias durante las etapas normales del turno propio.
+
+Pasar evita las pausas causadas exclusivamente por Error de Carga, Esquivar,
+Estrella del Fontanero y modificadores de dado COMBO. Si ya existe una ventana
+pendiente, apagar el control la pasa cuando no quedan decisiones de habilidades
+o equipos. No omite objetivos, descartes obligatorios, efectos ya iniciados,
+Destreza, Yuno, Destiny, Caja de Cartón ni protecciones de equipos. Volver a
+preguntar habilita oportunidades futuras; no reabre una activación ya resuelta.
+
+La preferencia pertenece al jugador en esa partida y persiste al reconectar.
+Viaja únicamente en el paquete privado: cambiarla sin avanzar el juego conserva
+la revisión, las opciones y las animaciones del rival. Las confirmaciones usan
+comandos idempotentes; reintentar uno anterior no revierte una elección posterior.
+No se añade una espera artificial uniforme: la preferencia es privada, pero las
+pausas de una respuesta manual todavía pueden revelar información por su duración.
+
+La matriz `--pvp-ui-test --combo-responses-only` comprueba ambos estados, cuatro
+tamaños y ambos jugadores/asientos. La prueba PvP local también verifica
+privacidad, reconexión, reintentos y rechazo de solicitudes ajenas o inválidas.

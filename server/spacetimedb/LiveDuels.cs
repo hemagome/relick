@@ -92,6 +92,7 @@ public static partial class Module
         {
             var view = DuelSnapshot.For(game, member.Seat, revision);
             var privateJson = JsonSerializer.Serialize(new DuelPrivateData { MySeat = member.Seat,
+                AutoPassCombos = view.AutoPassCombos,
                 OwnHand = view.Players[member.Seat].Hand, OpponentHand = game.State.Phase == Phase.MagnetChoice && game.State.CurrentPlayer == member.Seat ? view.Players[1 - member.Seat].Hand : [] }, DuelJson.Default.DuelPrivateData);
             var hand = ctx.Db.DuelHand.Player.Find(member.Player);
             var handVersion = hand?.Revision ?? revision;

@@ -6,6 +6,8 @@ public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoi
 
 public sealed class PlayerState
 {
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AutoPassCombos { get; internal set; }
     public PlayerState(RelikarioDefinition? relikario = null)
     {
         Relikario = relikario ?? RelikarioCatalog.Yuno;

@@ -17,6 +17,12 @@ public partial class OnlineLobby
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+            if (OS.GetCmdlineUserArgs().Contains("--combo-responses-only"))
+            {
+                await online.CheckComboResponseToggle(); online.QueueFree(); await Layout();
+                GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
+                GD.Print("PVP_COMBO_RESPONSES_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--context-only"))
             {
                 await online.CheckContextActionBar(); online.QueueFree(); await Layout();
@@ -103,6 +109,7 @@ public partial class OnlineLobby
             }
             GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
             await online.CheckVisualCues(DuelSnapshot.For(game, 1, 8));
+            await online.CheckComboResponseToggle();
             await online.CheckContextActionBar();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);

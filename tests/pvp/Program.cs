@@ -93,7 +93,7 @@ try
     Rejected(a, () => a.Connection.Reducers.ConfirmPreparation(code, [], Guid.NewGuid().ToString("N")), "No se puede confirmar antes de entrar el rival");
     b.Connection.Reducers.JoinRoom(code.ToLowerInvariant(), "Beto");
     Until(() => a.InitialSkills != null && b.InitialSkills != null);
-    Check(a.Hand.Length == 0 && b.Hand.Length == 0 && a.InitialSkills!.Options.ToHashSet().SetEquals(["destiny-shuffle", "magnet-shuffle"]), "Antes de elegir solo se ofrecen las habilidades del propio mazo");
+    Check(a.Hand.Length == 0 && b.Hand.Length == 0 && a.InitialSkills!.Options.ToHashSet().SetEquals(CardCatalog.TrainingDeck().Where(id => CardCatalog.Get(id).Kind == CardKind.Skill)), "Antes de elegir solo se ofrecen las habilidades del propio mazo");
     Rejected(a, () => a.Connection.Reducers.ConfirmPreparation(code, [], Guid.NewGuid().ToString("N")), "Mulligan antes de elegir rechazado");
     Rejected(a, () => a.Connection.Reducers.ChooseInitialSkill(code, "attack", Guid.NewGuid().ToString("N")), "Una carta que no es habilidad se rechaza");
     Rejected(a, () => a.Connection.Reducers.ChooseInitialSkill(code, "missing", Guid.NewGuid().ToString("N")), "Una habilidad fuera del mazo se rechaza");
@@ -209,6 +209,38 @@ try
     Check(fighterA.Duel!.Revision == 0 && b.Duel!.Revision == 0 && outsider.Duel == null, "La arena inicial está disponible solo para los miembros de la sala");
     Check(fighterA.Duel.Players[1].Hand.All(id => id == null) && b.Duel!.Players[0].Hand.All(id => id == null), "Cada arena oculta la mano del rival");
     Rejected(outsider, () => outsider.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), 0, []), "Un tercero no puede jugar ni elegir actor");
+    // Preferences remain private and do not invalidate the opponent's current options.
+    var rivalBeforeCombo = JsonSerializer.Serialize(b.Duel!, DuelJson.Default.DuelSnapshot);
+    var beforeComboSnapshot = service.Duel!;
+    var ownActionsBeforeCombo = service.Duel!.Players[service.Duel.MySeat].Actions;
+    service.SetComboResponses(false, nextCode);
+    Until(() => !service.PlayPending && service.Duel?.AutoPassCombos == true && fighterA.Duel?.AutoPassCombos == true);
+    Check(service.Duel!.Revision == 0 && b.Duel!.Revision == 0 &&
+        service.Duel.Players[service.Duel.MySeat].Actions == ownActionsBeforeCombo, "Toggle COMBO no consume acciones ni avanza la revisión pública");
+    Check(JsonSerializer.Serialize(b.Duel!, DuelJson.Default.DuelSnapshot) == rivalBeforeCombo,
+        "El rival no recibe cambios de preferencia, opciones, dados ni animaciones");
+    service.Play(0, expectedRevision: beforeComboSnapshot.Revision, expectedSnapshot: beforeComboSnapshot);
+    Check(!service.PlayPending && service.Message.Contains("La partida cambió") && service.Duel!.Revision == 0,
+        "Una vista anterior al toggle no puede enviar índices de opciones obsoletos con la misma revisión pública");
+    service.Connect(server, database, serviceToken);
+    Until(() => service.Ready && service.Duel?.AutoPassCombos == true);
+    Check(true, "Reconectar conserva el modo privado de respuestas COMBO");
+    service.SetComboResponses(true, nextCode);
+    Until(() => !service.PlayPending && service.Duel?.AutoPassCombos == false && fighterA.Duel?.AutoPassCombos == false);
+    var comboCommand = Guid.NewGuid().ToString("N");
+    fighterA.Connection.Reducers.SetComboResponses(nextCode, comboCommand, false);
+    Until(() => fighterA.Duel?.AutoPassCombos == true);
+    fighterA.Connection.Reducers.SetComboResponses(nextCode, Guid.NewGuid().ToString("N"), true);
+    Until(() => fighterA.Duel?.AutoPassCombos == false);
+    fighterA.Connection.Reducers.SetComboResponses(nextCode, comboCommand, false);
+    Until(() => fighterA.Connection.Db.MyMoveResult.Iter().SingleOrDefault()?.CommandId == comboCommand);
+    Check(!fighterA.Duel!.AutoPassCombos && fighterA.Duel.Revision == 0, "Reintentar una preferencia anterior no revierte la más reciente");
+    Rejected(fighterA, () => fighterA.Connection.Reducers.SetComboResponses(nextCode, comboCommand, true), "Un identificador de preferencia no admite otro valor");
+    Rejected(outsider, () => outsider.Connection.Reducers.SetComboResponses(nextCode, Guid.NewGuid().ToString("N"), false), "Un tercero no puede cambiar respuestas COMBO ajenas");
+    Rejected(fighterA, () => fighterA.Connection.Reducers.SetComboResponses(code, Guid.NewGuid().ToString("N"), false), "Una preferencia atrasada no se aplica a otra sala");
+    Rejected(fighterA, () => fighterA.Connection.Reducers.SetComboResponses(nextCode, "inválido", false), "Una preferencia con identificador inválido se rechaza");
+    Check(!fighterA.Duel!.AutoPassCombos && !b.Duel!.AutoPassCombos, "Las preferencias rechazadas no modifican a ninguno de los jugadores");
+
     var starter = fighterA.Duel.CurrentPlayer == 0 ? fighterA : b;
     var learn = starter.Duel!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Learn);
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), int.MaxValue, []), "Opción inventada rechazada por el servidor");
@@ -321,8 +353,12 @@ try
     service.Confirm([]); b.Connection.Reducers.ConfirmPreparation(recycleCode, [], Guid.NewGuid().ToString("N"));
     Until(() => fighterA.Duel != null && b.Duel != null);
     var recyclingChoices = 0; var passiveSteps = 0;
-    while (fighterA.Duel!.Winner == null && passiveSteps++ < 220)
+    // The larger development deck needs more commands. Respect the production
+    // budget shared with the preceding duel instead of increasing server limits.
+    Thread.Sleep(TimeSpan.FromSeconds(10));
+    while (fighterA.Duel!.Winner == null && passiveSteps++ < CardCatalog.TrainingDeck().Count * 12)
     {
+        Thread.Sleep(100);
         var actor = fighterA.Duel.DecisionPlayer == 0 ? fighterA : b;
         var before = actor.Duel!;
         var beforeViews = new[] { fighterA.Duel!, b.Duel! };
@@ -349,10 +385,11 @@ try
                      before.Players[before.MySeat].Hand[o.Option.Move.Index] == CardCatalog.MindSwap.Id));
             if (choice.Option == null && (before.Players[before.MySeat].Memory.Length < 6 || before.Players[before.MySeat].Bonus == CardCatalog.KonamyCode.Id))
                 choice = options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Exchange);
-            if (choice.Option == null) choice = options.First(o => o.Option.Move.Kind == DuelMoveKind.Advance);
+            if (choice.Option == null) choice = options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.Advance);
+            if (choice.Option == null) choice = options[0]; // Complete mandatory discard/target decisions before advancing.
         }
-        var selected = isRecycling ? Enumerable.Range(before.Players[before.MySeat].Memory.Length - choice.Option!.RequiredDiscards,
-            choice.Option.RequiredDiscards).ToList() : new List<int>();
+        var selected = SelectedCards.For(before, choice.Option!, isRecycling ?
+            before.Players[before.MySeat].Memory.Length - choice.Option!.RequiredDiscards : 0).ToList();
         var errors = actor.Errors.Count;
         actor.Connection.Reducers.PlayDuelV2(recycleCode, before.Revision, Guid.NewGuid().ToString("N"), choice.Index, selected);
         Until(() =>

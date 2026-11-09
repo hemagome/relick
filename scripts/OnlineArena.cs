@@ -88,6 +88,12 @@ public partial class OnlineArena : Control
             if (!_needsBaseline) { _needsBaseline = true; ResetAnimations(); }
         }
         var snapshot = Connection.Duel;
+        if (snapshot != null && _snapshot != null && snapshot.Revision == _snapshot.Revision &&
+            snapshot.AutoPassCombos != _snapshot.AutoPassCombos)
+        {
+            // Private preference updates do not advance the public duel revision.
+            ApplyPrivateComboPreference(snapshot);
+        }
         if (snapshot == null) UpdatePreparation();
         if (Connection.Ready && snapshot != null && (_needsBaseline || _preparing || _snapshot?.Revision != snapshot.Revision))
         {
@@ -112,6 +118,7 @@ public partial class OnlineArena : Control
             else if (animate) Animate(snapshot.Visuals, origins);
         }
         if (_root == null) return;
+        if (_snapshot != null) UpdateComboResponseToggle(_snapshot);
         if (_status.Text != Connection.Message) _status.Text = Connection.Message;
         UpdateFlights(delta);
         _diceOverlay.Visible = _die.IsPresented;
@@ -131,8 +138,7 @@ public partial class OnlineArena : Control
         _root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); ArenaViewport.ApplyInsets(_root, Compact ? 10 : 24, Compact ? 8 : 16);
         _root.AddThemeConstantOverride("separation", Short ? 4 : 8);
         var s = _snapshot!;
-        _deckSearchOptions = s.Options.Where(o => o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory ||
-            ChoosingCorruption && o.Move.Kind == DuelMoveKind.Corrupt || _showReplayMemory && o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode).ToArray();
+        RefreshEffectCardOptions();
         if (_selectedSkill >= s.Players[s.MySeat].Skills.Length) _selectedSkill = -1;
         var header = new HBoxContainer(); _root.AddChild(header);
         var brand = ArenaPresentation.Text("R E L I C K", Compact ? 21 : 29, BoardArt.Gold);
@@ -140,7 +146,7 @@ public partial class OnlineArena : Control
         brandColumn.AddThemeConstantOverride("separation", 0); brandColumn.AddChild(brand); header.AddChild(brandColumn);
         _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;
         _status.Visible = !Short; brandColumn.AddChild(_status);
-        BuildArenaMenu(header);
+        BuildComboResponseToggle(header); BuildArenaMenu(header);
         var phase = s.Winner != null ? s.Winner == -1 ? "EMPATE" : s.Winner == s.MySeat ? "¡VICTORIA!" : "DERROTA" :
             $"TURNO {s.Turn:00} · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
         var phaseCaption = _preparing ? PreparationCaption() : s.Winner != null ? phase : $"{PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
@@ -301,10 +307,10 @@ public partial class OnlineArena : Control
         if (state.Options[index].Move.Kind == DuelMoveKind.Concede)
         {
             var dialog = new ConfirmationDialog { Title = "Abandonar duelo", DialogText = "Tu rival ganará esta partida. ¿Quieres abandonar?" };
-            dialog.Confirmed += () => { Connection.Play(index, expectedRevision: state.Revision, expectedRoom: RoomCode); dialog.QueueFree(); };
+            dialog.Confirmed += () => { Connection.Play(index, expectedRevision: state.Revision, expectedRoom: RoomCode, expectedSnapshot: state); dialog.QueueFree(); };
             dialog.Canceled += () => dialog.QueueFree(); AddChild(dialog); ArenaViewport.FitDialog(dialog, Size);
         }
-        else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode);
+        else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode, state);
     }
 
     private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null)

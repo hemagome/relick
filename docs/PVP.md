@@ -205,3 +205,30 @@ Verificado en el esquema publicado de `relick-pvp-dev-c2006ee7`: las dos tablas 
 Se retiró `play_duel`, que únicamente rechazaba llamadas de clientes antiguos con una indicación de actualizar. La función activa conserva su nombre `play_duel_v_2`, sus parámetros y la confirmación privada mediante `my_move_result`. Los bindings del cliente y de las pruebas se regeneraron sin la función obsoleta; se retiró también la comprobación que esperaba su mensaje de actualización. No cambian las tablas ni las reglas de las partidas.
 
 Publicado en `relick-pvp-dev-c2006ee7` con `--delete-data=never`. El esquema remoto confirma que `play_duel` está ausente y conserva `play_duel_v_2` y `my_move_result`. Pasaron 68 comprobaciones PvP remotas; el cliente y los módulos principal y de pruebas compilan correctamente.
+
+## Preferencia privada de respuestas COMBO
+
+El reducer `set_combo_responses` permite a cada miembro cambiar únicamente su
+propia preferencia durante un duelo. No recibe un actor del cliente. Usa un
+identificador idempotente y los comprobantes privados existentes: reintentar un
+comando anterior no vuelve a aplicar su valor ni revierte una preferencia posterior.
+No añade tablas ni cambia los parámetros de las jugadas ordinarias.
+
+El estado se conserva en el snapshot privado y se proyecta en `DuelPrivateData`.
+Si cambiarlo no resuelve una respuesta pendiente, solo se actualizan el paquete
+y las opciones del solicitante, conservando sus versiones. La revisión pública,
+el paquete del rival y las animaciones permanecen intactos. El cliente actualiza
+el control y vuelve a enlazar las opciones sin reconstruir el tablero, conservando
+la selección actual. Rechaza botones de un snapshot anterior incluso cuando la
+revisión pública coincide.
+
+Si apagar el control pasa una respuesta pendiente de Error, defensa solo por
+COMBO o dado sin otras decisiones, el servidor ejecuta esa continuación una sola
+vez. Esta sí es una transición del juego: incrementa la revisión y transporta
+los resultados y animaciones mediante los paquetes habituales. Las selecciones
+obligatorias, habilidades, equipos y activaciones que ya empezaron se conservan.
+
+Validado en una base temporal local con dos identidades, recuperación de conexión,
+reintentos, privacidad, solicitudes inválidas y un duelo completo. Los bindings
+se regeneraron con el CLI 2.14.1. Esta actualización todavía no está publicada
+en la base remota; requiere actualizar juntos el módulo y el cliente.

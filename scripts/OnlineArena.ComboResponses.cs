@@ -1,0 +1,45 @@
+using Godot;
+using Relick.Core;
+
+namespace Relick;
+
+public partial class OnlineArena
+{
+    private Button? _comboResponsesToggle;
+
+    private void RefreshEffectCardOptions()
+    {
+        _deckSearchOptions = _snapshot!.Options.Where(o => o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory ||
+            ChoosingCorruption && o.Move.Kind == DuelMoveKind.Corrupt || _showReplayMemory && o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode).ToArray();
+    }
+
+    private void ApplyPrivateComboPreference(DuelSnapshot snapshot)
+    {
+        _snapshot = snapshot;
+        // Authorized options are new objects even when the public revision is unchanged.
+        // Rebind the gallery without losing the selected target or rebuilding the board.
+        RefreshEffectCardOptions(); BuildMoves(); UpdateComboResponseToggle(snapshot);
+    }
+
+    private void BuildComboResponseToggle(Node header)
+    {
+        _comboResponsesToggle = null;
+        if (_preparing || _snapshot?.Winner != null) return;
+        var toggle = new Button { Name = "ComboResponsesToggle", ToggleMode = true, CustomMinimumSize = new(0, 48) };
+        toggle.AddThemeFontSizeOverride("font_size", Short ? 12 : 14);
+        toggle.TooltipText = "Preguntar: permite responder con cartas COMBO.\nPasar: conserva tus COMBO y omite sus respuestas, incluidos contraerrores.\nNo omite decisiones de habilidades, equipos ni efectos ya iniciados.\nPreferencia privada; no consume acciones ni PR.";
+        var room = RoomCode;
+        toggle.Toggled += enabled => Connection.SetComboResponses(enabled, room);
+        header.AddChild(toggle); _comboResponsesToggle = toggle;
+        UpdateComboResponseToggle(_snapshot!);
+    }
+
+    private void UpdateComboResponseToggle(DuelSnapshot snapshot)
+    {
+        if (_comboResponsesToggle == null) return;
+        var enabled = Connection.RequestedComboResponses ?? !snapshot.AutoPassCombos;
+        _comboResponsesToggle.SetPressedNoSignal(enabled);
+        _comboResponsesToggle.Text = enabled ? "COMBO: preguntar" : "COMBO: pasar";
+        _comboResponsesToggle.Disabled = !Connection.Ready || Connection.PlayPending || snapshot.Winner != null;
+    }
+}

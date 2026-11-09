@@ -23,6 +23,10 @@ public sealed class LobbyConnection : IDisposable
     private List<ulong> _returnedCards = [];
     private string _confirmationRoom = "";
     private string? _playId;
+    private string? _comboId;
+    private string _comboRoom = "";
+    private bool _comboEnabled;
+    public bool? RequestedComboResponses => _comboId == null ? null : _comboEnabled;
     private string _playRoom = "";
     private ulong _playRevision;
     private int _playOption;
@@ -45,7 +49,7 @@ public sealed class LobbyConnection : IDisposable
     private string? _openingRoom;
     public PreparationInfo? OpeningResult => _openingRoom == Room?.Code ? _openingResult : null;
     public bool ConfirmationPending => _confirmationId != null;
-    public bool PlayPending => _playId != null;
+    public bool PlayPending => _playId != null || _comboId != null;
     public DuelSnapshot? Duel
     {
         get
@@ -98,6 +102,7 @@ public sealed class LobbyConnection : IDisposable
                     if (_initialSkillCommand != null) connection.Reducers.ChooseInitialSkill(_initialSkillRoom, _initialSkillDefinition, _initialSkillCommand);
                     if (_confirmationId != null) connection.Reducers.ConfirmPreparation(_confirmationRoom, _returnedCards, _confirmationId);
                     if (_playId != null) connection.Reducers.PlayDuelV2(_playRoom, _playRevision, _playId, _playOption, _playSelection);
+                    if (_comboId != null) connection.Reducers.SetComboResponses(_comboRoom, _comboId, _comboEnabled);
                 }).OnError((_, error) =>
                 {
                     Ready = false;
@@ -142,6 +147,16 @@ public sealed class LobbyConnection : IDisposable
                     Message = "No se recibió la confirmación. Pulsa Reconectar para comprobarla."; break;
             }
         };
+        _connection.Reducers.OnSetComboResponses += (context, _, _, _) =>
+        {
+            switch (context.Event.Status)
+            {
+                case Status.Committed: ResolvePlayResult(); break;
+                case Status.Failed(var reason): _comboId = null; Message = reason; break;
+                case Status.OutOfEnergy: _comboId = null; Message = "No se pudo cambiar las respuestas COMBO. Inténtalo de nuevo."; break;
+                default: Message = "No se recibió la preferencia. Pulsa Reconectar para comprobarla."; break;
+            }
+        };
         _connection.Reducers.OnChooseInitialSkill += (context, _, _, _) =>
         {
             switch (context.Event.Status)
@@ -183,6 +198,12 @@ public sealed class LobbyConnection : IDisposable
     private void ResolvePlayResult()
     {
         var result = _connection?.Db.MyMoveResult.Iter().SingleOrDefault();
+        if (_comboId != null && result?.CommandId == _comboId)
+        {
+            _comboId = null;
+            Message = result.Accepted ? "Respuestas COMBO actualizadas" : result.Error;
+            return;
+        }
         if (_playId == null || result?.CommandId != _playId) return;
         LastPlayLatencyMs = Stopwatch.GetElapsedTime(_playStarted).TotalMilliseconds;
         LastPlayAccepted = result.Accepted;
@@ -206,14 +227,28 @@ public sealed class LobbyConnection : IDisposable
         _initialSkillCommand = null;
         _confirmationId = null;
         _playId = null;
+        _comboId = null;
         Send(() => _connection!.Reducers.LeaveRoom());
     }
 
-    public void Play(int option, IEnumerable<int>? selectedCards = null, ulong? expectedRevision = null, string? expectedRoom = null)
+    public void SetComboResponses(bool enabled, string expectedRoom)
+    {
+        if (!Ready || PlayPending || Room?.Code != expectedRoom || Duel is not { Winner: null }) return;
+        _comboRoom = expectedRoom; _comboEnabled = enabled; _comboId = Guid.NewGuid().ToString("N");
+        try
+        {
+            _connection!.Reducers.SetComboResponses(_comboRoom, _comboId, enabled);
+            Message = "Actualizando respuestas COMBO…";
+        }
+        catch (Exception) { Message = "No se pudo comprobar la preferencia. Pulsa Reconectar."; }
+    }
+
+    public void Play(int option, IEnumerable<int>? selectedCards = null, ulong? expectedRevision = null, string? expectedRoom = null, DuelSnapshot? expectedSnapshot = null)
     {
         var duel = Duel;
         if (!Ready || PlayPending || duel == null || Room == null) return;
-        if ((expectedRevision != null && expectedRevision != duel.Revision) || (expectedRoom != null && expectedRoom != Room.Code))
+        if ((expectedRevision != null && expectedRevision != duel.Revision) || (expectedRoom != null && expectedRoom != Room.Code) ||
+            (expectedSnapshot != null && !ReferenceEquals(expectedSnapshot, duel)))
         {
             Message = "La partida cambió. Revisa el tablero antes de volver a jugar.";
             return;

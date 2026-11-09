@@ -87,6 +87,9 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Code) return "Elige un código.";
         var card = CardCatalog.Get(p.Hand[handIndex]);
+        if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
+            State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)))
+            return "Activa las respuestas COMBO para responder con esta carta.";
         if (!card.IsCombo) { var error = ValidateTurn(actor, Phase.Actions); if (error != null) return error; }
         if (p.ActionsLeft < card.ActionCost) return "No quedan acciones disponibles.";
         return CodeEffectUnavailable(p, card, excludedHand: handIndex);
@@ -114,7 +117,7 @@ public sealed partial class GameEngine
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
         : State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor;
-    private bool HasRerollCombo(int actor) => State.Players[actor].Hand.Any(id => { var c = CardCatalog.Get(id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && State.Players[actor].ActionsLeft >= c.ActionCost; });
+    private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => { var c = CardCatalog.Get(id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && State.Players[actor].ActionsLeft >= c.ActionCost; });
     private CommandResult PlayRerollCombo(int actor, int index)
     {
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);

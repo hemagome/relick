@@ -8,6 +8,8 @@ public sealed class DuelBoardPacket
 }
 public sealed class DuelPrivateData
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AutoPassCombos { get; set; }
     public int MySeat { get; set; }
     public string?[] OwnHand { get; set; } = [];
     public string?[] OpponentHand { get; set; } = [];
@@ -18,6 +20,7 @@ public static class DuelPackets
     {
         var board = packet.Board;
         board.MySeat = hand.MySeat;
+        board.AutoPassCombos = hand.AutoPassCombos;
         board.Players[hand.MySeat].Hand = hand.OwnHand;
         var opponent = board.Players[1 - hand.MySeat];
         if (hand.OpponentHand.Length > 0) opponent.Hand = hand.OpponentHand;

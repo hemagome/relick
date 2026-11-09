@@ -20,7 +20,7 @@ public sealed partial class GameEngine
     private bool HasTimeBenderForDraw()
     {
         var p = State.Active;
-        return p.Hand.Any(id => CardCatalog.All.TryGetValue(id, out var card) && card.RepeatStage &&
+        return !p.AutoPassCombos && p.Hand.Any(id => CardCatalog.All.TryGetValue(id, out var card) && card.RepeatStage &&
             p.ActionsLeft >= card.ActionCost && p.Relikia >= card.PrCost && p.Hand.Count >= card.DiscardCost + 1);
     }
 
