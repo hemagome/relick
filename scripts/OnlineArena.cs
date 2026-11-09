@@ -327,6 +327,8 @@ public partial class OnlineArena : Control
         var dialog = new AcceptDialog { Title = title, OkButtonText = "Volver al duelo" };
         var scroll = new ScrollContainer { CustomMinimumSize = new(Math.Min(620, Size.X - 48), Math.Min(390, Size.Y - 110)), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; scroll.AddChild(list);
+        // Inspectors build their controls in _Ready; attach the dialog before presenting cards.
+        dialog.AddChild(scroll); AddChild(dialog);
         if (ids == null) list.AddChild(ArenaPresentation.Text($"{hiddenCount} cartas corruptas boca abajo. Su identidad permanece oculta."));
         else for (var index = 0; index < ids.Count; index++)
         {
@@ -340,8 +342,8 @@ public partial class OnlineArena : Control
             inspector.Present(card, card.Name, ArenaActionText.CardCost(card));
         }
         if (ids?.Count == 0) list.AddChild(ArenaPresentation.Text("No hay cartas en esta zona."));
-        dialog.AddChild(scroll); dialog.Confirmed += () => dialog.QueueFree(); dialog.Canceled += () => dialog.QueueFree();
-        AddChild(dialog); ArenaViewport.FitDialog(dialog, Size);
+        dialog.Confirmed += () => dialog.QueueFree(); dialog.Canceled += () => dialog.QueueFree();
+        ArenaViewport.FitDialog(dialog, Size);
     }
 
     private static string PhaseName(Phase phase) => phase switch

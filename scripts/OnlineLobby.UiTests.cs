@@ -34,6 +34,11 @@ public partial class OnlineLobby
                 await online.CheckContextActionBar(); online.QueueFree(); await Layout();
                 GD.Print("PVP_CONTEXT_ONLY_PASS"); GetTree().Quit(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--memory-inspection-only"))
+            {
+                await online.CheckMemoryInspection(); online.QueueFree(); await Layout();
+                GD.Print("PVP_MEMORY_INSPECTION_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--golden-totem-only"))
             {
                 await online.CheckGoldenTotemLayout(); online.QueueFree(); await Layout();
@@ -117,6 +122,7 @@ public partial class OnlineLobby
             await online.CheckVisualCues(DuelSnapshot.For(game, 1, 8));
             await online.CheckComboResponseToggle();
             await online.CheckContextActionBar();
+            await online.CheckMemoryInspection();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();
