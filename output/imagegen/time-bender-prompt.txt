@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Asset type: complete portrait Spanish trading card game asset.
+Input image: edit target, user supplied DOBLADOR DE TIEMPO card.
+Primary request: remove only the large repeated semi-transparent diagonal RELICK watermark overlays from the entire card, faithfully reconstructing the black clock face, clock hands, blue cyan broken glass shards, blue glow, gray circuit board frame and white rule panel underneath.
+Constraints: preserve the complete original card, portrait aspect ratio, composition, artwork, all printed text, headings OBJETO, CÓDIGO and COMBO, name DOBLADOR DE TIEMPO, clock labels ROBA, COMBATE, ACCION and FINAL including the smaller colorful crossed COMBATE label, identifier BW4-12/14, and copyright ©2018 FUYUHIRO GUSHIKEN. Keep printed author credits and copyright. No cropping, redesign or new objects; remove only the diagonal overlays.
+Rule text verbatim: "DESCARTA 2 CARTAS: JUEGA LA ETAPA A QUE ESTAS JUGANDO 1 VEZ MAS." Preserve the original punctuation, typography and placement.

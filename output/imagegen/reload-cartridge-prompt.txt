@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Asset type: complete portrait Spanish trading card game asset.
+Input image: edit target, user supplied CARTUCHO DE RE-CARGA card.
+Primary request: remove only the large repeated semi-transparent diagonal RELICK watermark overlays throughout the card. Faithfully reconstruct the black and gray ammunition magazine with five gold rounds, angular metallic reflections, green halftone backdrop, gray circuit-board border and rules panel.
+Constraints: preserve the complete original card, portrait aspect ratio, composition, artwork, colors, all printed text, headings JUGADA and CÓDIGO, name CARTUCHO DE RE-CARGA, identifier BW4-8/14 and copyright ©2018 FUYUHIRO GUSHIKEN. Preserve printed author credits and copyright. Do not crop or redesign. Remove only the diagonal watermark overlays.
+Rule text verbatim: "NO PUEDES USAR ESTA CARTA EN EL PRIMER TURNO DEL JUEGO. AMBOS JUGADORES DESCARTAN SUS MANOS (MIN. 1) Y ROBAN 4 CARTAS." Preserve the red prohibition and black effect text.

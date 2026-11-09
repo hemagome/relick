@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Asset type: complete portrait Spanish trading card game asset.
+Input image: edit target, user supplied CARGA RÁPIDA card.
+Primary request: remove only the large repeated semi-transparent diagonal RELICK watermark overlays throughout the card. Faithfully reconstruct the blond green-eyed illustrated character, white cap bearing green WD letters, black eye mask, white shirt, large foreground hand and black and silver gun, green halftone backdrop, gray circuit board border and rules panel.
+Constraints: preserve the complete original card and portrait aspect ratio, composition, artwork, all printed text, headings JUGADA and CÓDIGO, name CARGA RÁPIDA, identifier BW4-10/14 and copyright ©2018 FUYUHIRO GUSHIKEN. Preserve every printed author credit. No cropping, redesign, new objects or text changes. Remove only diagonal watermark overlays.
+Rule text verbatim: "ROBA 2 CARTAS. LUEGO LANZA 1D6: 1-2: DESCARTA 2 CARTAS. 3-4: DESCARTA 1 CARTA. 5: ROBA 1 CARTA. 6: ROBA 2 CARTAS." Preserve the red result numbers and black rule text.

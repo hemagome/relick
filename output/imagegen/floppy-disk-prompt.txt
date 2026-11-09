@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Asset type: complete Spanish trading card game image.
+Input image: edit target, user supplied DISQUETE card.
+Primary request: remove only the repeated large diagonal semi-transparent RELICK watermark overlays from all areas of this card. Faithfully reconstruct the underlying blue floppy disk, metallic shutter, purple blue light rays, gray circuit board border and rule panel.
+Constraints: keep the complete portrait card and its original aspect ratio, composition, illustration, colors, all printed text, titles OBJETO and CÓDIGO, name DISQUETE, label RELICK printed on the floppy disk (this is part of the illustration and MUST remain), bottom card identifier TUTOOSAMU-7/7 and copyright ©2018FG. Preserve all credits. No cropping, no redesign, no new objects. Only remove the diagonal overlays.
+Rule text verbatim: "SELECCIONA UNA CARTA DE CUALQUIER MEMORIA Y AÑÁDELA A TU MANO." Keep CUALQUIER red and the remaining rules black.

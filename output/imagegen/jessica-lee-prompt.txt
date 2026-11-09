@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Asset type: complete portrait Spanish trading card game asset.
+Input image: edit target, user supplied JESSICA LEE card.
+Primary request: remove only the repeated diagonal large semi-transparent RELICK watermark overlays throughout the card. Faithfully reconstruct the red-haired martial artist, blue cropped shirt, yellow trousers, white wrist wraps, cyan and orange swirling energy, gray circuit board frame and rule panel underneath.
+Constraints: preserve the complete card, original portrait aspect ratio, composition, character design, colors, all printed text, headings PERSONAJE and CÓDIGO, name JESSICA LEE, illustration signature STIVART, bottom identifier TUTOYUNO-5/7, artist credit ILUS. STIVART and copyright ©2018FG. Retain artist signatures and printed credits. Do not crop or redesign. Remove only diagonal watermark overlays.
+Rule text verbatim: "UNA VEZ EN TU ETAPA DE COMBATE, SI ESTA CARTA ESTÁ EN TU ZONA DE CANJE/BONUS, PUEDES LANZAR 1D6: 5: 2 DAÑOS AL ADVERSARIO. 6: 3 DAÑOS AL ADVERSARIO Y TÚ ROBAS 1 CARTA." Preserve the original red emphasis on ETAPA DE COMBATE and the result numbers 5 and 6.

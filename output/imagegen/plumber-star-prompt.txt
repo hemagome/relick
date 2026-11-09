@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Asset type: complete portrait Spanish trading card game asset.
+Input image: edit target, user supplied ESTRELLA DEL FONTANERO card.
+Primary request: remove only the repeated diagonal semi-transparent RELICK watermark overlays from the entire card, faithfully reconstructing the yellow plumber star character, mustache, eyes, tool belt marked EF, plunger, adjustable wrench, blue-purple space glow, gray circuit-board border and rules panel.
+Constraints: preserve the entire card, original aspect ratio and layout, illustration, colors, border, all printed text, OBJETO, CÓDIGO, COMBO, ESTRELLA DEL FONTANERO, bottom identifier TUTOYUNO-6/7, credit FONDO. FREEPIK and copyright ©2018FG. Retain printed credits and copyright. Do not crop, redesign, change lettering or add objects.
+Rule text verbatim: "DESCARTA 1 CARTA PARA ACTIVAR ESTOS EFECTOS HASTA EL FINAL DEL TURNO: • NO RECIBES DAÑO. • DUPLICA TODO EL DAÑO QUE INFLIJAN TUS CARTAS O HABILIDADES." Preserve the red introductory rule and black effect bullets.
