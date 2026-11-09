@@ -30,7 +30,7 @@ public partial class OpponentHandCard : Button
             var scale = Math.Min(FaceSize.X / 126, FaceSize.Y / 184);
             var front = new HandCard
             {
-                Name = "RevealedFront", Card = PublicCard, Disabled = true, Size = new(126, 184), Scale = new(scale, scale),
+                Name = "RevealedFront", Card = PublicCard, Disabled = true, ShowBehindParent = true, Size = new(126, 184), Scale = new(scale, scale),
                 Position = (FaceSize - new Vector2(126, 184) * scale) / 2
             };
             front.Ready += () => { front.MouseFilter = MouseFilterEnum.Ignore; front.SetProcess(false); };
@@ -48,12 +48,6 @@ public partial class OpponentHandCard : Button
             var extent = _back.GetSize() * scale;
             DrawTextureRect(_back, new Rect2((Size - extent) / 2, extent), false);
         }
-        if (PublicCard != null || IsHovered() || HasFocus() || Targetable || Chosen)
-            DrawStyleBox(new StyleBoxFlat
-            {
-                DrawCenter = false, BorderColor = Chosen ? BoardArt.Gold : Targetable ? ArenaPresentation.Mint : PublicCard != null ? BoardArt.Gold : new Color("ef7890"),
-                BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
-                CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3
-            }, new Rect2(Vector2.Zero, Size));
+        RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, IsHovered(), HasFocus());
     }
 }

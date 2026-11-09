@@ -57,6 +57,7 @@ public partial class OnlineArena : Control
 
     public override void _Ready()
     {
+        Theme = RelickVisuals.Controls();
         Name = "OnlineArena"; SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var background = new ArenaBackground { Name = "ArenaBackdrop" }; AddChild(background);
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -142,7 +143,7 @@ public partial class OnlineArena : Control
         RefreshEffectCardOptions();
         if (_selectedSkill >= s.Players[s.MySeat].Skills.Length) _selectedSkill = -1;
         var header = new HBoxContainer(); _root.AddChild(header);
-        var brand = ArenaPresentation.Text("R E L I C K", Compact ? 21 : 29, BoardArt.Gold);
+        var brand = RelickVisuals.Logo(Compact);
         var brandColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         brandColumn.AddThemeConstantOverride("separation", 0); brandColumn.AddChild(brand); header.AddChild(brandColumn);
         _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;

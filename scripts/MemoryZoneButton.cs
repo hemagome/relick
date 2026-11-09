@@ -34,9 +34,10 @@ public partial class MemoryZoneButton : Button
 
     public override void _Draw()
     {
-        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), new Color(Corrupted ? "201c32" : "111a2c"),
-            IsHovered() || HasFocus() ? Accent : Accent.Darkened(0.65f), 8);
+        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), RelickVisuals.Playmat.Surface,
+            BoardArt.Tint(RelickVisuals.Playmat.Frame, Amount == 0 ? 0.45f : 1), 8);
         BoardArt.CenterText(this, Corrupted ? "CORRUPTAS" : "MEMORIA", new(Size.X / 2, 12), 8, Accent);
+        RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, IsHovered(), HasFocus());
         var thumb = CardRect;
         if (_back != null)
         {

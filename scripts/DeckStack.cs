@@ -21,7 +21,7 @@ public partial class DeckStack : Control
 
     public override void _Draw()
     {
-        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), new Color("111a2c"), Accent.Darkened(0.65f), 8);
+        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), RelickVisuals.Playmat.Surface, BoardArt.Tint(RelickVisuals.Playmat.Frame, Amount == 0 ? 0.45f : 1), 8);
         if (Amount > 0 && _back != null)
         {
             for (var layer = Math.Min(4, Amount - 1); layer > 0; layer--)

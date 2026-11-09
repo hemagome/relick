@@ -19,8 +19,8 @@ public sealed class ArenaPlayerActions
 
 public static class ArenaPresentation
 {
-    public static readonly Color Mint = new("5ed6b3");
-    public static readonly Color Coral = new("ef7890");
+    public static readonly Color Mint = RelickVisuals.State.Own;
+    public static readonly Color Coral = RelickVisuals.State.Rival;
 
     public static Label Text(string text, int size = 16, Color? color = null)
     {
@@ -30,13 +30,8 @@ public static class ArenaPresentation
         return label;
     }
 
-    public static StyleBoxFlat Box(string background, Color border, int radius = 12) => new()
-    {
-        BgColor = new Color(background), BorderColor = border,
-        BorderWidthLeft = 1, BorderWidthTop = 1, BorderWidthRight = 1, BorderWidthBottom = 1,
-        CornerRadiusTopLeft = radius, CornerRadiusTopRight = radius, CornerRadiusBottomLeft = radius, CornerRadiusBottomRight = radius,
-        ContentMarginLeft = 12, ContentMarginRight = 12, ContentMarginTop = 10, ContentMarginBottom = 10
-    };
+    public static StyleBoxFlat Box(string background, Color border, int radius = 12)
+        => RelickVisuals.Frame(new Color(background), border, Math.Min(radius, 8));
 
     public static Button Button(Node parent, string text, Action action, bool disabled = false)
     {
@@ -75,14 +70,14 @@ public static class ArenaPresentation
         int selectedSkill, YunoPortrait portrait, LifeMeter life, ArenaPlayerActions actions, bool compact)
     {
         var accent = enemy ? Coral : Mint;
-        var panel = Panel(arena, enemy ? "1b1b30" : "12252b", active ? accent : accent.Darkened(0.65f));
+        var panel = Panel(arena, RelickVisuals.Playmat.Surface.ToHtml(), RelickVisuals.Playmat.Frame);
         panel.Name = enemy ? "EnemyRelikarioPanel" : "OwnRelikarioPanel";
         panel.CustomMinimumSize = new(compact ? 0 : 320, 0);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 6); panel.AddChild(column);
         var header = new HBoxContainer(); column.AddChild(header);
         var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         names.AddThemeConstantOverride("separation", 0);
-        var ownerName = Text((enemy ? "ADVERSARIO" : "TU RELIKARIO") + " · " + owner.Name, 9, accent);
+        var ownerName = Text((active ? "» " : "") + (enemy ? "ADVERSARIO" : "TU RELIKARIO") + " · " + owner.Name, 9, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = compact; ownerName.TooltipText = owner.Name; names.AddChild(ownerName);
         var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", compact ? 15 : 18);
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -156,7 +151,7 @@ public static class ArenaPresentation
         DuelPlayerView[] players, Action<VBoxContainer> opponentHand, Action<int> bonusPressed,
         Action<int, int> exchangePressed, bool compact)
     {
-        var panel = Panel(arena, "111a2c", new("4b4350")); panel.Name = "CombatCenter";
+        var panel = Panel(arena, RelickVisuals.Playmat.Surface.ToHtml(), RelickVisuals.Playmat.Frame); panel.Name = "CombatCenter";
         panel.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         panel.CustomMinimumSize = new(compact ? 0 : 312, 0); panel.SizeFlagsStretchRatio = 1.05f;
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 4); panel.AddChild(column);

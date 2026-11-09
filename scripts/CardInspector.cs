@@ -53,7 +53,7 @@ public partial class CardInspector : PanelContainer
     public override void _Ready()
     {
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var style = ArenaPresentation.Box("142536", new("38596a"), 12);
+        var style = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame);
         style.ContentMarginLeft = style.ContentMarginRight = ShortScreen ? 10 : 16;
         style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 4 : 8;
         AddThemeStyleboxOverride("panel", style);

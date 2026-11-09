@@ -30,15 +30,19 @@ public partial class OnlineLobby
         column.AddThemeConstantOverride("separation", 18); page.AddChild(column); _lobbyColumn = column;
 
         var navigation = new HBoxContainer(); column.AddChild(navigation);
-        var brand = Caption("R E L I C K   /   EN LÍNEA", BoardArt.Gold);
-        brand.SizeFlagsHorizontal = SizeFlags.ExpandFill; brand.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        var brand = RelickVisuals.Logo();
+        brand.SizeFlagsHorizontal = SizeFlags.ShrinkBegin; brand.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         navigation.AddChild(brand);
+        var onlineCaption = Caption("EN LÍNEA", BoardArt.Muted);
+        onlineCaption.AutowrapMode = TextServer.AutowrapMode.Off;
+        onlineCaption.SizeFlagsVertical = SizeFlags.ShrinkCenter; navigation.AddChild(onlineCaption);
+        navigation.AddThemeConstantOverride("separation", 16);
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
         _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);
         heading.AddChild(Description("Invita a un rival o entra a su sala para comenzar."));
 
-        var identity = Surface(column, "111d2c", "2b3d50", 14, 16); _identityPanel = identity;
+        var identity = Surface(column, 16); _identityPanel = identity;
         var identityRow = new HBoxContainer(); identityRow.AddThemeConstantOverride("separation", 20); identity.AddChild(identityRow);
         var identityLabel = Caption("TU NOMBRE", BoardArt.Muted);
         identityLabel.CustomMinimumSize = new(100, 0); identityLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
@@ -65,7 +69,7 @@ public partial class OnlineLobby
         AccentButton(_join, LobbyBlue);
         _code.TextSubmitted += _ => { if (!_join.Disabled) _lobby.Join(_code.Text, _name.Text); };
 
-        _roomPanel = Surface(column, "13232c", "35594e", 18, 24); _roomPanel.Visible = false;
+        _roomPanel = Surface(column, 24); _roomPanel.Visible = false;
         var roomColumn = new VBoxContainer(); roomColumn.AddThemeConstantOverride("separation", 14); _roomPanel.AddChild(roomColumn);
         roomColumn.AddChild(Caption("TU SALA · DUELO PRIVADO", LobbyMint));
         var roomRow = new HBoxContainer(); roomRow.AddThemeConstantOverride("separation", 16); roomColumn.AddChild(roomRow);
@@ -104,10 +108,10 @@ public partial class OnlineLobby
         var label = Text(text, 15); label.AddThemeColorOverride("font_color", BoardArt.Muted); return label;
     }
 
-    private static PanelContainer Surface(Node parent, string fill, string border, int radius, int padding)
+    private static PanelContainer Surface(Node parent, int padding)
     {
         var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var style = ArenaPresentation.Box(fill, new Color(border), radius);
+        var style = RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 8);
         style.ContentMarginLeft = style.ContentMarginRight = padding;
         style.ContentMarginTop = style.ContentMarginBottom = padding;
         panel.AddThemeStyleboxOverride("panel", style); parent.AddChild(panel); return panel;
@@ -115,7 +119,7 @@ public partial class OnlineLobby
 
     private VBoxContainer EntryCard(Node parent, GameIcon icon, Color accent, string title, string subtitle)
     {
-        var panel = Surface(parent, "121e30", accent.Darkened(0.62f).ToHtml(false), 18, 24);
+        var panel = Surface(parent, 24);
         panel.CustomMinimumSize = new(0, 264); _entryPanels.Add(panel);
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddThemeConstantOverride("separation", 12); panel.AddChild(column);
@@ -127,43 +131,10 @@ public partial class OnlineLobby
         return column;
     }
 
-    private static StyleBoxFlat ControlStyle(string fill, Color border, int width = 1)
-    {
-        var style = ArenaPresentation.Box(fill, border, 10);
-        style.BorderWidthLeft = style.BorderWidthRight = style.BorderWidthTop = style.BorderWidthBottom = width;
-        style.ContentMarginLeft = style.ContentMarginRight = 16;
-        style.ContentMarginTop = style.ContentMarginBottom = 10;
-        return style;
-    }
+    private static void AccentButton(Button button, Color accent) => RelickVisuals.Primary(button, accent);
 
-    private static void AccentButton(Button button, Color accent)
-    {
-        button.AddThemeStyleboxOverride("normal", ControlStyle(accent.ToHtml(false), accent));
-        button.AddThemeStyleboxOverride("hover", ControlStyle(accent.Lightened(0.15f).ToHtml(false), accent.Lightened(0.3f)));
-        button.AddThemeStyleboxOverride("pressed", ControlStyle(accent.Darkened(0.15f).ToHtml(false), accent));
-        button.AddThemeStyleboxOverride("disabled", ControlStyle("1b2b3c", new Color("314258")));
-        foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color" }) button.AddThemeColorOverride(state, new Color("0b1825"));
-        button.AddThemeColorOverride("font_disabled_color", new Color("7d90a6"));
-    }
+    private static Theme LobbyTheme() => RelickVisuals.Controls();
 
-    private static Theme LobbyTheme()
-    {
-        var theme = new Theme(); theme.DefaultFontSize = 16;
-        theme.SetColor("font_color", "Label", BoardArt.Ink);
-        theme.SetColor("font_color", "Button", BoardArt.Ink);
-        theme.SetColor("font_disabled_color", "Button", BoardArt.Muted);
-        foreach (var state in new[] { "normal", "hover", "pressed", "disabled" })
-            theme.SetStylebox(state, "Button", ControlStyle(state == "hover" ? "24344c" : "18263a", new Color(state == "hover" ? "63738d" : "34465f")));
-        theme.SetStylebox("focus", "Button", ControlStyle("00000000", BoardArt.Gold, 2));
-        theme.SetStylebox("normal", "LineEdit", ControlStyle("0b1423", new Color("34465f")));
-        theme.SetStylebox("read_only", "LineEdit", ControlStyle("101a28", new Color("28384e")));
-        theme.SetStylebox("focus", "LineEdit", ControlStyle("00000000", LobbyMint, 2));
-        theme.SetColor("font_color", "LineEdit", BoardArt.Ink);
-        theme.SetColor("font_placeholder_color", "LineEdit", BoardArt.Muted);
-        theme.SetColor("caret_color", "LineEdit", LobbyMint);
-        theme.SetColor("selection_color", "LineEdit", new Color("305a68"));
-        return theme;
-    }
 }
 
 public partial class LobbySymbol : Control

@@ -171,11 +171,7 @@ public partial class OnlineArena
             var primary = _moveButtons.LastOrDefault(b => (int)b.GetMeta("option_index", -1) == main);
             if (primary != null)
             {
-                primary.AddThemeStyleboxOverride("normal", ArenaPresentation.Box("5ed6b3", ArenaPresentation.Mint, 8));
-                primary.AddThemeStyleboxOverride("hover", ArenaPresentation.Box("7ae6c4", ArenaPresentation.Mint, 8));
-                primary.AddThemeStyleboxOverride("pressed", ArenaPresentation.Box("3fb18f", ArenaPresentation.Mint, 8));
-                primary.AddThemeColorOverride("font_color", new("102c2a")); primary.AddThemeColorOverride("font_hover_color", new("102c2a"));
-                primary.AddThemeColorOverride("font_pressed_color", new("102c2a"));
+                RelickVisuals.Primary(primary);
             }
         }
         _contextTitle.Text = ContextTitle(); _contextTitle.TooltipText = _contextTitle.Text;
