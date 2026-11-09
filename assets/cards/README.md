@@ -18,7 +18,7 @@ se apilan con las existentes; si hay otro equipo lo sustituyen. Si Reverse
 conserva el equipo anterior, los Tótems mostrados quedan en memoria y Oro se
 coloca sobre el equipo conservado, siguiendo la sustitución de equipo normal.
 
-Error de Carga cancela antes de confirmar las cartas, devuelve la acción y deja
+Error de Carga cancela antes de iniciar la selección, devuelve la acción y deja
 Oro en memoria; no se muestran ni mueven Tótems. Un contraerror conserva la
 selección pendiente. Caja de Cartón no responde a un Personaje. Tras confirmar,
 se muestran solo las copias elegidas; las destrucciones pendientes por sustituir
@@ -94,11 +94,13 @@ Se abre una ventana de Robo cuando hay un Doblador que se puede activar y en los
 robos repetidos. Los límites por turno, el relanzamiento de Yuno, la Destreza, los
 efectos de Estrella y la fecha de entrada de Jessica permanecen intactos.
 
-Se eligen ambos descartes antes de abrir las respuestas. Error de Carga devuelve
-los dos descartes y los recursos gastados; Caja de Cartón devuelve los recursos
-pero conserva los descartes. Ninguna cancelación concede la repetición. Los efectos
-de descarte de Mira se resuelven después de las respuestas; Error devuelve las
-cartas sin dispararlos. Relikia permite repetir Acciones desde memoria, cobra dos
+La ventana de Error de Carga precede a ambos descartes: cancelar evita pagarlos y
+devuelve los recursos gastados. Después se eligen y pagan los descartes; Caja de
+Cartón devuelve los recursos pero conserva los descartes. Ninguna cancelación
+concede la repetición. Las cartas necesarias para pagar esos descartes quedan
+reservadas y no pueden gastarse en contraerrores. Los efectos de descarte de Mira
+se resuelven después de las respuestas de Caja; Error evita el descarte y su
+disparo. Relikia permite repetir Acciones desde memoria, cobra dos
 acciones y 400 PR y corrompe la copia cuando resuelve. El coste, las elecciones,
 el contexto interrumpido y las repeticiones pendientes se guardan al reconectar.
 
@@ -150,10 +152,10 @@ comunes, incluidas cartas recién robadas, con sus costes normales. Yuno Lv 2 no
 le aplica el aumento del dado de ataque. Si quedan menos cartas para descartar,
 se eligen las disponibles. Los descartes usan el flujo común de Mira de Sniper.
 
-Error de Carga puede cancelar antes de resolver o mientras está pendiente el dado.
-Si ya se completaron los dos robos iniciales, esas cartas permanecen en la mano;
-la cancelación devuelve los costes y evita el resultado pendiente. Caja de Cartón
-no responde a una Jugada. Aceptar el dado compromete el resultado antes de elegir
+Error de Carga solo puede cancelar antes de los dos robos iniciales, devolviendo
+los costes sin robar ni lanzar el dado. Después de cerrar esa ventana no puede
+cancelar la carta durante el dado ni los descartes. Caja de Cartón no responde a
+una Jugada. Aceptar el dado compromete el resultado antes de elegir
 los descartes o realizar los robos adicionales.
 
 Relikia cobra sus dos acciones y 400 PR, corrompe la copia activada y utiliza los
@@ -186,9 +188,9 @@ daños y luego roba una carta. El dado admite los modificadores comunes; Yuno Lv
 no le aplica el aumento de ataque. No consume el ataque, no entrega su premio ni
 activa defensas de ataque. Caja de Cartón no anula un Personaje. Según lo confirmado
 por el usuario, Error de Carga puede cancelarla solamente en el turno en que entra
-en juego (se enseña), antes o durante el dado, y enviar la copia de origen a memoria, sin
-destruirla ni activar Reverse. Si el origen ya salió de la zona, cancelar su efecto
-no retira una carta de reemplazo ni otra copia.
+en juego (se enseña), antes de lanzar el dado, y enviar la copia de origen a memoria,
+sin destruirla ni activar Reverse. Pasar la respuesta cierra la ventana para esa
+activación; mover el origen durante su resolución no habilita una nueva cancelación.
 
 En turnos posteriores no se abre respuesta de Error ni se permite jugarlo durante
 el dado de Jessica. El turno de entrada se guarda por copia al colocarla en canje
@@ -214,7 +216,7 @@ introducir pequeñas diferencias en la ilustración. Original y prompt completo:
 `output/imagegen/plumber-star-original.png` y `plumber-star-prompt.txt`.
 
 Código Objeto COMBO: una acción, cero PR y un descarte elegido de otra carta de la
-mano. El activador elige el coste antes de las respuestas. Sin otra carta para
+mano. La ventana de Error de Carga precede a la selección y al pago del descarte. Sin otra carta para
 descartar no se permite activarlo. Puede usarse durante el turno propio o rival,
 incluidas las decisiones de ataque, defensa y efectos; primero deben completarse
 los descartes por otros efectos, el reciclaje, Error de Carga, las elecciones de
@@ -228,12 +230,13 @@ Dos activaciones acumulan dos duplicaciones (×4). Los efectos son públicos, pe
 al reconectar y desaparecen para ambos jugadores al pasar el turno, después de los
 descartes finales y sus efectos. No impiden las vidas inevitables del agotamiento.
 
-Según lo confirmado por el usuario, Error de Carga devuelve a la mano el descarte
-pagado, además de devolver acciones y PR; Caja de Cartón devuelve acciones y PR,
-pero conserva el descarte en memoria. Los efectos de esa carta al descartarse se
-resuelven una vez que las respuestas deciden si el descarte permanece: Mira puede
-equiparse gratis o ir a canje si Estrella resuelve o Caja la cancela; no dispara si
-Error devuelve la carta. Cancelar después ese equipo gratuito no cancela Estrella.
+Error de Carga devuelve acciones y PR y evita pagar el descarte; la carta de la
+mano nunca se mueve ni dispara efectos. Las cartas necesarias para el descarte
+quedan reservadas durante los contraerrores. Caja de Cartón devuelve acciones y
+PR, pero conserva el descarte en memoria. Los efectos de esa carta al descartarse
+se resuelven después de la respuesta de Caja: Mira puede equiparse gratis o ir a
+canje si Estrella resuelve o Caja la cancela. Cancelar después ese equipo gratuito
+no cancela Estrella.
 Relikia exige una carta de la mano como descarte y cobra sus dos acciones y 400 PR;
 su copia de Estrella se corrompe al resolver, con las respuestas comunes.
 
@@ -254,8 +257,8 @@ según lo confirmado por el usuario. Las cartas corruptas no son seleccionables.
 No permite activarse sin objetivos; mediante Relikia, la copia activada se corrompe
 y se requiere otra carta en las memorias.
 
-Admite Caja de Cartón y Error de Carga, también durante la selección. Las respuestas
-se resuelven antes de mover la carta elegida; cancelar devuelve los costes según
+Admite Caja de Cartón. Error de Carga solo responde en la ventana inicial, antes
+de empezar la selección. Cancelar devuelve los costes según
 las reglas comunes. La elección persiste al reconectar. La interfaz muestra las
 cartas de ambas memorias y el dueño de cada origen, y anima el traslado a la mano
 del activador sin emitir un robo del mazo ni revelar permanentemente la carta.
@@ -372,6 +375,15 @@ Los originales y prompts completos están en `output/imagegen/blue-egg-original.
 Se conservaron diseño, rótulo COMBO, condiciones y créditos impresos. La reconstrucción
 puede introducir pequeñas diferencias en la ilustración. El original y el prompt
 completo están en `output/imagegen/load-error-original.png` y `load-error-prompt.txt`.
+
+En la versión virtual solo responde antes de ejecutar una activación. El rival
+elige usarlo o pasar; un Error puede recibir otro Error y la cadena se resuelve
+en orden inverso. Una activación anulada deja la carta en memoria, recupera
+acciones y PR y no ejecuta efectos ni paga descartes. Un código reutilizado desde
+memoria se conserva sin corromper si se cancela en esta ventana. Pasar cierra la
+oportunidad: no se puede cancelar después de conocer dados, iniciar búsquedas,
+mirar manos o entrar en decisiones de protección. Las nuevas activaciones COMBO
+tienen su propia ventana; cancelar un COMBO no cancela el efecto que interrumpió.
 
 ## Restauraciones actualizadas desde PNG originales
 

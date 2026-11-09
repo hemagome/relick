@@ -62,6 +62,27 @@ static class FloppyDiskTests
             Check(DuelSnapshot.For(g, 1, 5).Players[1].Hand.Single() == CardCatalog.Destiny.Id);
             Check(DuelSnapshot.For(g, 0, 5).Players[1].Hand.Single() == null && !g.State.Active.IsHandCardRevealed(0));
         }),
+        ("Disquete: Error cancela antes de seleccionar; una respuesta tardía se rechaza sin mutación", () =>
+        {
+            foreach (var late in new[] { false, true })
+            {
+                var (g, rng) = Fixture(); g.State.Players[1].Memory.Add(CardCatalog.Bonfire.Id);
+                if (!late) g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                Check(g.PlayCode(0, 0).Success);
+                if (late) g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
+                if (late)
+                {
+                    Reject(g, () => g.PlayCode(1, g.State.Players[1].Hand.IndexOf(CardCatalog.LoadError.Id)));
+                    Check(!g.CanPlayLoadError(1) && g.ResolveMemoryRecovery(0, 1, 0).Success);
+                    Check(g.State.Active.ActionsLeft == 1 && g.State.Active.Hand.Single() == CardCatalog.Bonfire.Id);
+                    continue;
+                }
+                Check(g.PlayCode(1, g.State.Players[1].Hand.IndexOf(CardCatalog.LoadError.Id)).Success);
+                Check(g.State.Phase == Phase.Actions && g.State.Active.ActionsLeft == 2 && g.State.Active.Hand.Count == 0);
+                Check(g.State.Players[1].Memory.Contains(CardCatalog.Bonfire.Id) && g.State.Active.Memory.Single() == CardCatalog.FloppyDisk.Id);
+            }
+        }),
         ("Disquete: contraerror conserva la elección y sigue excluyendo la copia activa", () =>
         {
             var (g, rng) = Fixture(); g.State.Active.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Memory.Add(CardCatalog.Bonfire.Id);

@@ -69,7 +69,7 @@ public sealed partial class GameEngine
         if (_activeActivation is { Kind: ActivationKind.TurnBuff } star)
         {
             Log($"{State.Players[actor].Name} cancela {card.Name} con Caja de Cartón; el descarte no vuelve a la mano.");
-            FinishTurnBuff(star, returnDiscard: false); return;
+            FinishTurnBuff(star); return;
         }
         _activeActivation = null;
         Log($"{State.Players[actor].Name} usa Caja de Cartón: cancela {card.Name}, que queda en la memoria de {State.Players[pending.Actor].Name}.");

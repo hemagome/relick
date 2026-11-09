@@ -40,7 +40,7 @@ public static class CardCatalog
         "Una vez en tu etapa de combate, si esta carta está en tu zona de canje/Bonus, puedes lanzar 1D6: 5: 2 daños al adversario; 6: 3 daños al adversario y tú robas 1 carta. Error de Carga solo puede cancelarla en el turno en que entra en juego.",
         CodeType: CodeType.Character, ActionCost: 0, FieldCombatDie: true);
     public static readonly CardDefinition PlumberStar = new("plumber-star", "Estrella del Fontanero", CardKind.Code,
-        "COMBO. Descarta 1 carta para activar hasta el final del turno: no recibes daño y duplicas todo el daño que inflijan tus cartas o habilidades. Error de Carga devuelve el descarte; Caja de Cartón no.",
+        "COMBO. Descarta 1 carta para activar hasta el final del turno: no recibes daño y duplicas todo el daño que inflijan tus cartas o habilidades. Error de Carga cancela antes del descarte; Caja de Cartón lo conserva.",
         CodeType: CodeType.Object, IsCombo: true, DiscardForTurnBuff: true, DiscardCost: 1);
     public static readonly CardDefinition FloppyDisk = new("floppy-disk", "Disquete", CardKind.Code,
         "Selecciona una carta de cualquier memoria y añádela a tu mano. No puede recuperar la copia que se está activando; sí otra copia de Disquete.", CodeType: CodeType.Object, RecoverMemory: true);
@@ -104,7 +104,7 @@ public static class CardCatalog
         "COMBO. Activar esta carta no cuenta como acción. Relanza uno de tus dados. Si sale 1, 2 o 3, roba 1 carta.", CodeType: CodeType.Play, IsCombo: true, ActionCost: 0, RerollOwnDie: true);
 
     public static readonly CardDefinition LoadError = new("load-error", "Error de Carga", CardKind.Code,
-        "COMBO. Cuando un código se esté activando o resolviendo, o un equipo esté siendo equipado: cancélalo y envíalo a memoria. La activación anulada recupera sus costes.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
+        "COMBO. Antes de que un código ejecute su efecto o un equipo se equipe: cancela su activación y envíalo a memoria. La activación anulada recupera sus costes.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
         new[] { Attack, Magnet, Destiny, Reverse, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem }.ToDictionary(c => c.Id);

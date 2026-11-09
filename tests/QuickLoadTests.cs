@@ -38,6 +38,23 @@ static class QuickLoadTests
             (g, _) = Fixture(); g.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
             Check(g.PlayCode(0, 0).Success && g.State.Phase != Phase.CodeResponse && g.State.Players[1].Equipment == CardCatalog.CardboardBox.Id);
         }),
+        ("Carga Rápida: Error tardío no revierte robos ni devuelve recursos y la tirada sigue pendiente", () =>
+        {
+            foreach (var memory in new[] { false, true })
+            {
+                var (g, rng) = Fixture(); var p = g.State.Active; p.Equipment = CardCatalog.Pendant.Id;
+                if (memory) { p.Hand.Clear(); p.Memory.Add(CardCatalog.QuickLoad.Id); p.Relikia = 400; }
+                var top = p.Deck.Take(2).ToArray(); rng.EnqueueDie(2);
+                Check((memory ? g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0) : g.PlayCode(0, 0)).Success);
+                Check(g.State.Phase == Phase.DieRerollChoice && p.Hand.SequenceEqual(top));
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                Reject(g, () => g.PlayCode(1, 0));
+                Check(!g.CanPlayLoadError(1) && g.State.Phase == Phase.DieRerollChoice && p.Hand.SequenceEqual(top));
+                Check(p.ActionsLeft == (memory ? 0 : 1) && p.Relikia == 0);
+                Check(memory ? p.CorruptedMemory.Single() == CardCatalog.QuickLoad.Id : p.Memory.Contains(CardCatalog.QuickLoad.Id));
+                Check(g.ResolveDieReroll(0, false).Success && g.State.DiscardsRemaining == 2);
+            }
+        }),
         ("Carga Rápida: Yuno Lv 2 relanza el efecto y Reverse aumenta una vez sin repetir el robo inicial", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; p.Relikario = RelikarioCatalog.YunoLv2; p.Skills.Add(CardCatalog.Reverse.Id);

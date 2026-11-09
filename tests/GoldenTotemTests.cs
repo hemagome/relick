@@ -52,6 +52,26 @@ static class GoldenTotemTests
             Check(g.PlayCode(0, 0).Success && g.ResolveGoldenTotem(0, [0, 1]).Success);
             Check(p.EquipmentStackedCopies == 3 && p.EquipmentCovers!.Count == 2 && p.Memory.Count == 0 && Count(g) == count);
         }),
+        ("Oro: Error inicial impide colocar o revelar Tótems; la selección ya iniciada no se cancela", () =>
+        {
+            foreach (var initial in new[] { true, false })
+            {
+                var (g, rng) = Fixture(); var p = g.State.Active; Stack(p, 1, 1);
+                if (initial) g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                var count = Count(g); Check(g.PlayCode(0, 0).Success);
+                if (!initial) { g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id); count++; }
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+                if (!initial)
+                {
+                    Reject(g, () => g.PlayCode(1, 1));
+                    Check(!g.CanPlayLoadError(1) && g.ResolveGoldenTotem(0, [0]).Success);
+                    Check(p.ActionsLeft == 1 && p.EquipmentStackedCopies == 1 && p.EquipmentCovers!.Count == 2 && Count(g) == count);
+                    continue;
+                }
+                Check(g.PlayCode(1, 1).Success && p.ActionsLeft == 2 && p.EquipmentStackedCopies == 0 && p.EquipmentCovers!.Count == 1);
+                Check(p.Hand.Count == 3 && p.RevealedHandSlots.Count == 0 && p.Memory.Single() == CardCatalog.GoldenTotem.Id && Count(g) == count && g.State.PendingGoldenTotem == null);
+            }
+        }),
         ("Oro: un contraerror conserva la selección y coloca una sola copia de Oro", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; p.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
@@ -129,6 +149,19 @@ static class GoldenTotemTests
                 Check(protect ? target.EquipmentCovers!.Count == 1 && target.Memory.Single() == CardCatalog.Reverse.Id : target.EquipmentCovers == null && target.Memory.Single() == CardCatalog.GoldenTotem.Id);
                 Check(g.State.PendingAttack == null && g.State.Active.Relikia == 600);
             }
+        }),
+        ("Oro: pasar Error impide cancelar Huevo durante la protección; Reverse sigue protegiendo la cobertura", () =>
+        {
+            var (g, rng) = Fixture(); var target = g.State.Players[1]; var p = g.State.Active; Stack(target, 2, 1);
+            target.Skills.Add(CardCatalog.Reverse.Id); target.Hand.Add(CardCatalog.LoadError.Id); p.Hand[0] = CardCatalog.BlueEgg.Id; p.Relikia = 200;
+            Check(g.PlayCode(0, 0).Success);
+            if (g.State.Phase == Phase.ErrorResponse) Check(g.PassErrorResponse(1).Success);
+            Check(g.ResolveDestruction(0, 1, true).Success && g.State.Phase == Phase.DestructionResponse);
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; target = g.State.Players[1];
+            Reject(g, () => g.PlayCode(1, 1));
+            Check(!g.CanPlayLoadError(1) && g.ResolveDestructionProtection(1, 0).Success);
+            Check(target.EquipmentCovers!.Count == 1 && target.EquipmentStackedCopies == 1 && target.Skills.Count == 0);
+            Check(p.ActionsLeft == 1 && p.Relikia == 0 && g.State.PendingDestruction == null);
         }),
         ("Oro: varias coberturas absorben intentos sucesivos, una por intento", () =>
         {

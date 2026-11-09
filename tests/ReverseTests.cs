@@ -199,7 +199,7 @@ static class ReverseTests
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
             Check(g.ResolveRecycling(0, [0, 1, 2]).Success && p.Hand.Count == 1 && p.Deck.Count == 3 && g.State.Phase == Phase.Combat);
         }),
-        ("Reverse: Error de Carga puede cancelar la destrucción pendiente y un contraerror restaura la elección", () =>
+        ("Reverse: la protección sigue disponible después de cerrar Error; no se puede cancelar la destrucción tardíamente", () =>
         {
             foreach (var counter in new[] { false, true })
             {
@@ -208,15 +208,12 @@ static class ReverseTests
                 if (counter) p.Hand.Add(CardCatalog.LoadError.Id);
                 defender.Equipment = CardCatalog.Pc.Id; defender.Skills.Add(CardCatalog.Reverse.Id); defender.Hand.Add(CardCatalog.LoadError.Id);
                 Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success && g.ResolveDestruction(0, 1, FieldZone.Equipment).Success);
-                Check(g.State.Phase == Phase.DestructionResponse && g.PlayCode(1, 0).Success);
-                if (counter)
-                {
-                    Check(g.State.Phase == Phase.ErrorResponse && g.PlayCode(0, 0).Success);
-                    g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; defender = g.State.Players[1];
-                    Check(g.State.Phase == Phase.DestructionResponse && g.ResolveDestructionProtection(1, 0).Success);
-                }
+                Check(g.State.Phase == Phase.DestructionResponse);
+                var before = g.SaveSnapshot(); Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; defender = g.State.Players[1];
+                Check(!g.CanPlayLoadError(1) && g.ResolveDestructionProtection(1, 0).Success);
                 Check(g.State.Phase == Phase.Actions && g.State.PendingDestruction == null && defender.Equipment == CardCatalog.Pc.Id);
-                Check(defender.Skills.Count == (counter ? 0 : 1) && p.Relikia == (counter ? 0 : 200));
+                Check(defender.Skills.Count == 0 && p.Relikia == 0 && p.ActionsLeft == 1 && defender.Hand.Contains(CardCatalog.LoadError.Id));
             }
         }),
         ("Reverse: proteger el equipo anterior no crea dos equipos normales al equipar otro", () =>

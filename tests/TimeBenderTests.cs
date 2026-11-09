@@ -10,6 +10,20 @@ static class TimeBenderTests
             Check(c.Kind == CardKind.Code && c.CodeType == CodeType.Object && c.IsCombo && c.DiscardCost == 2 && c.ActionCost == 1 && c.PrCost == 0);
             Check(CardCatalog.TrainingDeck().Count == 42 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
+        ("Doblador: la respuesta precede a ambos descartes y no se reabre durante su selección", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active; g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+            var count = Count(g); Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.ErrorResponse && p.ActionsLeft == 1);
+            Check(p.Hand.Count == 3 && p.Memory.Single() == CardCatalog.TimeBender.Id);
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
+            Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.TurnBuffDiscard);
+            Check(g.ResolveTurnBuffDiscard(0, 0).Success && g.State.Phase == Phase.TurnBuffDiscard && g.State.ExtraCombatStages == 0);
+            Check(DuelSnapshot.For(g, 0, 1).ActivationDiscardsRemaining == 1 && !g.CanPlayLoadError(1));
+            Reject(g, () => g.PlayCode(1, g.State.Players[1].Hand.IndexOf(CardCatalog.LoadError.Id)));
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
+            Check(g.ResolveTurnBuffDiscard(0, 0).Success && g.State.Phase == Phase.Combat && Count(g) == count);
+            Check(!g.CanPlayLoadError(1) && g.State.ExtraCombatStages == 1);
+        }),
         ("Doblador: repite Combate al salir, renueva aprendizaje y ataque pero conserva recursos del turno", () =>
         {
             foreach (var actor in new[] { 0, 1 })
@@ -85,6 +99,28 @@ static class TimeBenderTests
             Cast(g, 0); Check(p.Hand.Count == 10 && g.State.ExtraFinalStages == 1 && !g.State.RepeatedFinalAwaitingAdvance);
             Reject(g, () => g.Advance(0)); while (p.Hand.Count > 7) Check(g.Discard(0, 0).Success);
             Check(g.State.RepeatedFinalAwaitingAdvance && g.State.CurrentPlayer == 0 && g.Advance(0).Success && g.State.CurrentPlayer == 1);
+        }),
+        ("Doblador: Error evita ambos descartes y Caja conserva ambos sin añadir etapa", () =>
+        {
+            foreach (var error in new[] { false, true })
+            {
+                var (g, rng) = Fixture(); var p = g.State.Active; var other = g.State.Players[1];
+                if (error) other.Hand.Add(CardCatalog.LoadError.Id); else other.Equipment = CardCatalog.CardboardBox.Id;
+                if (error) Check(g.PlayCode(0, 0).Success); else Cast(g, 0);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+                Check((error ? g.PlayCode(1, 1) : g.ResolveCodeResponse(1, true)).Success);
+                Check(g.State.Phase == Phase.Combat && g.State.ExtraCombatStages == 0 && p.ActionsLeft == 2 && p.Memory.Contains(CardCatalog.TimeBender.Id));
+                Check(error ? p.Hand.Contains(CardCatalog.Senshuni.Id) && p.Hand.Contains(CardCatalog.ExtraLife.Id) && p.Memory.Count == 1 :
+                    p.Memory.Contains(CardCatalog.Senshuni.Id) && p.Memory.Contains(CardCatalog.ExtraLife.Id) && p.Hand.Count == 1);
+            }
+        }),
+        ("Doblador: contraerror añade una sola etapa después de pagar ambos descartes", () =>
+        {
+            var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+            Check(g.PlayCode(0, 0).Success && g.PlayCode(1, 1).Success && g.PlayCode(0, p.Hand.IndexOf(CardCatalog.LoadError.Id)).Success);
+            Check(g.ResolveTurnBuffDiscard(0, p.Hand.IndexOf(CardCatalog.Senshuni.Id)).Success);
+            Check(g.ResolveTurnBuffDiscard(0, p.Hand.IndexOf(CardCatalog.ExtraLife.Id)).Success);
+            Check(g.State.ExtraCombatStages == 1 && p.ActionsLeft == 0 && p.Memory.Contains(CardCatalog.Senshuni.Id) && p.Memory.Contains(CardCatalog.ExtraLife.Id));
         }),
         ("Doblador: dos Miras descartadas resuelven sus efectos sin duplicar etapas ni perder cartas", () =>
         {

@@ -437,7 +437,7 @@ public partial class OnlineArena
                     var badge = _root!.FindChild($"StarEffects{relative}", true, false) as Label;
                     if ((badge != null) != (step == 2) || (badge != null && !badge.Text.Contains("×2")))
                         throw new Exception("Estrella no presenta su efecto público o conserva la marca después de vencer.");
-                    if (step == 0 && actor == seat)
+                    if (step == 1 && actor == seat)
                     {
                         if (_handCards.Count != 2) throw new Exception("El coste no muestra la mano restante.");
                         SelectCard(0);
@@ -451,8 +451,8 @@ public partial class OnlineArena
                     if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
                         throw new Exception("Estrella revela una mano privada.");
                 }
-                if (step == 1 && !game.PassErrorResponse(1 - actor).Success) throw new Exception("No termina la respuesta de Error.");
-                if (step == 0 && !game.ResolveTurnBuffDiscard(actor, 0).Success) throw new Exception("No se paga el descarte de Estrella.");
+                if (step == 0 && !game.PassErrorResponse(1 - actor).Success) throw new Exception("No termina la respuesta de Error.");
+                if (step == 1 && !game.ResolveTurnBuffDiscard(actor, 0).Success) throw new Exception("No se paga el descarte de Estrella.");
                 if (step == 2 && (!game.PassDefense(actor).Success || !game.Advance(1 - actor).Success || !game.Advance(1 - actor).Success))
                     throw new Exception("No vence Estrella al acabar el turno rival.");
             }

@@ -83,12 +83,14 @@ static class TimeBombTests
             var b = new DuelRandom(); b.Replay([1]); var second = GameEngine.FromSnapshot(saved, b);
             Check(second.ResolveDestruction(0, 1, FieldZone.Hand).Success); b.Finish(); Check(State(first) == State(second));
         }),
-        ("Bomba: los contraerrores durante la elección tampoco dejan una zona sin objetivos", () =>
+        ("Bomba: pasar Error cierra la respuesta durante la elección y conserva los objetivos", () =>
         {
             var (g, _) = Fixture(); g.State.Active.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
             Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success && g.State.Phase == Phase.DestroyChoice);
-            Check(g.PlayCode(1, 0).Success && g.PlayCode(0, 0).Success);
-            Check(g.State.Phase == Phase.Actions && g.State.DestroyActor == null && g.State.Players.All(p => p.Hand.Count == 0));
+            var before = g.SaveSnapshot(); Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
+            Check(!g.CanPlayLoadError(1) && g.ResolveDestruction(0, 1, FieldZone.Hand).Success);
+            Check(g.State.Phase == Phase.Actions && g.State.DestroyActor == null && g.State.Players[1].Hand.Count == 0);
+            Check(g.State.Active.Hand.Single() == CardCatalog.LoadError.Id && g.State.Active.ActionsLeft == 1);
         }),
         ("Bomba: Relikia consume dos acciones y 400 PR y corrompe el código", () =>
         {

@@ -48,12 +48,47 @@ static class LoadErrorTests
             Check(!g.PlayCode(1, 0).Success && !g.PassErrorResponse(0).Success && !g.Advance(0).Success && before == Snapshot(g));
             Check(g.PassErrorResponse(1).Success && a.Hand.Count == 2);
         }),
-        ("Error al resolver un dado anula curación y restaura código de memoria y costes de Relikia", () =>
+        ("Error decide Vida Extra antes del dado y de corromper; pasar conserva el coste y cierra la ventana al reconectar", () =>
         {
-            var g = Fixture(); var a = g.State.Players[0]; var b = g.State.Players[1];
-            a.Relikario = RelikarioCatalog.YunoLv2; a.Health = 1; a.Relikia = 600; a.Memory.Add("extra-life"); b.Hand.Add("load-error");
-            Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && g.PassErrorResponse(1).Success && g.State.Phase == Phase.DieRerollChoice);
-            Check(g.PlayCode(1, 0).Success && a.Health == 1 && a.Relikia == 600 && a.ActionsLeft == 2 && a.CorruptedMemory.Count == 0 && a.Memory.Single() == "extra-life" && g.State.PendingDieRoll == null);
+            foreach (var cancel in new[] { false, true })
+            {
+                var g = Fixture(); var a = g.State.Players[0]; var b = g.State.Players[1]; var dice = 0;
+                g.DieRolled += _ => dice++;
+                a.Relikario = RelikarioCatalog.YunoLv2; a.Health = 1; a.Relikia = 600; a.Memory.Add("extra-life"); b.Hand.Add("load-error");
+                Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && g.State.Phase == Phase.ErrorResponse);
+                Check(dice == 0 && a.Health == 1 && a.CorruptedMemory.Count == 0);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), new ErrorRandom()); a = g.State.Players[0];
+                if (cancel)
+                {
+                    Check(g.PlayCode(1, 0).Success && a.Health == 1 && a.Relikia == 600 && a.ActionsLeft == 2);
+                    Check(a.CorruptedMemory.Count == 0 && a.Memory.Single() == "extra-life" && g.State.PendingDieRoll == null);
+                }
+                else
+                {
+                    Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.DieRerollChoice);
+                    g = GameEngine.FromSnapshot(g.SaveSnapshot(), new ErrorRandom()); a = g.State.Players[0];
+                    var before = g.SaveSnapshot();
+                    Check(!g.CanPlayLoadError(1) && !g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
+                    Check(!DuelOptions.For(g, 1).Any(o => o.Move.Kind == DuelMoveKind.PlayCode));
+                    Check(g.ResolveDieReroll(0, false).Success && a.Health == 3 && a.Relikia == 200 && a.ActionsLeft == 0);
+                    Check(a.CorruptedMemory.Single() == "extra-life" && g.State.Players[1].Hand.Single() == "load-error");
+                }
+            }
+        }),
+        ("Error: las cartas necesarias para descartes pendientes no pueden gastarse en un contraerror", () =>
+        {
+            foreach (var id in new[] { CardCatalog.PlumberStar.Id, CardCatalog.TimeBender.Id })
+            {
+                var g = Fixture(); var a = g.State.Players[0]; var b = g.State.Players[1];
+                a.Hand.Add(id); a.Hand.Add("load-error");
+                if (CardCatalog.Get(id).DiscardCost == 2) a.Hand.Add("attack");
+                b.Hand.Add("load-error");
+                Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.ErrorResponse);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), new ErrorRandom()); a = g.State.Players[0];
+                Check(g.PlayCode(1, 0).Success && g.State.Phase == Phase.Actions);
+                Check(a.Hand.Contains("load-error") && a.Memory.Single() == id && a.ActionsLeft == 2);
+                Check(g.State.PendingTurnBuff == null && a.StarEffects == 0 && g.State.ExtraActionStages == 0);
+            }
         }),
         ("Error puede negar Re-lanza sin relanzar ni robar y sin cobrar acción a la carta gratuita", () =>
         {

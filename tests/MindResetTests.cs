@@ -66,7 +66,7 @@ static class MindResetTests
             Reject(g, () => g.ResolveMindReset(1, 0));
             Check(g.ResolveMindReset(0, 0).Success);
         }),
-        ("Resetear: Error antes o durante selección devuelve acción sin mover objetivos; Caja no responde", () =>
+        ("Resetear: Error solo cancela antes de revelar la mano; la selección pendiente no se puede cancelar", () =>
         {
             foreach (var late in new[] { false, true })
             {
@@ -78,6 +78,10 @@ static class MindResetTests
                 {
                     Check(g.ChooseMindResetTarget(0, 1).Success && g.ChooseMindResetMemory(0, 1, 0).Success);
                     other.Hand.Add("load-error");
+                    Reject(g, () => g.PlayCode(1, other.Hand.Count - 1));
+                    Check(!g.CanPlayLoadError(1) && g.State.PendingMindReset?.Target == 1 && g.State.Active.ActionsLeft == 1);
+                    Check(g.ChooseMindResetMemory(0, 0, 0).Success && g.ResolveMindReset(0, 0).Success);
+                    continue;
                 }
                 Check(g.PlayCode(1, other.Hand.Count - 1).Success && g.State.Phase == Phase.Actions);
                 Check(g.State.PendingMindReset == null && g.State.Active.ActionsLeft == 2 && other.ActionsLeft == 1);

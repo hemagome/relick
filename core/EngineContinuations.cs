@@ -27,7 +27,6 @@ public sealed class DieEffect
     public EngineContinuation? Next { get; set; }
 }
 public enum ActivationKind { Code, Equipment, Reroll, Counter, MindReset, TurnBuff, FieldCode }
-public enum ActivationResume { Original, RestorePhase }
 public sealed class EngineActivation
 {
     public int Actor { get; set; }
@@ -35,14 +34,11 @@ public sealed class EngineActivation
     public int Pr { get; set; }
     public string CardId { get; set; } = "";
     public Phase ResumePhase { get; set; }
-    public Phase? CancelPhase { get; set; }
     public ActivationKind Kind { get; set; }
-    public ActivationResume ResumeMode { get; set; }
     public bool Canceled { get; set; }
     public bool ReplayCorrupted { get; set; }
     public bool FinishSniperExchange { get; set; }
     public bool CanInterrupt { get; set; } = true;
-    public int CorruptedIndex { get; set; }
     public bool FromMemory { get; set; }
     public int MemoryIndex { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -173,32 +169,16 @@ public sealed partial class GameEngine
 
     private void ResumeActivation(EngineActivation frame)
     {
-        if (frame.ResumeMode == ActivationResume.RestorePhase)
-        {
-            State.Phase = frame.ResumePhase;
-            var card = CardCatalog.Get(frame.CardId);
-            if (State.Phase == Phase.MemoryRecoveryChoice && card.RecoverMemory && !RecoverableMemoryCards().Any())
-            {
-                State.Phase = frame.CancelPhase ?? Phase.Actions;
-                ResolveCode(State.Players[frame.Actor], card);
-            }
-            if (State.Phase == Phase.DestroyChoice && card.DestroyChosenZone && !TimeBombTargets().Any())
-            {
-                State.DestroyActor = null; State.Phase = frame.CancelPhase ?? Phase.Actions;
-                ResolveCode(State.Players[frame.Actor], card);
-            }
-            if (State.Phase == Phase.DeckSearchChoice && card.SearchNonSkill && !SearchableDeckCards(frame.Actor).Any())
-            {
-                State.Phase = frame.CancelPhase ?? Phase.Actions;
-                ResolveCode(State.Players[frame.Actor], card);
-            }
-            return;
-        }
         var p = State.Players[frame.Actor];
         switch (frame.Kind)
         {
             case ActivationKind.Code: ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex); break;
-            case ActivationKind.TurnBuff: ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex); break;
+            case ActivationKind.TurnBuff:
+                // Error de Carga is decided before any activation discards are paid.
+                if (State.PendingTurnBuff!.DiscardsPaid < State.PendingTurnBuff.RequiredDiscards)
+                    State.Phase = Phase.TurnBuffDiscard;
+                else ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex);
+                break;
             case ActivationKind.FieldCode:
                 RollWithRelikario(p, DiePurpose.FieldCombat, new DieEffect { Purpose = DiePurpose.FieldCombat, Actor = frame.Actor, SkillId = frame.CardId });
                 break;
@@ -213,25 +193,13 @@ public sealed partial class GameEngine
     }
     private void CancelActivation(EngineActivation frame)
     {
-        if (frame.Kind == ActivationKind.TurnBuff) { FinishTurnBuff(frame, returnDiscard: true); return; }
+        if (frame.Kind == ActivationKind.TurnBuff) { CompleteTurnBuff(); return; }
         if (frame.Kind == ActivationKind.FieldCode)
         {
             if (frame.FieldSource is { } source) DestroyCardNow(source);
-            ClearCodeDecisions();
-        }
-        if (frame.Kind == ActivationKind.MindReset) State.PendingMindReset = null;
-        if (frame.Kind == ActivationKind.Code)
-        {
-            if (frame.ReplayCorrupted)
-            {
-                NotifyPileMove(State.Players[frame.Actor], frame.CardId, CardZone.Corrupted, frame.CorruptedIndex);
-                State.Players[frame.Actor].CorruptedMemory.RemoveAt(frame.CorruptedIndex);
-                State.Players[frame.Actor].Memory.Insert(Math.Min(frame.MemoryIndex, State.Players[frame.Actor].Memory.Count), frame.CardId);
-            }
-            ClearCodeDecisions();
         }
         else if (frame.Kind == ActivationKind.Equipment) NotifyPileMove(State.Players[frame.Actor], frame.CardId, CardZone.Activation);
-        State.Phase = frame.CancelPhase ?? frame.ResumePhase;
+        State.Phase = frame.ResumePhase;
         if (frame.Kind == ActivationKind.Reroll) _activeActivation = frame.Parent;
     }
 }

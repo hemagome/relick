@@ -62,6 +62,8 @@ public sealed partial class GameEngine
         }
         if (card.DiscardCost > 0 && p.Hand.Count < card.DiscardCost + (excludedHand < 0 ? 0 : 1))
             return $"Necesitas {card.DiscardCost} carta(s) adicionales para pagar el descarte.";
+        if (card.CancelActivation && HandReservedForActivation(Array.IndexOf(State.Players, p)))
+            return "Las cartas restantes están reservadas para el descarte de la activación pendiente.";
         if (State.Turn < card.EarliestTurn) return $"{card.Name} solo puede activarse a partir del turno {card.EarliestTurn} de la partida.";
         if (p.Relikia < card.PrCost + extraCost) return $"Necesitas {card.PrCost + extraCost} PR.";
         if (card.ReloadBothHands && (p.Hand.Count <= (excludedHand < 0 ? 0 : 1) || State.Players[1 - Array.IndexOf(State.Players, p)].Hand.Count == 0))

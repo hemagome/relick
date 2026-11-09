@@ -60,7 +60,7 @@ static class KonamyCodeTests
             Check(g.ResolveDeckSearch(0, 2).Success && DuelSnapshot.For(g, 1, 2).Players[0].Hand.Single() == null);
             Check(!DuelSnapshot.For(g, 1, 2).LastCombat.Contains(CardCatalog.DiamondHelmet.Name));
         }),
-        ("Konamy: Caja no responde a Jugada; Error anula antes o durante la elección y devuelve costes", () =>
+        ("Konamy: Error solo anula antes de buscar; pasar cierra la ventana y Caja no responde", () =>
         {
             var (g, _) = Fixture(); g.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DeckSearchChoice && !g.ResolveCodeResponse(1, true).Success);
@@ -68,7 +68,14 @@ static class KonamyCodeTests
             {
                 (g, _) = Fixture(); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
                 Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.ErrorResponse);
-                if (during) Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.DeckSearchChoice);
+                if (during)
+                {
+                    Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.DeckSearchChoice);
+                    var before = g.SaveSnapshot();
+                    Check(!g.CanPlayLoadError(1) && !g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
+                    Check(g.ResolveDeckSearch(0, 1).Success && g.State.Active.ActionsLeft == 1);
+                    continue;
+                }
                 Check(g.PlayCode(1, 0).Success && g.State.Phase == Phase.Actions && g.State.Active.ActionsLeft == 2);
                 Check(g.State.Active.Hand.Count == 0 && g.State.Active.Deck.Count == 5 && g.State.Active.Memory.Contains(CardCatalog.KonamyCode.Id));
                 Check(!g.ResolveDeckSearch(0, 1).Success);
@@ -77,8 +84,9 @@ static class KonamyCodeTests
         ("Konamy: recuperar la elección y responder con contraerror conserva su búsqueda", () =>
         {
             var (g, r) = Fixture(); g.State.Active.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
-            Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success);
+            Check(g.PlayCode(0, 0).Success);
             var saved = g.SaveSnapshot(); var clone = GameEngine.FromSnapshot(saved, r);
+            Check(g.PassErrorResponse(1).Success && clone.PassErrorResponse(1).Success);
             Check(g.ResolveDeckSearch(0, 4).Success && clone.ResolveDeckSearch(0, 4).Success && g.SaveSnapshot() == clone.SaveSnapshot());
             g = GameEngine.FromSnapshot(saved, r);
             Check(g.PlayCode(1, 0).Success && g.PlayCode(0, 0).Success && g.State.Phase == Phase.DeckSearchChoice);
@@ -93,7 +101,14 @@ static class KonamyCodeTests
                 Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success);
                 if (cancel > 0)
                 {
-                    if (cancel == 2) Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.DeckSearchChoice && p.CorruptedMemory.Count == 1);
+                    if (cancel == 2)
+                    {
+                        Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.DeckSearchChoice && p.CorruptedMemory.Count == 1);
+                        var before = g.SaveSnapshot();
+                        Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
+                        Check(g.ResolveDeckSearch(0, 1).Success && p.Relikia == 0 && p.ActionsLeft == 0);
+                        continue;
+                    }
                     Check(g.PlayCode(1, 0).Success && p.Relikia == 400 && p.ActionsLeft == 2 && p.CorruptedMemory.Count == 0);
                     Check(p.Memory.Single() == CardCatalog.KonamyCode.Id);
                 }

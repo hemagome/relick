@@ -54,6 +54,22 @@ static class PlumberStarTests
             Check(g.Discard(0, 0).Success && g.State.Phase == Phase.Final && p.StarEffects == 1);
             Check(g.Discard(0, 0).Success && g.State.CurrentPlayer == 1 && g.State.Players.All(player => player.StarEffects == 0));
         }),
+        ("Estrella: Error impide el descarte, devuelve la acción y conserva el dado pendiente al reconectar", () =>
+        {
+            foreach (var actor in new[] { 0, 1 })
+            {
+                var (g, rng) = Fixture(actor); var p = g.State.Active; rng.EnqueueDie(5);
+                Check(g.Attack(actor, 2, 0).Success && g.State.Phase == Phase.AttackRerollChoice);
+                g.State.Players[1 - actor].Hand.Add(CardCatalog.LoadError.Id);
+                Check(g.PlayCode(actor, 0).Success && g.State.Phase == Phase.ErrorResponse);
+                Check(p.Hand.Single() == CardCatalog.Senshuni.Id && !p.Memory.Contains(CardCatalog.Senshuni.Id));
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+                Check(g.PlayCode(1 - actor, g.State.Players[1 - actor].Hand.IndexOf(CardCatalog.LoadError.Id)).Success);
+                Check(g.State.Phase == Phase.AttackRerollChoice && g.State.PendingAttackRoll?.Die == 5 && p.StarEffects == 0 && p.ActionsLeft == 2);
+                Check(p.Hand.Single() == CardCatalog.Senshuni.Id && p.Memory.Contains(CardCatalog.PlumberStar.Id));
+                Check(g.ResolveAttackReroll(actor, false).Success && g.State.Players[1 - actor].Health == 5);
+            }
+        }),
         ("Estrella: Caja conserva el descarte en memoria al cancelar; dejar resolver activa los efectos", () =>
         {
             foreach (var cancel in new[] { false, true })
@@ -65,6 +81,14 @@ static class PlumberStarTests
                 Check(p.StarEffects == (cancel ? 0 : 1) && p.ActionsLeft == (cancel ? 2 : 1));
             }
         }),
+        ("Estrella: contraerror permite pagar el descarte después de las respuestas y activa una sola vez", () =>
+        {
+            var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.ErrorResponse);
+            Check(g.PlayCode(1, 1).Success && g.PlayCode(0, p.Hand.IndexOf(CardCatalog.LoadError.Id)).Success);
+            Check(g.State.Phase == Phase.TurnBuffDiscard && g.ResolveTurnBuffDiscard(0, 0).Success);
+            Check(p.StarEffects == 1 && p.Memory.Contains(CardCatalog.Senshuni.Id) && p.ActionsLeft == 0 && g.State.PendingTurnBuff == null);
+        }),
         ("Estrella: Relikia exige descarte, cobra 400 PR y corrompe solo su copia", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; g.State.Phase = Phase.Actions;
@@ -75,6 +99,33 @@ static class PlumberStarTests
             Check(g.ResolveTurnBuffDiscard(0, 0).Success && p.StarEffects == 1 && p.CorruptedMemory.Single() == CardCatalog.PlumberStar.Id);
             Check(p.Memory.Single() == CardCatalog.Senshuni.Id && g.State.Phase == Phase.Actions);
         }),
+        ("Estrella: Mira descartada dispara al resolver o con Caja; Error evita el descarte y su disparo", () =>
+        {
+            foreach (var mode in new[] { "normal", "box", "error", "relikia" })
+            {
+                var (g, rng) = Fixture(); var p = g.State.Active;
+                p.Hand[1] = CardCatalog.Sniper.Id;
+                if (mode == "box") g.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
+                if (mode == "error") g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                if (mode == "relikia")
+                {
+                    g.State.Phase = Phase.Actions; p.Hand.RemoveAt(0); p.Memory.Add(CardCatalog.PlumberStar.Id); p.Relikia = 400;
+                    Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success);
+                }
+                else Check(g.PlayCode(0, 0).Success);
+                if (mode == "error")
+                {
+                    Check(g.PlayCode(1, 1).Success && p.Hand.Contains(CardCatalog.Sniper.Id) && p.StarEffects == 0 && g.State.PendingSniper == null);
+                    continue;
+                }
+                Check(g.ResolveTurnBuffDiscard(0, 0).Success);
+                if (mode == "box") Check(g.ResolveCodeResponse(1, true).Success);
+                Check(g.State.Phase == Phase.SniperChoice);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+                Check(g.ResolveSniper(0, true).Success && p.Equipment == CardCatalog.Sniper.Id && g.State.PendingTurnBuff == null);
+                Check(p.StarEffects == (mode == "box" ? 0 : 1) && g.State.Phase == (mode == "relikia" ? Phase.Actions : Phase.Combat));
+            }
+        }),
         ("Estrella: suspende y recupera el dado y la activación de Vida Extra", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; g.State.Phase = Phase.Actions; p.Health = 2;
@@ -83,6 +134,16 @@ static class PlumberStarTests
             Cast(g, 0); g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
             Check(g.State.Phase == Phase.DieRerollChoice && g.State.PendingDieRoll?.Die == 5 && p.StarEffects == 1);
             Check(g.ResolveDieReroll(0, false).Success && p.Health == 5 && p.ActionsLeft == 0 && g.State.Phase == Phase.Actions);
+        }),
+        ("Estrella: cancelar el equipo gratuito de la Mira no devuelve su descarte ni bloquea el turno", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active; p.Hand[1] = CardCatalog.Sniper.Id;
+            g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+            Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success && g.ResolveTurnBuffDiscard(0, 0).Success);
+            Check(g.State.Phase == Phase.SniperChoice && g.ResolveSniper(0, true).Success && g.State.Phase == Phase.ErrorResponse);
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+            Check(g.PlayCode(1, 1).Success && g.State.Phase == Phase.Combat && g.State.PendingTurnBuff == null);
+            Check(p.StarEffects == 1 && p.Equipment == null && p.Memory.Contains(CardCatalog.Sniper.Id) && !p.Hand.Contains(CardCatalog.Sniper.Id));
         }),
         ("Estrella: conserva la respuesta original de Caja al interrumpirla con otro Objeto", () =>
         {

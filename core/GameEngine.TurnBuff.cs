@@ -30,6 +30,10 @@ public sealed class PendingTurnBuff
 
 public sealed partial class GameEngine
 {
+    // Countering must not spend a card needed to complete the pending activation.
+    private bool HandReservedForActivation(int actor) => State.PendingTurnBuff is { } pending && pending.Actor == actor &&
+        pending.DiscardsPaid < pending.RequiredDiscards && State.Players[actor].Hand.Count <= pending.RequiredDiscards - pending.DiscardsPaid;
+
     private bool HasTurnBuffInHand(int actor) => State.PendingTurnBuff == null && State.Players[actor].ActionsLeft > 0 &&
         State.Players[actor].Hand.Count >= 2 && State.Players[actor].Hand.Any(id => CardCatalog.Get(id).DiscardForTurnBuff);
 
@@ -49,8 +53,9 @@ public sealed partial class GameEngine
         State.PendingAttackRoll = null; State.PendingDieRoll = null; _pendingDieEffect = null;
         State.PendingCode = null; State.PendingPoints = null; State.DestroyActor = null;
         State.PendingMindReset = null; State.PendingRelikia = null; State.CorruptionsRemaining = 0;
-        State.Phase = Phase.TurnBuffDiscard;
         State.LastCombat = $"{State.Players[frame.Actor].Name} · {CardCatalog.Get(frame.CardId).Name} · Elige {State.PendingTurnBuff.RequiredDiscards} carta(s) para descartar como coste.";
+        State.Phase = Phase.TurnBuffResolving;
+        BeginActivation(frame);
     }
 
     public CommandResult ResolveTurnBuffDiscard(int actor, int handIndex)
@@ -70,7 +75,8 @@ public sealed partial class GameEngine
             return CommandResult.Ok();
         }
         State.Phase = Phase.TurnBuffResolving;
-        BeginActivation(frame);
+        ResumeActivation(frame);
+        CompleteActivationIfFinished();
         return CommandResult.Ok();
     }
 
@@ -79,30 +85,18 @@ public sealed partial class GameEngine
         var frame = _activeActivation!; var p = State.Players[frame.Actor];
         p.StarEffects++;
         Log($"{p.Name} activa Estrella del Fontanero: no recibe daño y su daño se multiplica por {1 << p.StarEffects} hasta el final de este turno.");
-        FinishTurnBuff(frame, returnDiscard: false);
+        FinishTurnBuff(frame);
     }
 
-    private void FinishTurnBuff(EngineActivation frame, bool returnDiscard)
+    private void FinishTurnBuff(EngineActivation frame)
     {
         var pending = State.PendingTurnBuff!; var p = State.Players[pending.Actor];
         _activeActivation = frame; frame.CanInterrupt = false; State.Phase = Phase.TurnBuffResolving;
         State.PendingCode = null; State.PendingDestruction = null;
         pending.Completed = true;
         var discards = pending.PaidDiscards ?? [new ActivationDiscard(pending.DiscardId, pending.DiscardIndex)];
-        if (returnDiscard)
-        {
-            foreach (var card in discards.OrderByDescending(card => card.MemoryIndex))
-            { p.Memory.RemoveAt(card.MemoryIndex); ShiftSniperIndices(pending.Actor, card.MemoryIndex); }
-            foreach (var card in discards)
-            {
-                p.Hand.Add(card.CardId);
-                MemoryCardClaimed?.Invoke(pending.Actor, pending.Actor, card.MemoryIndex, p.Hand.Count - 1);
-                Log($"Error de Carga devuelve {CardCatalog.Get(card.CardId).Name} a la mano de {p.Name}.");
-            }
-        }
-        else
-            BeginSniperChoices(pending.Actor, discards.Where(card => CardCatalog.Get(card.CardId).EquipOnDiscard)
-                .Select(card => card.MemoryIndex - (frame.ReplayCorrupted && frame.MemoryIndex < card.MemoryIndex ? 1 : 0)));
+        BeginSniperChoices(pending.Actor, discards.Where(card => CardCatalog.Get(card.CardId).EquipOnDiscard)
+            .Select(card => card.MemoryIndex - (frame.ReplayCorrupted && frame.MemoryIndex < card.MemoryIndex ? 1 : 0)));
         CompleteActivationIfFinished();
     }
 

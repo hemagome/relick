@@ -41,7 +41,7 @@ public sealed partial class GameEngine
         }
         State.LastCombat = $"{State.Players[frame.Actor].Name} repetirá su etapa de {StageName(stage)} al terminarla con Doblador de Tiempo.";
         Log(State.LastCombat);
-        FinishTurnBuff(frame, returnDiscard: false);
+        FinishTurnBuff(frame);
     }
 
     private bool ConsumeRepeatedStage(Phase stage)

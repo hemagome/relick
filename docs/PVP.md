@@ -172,7 +172,7 @@ Código de tipo Jugada, sin COMBO: una acción y cero PR. Elige una carta que no
 
 La decisión enumera las ilustraciones de los objetivos únicamente en las opciones privadas del dueño. El rival no recibe el contenido ni el orden del mazo y la carta añadida permanece oculta en la mano. El servidor valida el índice del mazo asociado a la revisión y rechaza habilidades o decisiones ajenas. La elección pendiente se restaura al reconectar.
 
-Error de Carga puede anularla antes o durante la búsqueda, devolviendo los costes. Caja de Cartón no responde a códigos Jugada. Activarla desde memoria cuesta dos acciones y 400 PR y corrompe la carta, con la restitución habitual si se anula. Una copia sustituye una de Caja en los mazos nuevos; las partidas existentes conservan sus cartas.
+Error de Carga puede anularla únicamente en la ventana inicial, antes de empezar la búsqueda, devolviendo los costes. Una vez que se deja resolver, la selección ya no puede cancelarse con Error. Caja de Cartón no responde a códigos Jugada. Activarla desde memoria cuesta dos acciones y 400 PR; la carta solo se corrompe después de superar las respuestas. Una copia sustituye una de Caja en los mazos nuevos; las partidas existentes conservan sus cartas.
 
 También se corrigió un bloqueo previo de Relikia: si un COMBO consume la última carta de la mano durante el reciclaje, la colocación posterior termina sin pedir una carta inexistente.
 

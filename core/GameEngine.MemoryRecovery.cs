@@ -19,7 +19,7 @@ public sealed partial class GameEngine
         if (!RecoverableMemoryCards().Any())
         {
             Log("Disquete se resuelve sin cartas disponibles en las memorias después de las respuestas.");
-            State.Phase = _activeActivation?.CancelPhase ?? _activeActivation?.ResumePhase ?? Phase.Actions;
+            State.Phase = _activeActivation?.ResumePhase ?? Phase.Actions;
             CompleteActivationIfFinished();
             return;
         }
@@ -42,7 +42,7 @@ public sealed partial class GameEngine
         // The source memory is public, but the card is not marked revealed in its new hand.
         State.LastCombat = $"{recipient.Name} añade {CardCatalog.Get(id).Name} de la memoria de {source.Name} a su mano con Disquete.";
         Log(State.LastCombat);
-        State.Phase = frame.CancelPhase ?? frame.ResumePhase;
+        State.Phase = frame.ResumePhase;
         _activeActivation = null;
         CompleteEndTurnIfReady();
         return CommandResult.Ok();

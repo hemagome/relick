@@ -77,6 +77,28 @@ static class JessicaTests
                 Check(g.State.Players[1].Health == (modifier == "pc" ? 5 : 6) && p.Hand.Count == (modifier == "pc" ? 1 : 0));
             }
         }),
+        ("Jessica: Error cancela antes del dado en el turno de entrada y rechaza cancelaciones tardías", () =>
+        {
+            foreach (var zone in new[] { FieldZone.Bonus, FieldZone.Exchange }) foreach (var late in new[] { false, true })
+            {
+                var (g, rng) = Fixture(0, zone); var p = g.State.Active; var other = g.State.Players[1]; p.Dexterity = 1;
+                if (!late) other.Hand.Add(CardCatalog.LoadError.Id);
+                rng.EnqueueDie(4); Check(g.UseFieldCode(0, zone, zone == FieldZone.Bonus ? -1 : 0).Success);
+                Check(DuelSnapshot.For(g, 0, 1).Stage == Phase.Combat);
+                if (late) other.Hand.Add(CardCatalog.LoadError.Id);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; other = g.State.Players[1];
+                if (late)
+                {
+                    Reject(g, () => g.PlayCode(1, 0));
+                    Check(!g.CanPlayLoadError(1) && g.State.PendingDieRoll?.Die == 4);
+                    Check(g.ResolveDieReroll(0, false).Success && p.Memory.Count == 0 && other.Health == 8);
+                    Check(zone == FieldZone.Bonus ? p.Bonus == CardCatalog.Jessica.Id : p.Exchange.Single() == CardCatalog.Jessica.Id);
+                    continue;
+                }
+                Check(g.PlayCode(1, 0).Success && g.State.Phase == Phase.Combat && g.State.PendingDieRoll == null);
+                Check(p.Memory.Single() == CardCatalog.Jessica.Id && p.Bonus == null && p.Exchange.Count == 0 && other.Health == 8 && p.Hand.Count == 0);
+            }
+        }),
         ("Jessica: contraerror conserva la carta y Caja no responde a un Personaje", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; p.Hand.Add(CardCatalog.LoadError.Id);
@@ -214,7 +236,21 @@ static class JessicaTests
             var (g, rng) = Fixture(); var other = g.State.Players[1]; other.Health = 0; other.HasReachedZero = true;
             rng.EnqueueDie(6); Check(g.UseFieldCode(0, FieldZone.Bonus).Success && g.State.IsOver && g.State.Winner == 0 && g.State.Active.Hand.Count == 0);
         }),
-
+        ("Jessica: mover el origen durante el dado no permite que Error retire una copia de reemplazo", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active;
+            p.Exchange.Add(CardCatalog.Attack.Id); p.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Sniper.Id]);
+            p.Deck.Insert(0, CardCatalog.Jessica.Id); rng.EnqueueDie(4);
+            Check(g.UseFieldCode(0, FieldZone.Bonus).Success && g.State.Phase == Phase.DieRerollChoice);
+            Check(g.PlayCode(0, 0).Success && g.ResolveTurnBuffDiscard(0, 0).Success && g.ResolveSniper(0, false).Success);
+            Check(g.State.Phase == Phase.DieRerollChoice && p.Hand.Contains(CardCatalog.Jessica.Id) && !p.BonusEffectUsed);
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+            Reject(g, () => g.PlayCode(1, 0));
+            Check(g.ResolveDieReroll(0, false).Success && g.State.Phase == Phase.Combat && p.Bonus == CardCatalog.Jessica.Id);
+            Check(p.Hand.Contains(CardCatalog.Jessica.Id) && !p.BonusEffectUsed && g.FieldCombatTargets(0).Count() == 1);
+            rng.EnqueueDie(5); Check(g.UseFieldCode(0, FieldZone.Bonus).Success && g.State.Phase == Phase.ErrorResponse);
+            Check(g.PassErrorResponse(1).Success && g.State.Players[1].Health == 4);
+        })
     };
 
     static (GameEngine, ScriptedRandom) Fixture(int actor = 0, FieldZone zone = FieldZone.Bonus)
