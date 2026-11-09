@@ -29,6 +29,23 @@ se agrupan en el botón de información y la selección se puede limpiar sin eje
 una jugada. El avance de etapa ocupa un control separado, Relikia tiene su propio
 menú y Abandonar está en el menú general con su confirmación habitual.
 
+La lectura de cartas usa un inspector compartido en mano, elección inicial y
+consultas de zonas. Conserva las cartas completas y sus tamaños de presentación.
+La clasificación incluye el subtipo actual —por ejemplo, Código Personaje— y
+COMBO cuando corresponde. Las habilidades muestran daño normal, daño crítico y
+premio en un orden fijo; su descripción omite el prefijo que ya repite esos datos.
+Los códigos y equipos muestran su texto sin convertir el mismo efecto en otro
+indicador. No se añaden las etiquetas «Efecto», «Seleccionada» ni «Efecto visible».
+
+El coste ocupa una sola fila, separado de los botones, y prioriza la opción
+autorizada de la acción actual. Al consultar una carta sin una acción disponible
+se puede mostrar su coste de catálogo; eso no habilita jugadas. Los contadores y
+el daño de una habilidad enseñada corresponden a su copia autorizada. Limpiar la
+selección retira esos datos. En escritorio, mano e inspector comparten una fila;
+en pantallas cortas, la lectura tiene desplazamiento independiente para mantener
+accesibles la mano y los controles. Elegir la habilidad inicial actualiza el
+inspector existente sin reconstruir la arena.
+
 Al elegir un Ataque se iluminan las habilidades autorizadas; tocar una escoge la
 copia real para la confirmación. Una sola habilidad disponible se selecciona sin
 anunciar el ataque. Jessica se selecciona en su Bonus o canje, y las destrucciones

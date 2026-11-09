@@ -42,6 +42,7 @@ public partial class OnlineArena
         _initialSkillCandidate = id;
         foreach (var card in _initialSkillCards) { card.Chosen = card.Card.Id == id; card.QueueRedraw(); }
         if (InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled = !CanChooseInitialSkill;
+        RefreshInspector();
     }
 
     private void BuildInitialSkillMoves()
@@ -54,7 +55,7 @@ public partial class OnlineArena
         });
         InitialSkillConfirmButton.Name = "ConfirmInitialSkill";
         InitialSkillConfirmButton.SetMeta("discards", 0); _moveButtons.Add(InitialSkillConfirmButton);
-        if (Compact) InitialSkillConfirmButton.CustomMinimumSize = new(Short ? 280 : Math.Max(120, Size.X - 44), 48);
+        if (Compact) InitialSkillConfirmButton.CustomMinimumSize = new(Short ? 280 : 0, 48);
         _lastDisabled = null; UpdateEnabled();
         InitialSkillConfirmButton.Disabled |= _initialSkillCandidate == null;
     }

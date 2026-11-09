@@ -50,6 +50,8 @@ public partial class OnlineArena
             GuiInputTestDriver.Click((Control)_root!.FindChild("InitialSkillCard0", true, false)); await Layout();
             Check(BoardBuildCount == buildCount && InitialSkillConfirmButton!.GetInstanceId() == confirmId, "Elegir habilidad reconstruye el tablero.");
             Check(!InitialSkillConfirmButton!.Disabled && _initialSkillCandidate == "destiny-shuffle", "No se puede elegir Destiny.");
+            Check(_inspector.TitleLabel.Text == CardCatalog.Destiny.Name && _inspector.Attributes.Visible &&
+                !_inspector.DescriptionLabel.Text.Contains("Daño normal:"), "La elección inicial no actualiza el inspector legible.");
             await Capture($"initial-skill-seat{seat}-{size.X}x{size.Y}");
             PresentInitialSkillChoice(room, skills, true, true, beforeDeal); await Layout();
             Check(InitialSkillConfirmButton!.Disabled && _hand!.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>().All(c => c.Disabled), "La elección pendiente sigue editable.");

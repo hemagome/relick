@@ -13,6 +13,7 @@ public partial class OnlineArena
     private bool _openingConnected, _openingPending;
     private PreparationInfo? _openingInfo;
     private NetworkCard[] _openingCards = [];
+    private string? _openingInspection;
     private readonly HashSet<ulong> _openingReturns = [];
     private string? _openingKey;
     private (ulong Revision, ulong Epoch, bool Ready, bool Confirming, bool Choosing)? _preparationVersion;
@@ -66,6 +67,7 @@ public partial class OnlineArena
         var deal = !_openingDealt && cards.Length == 5 && info is { MyConfirmed: false, OpponentConfirmed: false, Started: false };
         if (cards.Length == 5) _openingDealt = true;
         _choosingOpeningSkill = false;
+        if (!cards.Any(c => c.Definition == _openingInspection)) _openingInspection = null;
         _openingKey = key; _openingCards = cards; _openingInfo = info;
         _openingConnected = connected; _openingPending = pending; _preparing = true;
         if (info?.MyConfirmed == true)
@@ -130,7 +132,7 @@ public partial class OnlineArena
         if (Compact)
         {
             PreparationConfirmButton.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            PreparationConfirmButton.CustomMinimumSize = new(Short ? 280 : Math.Max(120, Size.X - 44), 48);
+            PreparationConfirmButton.CustomMinimumSize = new(Short ? 280 : 0, 48);
         }
         _lastDisabled = null; UpdateEnabled();
     }

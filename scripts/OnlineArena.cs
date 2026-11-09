@@ -173,7 +173,7 @@ public partial class OnlineArena : Control
                     Skill = slot =>
                     {
                         if (slot >= player.Skills.Length) return;
-                        if (relative == 1) ShowCards("Habilidad rival", [player.Skills[slot]]);
+                        if (relative == 1) SelectField(seat, FieldZone.Skill, slot);
                         else SelectSkill(slot);
                     },
                     InspectSkill = slot => ShowCards("Habilidad", [player.Skills[slot]]),
@@ -187,14 +187,22 @@ public partial class OnlineArena : Control
             (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), Compact);
         _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
         Player(1);
-        BuildActionArea(body.Controls);
+        BoxContainer interaction = Short ? new VBoxContainer() : new HBoxContainer();
+        interaction.Name = "CardInteractionArea"; interaction.AddThemeConstantOverride("separation", Short ? 4 : 12);
+        body.Controls.AddChild(interaction);
+        var handColumn = new VBoxContainer { Name = "HandColumn", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var inspectorColumn = new VBoxContainer { Name = "InspectorColumn", CustomMinimumSize = new(Short ? 0 : 480, 0),
+            SizeFlagsHorizontal = Short ? SizeFlags.ExpandFill : SizeFlags.Fill };
+        if (Short) { interaction.AddChild(inspectorColumn); interaction.AddChild(handColumn); }
+        else { interaction.AddChild(handColumn); interaction.AddChild(inspectorColumn); }
+        BuildActionArea(inspectorColumn);
         if (Short)
         {
             _turnControls.GetParent().RemoveChild(_turnControls); header.AddChild(_turnControls);
             header.MoveChild(_turnControls, header.GetChildCount() - 2);
         }
-        _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(body.Controls, _availableInitialSkills, _initialSkillCandidate,
-            SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(body.Controls, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
+        _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
+            SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
                 ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO");
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
@@ -226,6 +234,7 @@ public partial class OnlineArena : Control
         {
             if (!CanChooseOpening || IsAnimating || index < 0 || index >= _openingCards.Length) return;
             var id = _openingCards[index].Id;
+            _openingInspection = _openingCards[index].Definition;
             if (!_openingReturns.Add(id)) _openingReturns.Remove(id);
             SyncOpeningSelection(); RefreshSelection(); return;
         }
@@ -252,10 +261,8 @@ public partial class OnlineArena : Control
         _moveButtons.Clear(); _actionMenus.Clear(); _advanceButton = null;
         if (_preparing)
         {
-            _contextTitle.Text = _choosingOpeningSkill ? "Habilidad inicial" : "Mano inicial";
-            _contextTitle.Visible = false;
-            _contextCost.Visible = false; _turnControls.Visible = false;
-            BuildPreparationMoves(); return;
+            _turnControls.Visible = false;
+            BuildPreparationMoves(); RefreshInspector(); return;
         }
         RefreshBoardTargets(); BuildTurnControls(); BuildContextMoves();
         _lastDisabled = null; UpdateEnabled();
@@ -328,7 +335,8 @@ public partial class OnlineArena : Control
             var item = new HandCard { Card = card, Disabled = select == null }; list.AddChild(item);
             var chosen = index;
             if (select != null) item.Pressed += () => { select(chosen); dialog.QueueFree(); };
-            var text = ArenaPresentation.Text(card.Name + "\n" + card.Text); text.AutowrapMode = TextServer.AutowrapMode.WordSmart; list.AddChild(text);
+            var inspector = new CardInspector { ReadingHeight = 160, ShortScreen = Short }; list.AddChild(inspector);
+            inspector.Present(card, card.Name, ArenaActionText.CardCost(card));
         }
         if (ids?.Count == 0) list.AddChild(ArenaPresentation.Text("No hay cartas en esta zona."));
         dialog.AddChild(scroll); dialog.Confirmed += () => dialog.QueueFree(); dialog.Canceled += () => dialog.QueueFree();

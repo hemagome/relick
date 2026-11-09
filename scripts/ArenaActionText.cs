@@ -57,6 +57,13 @@ internal static class ArenaActionText
     public static CardDefinition? HandCard(DuelOption option, DuelSnapshot s) => option.Move.Index >= 0 &&
         option.Move.Index < s.Players[s.MySeat].Hand.Length && s.Players[s.MySeat].Hand[option.Move.Index] is { } id ? CardCatalog.Get(id) : null;
 
+    public static string CardCost(CardDefinition card) => card.Kind switch
+    {
+        CardKind.Code => Resources(card.ActionCost, card.PrCost, card.DiscardCost),
+        CardKind.Equipment => "1 acción", CardKind.Attack => "Consume 1 Ataque",
+        CardKind.Skill => "Según el espacio de habilidad elegido", _ => ""
+    };
+
     public static string Cost(DuelOption option, DuelSnapshot s)
     {
         var m = option.Move;

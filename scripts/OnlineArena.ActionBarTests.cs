@@ -51,6 +51,7 @@ public partial class OnlineArena
 
     internal async Task CheckContextActionBar()
     {
+        await CheckCardInspector();
         await CheckLoadErrorChoices();
         await CheckPointsChoices();
         void Check(bool value, string message) { if (!value) throw new Exception(message); }
@@ -104,6 +105,8 @@ public partial class OnlineArena
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 311)); await Layout(); await TapCard(2);
                 Check(_ownSkills.Count(t => t.Targetable) == 2 && !PresentsKind(DuelMoveKind.Attack) && _selection.Text.Contains("habilidad"),
                     "Atacar no pide elegir una habilidad entre los objetivos válidos.");
+                Check(_selection.GetGlobalRect().End.Y <= ((Control)_inspector.FindChild("InspectorReading", true, false)).GetGlobalRect().End.Y + 1,
+                    "La instrucción de elegir una habilidad queda detrás de la descripción.");
                 var skill = _ownSkills.Single(t => t.SkillIndex == 1); _arenaScroll?.EnsureControlVisible(skill); await Layout();
                 GuiInputTestDriver.Click(skill); await Layout();
                 var attack = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Attack && o.Move.Index == 2 && o.Move.Value == 1);
@@ -164,7 +167,8 @@ public partial class OnlineArena
     private void CheckPendingCodeBounds()
     {
         var minimum = _root!.GetCombinedMinimumSize();
-        if (!(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1 && _hand!.GetGlobalRect().End.Y <= Size.Y + 1))
+        if (!(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1 && _hand!.GetGlobalRect().End.Y <= Size.Y + 1 &&
+            _root.GetGlobalRect().End.Y <= Size.Y + 1 && (_advanceButton == null || _advanceButton.GetGlobalRect().End.Y <= Size.Y + 1)))
             throw new Exception($"La decisión de código desborda la arena: mínimo {minimum}, raíz {_root.Size}.");
     }
 

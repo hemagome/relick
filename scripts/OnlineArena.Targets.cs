@@ -55,11 +55,10 @@ public partial class OnlineArena
         if (IsAnimating) return;
         if (zone == FieldZone.Hand && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)FieldZone.Hand && o.Move.Index < 0)) index = -1;
         var field = (owner, zone, index);
-        if (_snapshot!.Options.Any(o => MatchesField(o.Move, field)))
+        if (_snapshot!.Options.Any(o => MatchesField(o.Move, field)) || FieldCardId(field) != null)
         {
             _selected.Clear(); _skillContext = false; _fieldSelection = field; RefreshSelection();
         }
-        else if (FieldCardId(field) is { } id) ShowCards("Carta en juego", [id]);
         else if (zone == FieldZone.Hand) ShowCards("Mano rival", _snapshot.Players[owner].Hand);
     }
 

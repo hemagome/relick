@@ -6,6 +6,7 @@ namespace Relick;
 public partial class OnlineArena
 {
     private Label _contextTitle = null!, _contextCost = null!;
+    private CardInspector _inspector = null!;
     private HBoxContainer _turnControls = null!;
     private Button? _advanceButton;
     private readonly List<MenuButton> _actionMenus = [];
@@ -21,29 +22,18 @@ public partial class OnlineArena
 
     private void BuildActionArea(VBoxContainer parent)
     {
-        var inline = !Short && !_preparing;
-        BoxContainer dock = inline ? new HBoxContainer() : new VBoxContainer();
+        var dock = new VBoxContainer();
         dock.Name = "ActionDock"; dock.AddThemeConstantOverride("separation", Short ? 4 : 8); parent.AddChild(dock);
-        var panel = new PanelContainer { Name = "ContextActionBar", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var style = ArenaPresentation.Box("142536", new("38596a"), 12);
-        style.ContentMarginLeft = style.ContentMarginRight = Compact ? 10 : 16;
-        style.ContentMarginTop = style.ContentMarginBottom = 6;
-        panel.AddThemeStyleboxOverride("panel", style); dock.AddChild(panel);
-        BoxContainer content = inline ? new HBoxContainer() : new VBoxContainer(); content.AddThemeConstantOverride("separation", 4); panel.AddChild(content);
-        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 2); content.AddChild(column);
-        var heading = new HBoxContainer(); column.AddChild(heading);
-        _contextTitle = ArenaPresentation.Text("", 15, BoardArt.Ink); _contextTitle.Name = "ContextCardName";
-        _contextTitle.SizeFlagsHorizontal = SizeFlags.ExpandFill; _contextTitle.ClipText = true; heading.AddChild(_contextTitle);
-        _contextCost = ArenaPresentation.Text("", 12, BoardArt.Gold); _contextCost.Name = "ContextCost"; _contextCost.ClipText = true; column.AddChild(_contextCost);
-        _selection = ArenaPresentation.Text("", 12, BoardArt.Muted); _selection.Name = "ContextHint";
-        _selection.AutowrapMode = TextServer.AutowrapMode.WordSmart; _selection.MaxLinesVisible = 1;
-        column.AddChild(_selection);
-        var scroll = new ScrollContainer { Name = "MovesScroll", CustomMinimumSize = new(inline ? 320 : 0, 50), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        content.AddChild(scroll);
+        _inspector = new CardInspector { Name = "ContextActionBar", ShortScreen = Short }; dock.AddChild(_inspector);
+        _contextTitle = _inspector.TitleLabel; _contextCost = _inspector.CostLabel; _selection = _inspector.HintLabel;
+        var actions = new HBoxContainer { Name = "InspectorActions" }; actions.AddThemeConstantOverride("separation", 6); dock.AddChild(actions);
+        var scroll = new ScrollContainer { Name = "MovesScroll", CustomMinimumSize = new(0, 50),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        actions.AddChild(scroll);
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 6); _moves.AddThemeConstantOverride("v_separation", 6); scroll.AddChild(_moves);
         _turnControls = new HBoxContainer { Name = "TurnControls" };
-        _turnControls.AddThemeConstantOverride("separation", 6); dock.AddChild(_turnControls);
+        _turnControls.AddThemeConstantOverride("separation", 6); actions.AddChild(_turnControls);
     }
 
     private static bool IsHandAction(DuelMoveKind kind) => kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or
@@ -194,8 +184,12 @@ public partial class OnlineArena
         var costs = indices.Select(i => ArenaActionText.Cost(s.Options[i], s)).Where(v => v.Length > 0).Distinct().ToArray();
         _contextCost.Text = main >= 0 ? (costs.Length > 1 ? ArenaActionText.Label(s.Options[main], s) + ": " : "") + ArenaActionText.Cost(s.Options[main], s)
             : costs.Length == 1 ? costs[0] : "";
+        if (_contextCost.Text.Length == 0 && !_skillContext && _fieldSelection == null && _selected.Count == 1 &&
+            s.Phase is Phase.Draw or Phase.Combat or Phase.Actions && SelectedCardId() is { } selected)
+            _contextCost.Text = ArenaActionText.CardCost(CardCatalog.Get(selected));
         _contextCost.Visible = _contextCost.Text.Length > 0; _contextCost.TooltipText = _contextCost.Text;
         _selection.Text = ContextHint(); _selection.TooltipText = _selection.Text;
+        RefreshInspector();
     }
 
     private Button AddLocalButton(Node parent, string label, Action pressed, string? hint = null)
@@ -213,10 +207,35 @@ public partial class OnlineArena
 
     private string? SelectedCardId()
     {
+        if (_choosingOpeningSkill) return _initialSkillCandidate;
+        if (_preparing) return _openingInspection;
         if (ChoosingEffectCards || ChoosingRecycling) return _selected.Count == 1 ? SelectableCards.ElementAtOrDefault(_selected.Single()) : null;
         if (_fieldSelection is { } field) return FieldCardId(field);
         if (_skillContext && _selectedSkill >= 0) return _snapshot!.Players[_snapshot.MySeat].Skills.ElementAtOrDefault(_selectedSkill);
         return _selected.Count == 1 ? SelectableCards.ElementAtOrDefault(_selected.Single()) : null;
+    }
+
+    private void RefreshInspector()
+    {
+        var s = _snapshot!;
+        var id = SelectedCardId();
+        // During mandatory responses the action context is the activation, not a discard candidate.
+        if (!_preparing && s.DecisionPlayer == s.MySeat)
+            id = s.Phase switch
+            {
+                Phase.ErrorResponse => CardCatalog.LoadError.Id,
+                Phase.GoldenTotemChoice => CardCatalog.GoldenTotem.Id,
+                Phase.TurnBuffDiscard => s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id,
+                _ => id
+            };
+        var card = id == null ? null : CardCatalog.Get(id);
+        int? counters = null;
+        if (_fieldSelection is { Zone: FieldZone.Skill } field)
+            counters = s.Players[field.Owner].Counters.ElementAtOrDefault(field.Index);
+        else if (_skillContext && _selectedSkill >= 0)
+            counters = s.Players[s.MySeat].Counters.ElementAtOrDefault(_selectedSkill);
+        var title = _preparing ? card?.Name ?? (_choosingOpeningSkill ? "Elige una habilidad" : "Mano inicial") : ContextTitle();
+        _inspector.Present(card, title, _preparing ? "" : _contextCost.Text, _selection.Text, counters);
     }
 
     private string ContextTitle()
@@ -263,7 +282,7 @@ public partial class OnlineArena
         if (s.Phase == Phase.MagnetChoice && _fieldSelection == null) return "Elige una carta de la mano rival o su Bonus.";
         if (_selected.Count == 1 && s.Players[s.MySeat].Hand.ElementAtOrDefault(_selected.Single()) == CardCatalog.Attack.Id && !ChoosingEffectCards)
             return _selectedSkill < 0 ? "Elige una habilidad iluminada." : "Usando " + CardCatalog.Get(s.Players[s.MySeat].Skills[_selectedSkill]).Name;
-        if (SelectedCardId() != null) return _moveButtons.Any(b => b.GetParent() == _moves) ? "Confirma la acción o consulta la carta." : "Sin acciones disponibles para esta carta ahora.";
+        if (SelectedCardId() != null) return _moveButtons.Any(b => b.GetParent() == _moves) ? "" : "Sin acciones disponibles para esta carta ahora.";
         return myTurn ? "Elige una carta para ver sus acciones." : "Esperando al rival · puedes seleccionar un COMBO.";
     }
 
