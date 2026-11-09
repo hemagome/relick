@@ -46,8 +46,9 @@ public partial class OnlineArena : Control
     private bool Short => ArenaViewport.Short(this);
     private bool ChoosingRecycling => _snapshot is { Phase: Phase.RecycleChoice } s && s.DecisionPlayer == s.MySeat;
     private bool ChoosingDeckSearch => _snapshot is { Phase: Phase.DeckSearchChoice } s && s.DecisionPlayer == s.MySeat;
+    private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat;
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);
-    private bool ChoosingEffectCards => ChoosingDeckSearch || ChoosingResetCards;
+    private bool ChoosingEffectCards => ChoosingDeckSearch || ChoosingResetCards || ChoosingMemoryRecovery;
     private DuelOption[] _deckSearchOptions = [];
     private IReadOnlyList<string?> SelectableCards => ChoosingRecycling
         ? _snapshot!.Players[_snapshot.MySeat].Memory : ChoosingEffectCards
@@ -129,7 +130,7 @@ public partial class OnlineArena : Control
         _root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); ArenaViewport.ApplyInsets(_root, Compact ? 10 : 24, Compact ? 8 : 16);
         _root.AddThemeConstantOverride("separation", Short ? 4 : 8);
         var s = _snapshot!;
-        _deckSearchOptions = s.Options.Where(o => o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand).ToArray();
+        _deckSearchOptions = s.Options.Where(o => o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory).ToArray();
         _selectedSkill = Math.Clamp(_selectedSkill, 0, Math.Max(0, s.Players[s.MySeat].Skills.Length - 1));
         var header = new HBoxContainer(); _root.AddChild(header);
         var brand = ArenaPresentation.Text("R E L I C K", Compact ? 21 : 29, BoardArt.Gold);
@@ -170,7 +171,8 @@ public partial class OnlineArena : Control
                 {
                     Memory = corrupt => ShowCards(corrupt ? "Memoria corrupta" : "Memoria", corrupt ? null : player.Memory, player.CorruptedCount),
                     Attached = () => ShowCards("Sobre Yuno", player.Attached),
-                    Equipment = () => ShowCards(player.EquipmentDie > 0 ? $"Equipo · D6 guardado: {player.EquipmentDie}" : "Equipo", player.Equipment == null ? [] : [player.Equipment]),
+                    Equipment = () => ShowCards(player.EquipmentDie > 0 ? $"Equipo · D6 guardado: {player.EquipmentDie}" : "Zona de equipos",
+                        (player.Equipment == null ? Array.Empty<string>() : Enumerable.Repeat(player.Equipment, player.EquipmentStackedCopies + 1)).Concat(player.EquipmentCovers ?? []).ToArray()),
                     Skill = slot =>
                     {
                         if (slot >= player.Skills.Length) return;
@@ -197,7 +199,7 @@ public partial class OnlineArena : Control
         _moves.AddThemeConstantOverride("h_separation", 8); _moves.AddThemeConstantOverride("v_separation", 6); movesScroll.AddChild(_moves);
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(body.Controls, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(body.Controls, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
-                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO");
+                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO");
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
@@ -254,8 +256,12 @@ public partial class OnlineArena : Control
             ? ChoosingRecycling ? $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas seleccionadas."
                 : string.Join(" · ", _selected.Select(i => CardCatalog.Get(SelectableCards[i]!).Name))
             : ChoosingRecycling ? "Elige las cartas de tu memoria que volverán al mazo."
+                : s.Phase == Phase.GoldenTotemChoice && s.DecisionPlayer == s.MySeat ? "Elige hasta dos Tótems de Salvación de tu mano y confirma cuántos colocar. Oro necesita un equipo debajo."
                 : ChoosingResetCards ? "Elige una carta y confirma su selección para Resetear la Mente."
                 : ChoosingDeckSearch ? "Elige una carta del mazo para añadirla a tu mano."
+                : ChoosingMemoryRecovery ? "Elige una carta de cualquier memoria para añadirla a tu mano."
+                : s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat ? $"Elige una carta de tu mano para pagar {CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name} · faltan {s.ActivationDiscardsRemaining} descarte(s)."
+                : s.Phase == Phase.Discard && s.DecisionPlayer == s.MySeat ? $"Descarta {s.DiscardsRemaining} carta(s) para resolver el efecto."
                 : s.Phase == Phase.Final && s.DecisionPlayer == s.MySeat ? $"Descarta {s.Players[s.MySeat].HandCount - GameEngine.MaxHandSize} carta(s) para terminar con un máximo de {GameEngine.MaxHandSize}."
                 : s.DecisionPlayer == s.MySeat ? "Toca una carta o una habilidad y elige tu jugada." : "Esperando al rival. Puedes responder si tienes un COMBO disponible.";
         void PreviewSelectedCard()
@@ -269,7 +275,7 @@ public partial class OnlineArena : Control
         for (var i = 0; i < s.Options.Count; i++)
         {
             var optionIndex = i; var option = s.Options[i];
-            var handMove = option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange or DuelMoveKind.Discard or DuelMoveKind.Placement;
+            var handMove = option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange or DuelMoveKind.Discard or DuelMoveKind.Placement or DuelMoveKind.TurnBuffDiscard;
             if (!defense && handMove && !_selected.Contains(option.Move.Index)) continue;
             if (option.Move.Kind == DuelMoveKind.Attack && option.Move.Value != _selectedSkill) continue;
             if (ChoosingEffectCards && option.CardId != null &&
@@ -278,6 +284,7 @@ public partial class OnlineArena : Control
             var button = ArenaPresentation.Button(_moves, option.Label, () => PlayOption(optionIndex, s));
             if (Compact) { button.AutowrapMode = TextServer.AutowrapMode.WordSmart; button.CustomMinimumSize = new(Short && Size.X >= 700 ? 280 : Math.Max(120, Size.X - 44), 48); }
             button.SetMeta("discards", option.RequiredDiscards); _moveButtons.Add(button);
+            button.SetMeta("golden_totem", option.Move.Kind == DuelMoveKind.GoldenTotem);
         }
         if (s.Winner != null) ArenaPresentation.Button(_moves, "Cerrar sala", Connection.Leave);
         _lastDisabled = null; UpdateEnabled();
@@ -287,7 +294,12 @@ public partial class OnlineArena : Control
         var disabled = _preparing ? !(_choosingOpeningSkill ? CanChooseInitialSkill : CanChooseOpening) || IsAnimating : !Connection.Ready || Connection.PlayPending || IsAnimating;
         if (_lastDisabled == disabled) return;
         _lastDisabled = disabled;
-        foreach (var button in _moveButtons) button.Disabled = disabled || (int)button.GetMeta("discards") > 0 && (int)button.GetMeta("discards") != _selected.Count;
+        foreach (var button in _moveButtons)
+        {
+            var gold = (bool)button.GetMeta("golden_totem", false);
+            button.Disabled = disabled || ((int)button.GetMeta("discards") > 0 || gold) && (int)button.GetMeta("discards") != _selected.Count ||
+                gold && _selected.Any(i => _snapshot!.Players[_snapshot.MySeat].Hand[i] != CardCatalog.Totem.Id);
+        }
         if (_evolveButton is Button evolve)
             evolve.Disabled = disabled || !_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve);
         if (_choosingOpeningSkill && InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled |= _initialSkillCandidate == null;
@@ -333,8 +345,8 @@ public partial class OnlineArena : Control
 
     private static string PhaseName(Phase phase) => phase switch
     {
-        Phase.Preparation => "PREPARACIÓN", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
+        Phase.Preparation => "PREPARACIÓN", Phase.Draw => "ROBO", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
-        Phase.CodeResponse or Phase.ErrorResponse => "RESPUESTA", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", _ => "RESOLVER EFECTO"
+        Phase.CodeResponse or Phase.ErrorResponse or Phase.EffectDamageChoice => "RESPUESTA", Phase.GoldenTotemChoice or Phase.GoldenTotemResolving => "TÓTEM DE ORO", Phase.TotemChoice => "TÓTEM DE SALVACIÓN", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MemoryRecoveryChoice => "DISQUETE", Phase.TurnBuffDiscard => "DESCARTAR COSTE", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", _ => "RESOLVER EFECTO"
     };
 }

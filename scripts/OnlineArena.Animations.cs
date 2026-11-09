@@ -25,6 +25,7 @@ public partial class OnlineArena
         CardZone.Bonus => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.BonusButton,
         CardZone.Exchange => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.ExchangeButtons.ElementAtOrDefault(slot),
         CardZone.Equipment => _root?.FindChild("EquipmentZone" + relative, true, false) as Control,
+        CardZone.EquipmentCover => _root?.FindChild("EquipmentCoverZone" + relative, true, false) as Control,
         CardZone.Skill => _root?.FindChild($"Skill{relative}_{_snapshot!.Players[relative == 0 ? _snapshot.MySeat : 1 - _snapshot.MySeat].SkillPosition(slot)}", true, false) as Control,
         CardZone.Attached => _root?.FindChild("AttachmentStack" + relative, true, false) as Control,
         _ => null
@@ -40,20 +41,20 @@ public partial class OnlineArena
     {
         var result = new Dictionary<DuelVisualEvent, Flight>();
         if (previous == null || _root == null) return result;
-        foreach (var cue in current.Visuals.Where(v => v.Kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer))
+        foreach (var cue in current.Visuals.Where(v => v.Kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer or DuelVisualKind.MemoryClaim or DuelVisualKind.HandDiscard))
         {
             var relative = cue.Player == current.MySeat ? 0 : 1;
             var source = cue.Kind is DuelVisualKind.Return or DuelVisualKind.HandTransfer ? CardZone.Hand : cue.Kind == DuelVisualKind.BonusClaim ? CardZone.Bonus : cue.Source;
-            var slot = cue.Kind == DuelVisualKind.HandTransfer ? 0 : cue.Value;
+            var slot = cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard ? 0 : cue.Kind == DuelVisualKind.MemoryClaim ? cue.SourceIndex : cue.Value;
             var node = ZoneNode(relative, source, slot);
             var player = previous.Players[cue.Player];
             string? id = source switch
             {
                 CardZone.Hand => player.Hand.ElementAtOrDefault(slot), CardZone.Bonus => player.Bonus,
-                CardZone.Equipment => player.Equipment, CardZone.Skill => player.Skills.ElementAtOrDefault(cue.Value), CardZone.Attached => player.Attached.ElementAtOrDefault(cue.Value),
-                CardZone.Exchange => player.Exchange.ElementAtOrDefault(cue.Value), CardZone.Memory => player.Memory.ElementAtOrDefault(cue.Value), _ => null
+                CardZone.Equipment => player.Equipment, CardZone.EquipmentCover => player.EquipmentCovers?.ElementAtOrDefault(cue.Value), CardZone.Skill => player.Skills.ElementAtOrDefault(cue.Value), CardZone.Attached => player.Attached.ElementAtOrDefault(cue.Value),
+                CardZone.Exchange => player.Exchange.ElementAtOrDefault(cue.Value), CardZone.Memory => player.Memory.ElementAtOrDefault(slot), _ => null
             };
-            if (cue.Kind == DuelVisualKind.HandTransfer) id = null; // One face-down packet per hand, regardless of its size.
+            if (cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard) id = null; // One face-down packet per hand, regardless of its size.
             var origin = node != null && RectVisible(node, ZoneRect(node)) ? ZoneRect(node) : (Rect2?)null;
             if (source == CardZone.Activation && _root.FindChild("CombatCenter", true, false) is Control center)
             {
@@ -76,7 +77,7 @@ public partial class OnlineArena
                 case DuelVisualKind.DieAdjustment: _die.ShowAdjustedResult(cue.Value, cue.Caption); break;
                 case DuelVisualKind.Attack: _pendingPortraits.Add((cue.Player, PortraitMotion.Attack)); break;
                 case DuelVisualKind.Hit:
-                    _pendingPortraits.Add((cue.Player, cue.AttackDie switch
+                    _pendingPortraits.Add((cue.Player, cue.NormalFromMiss ? PortraitMotion.HitNormal : cue.AttackDie switch
                     {
                         5 => PortraitMotion.HitNormal, 6 => PortraitMotion.HitCritical, _ => PortraitMotion.Hit
                     }));
@@ -87,8 +88,10 @@ public partial class OnlineArena
                 case DuelVisualKind.BonusPlace: _flights.Enqueue(new(cue, Face: _snapshot!.Players[cue.Player].Bonus)); break;
                 case DuelVisualKind.Pile:
                 case DuelVisualKind.BonusClaim:
+                case DuelVisualKind.MemoryClaim:
                 case DuelVisualKind.Return:
                 case DuelVisualKind.HandTransfer:
+                case DuelVisualKind.HandDiscard:
                     if (origins.TryGetValue(cue, out var flight)) _flights.Enqueue(flight);
                     break;
             }
@@ -122,11 +125,12 @@ public partial class OnlineArena
                 DuelVisualKind.Return or DuelVisualKind.Shuffle => null,
                 DuelVisualKind.Pile => ZoneNode(relative, next.Event.Destination, -1),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
-                DuelVisualKind.BonusClaim => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, next.Event.Value),
+                DuelVisualKind.BonusClaim or DuelVisualKind.MemoryClaim => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, next.Event.Value),
                 DuelVisualKind.HandTransfer => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, 0),
+                DuelVisualKind.HandDiscard => ZoneNode(relative, CardZone.Memory, -1),
                 _ => ZoneNode(relative, CardZone.Hand, next.Event.Value)
             };
-            var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer;
+            var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer or DuelVisualKind.MemoryClaim or DuelVisualKind.HandDiscard;
             var source = fromPrevious ? next.Origin : deckRect;
             Rect2? destination = returning || kind == DuelVisualKind.Shuffle ? deckRect : target == null ? null : ZoneRect(target);
             var bounds = new Rect2(Vector2.Zero, Size);

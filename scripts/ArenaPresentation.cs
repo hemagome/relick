@@ -91,6 +91,13 @@ public static class ArenaPresentation
         dexterity.Name = $"Dexterity{index}";
         dexterity.TooltipText = "Destreza: gasta una ficha para sumar +1 a uno de tus dados. No se puede usar con 1 ni para alcanzar 6.";
         header.AddChild(dexterity);
+        if (owner.StarEffects > 0)
+        {
+            var star = Text($"★ ×{1 << owner.StarEffects}", compact ? 11 : 12, BoardArt.Gold);
+            star.Name = $"StarEffects{index}";
+            star.TooltipText = "Estrella del Fontanero: no recibe daño y multiplica su daño hasta el final de este turno.";
+            header.AddChild(star);
+        }
         header.AddChild(new ResourceBadge { Amount = owner.Pr });
         if (!enemy)
         {
@@ -113,7 +120,14 @@ public static class ArenaPresentation
         permanent.AddThemeConstantOverride("separation", 6);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Amount = owner.Attached.Length };
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
-        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : owner.Equipment == CardCatalog.Sniper.Id ? $"EQUIPO · {owner.EquipmentCounters}/3" : owner.EquipmentDie > 0 ? $"EQUIPO · D6: {owner.EquipmentDie}" : "EQUIPO 1/1",
+        if (owner.EquipmentCovers is { Length: > 0 } covers)
+        {
+            var cover = new ZoneCardButton { Name = $"EquipmentCoverZone{index}", Caption = $"ORO ×{covers.Length}",
+                Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold,
+                TooltipText = "Tótem de Oro: se destruye en lugar de un Tótem de Salvación equipado." };
+            cover.Pressed += actions.Equipment; permanent.AddChild(cover);
+        }
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : owner.EquipmentStackedCopies > 0 ? $"EQUIPO ×{owner.EquipmentStackedCopies + 1}" : owner.Equipment == CardCatalog.Sniper.Id ? $"EQUIPO · {owner.EquipmentCounters}/3" : owner.EquipmentDie > 0 ? $"EQUIPO · D6: {owner.EquipmentDie}" : "EQUIPO 1/1",
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), EmptyCaption = "Sin equipo", Accent = new("81c8ef") };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
@@ -159,6 +173,7 @@ public static class ArenaPresentation
             var track = new ExchangeTrack { Name = $"BonusTrack{index}", OwnerCaption = index == 0 ? "TÚ" : "RIVAL",
                 Compact = compact,
                 ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing,
+                BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
                 BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = index == 0 ? Mint : Coral };
             track.BonusInspected += () => bonusPressed(index); track.ExchangeInspected += slot => exchangePressed(index, slot); column.AddChild(track);
         }
@@ -219,8 +234,8 @@ public static class ArenaPresentation
         var pill = new PanelContainer(); pill.AddThemeStyleboxOverride("panel", Box("1b2336", ownTurn ? Mint : Coral, 8));
         pill.AddChild(Text(stage == Phase.Preparation ? "PREPARACIÓN" : stage == Phase.Finished ? "DUELO TERMINADO" : ownTurn ? "TU TURNO" : "TURNO DEL RIVAL", 11, ownTurn ? Mint : Coral)); row.AddChild(pill);
         if (stage != Phase.Preparation) row.AddChild(Text($"TURNO {turn:00}", 12, BoardArt.Muted));
-        var current = stage switch { Phase.Preparation => 0, Phase.Combat => 1, Phase.Actions => 2, _ => 3 };
-        var phases = new[] { ("Preparar", GameIcon.Cards), ("Combate", GameIcon.Sword), ("Acciones", GameIcon.Bolt), ("Final", GameIcon.Flag) };
+        var current = stage switch { Phase.Preparation or Phase.Draw => 0, Phase.Combat => 1, Phase.Actions => 2, _ => 3 };
+        var phases = new[] { (stage == Phase.Preparation ? "Preparar" : "Robo", GameIcon.Cards), ("Combate", GameIcon.Sword), ("Acciones", GameIcon.Bolt), ("Final", GameIcon.Flag) };
         for (var i = 0; i < phases.Length; i++) row.AddChild(new PhaseBadge { Caption = phases[i].Item1, Icon = phases[i].Item2,
             Current = i == current, Complete = i < current, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
     }

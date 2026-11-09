@@ -53,12 +53,12 @@ public partial class OnlineLobby
                     var cards = _arena!.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().ToArray();
                     if (choice.option.RequiredDiscards > 0)
                         foreach (var card in cards.Take(choice.option.RequiredDiscards)) card.EmitSignal(Button.SignalName.Pressed);
-                    else if (choice.option.Move.Kind == DuelMoveKind.SearchDeck)
+                    else if (choice.option.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.RecoverMemory)
                     {
-                        var searchOptions = snapshot.Options.Where(o => o.Move.Kind == DuelMoveKind.SearchDeck).ToArray();
-                        cards[Array.FindIndex(searchOptions, o => o.Move.Index == choice.option.Move.Index)].EmitSignal(Button.SignalName.Pressed);
+                        var searchOptions = snapshot.Options.Where(o => o.Move.Kind == choice.option.Move.Kind).ToArray();
+                        cards[Array.FindIndex(searchOptions, o => o.Move.Index == choice.option.Move.Index && o.Move.Target == choice.option.Move.Target)].EmitSignal(Button.SignalName.Pressed);
                     }
-                    else if (choice.option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange or DuelMoveKind.Discard or DuelMoveKind.Placement)
+                    else if (choice.option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange or DuelMoveKind.Discard or DuelMoveKind.Placement or DuelMoveKind.TurnBuffDiscard)
                         cards[choice.option.Move.Index].EmitSignal(Button.SignalName.Pressed);
                     var button = _arena.FindChildren("*", "Button", true, false).OfType<Button>().FirstOrDefault(b => b.Text == choice.option.Label);
                     if (button == null || button.Disabled) throw new Exception("No hay botón activo para " + choice.option.Label);

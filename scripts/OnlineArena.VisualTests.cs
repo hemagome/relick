@@ -7,6 +7,516 @@ public partial class OnlineArena
 {
     internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; Render(); }
 
+    internal async Task CheckGoldenTotemLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/golden-totem-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Tótem de Oro.");
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var random = new DuelRandom(); random.Replay([4]);
+            var hands = new List<string>[] { [CardCatalog.Attack.Id], [CardCatalog.Attack.Id] };
+            hands[actor] = [CardCatalog.GoldenTotem.Id, CardCatalog.Totem.Id, CardCatalog.Totem.Id, CardCatalog.Attack.Id];
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor, Hands = hands,
+                Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
+            }, random);
+            foreach (var p in game.State.Players) { p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; }
+            var owner = game.State.Active; owner.Equipment = CardCatalog.Pc.Id; owner.Skills.AddRange([CardCatalog.Destiny.Id, CardCatalog.Reverse.Id]);
+            game.State.Phase = Phase.Actions;
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("No empieza Tótem de Oro.");
+            var cues = new List<DuelVisualEvent>(); string? previousSaved = null;
+            for (var step = 0; step < 5; step++)
+            {
+                game = GameEngine.FromSnapshot(game.SaveSnapshot(), random); owner = game.State.Players[actor];
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations(); DuelSnapshot? previous = null;
+                    if (step == 2)
+                    {
+                        previous = DuelSnapshot.For(GameEngine.FromSnapshot(previousSaved!, random), seat, 269);
+                        PresentTestSnapshot(previous);
+                        for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    }
+                    var current = DuelSnapshot.For(game, seat, (ulong)(270 + step)); current.Visuals = cues;
+                    var origins = CaptureOrigins(current, previous); PresentTestSnapshot(current);
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var relative = seat == actor ? 0 : 1;
+                    var cover = _root!.FindChild($"EquipmentCoverZone{relative}", true, false) as ZoneCardButton;
+                    if ((cover != null) != (step is 2 or 3) || cover != null && cover.Caption != "ORO ×1")
+                        throw new Exception("Tótem de Oro no muestra su cobertura pública independiente.");
+                    if (step == 0 && seat == actor)
+                    {
+                        var choices = current.Options.Where(o => o.Move.Kind == DuelMoveKind.GoldenTotem).ToArray();
+                        if (choices.Length != 3 || !_selection.Text.Contains("hasta dos")) throw new Exception("Oro no explica la selección de cero a dos copias.");
+                        SelectCard(0); SelectCard(1);
+                        if (_selected.Count != 2 || _moveButtons.Count(b => b.Text == choices.Single(o => o.RequiredDiscards == 2).Label) != 1)
+                            throw new Exception("No se pueden seleccionar dos Tótems distintos sin descartar.");
+                    }
+                    if (step == 1)
+                    {
+                        if (current.Players[actor].Hand[0] != CardCatalog.Totem.Id || current.Players[actor].Hand[1] != CardCatalog.Totem.Id ||
+                            seat != actor && current.Players[actor].Hand[2] != null)
+                            throw new Exception("Oro revela cartas ajenas a las copias mostradas.");
+                    }
+                    else if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                        throw new Exception("Oro deja una mano revelada tras colocar los Tótems.");
+                    if (step >= 2 && current.Players[actor].EquipmentStackedCopies != 1)
+                        throw new Exception("La cobertura sustituida de Oro consume un Tótem de Salvación.");
+                    if (step == 2)
+                    {
+                        if (cues.Count(c => c.Kind == DuelVisualKind.Pile && c.Destination == CardZone.Equipment) != 2 ||
+                            cues.Count(c => c.Kind == DuelVisualKind.Pile && c.Destination == CardZone.EquipmentCover) != 1)
+                            throw new Exception("Oro no anima las colocaciones elegidas.");
+                        Animate(cues, origins);
+                        for (var i = 0; i < 20; i++) { UpdateFlights(0.5); await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+                        if (IsAnimating) throw new Exception("Oro deja vuelos pendientes al colocar cartas.");
+                    }
+                    if (step == 4 && current.Players[actor].Health != 5) throw new Exception("Oro cancela un daño no letal que debía aplicarse.");
+                    var minimum = _root.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Oro desborda {size}: {minimum}.");
+                }
+                previousSaved = game.SaveSnapshot(); cues = DuelVisualEvents.Capture(game);
+                if (step == 0 && !game.ResolveGoldenTotem(actor, [0, 1]).Success) throw new Exception("No se muestran las dos copias con Oro.");
+                if (step == 1 && !game.ResolveDestructionProtection(actor).Success) throw new Exception("No se sustituye el equipo anterior.");
+                if (step == 2)
+                {
+                    game.State.CurrentPlayer = 1 - actor; game.State.Phase = Phase.Combat;
+                    game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
+                    if (!game.Attack(1 - actor, 0, 0).Success) throw new Exception("No se ataca la pila protegida por Oro.");
+                }
+                if (step == 3 && !game.ResolveDestructionProtection(actor).Success) throw new Exception("No se destruye Oro en lugar de Salvación.");
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_GOLDEN_TOTEM_LAYOUT_PASS · selección de hasta dos, revelación limitada, cobertura pública, sustitución, animaciones y reconexión en cuatro tamaños y ambos jugadores/asientos.");
+    }
+
+    internal async Task CheckTotemLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/salvation-totem-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Tótem de Salvación.");
+        foreach (var owner in new[] { 0, 1 })
+        {
+            var random = new DuelRandom(); random.Replay([4, 4]); var attacker = 1 - owner;
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = attacker,
+                Hands = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
+                Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
+            }, random);
+            foreach (var p in game.State.Players) { p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; }
+            game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
+            var target = game.State.Players[owner]; target.Equipment = CardCatalog.Totem.Id; target.EquipmentStackedCopies = 2; target.Health = 3;
+            var cues = new List<DuelVisualEvent>();
+            for (var step = 0; step < 4; step++)
+            {
+                game = GameEngine.FromSnapshot(game.SaveSnapshot(), random); target = game.State.Players[owner];
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations();
+                    var snapshot = DuelSnapshot.For(game, seat, (ulong)(250 + step)); snapshot.Visuals = cues; PresentTestSnapshot(snapshot);
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var relative = seat == owner ? 0 : 1;
+                    var equipment = _root!.FindChild($"EquipmentZone{relative}", true, false) as ZoneCardButton;
+                    var caption = step < 2 ? "EQUIPO ×3" : step == 2 ? "EQUIPO ×2" : "EQUIPO 1/1";
+                    if (equipment?.Caption != caption || snapshot.Stage != Phase.Combat || snapshot.Players[owner].Health != (step == 3 ? 5 : 3))
+                        throw new Exception("Tótem pierde la pila, etapa o vida al reconstruir el tablero.");
+                    if (step == 1)
+                    {
+                        var options = snapshot.Options.Where(o => o.Move.Kind == DuelMoveKind.Totem).ToArray();
+                        if (snapshot.DecisionPlayer != owner || options.Length != (owner == seat ? 2 : 0) ||
+                            options.Any(o => _moveButtons.Count(b => b.Text == o.Label) != 1))
+                            throw new Exception("Tótem no presenta la decisión opcional al dueño correcto.");
+                        if (snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance)) throw new Exception("Se permite saltar la protección del Tótem.");
+                    }
+                    if (step is 2 or 3 && (cues.Count(c => c.Kind == DuelVisualKind.Pile && c.Source == CardZone.Equipment) != 1 ||
+                        cues.Count(c => c.Kind == DuelVisualKind.Hit) != (step == 3 ? 1 : 0)))
+                        throw new Exception("La protección del Tótem duplica la destrucción o anima daño cancelado.");
+                    var minimum = _root.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Tótem desborda {size}: {minimum}.");
+                    if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                        throw new Exception("Tótem revela una mano privada.");
+                }
+                cues = DuelVisualEvents.Capture(game);
+                if (step == 0 && !game.Attack(attacker, 0, 0).Success) throw new Exception("No comienza el ataque al Tótem.");
+                if (step == 1 && !game.ResolveTotem(owner, true).Success) throw new Exception("No se cancela el daño con Tótem.");
+                if (step == 2)
+                {
+                    target.Health = 8; game.State.AttackedThisTurn = false; game.State.Active.Hand.Add(CardCatalog.Attack.Id);
+                    if (!game.Attack(attacker, 0, 0).Success) throw new Exception("No se aplica el daño no letal a la pila.");
+                }
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_TOTEM_LAYOUT_PASS · pila pública, elección opcional, consumo de una copia, daño y cancelación, reconexión, privacidad y cuatro tamaños para ambos jugadores/asientos.");
+    }
+
+    internal async Task CheckTimeBenderLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/time-bender-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Doblador de Tiempo.");
+        foreach (var actor in new[] { 0, 1 })
+        foreach (var stage in new[] { Phase.Draw, Phase.Combat, Phase.Actions, Phase.Final })
+        {
+            var random = new SeededRandom(89);
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor, Hands = [[], []],
+                Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
+            }, random);
+            game.State.Phase = stage;
+            game.State.Active.Hand.AddRange([CardCatalog.TimeBender.Id, CardCatalog.Senshuni.Id, CardCatalog.ExtraLife.Id, CardCatalog.Attack.Id]);
+            game.State.AttackedThisTurn = true; game.State.LearnedThisTurn = true;
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("No empieza Doblador de Tiempo.");
+            for (var step = 0; step < 4; step++)
+            {
+                game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, (ulong)(230 + step)));
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    if (_snapshot!.Stage != stage) throw new Exception("Doblador presenta una etapa incorrecta.");
+                    if (step < 2)
+                    {
+                        if (_snapshot!.ActivationDiscardsRemaining != 2 - step || _snapshot.DiscardActivationCard != CardCatalog.TimeBender.Id)
+                            throw new Exception("Doblador pierde la cantidad o el origen del coste.");
+                        if (seat == actor)
+                        {
+                            if (!_selection.Text.Contains((2 - step).ToString()) || !_selection.Text.Contains(CardCatalog.TimeBender.Name))
+                                throw new Exception("Doblador no explica los descartes pendientes.");
+                            SelectCard(0);
+                            var label = _snapshot.Options.Single(o => o.Move.Kind == DuelMoveKind.TurnBuffDiscard && o.Move.Index == 0).Label;
+                            if (_moveButtons.Count(b => b.Text == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
+                                throw new Exception("Doblador permite saltar el coste o selecciona otra carta.");
+                        }
+                        else if (_snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.TurnBuffDiscard))
+                            throw new Exception("El rival puede pagar el coste de Doblador.");
+                    }
+                    else if (seat == actor && !_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
+                        throw new Exception("No se presenta el avance de la etapa repetida.");
+                    var minimum = _root!.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Doblador desborda {size}: {minimum}.");
+                    if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                        throw new Exception("Doblador revela cartas privadas.");
+                }
+                if (step < 2 && !game.ResolveTurnBuffDiscard(actor, 0).Success) throw new Exception("No se paga un descarte de Doblador.");
+                if (step == 2 && stage != Phase.Final && !game.Advance(actor).Success) throw new Exception("No empieza la etapa repetida.");
+                if (step == 3 && (game.State.Phase != stage || game.State.CurrentPlayer != actor || game.State.Turn != 1))
+                    throw new Exception("La repetición cambia de etapa, turno o jugador.");
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_TIME_BENDER_LAYOUT_PASS · dos descartes, cuatro etapas, repetición, reconexión, privacidad, ambos jugadores y cuatro tamaños.");
+    }
+
+    internal async Task CheckReloadCartridgeLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/reload-cartridge-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Cartucho de Re-carga.");
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var random = new SeededRandom(81); var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor, Hands = [[], []],
+                Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
+            }, random);
+            game.State.Phase = Phase.Actions; game.State.Turn = 2;
+            foreach (var p in game.State.Players) p.Dexterity = 0;
+            game.State.Active.Hand.AddRange([CardCatalog.ReloadCartridge.Id, CardCatalog.Sniper.Id, CardCatalog.Senshuni.Id]);
+            game.State.Players[1 - actor].Hand.AddRange([CardCatalog.Sniper.Id, CardCatalog.Jessica.Id]);
+            string? previousSaved = null; var cues = new List<DuelVisualEvent>();
+            for (var step = 0; step < 4; step++)
+            {
+                game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations();
+                    DuelSnapshot? previous = null;
+                    if (step == 1)
+                    {
+                        previous = DuelSnapshot.For(GameEngine.FromSnapshot(previousSaved!, random), seat, 209);
+                        PresentTestSnapshot(previous);
+                        for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    }
+                    var current = DuelSnapshot.For(game, seat, (ulong)(210 + step)); current.Visuals = cues;
+                    var origins = CaptureOrigins(current, previous);
+                    PresentTestSnapshot(current);
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    if (current.Stage != Phase.Actions) throw new Exception("Cartucho presenta una etapa ajena a acciones.");
+                    if (step is 1 or 2)
+                    {
+                        var decision = step == 1 ? actor : 1 - actor;
+                        if (current.DecisionPlayer != decision || _handCards.Count != 0 ||
+                            _moveButtons.Count(b => b.Text == "Equipar gratis Mira de Sniper") != (seat == decision ? 1 : 0))
+                            throw new Exception("Cartucho no conserva el dueño del descarte o roba antes de las Miras.");
+                    }
+                    if (step == 1)
+                    {
+                        var packets = origins.Where(p => p.Key.Kind == DuelVisualKind.HandDiscard).ToArray();
+                        if (packets.Length != 2 || packets.Any(p => p.Value.Face != null))
+                            throw new Exception("El descarte de manos pierde un origen o revela identidades ocultas en la animación.");
+                        Animate(cues, origins);
+                        for (var i = 0; i < 16; i++) { UpdateFlights(0.5); await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+                        if (IsAnimating) throw new Exception("El descarte de manos deja vuelos pendientes.");
+                    }
+                    if (step == 3 && (_handCards.Count != 4 || current.Players.Any(p => p.HandCount != 4)))
+                        throw new Exception("Cartucho no presenta las cuatro cartas nuevas de cada jugador.");
+                    var minimum = _root!.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Cartucho desborda {size}: {minimum}.");
+                    if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                        throw new Exception("Cartucho revela las manos nuevas al adversario.");
+                }
+                if (step < 3)
+                {
+                    previousSaved = game.SaveSnapshot(); cues = DuelVisualEvents.Capture(game);
+                    var result = step == 0 ? game.PlayCode(actor, 0) : game.ResolveSniper(step == 1 ? actor : 1 - actor, true);
+                    if (!result.Success) throw new Exception("No se resuelve un paso de Cartucho: " + result.Message);
+                }
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_RELOAD_CARTRIDGE_LAYOUT_PASS · descarte de ambas manos, animación sin identidades, disparadores, reconexión y cuatro robos privados para ambos asientos y cuatro tamaños.");
+    }
+
+    internal async Task CheckQuickLoadLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/quick-load-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Carga Rápida.");
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var random = new DuelRandom(); random.Replay([1]);
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor, Hands = [["attack"], ["attack"]],
+                Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
+            }, random);
+            foreach (var p in game.State.Players) p.Dexterity = 0;
+            game.State.Phase = Phase.Actions; var owner = game.State.Active;
+            owner.Hand[0] = CardCatalog.QuickLoad.Id; owner.Deck[1] = CardCatalog.Senshuni.Id; owner.Equipment = CardCatalog.Pendant.Id;
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("No empieza Carga Rápida.");
+            for (var step = 0; step < 4; step++)
+            {
+                game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, (ulong)(180 + step)));
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    if (step == 0 && (_snapshot!.Die != 2 || !_snapshot.DieCaption.Contains("Carga Rápida") || game.State.Players[actor].Hand.Count != 2))
+                        throw new Exception("Carga Rápida pierde el dado o no presenta los dos robos iniciales.");
+                    if (step is 1 or 2 && actor == seat)
+                    {
+                        if (_snapshot!.DiscardsRemaining != 3 - step || !_selection.Text.Contains((3 - step).ToString()))
+                            throw new Exception("La interfaz no presenta los descartes pendientes.");
+                        var index = _handCards.Count - 1; SelectCard(index);
+                        var label = _snapshot.Options.Single(o => o.Move.Kind == DuelMoveKind.Discard && o.Move.Index == index).Label;
+                        if (_moveButtons.Count(b => b.Text == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
+                            throw new Exception("La selección de descarte no corresponde a la carta o permite saltar el efecto.");
+                    }
+                    var minimum = _root!.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Carga Rápida desborda {size}: {minimum}.");
+                    if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                        throw new Exception("Carga Rápida revela los robos al adversario.");
+                }
+                if (step == 0 && !game.ResolveDieReroll(actor, false).Success) throw new Exception("No se acepta el dado de Carga Rápida.");
+                if (step is 1 or 2 && !game.Discard(actor, game.State.Active.Hand.Count - 1).Success)
+                    throw new Exception("No se resuelve el descarte de Carga Rápida.");
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_QUICK_LOAD_LAYOUT_PASS · robo, dado y descartes elegidos, cantidades pendientes, reconexión y privacidad en cuatro tamaños y ambos asientos.");
+    }
+
+    internal async Task CheckJessicaLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/jessica-lee-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Jessica Lee.");
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var random = new DuelRandom(); var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor, Hands = [[], []],
+                Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
+            }, random);
+            foreach (var p in game.State.Players) p.Dexterity = 0;
+            var owner = game.State.Active; owner.Bonus = CardCatalog.Jessica.Id; owner.Exchange.Add(CardCatalog.Jessica.Id);
+            owner.Equipment = CardCatalog.Pendant.Id; owner.ActionsLeft = 0;
+            for (var step = 0; step < 4; step++)
+            {
+                game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, (ulong)(150 + step)));
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var relative = actor == seat ? 0 : 1;
+                    var track = _root!.FindChild($"BonusTrack{relative}", true, false) as ExchangeTrack;
+                    if (track == null || track.BonusButton.Caption.Contains("USADA") != (step is 1 or 2) ||
+                        track.ExchangeButtons[0].Caption.Contains("USADA") != (step == 2))
+                        throw new Exception("Jessica no presenta correctamente el uso de cada copia pública.");
+                    if (_moveButtons.Count(b => b.Text.StartsWith("Activar Jessica Lee")) != (step == 0 && actor == seat ? 2 : 0))
+                        throw new Exception("Jessica no ofrece cada zona al dueño en su combate, o permite repetir el efecto.");
+                    if (step == 1 && _snapshot!.Die != 5) throw new Exception("La reconexión pierde el dado pendiente de Jessica.");
+                    var minimum = _root.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Jessica desborda {size}: {minimum}.");
+                    if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                        throw new Exception("Jessica revela la carta robada al adversario.");
+                }
+                if (step == 0)
+                {
+                    random.Replay([4]);
+                    if (!game.UseFieldCode(actor, FieldZone.Bonus).Success) throw new Exception("No se activa Jessica desde Bonus.");
+                }
+                if (step == 1)
+                {
+                    if (!game.ResolveDieReroll(actor, false).Success) throw new Exception("No se conserva el cinco de Jessica.");
+                    random.Replay([5]);
+                    if (!game.UseFieldCode(actor, FieldZone.Exchange, 0).Success || !game.ResolveDieReroll(actor, false).Success)
+                        throw new Exception("No se activa la segunda copia de Jessica.");
+                }
+                if (step == 2 && (!game.Advance(actor).Success || !game.Advance(actor).Success))
+                    throw new Exception("No se reinician los usos de Jessica al pasar de turno.");
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_JESSICA_LAYOUT_PASS · activaciones desde canje y Bonus, dado y usos públicos, reconexión, privacidad y cuatro tamaños para ambos asientos.");
+    }
+
+    internal async Task CheckPlumberStarLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/plumber-star-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Estrella del Fontanero.");
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var random = new DuelRandom(); random.Replay([4]);
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = 1 - actor,
+                Hands = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
+                Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
+            }, random);
+            foreach (var p in game.State.Players) { p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; }
+            game.State.Active.Skills.Add(CardCatalog.Destiny.Id); game.State.Active.Hand.Add(CardCatalog.LoadError.Id);
+            var owner = game.State.Players[actor]; owner.Hand.Clear();
+            owner.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Senshuni.Id, CardCatalog.Attack.Id]);
+            if (!game.Attack(1 - actor, 0, 0).Success || !game.PlayCode(actor, 0).Success)
+                throw new Exception("No comienza Estrella como defensa COMBO.");
+            for (var step = 0; step < 4; step++)
+            {
+                foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                foreach (var seat in new[] { 0, 1 })
+                {
+                    GetWindow().ContentScaleSize = size;
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, (ulong)(120 + step)));
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var relative = actor == seat ? 0 : 1;
+                    var badge = _root!.FindChild($"StarEffects{relative}", true, false) as Label;
+                    if ((badge != null) != (step == 2) || (badge != null && !badge.Text.Contains("×2")))
+                        throw new Exception("Estrella no presenta su efecto público o conserva la marca después de vencer.");
+                    if (step == 0 && actor == seat)
+                    {
+                        if (_handCards.Count != 2) throw new Exception("El coste no muestra la mano restante.");
+                        SelectCard(0);
+                        var label = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.TurnBuffDiscard && o.Move.Index == 0).Label;
+                        if (_moveButtons.Count(b => b.Text == label) != 1 || !_selection.Text.Contains(CardCatalog.Senshuni.Name))
+                            throw new Exception("La selección de descarte no corresponde a su opción autorizada.");
+                    }
+                    var minimum = _root.GetCombinedMinimumSize();
+                    if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                        throw new Exception($"Estrella desborda {size}: {minimum}.");
+                    if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                        throw new Exception("Estrella revela una mano privada.");
+                }
+                if (step == 1 && !game.PassErrorResponse(1 - actor).Success) throw new Exception("No termina la respuesta de Error.");
+                if (step == 0 && !game.ResolveTurnBuffDiscard(actor, 0).Success) throw new Exception("No se paga el descarte de Estrella.");
+                if (step == 2 && (!game.PassDefense(actor).Success || !game.Advance(1 - actor).Success || !game.Advance(1 - actor).Success))
+                    throw new Exception("No vence Estrella al acabar el turno rival.");
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_PLUMBER_STAR_LAYOUT_PASS · coste, respuesta, inmunidad y multiplicador públicos, vencimiento, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
+    internal async Task CheckMemoryRecoveryLayout()
+    {
+        if (GD.Load<Texture2D>("res://assets/cards/floppy-disk-clean.png") == null)
+            throw new Exception("Falta la ilustración limpia de Disquete.");
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor,
+                Hands = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
+                Decks = [Enumerable.Repeat("attack", 12).ToList(), Enumerable.Repeat("attack", 12).ToList()], Bonuses = [null, null]
+            }, new SeededRandom(43));
+            game.State.Phase = Phase.Actions; game.State.Active.Hand[0] = CardCatalog.FloppyDisk.Id;
+            game.State.Active.Memory.AddRange([CardCatalog.FloppyDisk.Id, CardCatalog.Destiny.Id]);
+            game.State.Players[1 - actor].Memory.AddRange([CardCatalog.FloppyDisk.Id, CardCatalog.Bonfire.Id]);
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("No comienza la recuperación de Disquete.");
+            var saved = game.SaveSnapshot();
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var seat in new[] { 0, 1 })
+            {
+                game = GameEngine.FromSnapshot(saved, new SeededRandom(43));
+                GetWindow().ContentScaleSize = size;
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                _selected.Clear(); ResetAnimations(); var before = DuelSnapshot.For(game, seat, 100); PresentTestSnapshot(before);
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (seat == actor)
+                {
+                    if (_handCards.Count != 4 || _deckSearchOptions.Count(o => o.CardId == CardCatalog.FloppyDisk.Id) != 2 ||
+                        _deckSearchOptions.Any(o => o.Move.Target == actor && o.Move.Index == 2))
+                        throw new Exception("Disquete no distingue las otras copias de su copia activa.");
+                    var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == 1);
+                    SelectCard(index); var option = _deckSearchOptions[index];
+                    if (_moveButtons.Count(b => b.Text == option.Label) != 1 || !_selection.Text.Contains(CardCatalog.Bonfire.Name))
+                        throw new Exception("La selección de memoria no corresponde a su opción autorizada.");
+                }
+                else if (_handCards.Count != 1 || _deckSearchOptions.Length != 0 || _handCards[0].Card.Id != CardCatalog.Attack.Id)
+                    throw new Exception("Disquete reemplaza la mano del rival por opciones ajenas.");
+                var minimum = _root!.GetCombinedMinimumSize();
+                if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                    throw new Exception($"Disquete desborda {size}: {minimum}.");
+                var cues = DuelVisualEvents.Capture(game);
+                if (!game.ResolveMemoryRecovery(actor, 1 - actor, 1).Success) throw new Exception("No se recupera la carta elegida.");
+                var after = DuelSnapshot.For(game, seat, 101); after.Visuals = cues;
+                var origins = CaptureOrigins(after, before);
+                if (origins.Single(p => p.Key.Kind == DuelVisualKind.MemoryClaim).Value.Face != CardCatalog.Bonfire.Id)
+                    throw new Exception("La animación no toma la carta de la memoria de origen.");
+                _selected.Clear(); PresentTestSnapshot(after); Animate(cues, origins);
+                for (var i = 0; i < 12; i++) { UpdateFlights(0.5); await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+                if (IsAnimating || FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
+                    throw new Exception("La recuperación deja una animación pendiente o revela la mano.");
+            }
+        }
+        _selected.Clear();
+        GD.Print("PVP_MEMORY_RECOVERY_LAYOUT_PASS · ambas memorias, copias distintas, animación a mano, cuatro tamaños y ambos jugadores/asientos.");
+    }
+
     internal async Task CheckReverseLayout()
     {
         foreach (var actor in new[] { 0, 1 })

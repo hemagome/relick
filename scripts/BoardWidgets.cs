@@ -334,6 +334,8 @@ public partial class ExchangeTrack : VBoxContainer
     public CardDefinition? BonusCard { get; set; }
     public bool BonusAvailable => BonusCard != null;
     public bool Preparing { get; set; }
+    public bool BonusEffectUsed { get; set; }
+    public IReadOnlyCollection<int> ExchangeEffectsUsed { get; set; } = Array.Empty<int>();
     public Color Accent { get; set; }
     public ZoneCardButton BonusButton { get; private set; } = null!;
     public ZoneCardButton[] ExchangeButtons { get; private set; } = null!;
@@ -356,7 +358,7 @@ public partial class ExchangeTrack : VBoxContainer
             var index = slot;
             var button = new ZoneCardButton
             {
-                Name = $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent, Compact = Compact,
+                Name = $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}" + (ExchangeEffectsUsed.Contains(slot) ? " · USADA" : ""), Accent = Accent, Compact = Compact,
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null
             };
             button.Pressed += () => ExchangeInspected?.Invoke(index);
@@ -365,7 +367,7 @@ public partial class ExchangeTrack : VBoxContainer
         }
         BonusButton = new ZoneCardButton
         {
-            Name = "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard, Compact = Compact,
+            Name = "BonusCard", Caption = "BONUS" + (BonusEffectUsed ? " · USADA" : ""), Card = Preparing ? null : BonusCard, Compact = Compact,
             Accent = BoardArt.Gold, EmptyCaption = Preparing ? "Por colocar" : "Sin carta"
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();

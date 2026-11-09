@@ -254,7 +254,7 @@ try
         var errors = actor.Errors.Count;
         var selectionStart = choice.Option.Move.Kind == DuelMoveKind.Recycle
             ? before.Players[before.MySeat].Memory.Length - choice.Option.RequiredDiscards : 0;
-        actor.Connection.Reducers.PlayDuelV2(nextCode, before.Revision, Guid.NewGuid().ToString("N"), choice.Index, Enumerable.Range(selectionStart, choice.Option.RequiredDiscards).ToList());
+        actor.Connection.Reducers.PlayDuelV2(nextCode, before.Revision, Guid.NewGuid().ToString("N"), choice.Index, SelectedCards.For(before, choice.Option, selectionStart).ToList());
         Until(() =>
         {
             if (actor.Errors.Count > errors) throw new Exception(choice.Option.Label + ": " + actor.Errors.Last());

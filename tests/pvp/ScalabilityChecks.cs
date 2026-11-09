@@ -187,7 +187,7 @@ static class ScalabilityChecks
             var actor = a.Duel!.DecisionPlayer == a.Duel.MySeat ? a : b;
             var before = actor.Duel!;
             var choice = before.Options.Select((o,index)=>(o,index)).First(p => p.o.Move.Kind != DuelMoveKind.Concede);
-            actor.Play(choice.index, Enumerable.Range(0, choice.o.RequiredDiscards));
+            actor.Play(choice.index, SelectedCards.For(before, choice.o));
             await h.Wait(() => !actor.PlayPending && a.Duel?.Revision == before.Revision + 1 && b.Duel?.Revision == before.Revision + 1);
             Check(actor.LastPlayAccepted, verify ? "El efecto pendiente continúa correctamente después del reinicio" : "Jugada de preparación del reinicio aceptada");
         }
@@ -291,7 +291,7 @@ static class ScalabilityChecks
                     var actor = pair.A.Duel.DecisionPlayer == 0 ? pair.A : pair.B;
                     var snapshot = actor.Duel!;
                     var choice = snapshot.Options.Select((o,i)=>(o,i)).First(p => p.o.Move.Kind != DuelMoveKind.Concede);
-                    actor.Play(choice.i, Enumerable.Range(0, choice.o.RequiredDiscards), snapshot.Revision);
+                    actor.Play(choice.i, SelectedCards.For(snapshot, choice.o), snapshot.Revision);
                     pair.Pending = actor; pair.PendingRevision = snapshot.Revision + 1;
                 }
                 return pairs.All(p => p.Pending == null && (p.Steps >= 50 || p.A.Duel!.Winner != null));
