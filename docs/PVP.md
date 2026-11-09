@@ -230,5 +230,13 @@ obligatorias, habilidades, equipos y activaciones que ya empezaron se conservan.
 
 Validado en una base temporal local con dos identidades, recuperación de conexión,
 reintentos, privacidad, solicitudes inválidas y un duelo completo. Los bindings
-se regeneraron con el CLI 2.14.1. Esta actualización todavía no está publicada
-en la base remota; requiere actualizar juntos el módulo y el cliente.
+se regeneraron con el CLI 2.14.1.
+
+Publicado el 9 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud con
+`--delete-data=never`. El esquema remoto añadió únicamente `set_combo_responses`:
+las 18 tablas y las vistas permanecen sin cambios. Se verificaron en el servidor
+remoto el cambio de preferencia, su privacidad, la reconexión y los reintentos.
+Pasaron las 78 comprobaciones PvP, incluido un duelo completo y el agotamiento
+del mazo; las salas de prueba se cerraron al finalizar.
+Si un cliente ya mostraba «No such reducer», usa Menú → Reconectar para reenviar
+la solicitud pendiente al módulo actualizado.
