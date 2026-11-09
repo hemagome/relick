@@ -53,6 +53,7 @@ public partial class OnlineArena
                         var choices = current.Options.Where(o => o.Move.Kind == DuelMoveKind.GoldenTotem).ToArray();
                         if (choices.Length != 3 || !_selection.Text.Contains("hasta dos")) throw new Exception("Oro no explica la selección de cero a dos copias.");
                         SelectCard(0); SelectCard(1);
+                        for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                         if (_selected.Count != 2 || _moveButtons.Count(b => ReferenceEquals(PresentedOption(b), choices.Single(o => o.RequiredDiscards == 2))) != 1)
                             throw new Exception("No se pueden seleccionar dos Tótems distintos sin descartar.");
                     }
@@ -198,6 +199,7 @@ public partial class OnlineArena
                             if (!_selection.Text.Contains((2 - step).ToString()) || !_contextTitle.Text.Contains(CardCatalog.TimeBender.Name))
                                 throw new Exception("Doblador no explica los descartes pendientes.");
                             SelectCard(0);
+                            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                             var label = _snapshot.Options.Single(o => o.Move.Kind == DuelMoveKind.TurnBuffDiscard && o.Move.Index == 0).Label;
                             if (_moveButtons.Count(b => PresentedOption(b)?.Label == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
                                 throw new Exception("Doblador permite saltar el coste o selecciona otra carta.");
@@ -329,6 +331,7 @@ public partial class OnlineArena
                         if (_snapshot!.DiscardsRemaining != 3 - step || !_selection.Text.Contains((3 - step).ToString()))
                             throw new Exception("La interfaz no presenta los descartes pendientes.");
                         var index = _handCards.Count - 1; SelectCard(index);
+                        for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                         var label = _snapshot.Options.Single(o => o.Move.Kind == DuelMoveKind.Discard && o.Move.Index == index).Label;
                         if (_moveButtons.Count(b => PresentedOption(b)?.Label == label) != 1 || _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance))
                             throw new Exception("La selección de descarte no corresponde a la carta o permite saltar el efecto.");
@@ -502,6 +505,8 @@ public partial class OnlineArena
                         throw new Exception("Disquete no distingue las otras copias de su copia activa.");
                     var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == 1);
                     SelectCard(index); var option = _deckSearchOptions[index];
+                    // Fixed, wrapping headers settle through Godot's deferred container layout.
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     if (_moveButtons.Count(b => ReferenceEquals(PresentedOption(b), option)) != 1 || !_contextTitle.Text.Contains(CardCatalog.Bonfire.Name))
                         throw new Exception("La selección de memoria no corresponde a su opción autorizada.");
                 }

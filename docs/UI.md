@@ -52,10 +52,12 @@ El coste ocupa una sola fila, separado de los botones, y prioriza la opción
 autorizada de la acción actual. Al consultar una carta sin una acción disponible
 se puede mostrar su coste de catálogo; eso no habilita jugadas. Los contadores y
 el daño de una habilidad enseñada corresponden a su copia autorizada. Limpiar la
-selección retira esos datos. En escritorio, mano e inspector comparten una fila;
-en pantallas cortas, la lectura tiene desplazamiento independiente para mantener
-accesibles la mano y los controles. Elegir la habilidad inicial actualiza el
-inspector existente sin reconstruir la arena.
+selección retira esos datos. Sin carta seleccionada el inspector se contrae a la
+instrucción actual; no reserva una zona de lectura vacía. Al consultar una carta,
+clasificación, nombre, atributos y contadores permanecen en la cabecera. Solo la
+descripción se desplaza: instrucción, coste y botones quedan fuera de esa lectura.
+En escritorio, la lectura recibe parte del espacio libre al seleccionar una carta.
+Elegir la habilidad inicial actualiza el inspector existente sin reconstruir la arena.
 
 Al elegir un Ataque se iluminan las habilidades autorizadas; tocar una escoge la
 copia real para la confirmación. Una sola habilidad disponible se selecciona sin
@@ -77,7 +79,7 @@ los envíos durante animaciones, desconexión o una jugada pendiente, igual que 
 
 PC, tablet y teléfono comparten alcance horizontal. El proyecto permite girar entre ambos lados del teléfono. Una ventana de escritorio alta conserva un lienzo horizontal con bandas.
 
-Con menos de 1100 unidades lógicas de ancho, el campo admite desplazamiento vertical y los controles secundarios pasan al menú. En pantallas cortas —altura menor de 600— el tablero queda a la izquierda y mano/acciones a la derecha. La mano tiene desplazamiento horizontal independiente. Los objetivos táctiles principales miden al menos 48 unidades lógicas; los diálogos se ajustan al área disponible y admiten desplazamiento.
+Con menos de 1100 unidades lógicas de ancho, el campo admite desplazamiento vertical y los controles secundarios pasan al menú. En pantallas cortas —altura menor de 600— se muestran tablero, inspector y galería de cartas juntos. La mano usa desplazamiento vertical propio, con una columna en los anchos menores y dos desde 820 unidades; conserva el arte completo y la escala anterior de cada carta. El tablero admite desplazamiento también en ventanas anchas y cortas. En pantallas altas la mano mantiene su fila horizontal. Los objetivos táctiles principales miden al menos 48 unidades lógicas; los diálogos se ajustan al área disponible y admiten desplazamiento.
 
 La configuración contempla densidad y área segura. No constituye una exportación Android/iOS ni una validación en hardware móvil; todavía deben comprobarse teclado virtual, rendimiento y consumo en dispositivos físicos.
 
@@ -121,7 +123,7 @@ Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-searc
 
 `--preparation-only` comprueba elección inicial, mulligan y ambos dados de iniciativa en los cuatro tamaños y desde ambos asientos, incluido el resultado, la espera del robo inicial y la recuperación sin repetir la animación.
 
-La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. Incluye las seis zonas de Bomba de Tiempo y la selección de seis cartas de memoria para reciclar, con una memoria mayor que la mano. También comprueba los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos: orden tras el dado, repetición, reconstrucción y recuperación visual sin reproducir efectos pasados. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
+La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. La lectura del inspector añade 1280×480: verifica el modo vacío compacto y desplaza efectos largos mediante eventos de rueda, comprobando que cabecera, atributos, coste, botones y mano permanecen fijos. `--inspector-only` ejecuta esa revisión enfocada. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. Incluye las seis zonas de Bomba de Tiempo y la selección de seis cartas de memoria para reciclar, con una memoria mayor que la mano. También comprueba los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos: orden tras el dado, repetición, reconstrucción y recuperación visual sin reproducir efectos pasados. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
 
 Para capturas:
 

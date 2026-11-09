@@ -35,6 +35,20 @@ internal static class GuiInputTestDriver
         }
     }
 
+    public static void ScrollDown(Control control, int steps = 6)
+    {
+        var point = control.GetGlobalRect().GetCenter();
+        var viewport = control.GetViewport();
+        viewport.PushInput(new InputEventMouseMotion { Position = point, GlobalPosition = point }, true);
+        for (var i = 0; i < steps; i++)
+        {
+            viewport.PushInput(new InputEventMouseButton { Position = point, GlobalPosition = point,
+                ButtonIndex = MouseButton.WheelDown, Pressed = true, Factor = 1 }, true);
+            viewport.PushInput(new InputEventMouseButton { Position = point, GlobalPosition = point,
+                ButtonIndex = MouseButton.WheelDown, Pressed = false, Factor = 1 }, true);
+        }
+    }
+
     public static void ReplaceText(LineEdit field, string text)
     {
         Click(field);

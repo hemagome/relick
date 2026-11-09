@@ -133,6 +133,7 @@ public partial class OnlineArena : Control
     private void Render()
     {
         var handPosition = _hand?.ScrollHorizontal ?? 0;
+        var handVerticalPosition = _hand?.ScrollVertical ?? 0;
         var boardPosition = _arenaScroll?.ScrollVertical ?? 0;
         foreach (var node in _portraits.Cast<Node>().Concat(_life)) node.GetParent()?.RemoveChild(node);
         if (_root != null) { RemoveChild(_root); _root.QueueFree(); }
@@ -156,7 +157,8 @@ public partial class OnlineArena : Control
         ArenaPresentation.Phases(_root, s.Stage ?? s.Phase, phaseCaption, s.Turn, _preparing || s.CurrentPlayer == s.MySeat, Compact);
         if (Compact && !Short) ArenaPresentation.Scoreline(_root, [s.Players[s.MySeat], s.Players[1 - s.MySeat]]);
         var body = ArenaPresentation.Body(_root, Short && Size.X >= 700);
-        var arena = ArenaPresentation.Arena(body.Board, Compact);
+        var boardCompact = Compact || Short;
+        var arena = ArenaPresentation.Arena(body.Board, boardCompact);
         _arenaScroll = arena.GetParent() as ScrollContainer;
         if (_arenaScroll != null) _arenaScroll.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, boardPosition);
         var relativePlayers = new[] { s.Players[s.MySeat], s.Players[1 - s.MySeat] };
@@ -180,20 +182,25 @@ public partial class OnlineArena : Control
                     },
                     InspectSkill = slot => ShowCards("Habilidad", [player.Skills[slot]]),
                     Evolve = () => SendKind(DuelMoveKind.Evolve), CanEvolve = s.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve) && !Connection.PlayPending && !IsAnimating
-                }, Compact);
+                }, boardCompact, Short && Size.X < 820);
         }
         Player(0);
         var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? phase : s.LastCombat;
         var combat = ArenaPresentation.Combat(arena, _preparing, s.Winner != null, combatMessage, relativePlayers, BuildOpponentHand,
             relative => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Bonus, -1),
-            (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), Compact);
+            (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), boardCompact);
         _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
         Player(1);
-        BoxContainer interaction = Short ? new VBoxContainer() : new HBoxContainer();
+        var railColumns = Short ? Size.X >= 820 ? 2 : 1 : 0;
+        BoxContainer interaction = new HBoxContainer();
         interaction.Name = "CardInteractionArea"; interaction.AddThemeConstantOverride("separation", Short ? 4 : 12);
+        interaction.SizeFlagsVertical = Short ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        interaction.SizeFlagsStretchRatio = 0.55f;
         body.Controls.AddChild(interaction);
-        var handColumn = new VBoxContainer { Name = "HandColumn", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var inspectorColumn = new VBoxContainer { Name = "InspectorColumn", CustomMinimumSize = new(Short ? 0 : 480, 0),
+        var handColumn = new VBoxContainer { Name = "HandColumn",
+            SizeFlagsHorizontal = Short ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        var inspectorColumn = new VBoxContainer { Name = "InspectorColumn", CustomMinimumSize = new(Short ? 270 : 480, 0),
             SizeFlagsHorizontal = Short ? SizeFlags.ExpandFill : SizeFlags.Fill };
         if (Short) { interaction.AddChild(inspectorColumn); interaction.AddChild(handColumn); }
         else { interaction.AddChild(handColumn); interaction.AddChild(inspectorColumn); }
@@ -204,9 +211,10 @@ public partial class OnlineArena : Control
             header.MoveChild(_turnControls, header.GetChildCount() - 2);
         }
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
-            SelectInitialSkillCandidate, Short) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
-                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO");
+            SelectInitialSkillCandidate, Short, railColumns) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
+                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO", railColumns);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
+        _hand.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, handVerticalPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
         _ownSkills.Clear(); _ownSkills.AddRange(_root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>());

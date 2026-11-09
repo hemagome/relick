@@ -50,6 +50,8 @@ public partial class CardInspector : PanelContainer
     private HBoxContainer _cost = null!;
     private string? _cardId;
     private string _lastHint = "";
+    internal bool HasCard { get; private set; }
+    internal ScrollContainer ReadingViewport => _reading;
 
     public override void _Ready()
     {
@@ -58,28 +60,29 @@ public partial class CardInspector : PanelContainer
         style.ContentMarginLeft = style.ContentMarginRight = ShortScreen ? 10 : 16;
         style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 4 : 8;
         AddThemeStyleboxOverride("panel", style);
-        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", ShortScreen ? 2 : 6); AddChild(column);
-        _reading = new ScrollContainer { Name = "InspectorReading", CustomMinimumSize = new(0, ReadingHeight > 0 ? ReadingHeight : ShortScreen ? 76 : 176),
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true, SizeFlagsVertical = SizeFlags.ExpandFill };
-        column.AddChild(_reading);
-        var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", ShortScreen ? 2 : 6); _reading.AddChild(content);
-        // Pending choices must stay ahead of a long card description, including on phones.
-        HintLabel = Wrapped("ContextHint", ShortScreen ? 13 : 14, BoardArt.Ink); content.AddChild(HintLabel);
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", ShortScreen ? 3 : 6); AddChild(column);
+        // Decisions and card identity remain visible while only the description scrolls.
+        HintLabel = Wrapped("ContextHint", ShortScreen ? 13 : 14, BoardArt.Ink); column.AddChild(HintLabel);
+        var header = new VBoxContainer { Name = "InspectorHeader" };
+        header.AddThemeConstantOverride("separation", ShortScreen ? 2 : 6); column.AddChild(header);
         ClassificationLabel = ArenaPresentation.Text("", 12, ArenaPresentation.Mint);
-        ClassificationLabel.Name = "InspectorClassification"; ClassificationLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart; content.AddChild(ClassificationLabel);
-        TitleLabel = Wrapped("ContextCardName", ShortScreen ? 17 : 20); content.AddChild(TitleLabel);
-        Attributes = new HBoxContainer { Name = "InspectorAttributes" }; Attributes.AddThemeConstantOverride("separation", 12); content.AddChild(Attributes);
+        ClassificationLabel.Name = "InspectorClassification"; ClassificationLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart; header.AddChild(ClassificationLabel);
+        TitleLabel = Wrapped("ContextCardName", ShortScreen ? 17 : 20); header.AddChild(TitleLabel);
+        Attributes = new HBoxContainer { Name = "InspectorAttributes" }; Attributes.AddThemeConstantOverride("separation", 12); header.AddChild(Attributes);
         foreach (var caption in new[] { "Daño normal", "Daño crítico", "Premio" })
         {
             var attribute = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             attribute.AddThemeConstantOverride("separation", 2); Attributes.AddChild(attribute);
             attribute.AddChild(ArenaPresentation.Text(caption, 11, BoardArt.Muted));
-            var value = ArenaPresentation.Text("", ShortScreen ? 19 : 23, BoardArt.Gold);
+            var value = ArenaPresentation.Text("", ShortScreen ? 17 : 23, BoardArt.Gold);
             attribute.AddChild(value); _attributeValues.Add(value);
         }
-        DescriptionLabel = Wrapped("InspectorDescription", 16); content.AddChild(DescriptionLabel);
-        CounterLabel = Wrapped("InspectorCounters", 12, BoardArt.Gold); content.AddChild(CounterLabel);
+        CounterLabel = Wrapped("InspectorCounters", 12, BoardArt.Gold); header.AddChild(CounterLabel);
+        _reading = new ScrollContainer { Name = "InspectorReading",
+            CustomMinimumSize = new(0, ReadingHeight > 0 ? ReadingHeight : ShortScreen ? 40 : 64),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true, SizeFlagsVertical = SizeFlags.ExpandFill };
+        column.AddChild(_reading);
+        DescriptionLabel = Wrapped("InspectorDescription", 16); _reading.AddChild(DescriptionLabel);
         _cost = new HBoxContainer { Name = "InspectorCost" }; _cost.AddThemeConstantOverride("separation", 12); column.AddChild(_cost);
         _cost.AddChild(ArenaPresentation.Text("Coste", 12, BoardArt.Muted));
         CostLabel = Wrapped("ContextCost", 13, BoardArt.Gold); CostLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -98,13 +101,16 @@ public partial class CardInspector : PanelContainer
         if (_lastHint != hint) _reading.ScrollVertical = 0;
         _lastHint = hint;
         HintLabel.Text = hint; HintLabel.Visible = hint.Length > 0; HintLabel.TooltipText = hint;
+        TitleLabel.Visible = TitleLabel.Text.Length > 0 && (HasCard || hint.Length == 0);
     }
 
     internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null)
     {
         if (_cardId != card?.Id) _reading.ScrollVertical = 0;
-        _cardId = card?.Id;
-        TitleLabel.Text = title; TitleLabel.Visible = title.Length > 0;
+        _cardId = card?.Id; HasCard = card != null;
+        _reading.Visible = HasCard;
+        SizeFlagsVertical = HasCard ? SizeFlags.ExpandFill : SizeFlags.ShrinkBegin;
+        TitleLabel.Text = title; TitleLabel.TooltipText = title;
         ClassificationLabel.Text = card == null ? "" : CardInspectorText.Classification(card);
         ClassificationLabel.Visible = card != null;
         DescriptionLabel.Text = card == null ? "" : CardInspectorText.Description(card); DescriptionLabel.Visible = card != null;

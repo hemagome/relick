@@ -67,7 +67,7 @@ public static class ArenaPresentation
     }
 
     public static void Player(Node arena, DuelPlayerView owner, int index, bool enemy, bool active,
-        int selectedSkill, YunoPortrait portrait, LifeMeter life, ArenaPlayerActions actions, bool compact)
+        int selectedSkill, YunoPortrait portrait, LifeMeter life, ArenaPlayerActions actions, bool compact, bool narrow = false)
     {
         var accent = enemy ? Coral : Mint;
         var panel = Panel(arena, RelickVisuals.Playmat.Surface.ToHtml(), RelickVisuals.Playmat.Frame);
@@ -83,21 +83,23 @@ public static class ArenaPresentation
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · Vida máxima: {owner.MaxHealth}";
         names.AddChild(name); header.AddChild(names);
+        var stats = narrow ? new HBoxContainer() : header;
+        if (narrow) column.AddChild(stats);
         var dexterity = Text($"DEST {owner.Dexterity}", compact ? 11 : 12, accent);
         dexterity.Name = $"Dexterity{index}";
         dexterity.TooltipText = "Destreza: gasta una ficha para sumar +1 a uno de tus dados. No se puede usar con 1 ni para alcanzar 6.";
-        header.AddChild(dexterity);
+        stats.AddChild(dexterity);
         if (owner.StarEffects > 0)
         {
             var star = Text($"★ ×{1 << owner.StarEffects}", compact ? 11 : 12, BoardArt.Gold);
             star.Name = $"StarEffects{index}";
             star.TooltipText = "Estrella del Fontanero: no recibe daño y multiplica su daño hasta el final de este turno.";
-            header.AddChild(star);
+            stats.AddChild(star);
         }
-        header.AddChild(new ResourceBadge { Amount = owner.Pr });
+        stats.AddChild(new ResourceBadge { Amount = owner.Pr });
         if (!enemy)
         {
-            var evolve = Button(header, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
+            var evolve = Button(stats, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
             evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
         }
         life.SetHealth(owner.Health, owner.MaxHealth); column.AddChild(life);
@@ -111,7 +113,8 @@ public static class ArenaPresentation
             TopCard = owner.Memory.Length == 0 ? null : CardCatalog.Get(owner.Memory[^1]) };
         memory.Pressed += () => actions.Memory(false); memories.AddChild(memory);
         var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true };
-        corrupted.Pressed += () => actions.Memory(true); memories.AddChild(corrupted); zones.AddChild(memories);
+        corrupted.Pressed += () => actions.Memory(true); memories.AddChild(corrupted);
+        if (!narrow) zones.AddChild(memories);
         var permanent = new VBoxContainer { CustomMinimumSize = new(92, 0), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
         permanent.AddThemeConstantOverride("separation", 6);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Amount = owner.Attached.Length };
@@ -126,7 +129,9 @@ public static class ArenaPresentation
         var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : owner.EquipmentStackedCopies > 0 ? $"EQUIPO ×{owner.EquipmentStackedCopies + 1}" : owner.Equipment == CardCatalog.Sniper.Id ? $"EQUIPO · {owner.EquipmentCounters}/3" : owner.EquipmentDie > 0 ? $"EQUIPO · D6: {owner.EquipmentDie}" : "EQUIPO 1/1",
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), EmptyCaption = "Sin equipo", Accent = new("81c8ef") };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
+        portrait.SizeFlagsVertical = narrow ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ExpandFill;
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
+        if (narrow) column.AddChild(memories);
         var skills = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         skills.AddThemeConstantOverride("h_separation", 6); skills.AddThemeConstantOverride("v_separation", 6);
         foreach (var slot in new[] { 2, 3, 0, 1 })
@@ -176,13 +181,11 @@ public static class ArenaPresentation
         return panel;
     }
 
-    public static ScrollContainer InitialSkills(Node parent, IReadOnlyList<string> skills, string? chosen, Action<string> selected, bool shortScreen)
+    public static ScrollContainer InitialSkills(Node parent, IReadOnlyList<string> skills, string? chosen, Action<string> selected, bool shortScreen, int railColumns = 0)
     {
-        parent.AddChild(Text("ELIGE TU HABILIDAD INICIAL", 12, BoardArt.Gold));
-        var scroll = new ScrollContainer { Name = "InitialSkillScroll", CustomMinimumSize = new(0, shortScreen ? 120 : 196),
-            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        var row = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
-        row.AddThemeConstantOverride("separation", 12); scroll.AddChild(row); parent.AddChild(scroll);
+        parent.AddChild(HandHeading("ELIGE TU HABILIDAD INICIAL", skills.Count, railColumns));
+        var scroll = CardGallery("InitialSkillScroll", shortScreen, railColumns);
+        var row = GalleryContents(railColumns, 12); scroll.AddChild(row); parent.AddChild(scroll);
         for (var i = 0; i < skills.Count; i++)
         {
             var id = skills[i];
@@ -194,14 +197,11 @@ public static class ArenaPresentation
     }
 
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
-        Action<int> pressed, bool preparing, bool shortScreen, string title = "TU MANO")
+        Action<int> pressed, bool preparing, bool shortScreen, string title = "TU MANO", int railColumns = 0)
     {
-        parent.AddChild(Text($"{title}  ·  {hand.Count} CARTAS", 10));
-        var scroll = new ScrollContainer { Name = "HandScroll", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new(0, shortScreen ? 120 : 196), VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto, ScrollDeadzone = 12 };
-        var cards = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
-        cards.AddThemeConstantOverride("separation", 10);
+        parent.AddChild(HandHeading(title, hand.Count, railColumns));
+        var scroll = CardGallery("HandScroll", shortScreen, railColumns);
+        var cards = GalleryContents(railColumns, 10);
         for (var i = 0; i < hand.Count; i++)
         {
             var slot = i;
@@ -209,8 +209,42 @@ public static class ArenaPresentation
                 PresentationScale = shortScreen ? 0.6f : 1 };
             card.Pressed += () => pressed(slot); cards.AddChild(card);
         }
-        if (hand.Count == 0) cards.AddChild(Text(preparing ? "Sincronizando tu mano inicial…" : "Mano vacía · robarás 3 cartas al empezar tu turno.", 14, BoardArt.Muted));
+        if (hand.Count == 0)
+        {
+            var empty = Text(railColumns > 0 ? "Sin cartas" : preparing ? "Sincronizando tu mano inicial…" : "Mano vacía · robarás 3 cartas al empezar tu turno.", railColumns > 0 ? 12 : 14, BoardArt.Muted);
+            empty.TooltipText = preparing ? "Sincronizando tu mano inicial…" : "Mano vacía · robarás 3 cartas al empezar tu turno.";
+            cards.AddChild(empty);
+        }
         scroll.AddChild(cards); parent.AddChild(scroll); return scroll;
+    }
+
+    private static Label HandHeading(string title, int count, int railColumns)
+    {
+        var caption = railColumns > 0 ? (title == "ELIGE TU HABILIDAD INICIAL" ? "HABILIDAD INICIAL" : title.Split(" · ")[0]) + $"\n{count} CARTAS" : $"{title}  ·  {count} CARTAS";
+        var heading = Text(caption, 10); heading.TooltipText = title;
+        heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        return heading;
+    }
+
+    private static ScrollContainer CardGallery(string name, bool shortScreen, int railColumns) => new()
+    {
+        Name = name, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        SizeFlagsVertical = railColumns > 0 ? Control.SizeFlags.ExpandFill : Control.SizeFlags.Fill,
+        CustomMinimumSize = new(railColumns > 0 ? railColumns * 75.6f + (railColumns - 1) * 12 + 16 : 0, shortScreen ? 120 : 196),
+        VerticalScrollMode = railColumns > 0 ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
+        HorizontalScrollMode = railColumns > 0 ? ScrollContainer.ScrollMode.Disabled : ScrollContainer.ScrollMode.Auto, ScrollDeadzone = 12
+    };
+
+    private static Container GalleryContents(int railColumns, int separation)
+    {
+        if (railColumns > 0)
+        {
+            var grid = new GridContainer { Columns = railColumns, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            grid.AddThemeConstantOverride("h_separation", separation); grid.AddThemeConstantOverride("v_separation", separation);
+            return grid;
+        }
+        var row = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", separation); return row;
     }
 
     public static void Scoreline(Node parent, DuelPlayerView[] players)

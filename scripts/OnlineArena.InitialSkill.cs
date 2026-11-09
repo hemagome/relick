@@ -48,7 +48,7 @@ public partial class OnlineArena
     private void BuildInitialSkillMoves()
     {
         PreparationConfirmButton = null;
-        _selection.Text = "La habilidad elegida irá a tu mano. Después recibirás otras cuatro cartas y podrás hacer el mulligan.";
+        _selection.Text = "Elige tu habilidad inicial. Podrás cambiarla durante el mulligan.";
         InitialSkillConfirmButton = ArenaPresentation.Button(_moves, _initialSkillPending ? "Eligiendo habilidad…" : "Elegir habilidad y repartir", () =>
         {
             if (CanChooseInitialSkill && _initialSkillCandidate != null) Connection.ChooseInitialSkill(_initialSkillCandidate);

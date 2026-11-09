@@ -34,6 +34,11 @@ public partial class OnlineLobby
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
                 GD.Print("PVP_GUIDANCE_ONLY_PASS"); GetTree().Quit(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--inspector-only"))
+            {
+                await online.CheckCardInspector(); online.QueueFree(); await Layout();
+                GD.Print("PVP_INSPECTOR_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--context-only"))
             {
                 await online.CheckContextActionBar(); online.QueueFree(); await Layout();

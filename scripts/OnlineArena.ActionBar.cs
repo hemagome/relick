@@ -7,7 +7,9 @@ public partial class OnlineArena
 {
     private Label _contextTitle = null!, _contextCost = null!;
     private CardInspector _inspector = null!;
-    private HBoxContainer _turnControls = null!;
+    private HBoxContainer _turnControls = null!, _inspectorActions = null!;
+    private ScrollContainer _movesScroll = null!;
+    private VBoxContainer _actionDock = null!;
     private AdvancePhaseButton? _advanceButton;
     private string _decisionHint = "";
     private readonly List<MenuButton> _actionMenus = [];
@@ -23,14 +25,14 @@ public partial class OnlineArena
 
     private void BuildActionArea(VBoxContainer parent)
     {
-        var dock = new VBoxContainer();
+        var dock = new VBoxContainer(); _actionDock = dock;
         dock.Name = "ActionDock"; dock.AddThemeConstantOverride("separation", Short ? 4 : 8); parent.AddChild(dock);
         _inspector = new CardInspector { Name = "ContextActionBar", ShortScreen = Short }; dock.AddChild(_inspector);
         _contextTitle = _inspector.TitleLabel; _contextCost = _inspector.CostLabel; _selection = _inspector.HintLabel;
-        var actions = new HBoxContainer { Name = "InspectorActions" }; actions.AddThemeConstantOverride("separation", 6); dock.AddChild(actions);
+        var actions = new HBoxContainer { Name = "InspectorActions" }; _inspectorActions = actions; actions.AddThemeConstantOverride("separation", 6); dock.AddChild(actions);
         var scroll = new ScrollContainer { Name = "MovesScroll", CustomMinimumSize = new(0, 50),
             SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        actions.AddChild(scroll);
+        _movesScroll = scroll; actions.AddChild(scroll);
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 6); _moves.AddThemeConstantOverride("v_separation", 6); scroll.AddChild(_moves);
         _turnControls = new HBoxContainer { Name = "TurnControls" };
@@ -241,7 +243,11 @@ public partial class OnlineArena
             counters = s.Players[s.MySeat].Counters.ElementAtOrDefault(_selectedSkill);
         var title = _preparing ? card?.Name ?? (_choosingOpeningSkill ? "Elige una habilidad" : "Mano inicial") : ContextTitle();
         _inspector.Present(card, title, _preparing ? "" : _contextCost.Text, _selection.Text, counters);
-
+        _actionDock.SizeFlagsVertical = card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        var interaction = (Control)_actionDock.GetParent().GetParent();
+        interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        _movesScroll.Visible = _moves.GetChildCount() > 0;
+        _inspectorActions.Visible = _movesScroll.Visible || _turnControls.GetParent() == _inspectorActions && _turnControls.Visible;
     }
 
     private string ContextTitle()
