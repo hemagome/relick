@@ -92,8 +92,8 @@ public partial class OnlineArena
                 await TapCard(0);
                 var equip = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Equip && o.Move.Index == 0);
                 Check(PresentedButton(equip)?.Text == "Equipar" && _contextTitle.Text == "Hoguera" && _contextCost.Text == "1 acción", "Hoguera pierde el contexto o el coste breve.");
-                Check(_moveButtons.Count(b => b.GetParent() == _moves) == 2 && _moves.GetChildren().OfType<Button>().Count() <= 4,
-                    "La barra de Hoguera presenta más de sus dos acciones y consultas compactas.");
+                Check(_moveButtons.Count(b => b.GetParent() == _moves) == 2 && _moves.GetChildren().OfType<Button>().Count() <= 3,
+                    "La barra de Hoguera presenta más de sus dos acciones y el control de limpiar selección.");
                 Check(_advanceButton?.GetParent() == _turnControls && _turnControls.GetParent() != _moves, "El avance de turno se mezcla con la selección.");
                 await Capture($"context-equip-seat{seat}-{size.X}x{size.Y}");
                 await TapCard(1);

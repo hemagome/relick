@@ -162,8 +162,6 @@ public partial class OnlineArena
                 var seat = player;
                 AddLocalButton(_moves, seat == s.MySeat ? "Mis PR" : "PR del rival", () => { _pointsTarget = seat; BuildMoves(); });
             }
-        var inspect = SelectedCardId();
-        if (inspect != null) AddLocalButton(_moves, "ⓘ", () => ShowCards("Carta", [inspect]), "Leer carta");
         if (_selected.Count > 0 || _fieldSelection != null || _skillContext || _showReplayMemory || _pointsTarget != null)
             AddLocalButton(_moves, "×", ClearContext, "Limpiar selección");
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
@@ -195,7 +193,7 @@ public partial class OnlineArena
     private Button AddLocalButton(Node parent, string label, Action pressed, string? hint = null)
     {
         var button = ArenaPresentation.Button(parent, label, pressed); button.TooltipText = hint ?? label;
-        if (label is "ⓘ" or "×") button.CustomMinimumSize = new(48, 48);
+        if (label == "×") button.CustomMinimumSize = new(48, 48);
         button.AddThemeFontSizeOverride("font_size", Short ? 13 : 15); return button;
     }
 

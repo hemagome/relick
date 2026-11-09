@@ -24,9 +24,10 @@ El mulligan usa identificadores de copias: dos cartas iguales pueden seleccionar
 
 La barra contextual muestra el nombre de la carta elegida, el coste de su acción
 principal y verbos breves como Jugar, Equipar, Canjear o Atacar. Los índices de
-carta y espacio del protocolo no se usan como etiquetas de interfaz. Las consultas
-se agrupan en el botón de información y la selección se puede limpiar sin ejecutar
-una jugada. El avance de etapa ocupa un control separado, Relikia tiene su propio
+carta y espacio del protocolo no se usan como etiquetas de interfaz. El inspector
+muestra la carta seleccionada sin un botón adicional de lectura; Memoria y las
+pilas conservan sus consultas. La selección se puede limpiar sin ejecutar una
+jugada. El avance de etapa ocupa un control separado, Relikia tiene su propio
 menú y Abandonar está en el menú general con su confirmación habitual.
 
 La lectura de cartas usa un inspector compartido en mano, elección inicial y
