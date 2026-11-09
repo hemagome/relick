@@ -6,7 +6,7 @@ static class EquipmentTests
     {
         ("Catálogo jugable solo real; equipo y cartas sobre Relikario empiezan vacíos", () =>
         {
-            var deck = CardCatalog.TrainingDeck(); Check(deck.Count == 33 && deck.Count(id => id == CardCatalog.Pendant.Id) == 1 && deck.Count(id => id == CardCatalog.DiamondHelmet.Id) == 1);
+            var deck = CardCatalog.TrainingDeck(); Check(deck.Count == 42 && deck.Count(id => id == CardCatalog.Pendant.Id) == 1 && deck.Count(id => id == CardCatalog.DiamondHelmet.Id) == 1);
             Check(deck.All(id => CardCatalog.All.ContainsKey(id)));
             Check(TestGame.Create(42).State.Players.All(p => p.Equipment == null && p.AttachedCards.Count == 0));
         }),
@@ -86,7 +86,7 @@ static class EquipmentTests
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); }
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add(CardCatalog.Destiny.Id); return (g, rng);
     }
-    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.Skills.Count + p.CorruptedMemory.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));
+    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.Skills.Count + p.CorruptedMemory.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1));
     private static string Snapshot(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);
     private static void Check(bool value) { if (!value) throw new Exception("Regla de equipo/Colgante no satisfecha"); }
 }

@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -26,7 +26,7 @@ public sealed class DieEffect
     public bool Rerolled { get; set; }
     public EngineContinuation? Next { get; set; }
 }
-public enum ActivationKind { Code, Equipment, Reroll, Counter, MindReset }
+public enum ActivationKind { Code, Equipment, Reroll, Counter, MindReset, TurnBuff, FieldCode }
 public enum ActivationResume { Original, RestorePhase }
 public sealed class EngineActivation
 {
@@ -45,6 +45,8 @@ public sealed class EngineActivation
     public int CorruptedIndex { get; set; }
     public bool FromMemory { get; set; }
     public int MemoryIndex { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public FieldTarget? FieldSource { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public EngineActivation? Parent { get; set; }
     public EngineActivation() { }
     public EngineActivation(int actor, string id, int actions, int pr, Phase phase)
@@ -70,9 +72,24 @@ public sealed partial class GameEngine
                 ResolveAttackDamage(true, "Caja de Cartón"); break;
             case ContinuationKind.BoxCode: FinishBoxCode(next.Actor); break;
             case ContinuationKind.EquipInstall: FinishEquipmentInstall(); break;
+            case ContinuationKind.ReplaceEquipment: ReplaceEquipment(next); break;
+            case ContinuationKind.GoldenTotemPlacement: ContinueGoldenTotemPlacement(next); break;
+            case ContinuationKind.GoldenTotemReplacement:
+                if (next.Next != null) next.Next.Prevented = true;
+                Log($"{p.Name} conserva su Tótem de Salvación gracias a la sustitución de Tótem de Oro.");
+                Continue(next.Next); break;
             case ContinuationKind.ApplyDamage: ApplyHealthDamage(next.Actor, next.Count, next.Value, next.Next); break;
             case ContinuationKind.FinishAttackDamage: FinishAttackDamage(next.Flag); break;
             case ContinuationKind.RerollDraw: FinishRerollDraw(next); break;
+            case ContinuationKind.TurnStartDraw: DrawAtTurnStart(); break;
+            case ContinuationKind.DrawStageReady: FinishDrawStage(next.Flag); break;
+            case ContinuationKind.ReloadHandsResume: ContinueReloadHands(); break;
+            case ContinuationKind.QuickLoadDie:
+                RollWithRelikario(p, DiePurpose.QuickLoad, new DieEffect { Purpose = DiePurpose.QuickLoad, Actor = next.Actor });
+                break;
+            case ContinuationKind.FieldCodeReward:
+                if (next.Flag) DrawCards(p, 1);
+                break;
             case ContinuationKind.CompleteExchange: CompleteExchange(p, next.Next); break;
             case ContinuationKind.Draw: DrawCards(p, next.Count, next.Next); break;
             case ContinuationKind.MoveHand: MoveTopCard(p, false, next.Next); break;
@@ -85,6 +102,7 @@ public sealed partial class GameEngine
             case ContinuationKind.RollRelikia: RollWithRelikario(p, DiePurpose.Relikia, new DieEffect { Purpose = DiePurpose.Relikia, Actor = next.Actor }); break;
             case ContinuationKind.ResumeMindReset:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
+                if (State.Phase == Phase.MemoryRecoveryChoice && _activeActivation is { } recovery) BeginMemoryRecovery(recovery.Actor);
                 CompleteAttackIfReady();
                 CompleteEndTurnIfReady();
                 break;
@@ -101,6 +119,8 @@ public sealed partial class GameEngine
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {
+            case DiePurpose.QuickLoad: ResolveQuickLoadDie(effect.Actor, die); break;
+            case DiePurpose.FieldCombat: ResolveFieldCombatDie(effect, die); break;
             case DiePurpose.SkillLearning:
                 Log($"{p.Name} resuelve el aprendizaje de Reverse Shuffle: D6 = {die}, roba {(die + 1) / 2} carta(s).");
                 DrawCards(p, (die + 1) / 2, effect.Next);
@@ -157,6 +177,11 @@ public sealed partial class GameEngine
         {
             State.Phase = frame.ResumePhase;
             var card = CardCatalog.Get(frame.CardId);
+            if (State.Phase == Phase.MemoryRecoveryChoice && card.RecoverMemory && !RecoverableMemoryCards().Any())
+            {
+                State.Phase = frame.CancelPhase ?? Phase.Actions;
+                ResolveCode(State.Players[frame.Actor], card);
+            }
             if (State.Phase == Phase.DestroyChoice && card.DestroyChosenZone && !TimeBombTargets().Any())
             {
                 State.DestroyActor = null; State.Phase = frame.CancelPhase ?? Phase.Actions;
@@ -173,10 +198,13 @@ public sealed partial class GameEngine
         switch (frame.Kind)
         {
             case ActivationKind.Code: ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex); break;
+            case ActivationKind.TurnBuff: ActivateCodeAfterErrors(frame.Actor, CardCatalog.Get(frame.CardId), frame.FromMemory, frame.MemoryIndex); break;
+            case ActivationKind.FieldCode:
+                RollWithRelikario(p, DiePurpose.FieldCombat, new DieEffect { Purpose = DiePurpose.FieldCombat, Actor = frame.Actor, SkillId = frame.CardId });
+                break;
             case ActivationKind.Equipment:
                 frame.CanInterrupt = false;
-                if (p.Equipment != null) DestroyEquipment(p, new EngineContinuation { Kind = ContinuationKind.EquipInstall, Actor = frame.Actor });
-                else FinishEquipmentInstall();
+                ReplaceEquipment(new EngineContinuation { Kind = ContinuationKind.ReplaceEquipment, Actor = frame.Actor });
                 break;
             case ActivationKind.MindReset: BeginMindReset(frame.Actor); break;
             case ActivationKind.Reroll: _activeActivation = frame.Parent; ResolveRerollComboEffect(frame.Actor, CardCatalog.Get(frame.CardId)); break;
@@ -185,6 +213,12 @@ public sealed partial class GameEngine
     }
     private void CancelActivation(EngineActivation frame)
     {
+        if (frame.Kind == ActivationKind.TurnBuff) { FinishTurnBuff(frame, returnDiscard: true); return; }
+        if (frame.Kind == ActivationKind.FieldCode)
+        {
+            if (frame.FieldSource is { } source) DestroyCardNow(source);
+            ClearCodeDecisions();
+        }
         if (frame.Kind == ActivationKind.MindReset) State.PendingMindReset = null;
         if (frame.Kind == ActivationKind.Code)
         {

@@ -23,7 +23,7 @@ static class TripleAttackTests
             p.Deck.Add("attack"); p.ActionsLeft = 0; Reject(g, () => g.PlayCode(0, 0)); p.ActionsLeft = 2;
             g.State.Phase = Phase.Combat; Reject(g, () => g.PlayCode(0, 0)); g.State.Phase = Phase.Actions;
             Reject(g, () => g.PlayCode(1, 0));
-            Check(CardCatalog.TrainingDeck().Count == 33 && CardCatalog.TrainingDeck().Count(id => id == "attack") == 12);
+            Check(CardCatalog.TrainingDeck().Count == 42 && CardCatalog.TrainingDeck().Count(id => id == "attack") == 12);
         }),
         ("Triple: Error devuelve acción antes de buscar; Caja no responde a Jugada", () =>
         {

@@ -73,6 +73,7 @@ static class YunoTests
             Check(!g.ResolveAttackReroll(0, true).Success);
             Check(g.Advance(0).Success && g.Advance(0).Success);
             Check(g.State.Players.All(p => !p.AttackRerollUsedThisTurn));
+            if (g.State.Phase == Phase.Draw) Check(g.Advance(1).Success);
             g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add(CardCatalog.Destiny.Id); rng.EnqueueDie(2);
             Check(g.Attack(1, g.State.Active.Hand.Count - 1, 0).Success && g.State.Phase == Phase.AttackRerollChoice);
         }),

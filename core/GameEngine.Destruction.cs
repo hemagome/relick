@@ -21,6 +21,14 @@ public sealed partial class GameEngine
     {
         if (State.IsOver) return;
         var p = State.Players[target.Owner];
+        var cover = p.EquipmentCovers?.LastIndexOf(CardCatalog.GoldenTotem.Id) ?? -1;
+        if (target.Zone == FieldZone.Equipment && target.CardId == CardCatalog.Totem.Id &&
+            cover >= 0)
+        {
+            RequestDestruction(new(target.Owner, FieldZone.EquipmentCover, cover, CardCatalog.GoldenTotem.Id),
+                new EngineContinuation { Kind = ContinuationKind.GoldenTotemReplacement, Actor = target.Owner, Next = completed });
+            return;
+        }
         if (p.Skills.Select((id, slot) => (id, slot)).Any(c => CardCatalog.Get(c.id).ProtectOwnCard &&
             !(target.Zone == FieldZone.Skill && target.Index == c.slot)))
         {
@@ -61,15 +69,21 @@ public sealed partial class GameEngine
         switch (target.Zone)
         {
             case FieldZone.Equipment: DestroyEquipmentNow(p); return;
+            case FieldZone.EquipmentCover:
+                p.EquipmentCovers!.RemoveAt(target.Index);
+                if (p.EquipmentCovers.Count == 0) p.EquipmentCovers = null;
+                break;
             case FieldZone.Hand: SendHandToMemory(p, target.Index); return;
             case FieldZone.Skill: RemoveLearnedSkill(target.Owner, target.Index); return;
             case FieldZone.Attached: p.AttachedCards.RemoveAt(target.Index); break;
-            case FieldZone.Exchange: p.Exchange.RemoveAt(target.Index); break;
-            case FieldZone.Bonus: p.Bonus = null; break;
+            case FieldZone.Exchange:
+                ForgetFieldCodeSource(p, FieldZone.Exchange, target.Index); p.Exchange.RemoveAt(target.Index);
+                ShiftExchangeEffects(p, target.Index, 1); break;
+            case FieldZone.Bonus: ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = null; break;
         }
         NotifyPileMove(p, target.CardId, target.Zone switch
         {
-            FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, _ => CardZone.Attached
+            FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, FieldZone.EquipmentCover => CardZone.EquipmentCover, _ => CardZone.Attached
         }, target.Index);
         p.Memory.Add(target.CardId);
     }
@@ -92,7 +106,7 @@ public sealed partial class GameEngine
 
     private void ProcessAttackDie(int die, EngineContinuation? completed)
     {
-        if (die == 1) DestroyAttackOneEquipment(0, completed);
+        if (die == 1 && !HasStackedTotem(State.CurrentPlayer)) DestroyAttackOneEquipment(0, completed);
         else Continue(completed);
     }
 
@@ -100,7 +114,7 @@ public sealed partial class GameEngine
     {
         var target = next.Target!;
         var card = target.Zone == FieldZone.Hand ? "una carta de la mano" : CardCatalog.Get(target.CardId).Name;
-        Log(next.Prevented ? $"{next.Text}: la carta original queda protegida por Reverse Shuffle." :
+        Log(next.Prevented ? $"{next.Text}: la carta original queda protegida por una sustitución." :
             $"{State.Players[next.Actor].Name} destruye {card} de {State.Players[target.Owner].Name} con {next.Text}.");
         State.DestroyActor = null; State.Phase = Phase.Actions; CompleteActivationIfFinished();
         if (!next.Prevented && target.Zone == FieldZone.Bonus) RefillBonus(State.Players[target.Owner]);

@@ -9,7 +9,7 @@ static class KonamyCodeTests
         {
             var c = CardCatalog.KonamyCode;
             Check(c.Kind == CardKind.Code && c.CodeType == CodeType.Play && !c.IsCombo && c.ActionCost == 1 && c.PrCost == 0);
-            Check(CardCatalog.TrainingDeck().Count == 33 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 42 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Konamy: permite ataques, equipos y códigos, excluye habilidades y conserva el orden del mazo", () =>
         {

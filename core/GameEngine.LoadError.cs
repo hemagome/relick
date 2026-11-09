@@ -11,12 +11,12 @@ public sealed partial class GameEngine
         if (State.Phase == Phase.ErrorResponse) return State.ErrorResponder == actor && _activationChain.Count > 0 && _activationChain[^1].Actor != actor;
         if (State.PendingDieRoll?.Purpose == DiePurpose.Recycling) return false;
         return _activeActivation is { CanInterrupt: true } frame && frame.Actor != actor &&
-            State.Phase is Phase.DieRerollChoice or Phase.PointsChoice or Phase.DestroyChoice or Phase.CodeResponse or Phase.DeckSearchChoice or Phase.MindResetChoice or Phase.DestructionResponse;
+            State.Phase is Phase.DieRerollChoice or Phase.PointsChoice or Phase.DestroyChoice or Phase.CodeResponse or Phase.DeckSearchChoice or Phase.MindResetChoice or Phase.DestructionResponse or Phase.MemoryRecoveryChoice or Phase.GoldenTotemChoice;
     }
     private void BeginActivation(EngineActivation frame)
     {
         _activeActivation = frame;
-        if (HasLoadError(1 - frame.Actor)) OpenErrorChain(frame, frame.ResumePhase);
+        if (frame.CanInterrupt && HasLoadError(1 - frame.Actor)) OpenErrorChain(frame, frame.ResumePhase);
         else { ResumeActivation(frame); CompleteActivationIfFinished(); }
     }
     private void OpenErrorChain(EngineActivation frame, Phase resume)
@@ -35,7 +35,7 @@ public sealed partial class GameEngine
             var suspended = new EngineActivation(original.Actor, original.CardId, original.Actions, original.Pr, resume)
             { ResumeMode = ActivationResume.RestorePhase, CancelPhase = original.CancelPhase ?? original.ResumePhase, Kind = original.Kind, Parent = original.Parent,
               ReplayCorrupted = original.ReplayCorrupted, CorruptedIndex = original.CorruptedIndex,
-              FromMemory = original.FromMemory, MemoryIndex = original.MemoryIndex };
+              FromMemory = original.FromMemory, MemoryIndex = original.MemoryIndex, FieldSource = original.FieldSource };
             OpenErrorChain(suspended, resume);
         }
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
@@ -64,6 +64,8 @@ public sealed partial class GameEngine
         if (root.Canceled) { CancelActivation(root); _activeActivation = root.Parent; State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Activación anulada · Costes devueltos"; }
         else { ResumeActivation(root); CompleteActivationIfFinished(); }
         if (root.Canceled && root.FinishSniperExchange) CompleteExchange(State.Players[root.Actor]);
+        if (State.Phase == Phase.TurnBuffResolving && State.PendingTurnBuff is { Completed: true }) CompleteActivationIfFinished();
+        if (State.Phase == Phase.ReloadResolving && State.PendingReload != null) CompleteActivationIfFinished();
         CompleteAttackIfReady();
         CompleteEndTurnIfReady();
     }
@@ -74,6 +76,7 @@ public sealed partial class GameEngine
     }
     private void ClearCodeDecisions()
     {
+        State.PendingGoldenTotem = null;
         State.PendingMindReset = null;
         State.PendingDestruction = null;
         State.PendingCode = null; State.PendingDieRoll = null; State.PendingPoints = null; State.DestroyActor = null; _pendingDieEffect = null;
@@ -85,7 +88,12 @@ public sealed partial class GameEngine
     }
     private void CompleteActivationIfFinished()
     {
-        if (State.Phase is Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished) _activeActivation = null;
+        if (State.Phase == Phase.ReloadResolving && State.PendingReload != null) { ContinueReloadHands(); return; }
+        if (State.Phase == Phase.TurnBuffResolving && State.PendingTurnBuff is { Completed: true })
+        {
+            CompleteTurnBuff(); return;
+        }
+        if (State.Phase is Phase.Draw or Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished) _activeActivation = null;
         CompleteAttackIfReady();
         CompleteEndTurnIfReady();
     }

@@ -19,6 +19,16 @@ public sealed class DuelPlayerView
     public int[] Counters { get; set; } = [];
     public int EquipmentCounters { get; set; }
     public int EquipmentDie { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int EquipmentStackedCopies { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? EquipmentCovers { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int StarEffects { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool BonusEffectUsed { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? ExchangeEffectsUsed { get; set; }
     public string? Equipment { get; set; }
     public string? Bonus { get; set; }
     public string[] Attached { get; set; } = [];
@@ -36,6 +46,20 @@ public sealed class DuelSnapshot
     public int Turn { get; set; }
     public Phase Phase { get; set; }
     public Phase? Stage { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int DiscardsRemaining { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? DiscardActivationCard { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int ActivationDiscardsRemaining { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int ExtraDrawStages { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int ExtraCombatStages { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int ExtraActionStages { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int ExtraFinalStages { get; set; }
     public int? Winner { get; set; }
     public int Die { get; set; }
     public string DieCaption { get; set; } = "";
@@ -48,13 +72,24 @@ public sealed class DuelSnapshot
     {
         var s = game.State;
         var stagePhase = s.Phase == Phase.DestructionResponse ? s.PendingDestruction!.ResumePhase : s.Phase;
+        if (s.Phase == Phase.ErrorResponse && game.IsFieldCodeActivation) stagePhase = Phase.Combat;
+        if (s.PendingTurnBuff != null) stagePhase = s.PendingTurnBuff.ResumePhase;
+        if (s.PendingReload != null && !s.IsOver) stagePhase = Phase.Actions;
+        if (s.PendingTotemDamage != null && !s.IsOver) stagePhase = s.PendingTotemDamage.ResumePhase;
+        if (s.PendingGoldenTotem != null && !s.IsOver) stagePhase = Phase.Actions;
         return new DuelSnapshot
         {
             Revision = revision, MySeat = seat, CurrentPlayer = s.CurrentPlayer, DecisionPlayer = s.DecisionPlayer,
-            Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.LastDie,
-            Stage = stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? s.PendingMindReset!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice ? Phase.Actions :
-                stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? s.PendingDieRoll!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
-                stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice ? Phase.Combat : stagePhase,
+            DiscardsRemaining = s.DiscardsRemaining,
+            ExtraDrawStages = s.ExtraDrawStages, ExtraCombatStages = s.ExtraCombatStages,
+            ExtraActionStages = s.ExtraActionStages, ExtraFinalStages = s.ExtraFinalStages,
+            DiscardActivationCard = s.PendingTurnBuff?.CardId,
+            ActivationDiscardsRemaining = s.PendingTurnBuff is { Completed: false } cost ? cost.RequiredDiscards - cost.DiscardsPaid : 0,
+            Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.PendingTurnBuff?.AttackRoll?.Die ?? s.PendingTurnBuff?.DieRoll?.Die ?? s.LastDie,
+            Stage = stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice ? Phase.Actions :
+                stagePhase == Phase.MemoryRecoveryChoice ? Phase.Actions :
+                stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
+                stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase,
             DieCaption = game.CurrentDieCaption,
             LastCombat = s.LastCombat,
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
@@ -66,7 +101,8 @@ public sealed class DuelSnapshot
                     (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ||
                     (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == seat && s.PendingMindReset.Target == index) ? id : null).ToArray(),
                 Skills = p.Skills.ToArray(), SkillPositions = Enumerable.Range(0, p.Skills.Count).Select(p.SkillPosition).ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
-                Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
+                BonusEffectUsed = p.BonusEffectUsed, ExchangeEffectsUsed = p.ExchangeEffectsUsed?.ToArray(),
+                Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, EquipmentStackedCopies = p.EquipmentStackedCopies, EquipmentCovers = p.EquipmentCovers?.ToArray(), StarEffects = p.StarEffects, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
                 Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
             }).ToArray()
         };

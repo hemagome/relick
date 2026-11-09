@@ -109,10 +109,10 @@ var tests = new (string Name, Action Run)[]
         var rejected = g.Learn(0, 0);
         Ok(!rejected.Success && rejected.Message.Contains("cuatro")); Eq(Fingerprint(g), full);
     }),
-    ("El mazo conserva 33 cartas y contiene las tres habilidades y los equipos", () =>
+    ("El mazo conserva 42 cartas y contiene las tres habilidades y los equipos", () =>
     {
         var deck = CardCatalog.TrainingDeck();
-        Eq(deck.Count, 33);
+        Eq(deck.Count, 42);
         var skills = deck.Where(id => CardCatalog.Get(id).Kind == CardKind.Skill).ToArray();
         Eq(skills.Length, 3); Eq(skills.Distinct().Count(), 3);
         Eq(skills.Count(id => id == CardCatalog.Magnet.Id), 1); Eq(skills.Count(id => id == CardCatalog.Destiny.Id), 1);
@@ -279,7 +279,7 @@ var tests = new (string Name, Action Run)[]
                 Ok(g.Discard(actor, p.Hand.Count - 1).Success);
             }
             Eq(p.Hand.Count, 7); Eq(p.Memory.Count, memoryCount + size - 7);
-            Eq(g.State.Phase, Phase.Combat); Eq(g.State.CurrentPlayer, 1 - actor);
+            Ok(g.State.Phase is Phase.Combat or Phase.Draw); Eq(g.State.CurrentPlayer, 1 - actor);
             Eq(g.State.DiscardsRemaining, 0);
         }
     }),
@@ -323,6 +323,7 @@ var tests = new (string Name, Action Run)[]
         g.State.Players[1].Hand.Clear();
         g.Advance(0); g.Advance(0);
         Eq(g.State.Players[1].Hand.Count, 3);
+        if (g.State.Phase == Phase.Draw) Ok(g.Advance(1).Success);
         g.Advance(1); g.Advance(1);
         Eq(g.State.Players[0].Hand.Count, 2);
     }),
@@ -557,7 +558,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(ReverseTests.Cases).Concat(AttackRewardTests.Cases).Concat(DexterityTests.Cases).Concat(HandLimitTests.Cases).Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(GoldenTotemTests.Cases).Concat(TotemTests.Cases).Concat(TimeBenderTests.Cases).Concat(ReloadCartridgeTests.Cases).Concat(QuickLoadTests.Cases).Concat(JessicaTests.Cases).Concat(PlumberStarTests.Cases).Concat(FloppyDiskTests.Cases).Concat(BonfireTests.Cases).Concat(ReverseTests.Cases).Concat(AttackRewardTests.Cases).Concat(DexterityTests.Cases).Concat(HandLimitTests.Cases).Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)
@@ -577,7 +578,7 @@ static void Eq<T>(T actual, T expected)
     if (!Equals(actual, expected)) throw new Exception($"Esperado {expected}, recibido {actual}");
 }
 static int Count(PlayerState p) => p.Deck.Count + p.Hand.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count +
-    p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1);
+    p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1);
 static string Fingerprint(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);
 static CommandResult AttackKeepingRoll(GameEngine game, int actor, int hand, int skill)
 {

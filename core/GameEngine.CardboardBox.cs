@@ -19,6 +19,7 @@ public sealed partial class GameEngine
         var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : card.ActionCost,
             card.PrCost + (fromMemory ? 400 : 0), State.Phase)
         { Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex };
+        if (card.DiscardForTurnBuff || card.RepeatStage) { BeginTurnBuff(frame); return; }
         BeginActivation(frame);
     }
 
@@ -65,6 +66,11 @@ public sealed partial class GameEngine
         var pending = State.PendingCode!; var card = CardCatalog.Get(pending.CardId);
         State.PendingCode = null;
         RefundActivation(pending.Actor, pending.FromMemory ? 2 : card.ActionCost, card.PrCost + (pending.FromMemory ? 400 : 0));
+        if (_activeActivation is { Kind: ActivationKind.TurnBuff } star)
+        {
+            Log($"{State.Players[actor].Name} cancela {card.Name} con Caja de Cartón; el descarte no vuelve a la mano.");
+            FinishTurnBuff(star, returnDiscard: false); return;
+        }
         _activeActivation = null;
         Log($"{State.Players[actor].Name} usa Caja de Cartón: cancela {card.Name}, que queda en la memoria de {State.Players[pending.Actor].Name}.");
         CompleteActivationIfFinished();

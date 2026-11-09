@@ -37,11 +37,14 @@ public sealed partial class GameEngine
         for (var seat = 0; seat < 2; seat++)
         {
             var player = new PlayerState { Name = opening.Names[seat], Bonus = opening.Bonuses[seat] };
+            if (player.Bonus is { } bonus && CardCatalog.Get(bonus).FieldCombatDie) player.BonusPlacedTurn = 1;
             player.Hand.AddRange(opening.Hands[seat]);
             player.Deck.AddRange(opening.Decks[seat]);
             state.Players[seat] = player;
         }
-        return new GameEngine(state, random);
+        var game = new GameEngine(state, random);
+        if (game.HasTimeBenderForDraw()) state.Phase = Phase.Draw;
+        return game;
     }
 
     public CommandResult Concede(int actor)
@@ -91,17 +94,18 @@ public sealed partial class GameEngine
     /// <summary>Read-only query for plays other than advancing; never consumes cards or randomness.</summary>
     public bool HasAvailablePlay(int actor)
     {
-        if (State.Phase == Phase.DestructionResponse) return actor == State.DecisionPlayer;
+        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice) return actor == State.DecisionPlayer;
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
-        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice)
+        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice or Phase.MemoryRecoveryChoice)
             return actor == State.DecisionPlayer;
         if (ValidateTurn(actor) != null) return false;
         var p = State.Active;
+        if (p.Hand.Select((id, index) => (id, index)).Any(card => CardCatalog.Get(card.id).IsCombo && CodeUnavailableReason(actor, card.index) == null)) return true;
         if (CanEvolve(actor)) return true;
         return State.Phase switch
         {
-            Phase.Combat => !State.AttackedThisTurn && (
+            Phase.Combat => FieldCombatTargets(actor).Any() || !State.AttackedThisTurn && (
                 (p.Skills.Count > 0 && p.Hand.Contains(CardCatalog.Attack.Id)) ||
                 (!State.LearnedThisTurn && p.Skills.Count < MaxSkills && p.Relikia >= SkillCost(p) &&
                  p.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Skill))),
@@ -195,8 +199,18 @@ public sealed partial class GameEngine
 
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
+        if (card.DeployTotems) { BeginGoldenTotem(Array.IndexOf(State.Players, p)); return; }
+        if (card.RepeatStage) { ResolveRepeatedStage(); return; }
+        if (card.ReloadBothHands) { BeginReloadHands(Array.IndexOf(State.Players, p)); return; }
+        if (card.DrawThenDie)
+        {
+            DrawCards(p, card.Draw, new EngineContinuation { Kind = ContinuationKind.QuickLoadDie, Actor = Array.IndexOf(State.Players, p) });
+            return;
+        }
+        if (card.DiscardForTurnBuff) { ResolveTurnBuff(); return; }
         if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p) }); return; }
         if (card.ResetMind) { BeginMindReset(Array.IndexOf(State.Players, p)); return; }
+        if (card.RecoverMemory) { BeginMemoryRecovery(Array.IndexOf(State.Players, p)); return; }
         if (card.SwapHands) { SwapHands(Array.IndexOf(State.Players, p)); return; }
         if (card.SearchAttacks > 0)
         {
@@ -269,9 +283,14 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void PlaceInExchange(PlayerState p, string id, EngineContinuation? completed = null)
+    private void PlaceInExchange(PlayerState p, string id, EngineContinuation? completed = null, int? fieldPlacedTurn = null)
     {
         p.Exchange.Add(id);
+        if (CardCatalog.Get(id).FieldCombatDie)
+        {
+            p.ExchangePlacementTurns ??= new();
+            p.ExchangePlacementTurns[p.Exchange.Count - 1] = fieldPlacedTurn ?? Math.Max(1, State.Turn);
+        }
         Log($"{p.Name} coloca {CardCatalog.Get(id).Name} en canje ({p.Exchange.Count}/2).");
         CompleteExchange(p, completed);
     }
@@ -282,9 +301,13 @@ public sealed partial class GameEngine
         if (p.Exchange.Count >= 2 && p.Bonus != null)
         {
             for (var slot = 0; slot < 2; slot++)
+            {
+                ForgetFieldCodeSource(p, FieldZone.Exchange, slot);
                 NotifyPileMove(p, p.Exchange[slot], CardZone.Exchange, slot);
+            }
             p.Memory.AddRange(p.Exchange.Take(2));
             p.Exchange.RemoveRange(0, 2);
+            ShiftExchangeEffects(p, 0, 2);
             TakeBonus(p, p);
             Log($"{p.Name} completa el canje y obtiene su bonus.");
             RefillBonus(p, new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = Array.IndexOf(State.Players, p), Next = completed });
@@ -296,12 +319,24 @@ public sealed partial class GameEngine
     {
         var error = ValidateTurn(actor);
         if (error != null) return CommandResult.Fail(error);
-        if (State.Phase == Phase.Combat)
+        if (State.Phase == Phase.Draw)
         {
+            if (!ConsumeRepeatedStage(Phase.Draw)) State.Phase = Phase.Combat;
+        }
+        else if (State.Phase == Phase.Combat)
+        {
+            if (ConsumeRepeatedStage(Phase.Combat)) return CommandResult.Ok();
             State.Phase = Phase.Actions;
             Log($"{State.Active.Name} entra en acciones ({State.ActionsLeft} disponibles).");
         }
-        else if (State.Phase == Phase.Actions) EndTurn();
+        else if (State.Phase == Phase.Actions)
+        {
+            if (!ConsumeRepeatedStage(Phase.Actions)) EndTurn();
+        }
+        else if (State.Phase == Phase.Final && State.Active.Hand.Count <= MaxHandSize)
+        {
+            State.RepeatedFinalAwaitingAdvance = false; CompleteEndTurnIfReady();
+        }
         else return CommandResult.Fail("Completa el efecto pendiente antes de continuar.");
         return CommandResult.Ok();
     }
@@ -329,21 +364,39 @@ public sealed partial class GameEngine
             }
         }
         if (CardCatalog.Get(id).EquipOnDiscard) BeginSniperChoices(actor, [p.Memory.Count - 1]);
-        CompleteEndTurnIfReady();
+        CompleteActivationIfFinished();
         return CommandResult.Ok();
     }
 
     private void BeginTurn()
     {
         State.Turn++;
-        foreach (var player in State.Players) player.AttackRerollUsedThisTurn = false;
+        State.ExtraDrawStages = 0; State.ExtraCombatStages = 0; State.ExtraActionStages = 0; State.ExtraFinalStages = 0;
+        State.RepeatedFinalAwaitingAdvance = false;
+        foreach (var player in State.Players)
+        {
+            player.AttackRerollUsedThisTurn = false;
+            player.BonusEffectUsed = false; player.ExchangeEffectsUsed = null;
+        }
         State.Phase = Phase.Combat;
         foreach (var player in State.Players) player.ActionsLeft = 2;
         State.AttackedThisTurn = false;
         State.LearnedThisTurn = false;
+        if (State.Active.EquipmentExpiresAtTurnStart)
+        {
+            State.Active.EquipmentExpiresAtTurnStart = false;
+            DestroyEquipment(State.Active, new EngineContinuation { Kind = ContinuationKind.TurnStartDraw, Actor = State.CurrentPlayer });
+            return;
+        }
+        DrawAtTurnStart();
+    }
+
+    private void DrawAtTurnStart(bool explicitStage = false)
+    {
+        if (explicitStage) State.Phase = Phase.Draw;
         var count = State.Active.Hand.Count == 0 ? 3 : 1;
         Log($"Turno {State.Turn} · {State.Active.Name}: roba {count} carta(s).");
-        DrawCards(State.Active, count);
+        DrawCards(State.Active, count, new EngineContinuation { Kind = ContinuationKind.DrawStageReady, Actor = State.CurrentPlayer, Flag = explicitStage });
     }
 
     private void EndTurn()
@@ -358,22 +411,37 @@ public sealed partial class GameEngine
     private void CompleteEndTurnIfReady()
     {
         // Discard triggers, responses and their draws finish before checking the limit again.
-        if (State.Phase != Phase.Final || _activeActivation != null || State.PendingSniper != null ||
+        if (State.Phase != Phase.Final || State.RepeatedFinalAwaitingAdvance || _activeActivation != null || State.PendingSniper != null || State.PendingTurnBuff != null ||
             State.Active.Hand.Count > MaxHandSize) return;
+        if (ConsumeRepeatedStage(Phase.Final)) return;
+        foreach (var player in State.Players) player.StarEffects = 0;
         State.CurrentPlayer = 1 - State.CurrentPlayer;
         BeginTurn();
     }
 
-    private void DealDamage(int target, int amount, int attackDie = 0, EngineContinuation? completed = null)
+    private void DealDamage(int target, int amount, int attackDie = 0, EngineContinuation? completed = null, int? source = null)
     {
         if (amount <= 0) { Continue(completed); return; }
         var p = State.Players[target];
-        var reduction = p.Equipment == null ? 0 : CardCatalog.Get(p.Equipment).DamageReduction;
-        if (reduction > 0)
+        if (source is int owner && State.Players[owner].StarEffects > 0)
         {
-            var reduced = DamageAfterEquipment(p, amount);
-            Log($"{p.Name} reduce el daño de {amount} a {reduced} con {CardCatalog.Get(p.Equipment!).Name}.");
-            State.LastCombat += $" · {CardCatalog.Get(p.Equipment!).Name}: {reduced} daño recibido";
+            var original = amount;
+            for (var i = 0; i < State.Players[owner].StarEffects; i++) amount *= 2;
+            Log($"Estrella del Fontanero aumenta el daño de {State.Players[owner].Name} de {original} a {amount}.");
+            State.LastCombat += $" · Estrella del Fontanero: {amount} de daño";
+        }
+        if (p.StarEffects > 0)
+        {
+            Log($"{p.Name} transforma {amount} de daño en 0 con Estrella del Fontanero.");
+            State.LastCombat += " · Estrella del Fontanero: 0 daño recibido";
+            Continue(completed); return;
+        }
+        var protection = p.Equipment == null ? null : CardCatalog.Get(p.Equipment);
+        if (protection != null && (protection.PreventDamage || protection.DamageReduction > 0))
+        {
+            var reduced = protection.PreventDamage ? 0 : Math.Max(0, amount - protection.DamageReduction);
+            Log($"{p.Name} reduce el daño de {amount} a {reduced} con {protection.Name}.");
+            State.LastCombat += $" · {protection.Name}: {reduced} daño recibido";
             amount = reduced;
             if (amount == 0) { Continue(completed); return; }
         }
@@ -386,7 +454,7 @@ public sealed partial class GameEngine
                 return;
             }
         }
-        ApplyHealthDamage(target, amount, attackDie, completed);
+        if (!TryTotemDamage(target, amount, attackDie, completed)) ApplyHealthDamage(target, amount, attackDie, completed);
     }
 
     private void ApplyHealthDamage(int target, int amount, int attackDie, EngineContinuation? completed)
@@ -431,7 +499,12 @@ public sealed partial class GameEngine
     {
         var actor = Array.IndexOf(State.Players, p);
         var id = p.Deck[index];
-        if (bonus) { p.Bonus = id; BonusPlaced?.Invoke(actor, id); }
+        if (bonus)
+        {
+            ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = id;
+            if (CardCatalog.Get(id).FieldCombatDie) p.BonusPlacedTurn = Math.Max(1, State.Turn);
+            BonusPlaced?.Invoke(actor, id);
+        }
         else { p.Hand.Add(id); CardDrawn?.Invoke(actor, p.Hand.Count - 1); }
         p.Deck.RemoveAt(index);
         if (p.Deck.Count == 0 && State.Phase != Phase.Preparation) Exhaust(p, completed);

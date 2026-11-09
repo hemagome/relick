@@ -1,5 +1,5 @@
 namespace Relick.Core;
-public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill }
+public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover }
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
@@ -12,6 +12,8 @@ public sealed partial class GameEngine
         {
             var p = State.Players[owner];
             if (p.Equipment != null) yield return new(owner, FieldZone.Equipment, -1, p.Equipment);
+            for (var i = 0; i < (p.EquipmentCovers?.Count ?? 0); i++)
+                yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
             if (p.Bonus != null) yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
             if (p.Hand.Count > (owner == excludedOwner && excludedHand >= 0 ? 1 : 0))
                 yield return new(owner, FieldZone.Hand, -1, "");
@@ -29,6 +31,8 @@ public sealed partial class GameEngine
         {
             var p = State.Players[owner];
             if (p.Equipment != null && CardCatalog.Get(p.Equipment).Kind != CardKind.Skill) yield return new(owner, FieldZone.Equipment, -1, p.Equipment);
+            for (var i = 0; i < (p.EquipmentCovers?.Count ?? 0); i++)
+                yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
             for (var i = 0; i < p.AttachedCards.Count; i++)
                 if (CardCatalog.Get(p.AttachedCards[i]).Kind != CardKind.Skill) yield return new(owner, FieldZone.Attached, i, p.AttachedCards[i]);
             if (p.Bonus != null && CardCatalog.Get(p.Bonus).Kind != CardKind.Skill)
@@ -40,10 +44,32 @@ public sealed partial class GameEngine
     }
     private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0, int excludedHand = -1)
     {
+        if (State.PendingTotemDamage != null) return "Decide primero si cancelas el daño con Tótem de Salvación.";
+        if (State.PendingGoldenTotem != null && !card.CancelActivation) return "Completa la colocación de Tótem de Oro.";
+        if (card.DeployTotems && excludedHand < 0) return "Tótem de Oro no puede activarse con Relikia.";
+        if (card.DeployTotems && p.Equipment == null && !p.Hand.Contains(CardCatalog.Totem.Id))
+            return "Tótem de Oro necesita un equipo debajo o un Tótem de Salvación en tu mano.";
+        if (card.FieldCombatDie) return "Activa Jessica Lee desde tu zona de canje o Bonus durante tu etapa de combate.";
+        if (State.PendingReload != null && !card.CancelActivation && !card.RerollOwnDie && card.SetOwnDie <= 0)
+            return "Completa la resolución de Cartucho de Re-carga.";
+        if (State.PendingTurnBuff != null && !card.CancelActivation) return $"Completa la activación de {CardCatalog.Get(State.PendingTurnBuff.CardId).Name}.";
+        if (card.RepeatStage && RepeatableStage(Array.IndexOf(State.Players, p)) == null)
+            return "Doblador de Tiempo requiere una etapa de tu propio turno sin otra elección pendiente.";
+        if (card.DiscardForTurnBuff)
+        {
+            if (State.Phase is Phase.ErrorResponse or Phase.DestructionResponse or Phase.SniperChoice or Phase.RecycleChoice or Phase.Discard)
+                return "Completa la decisión pendiente antes de activar Estrella del Fontanero.";
+        }
+        if (card.DiscardCost > 0 && p.Hand.Count < card.DiscardCost + (excludedHand < 0 ? 0 : 1))
+            return $"Necesitas {card.DiscardCost} carta(s) adicionales para pagar el descarte.";
         if (State.Turn < card.EarliestTurn) return $"{card.Name} solo puede activarse a partir del turno {card.EarliestTurn} de la partida.";
         if (p.Relikia < card.PrCost + extraCost) return $"Necesitas {card.PrCost + extraCost} PR.";
+        if (card.ReloadBothHands && (p.Hand.Count <= (excludedHand < 0 ? 0 : 1) || State.Players[1 - Array.IndexOf(State.Players, p)].Hand.Count == 0))
+            return "Ambos jugadores necesitan al menos una carta que descartar, además del Cartucho que se activa.";
         if (card.SearchAttacks > 0 && !p.Deck.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack)) return "No hay ataques en tu mazo.";
         if (card.SearchNonSkill && !SearchableDeckCards(Array.IndexOf(State.Players, p)).Any()) return "No hay no-habilidades en tu mazo.";
+        if (card.RecoverMemory && State.Players.Sum(player => player.Memory.Count) <= (excludedHand < 0 ? 1 : 0))
+            return "No hay cartas disponibles en las memorias.";
         if (card.DestroyNonSkill && !DestructionTargets().Any()) return "No hay no-habilidades en el campo para destruir.";
         if (card.DestroyChosenZone && !TimeBombTargets(Array.IndexOf(State.Players, p), excludedHand).Any())
             return "No hay cartas en equipos, manos o Bonus para destruir.";
@@ -69,7 +95,7 @@ public sealed partial class GameEngine
     public CommandResult ResolveDestruction(int actor, int owner, FieldZone zone, int index = -1)
     {
         if (State.Phase != Phase.DestroyChoice || State.DestroyActor != actor) return CommandResult.Fail("No te corresponde elegir objetivo.");
-        if (IsZoneDestruction && index != -1) return CommandResult.Fail("Elige una zona; la carta de la mano se escoge al azar.");
+        if (IsZoneDestruction && index != -1 && zone != FieldZone.EquipmentCover) return CommandResult.Fail("Elige una zona; la carta de la mano se escoge al azar.");
         var target = DestructionTargets().FirstOrDefault(t => t.Owner == owner && t.Zone == zone && (zone is FieldZone.Equipment or FieldZone.Bonus || t.Index == index));
         if (target == null) return CommandResult.Fail("Elige un objetivo válido para esta destrucción.");
         var p = State.Players[owner];

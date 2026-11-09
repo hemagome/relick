@@ -66,8 +66,10 @@ public sealed partial class GameEngine
         {
             case RelikiaEffect.ChangeBonus:
                 var bonus = p.Bonus!;
+                var bonusPlacedTurn = p.BonusPlacedTurn;
+                ForgetFieldCodeSource(p, FieldZone.Bonus);
                 p.Bonus = null;
-                PlaceInExchange(p, bonus, new EngineContinuation { Kind = ContinuationKind.RefillBonus, Actor = actor });
+                PlaceInExchange(p, bonus, new EngineContinuation { Kind = ContinuationKind.RefillBonus, Actor = actor }, fieldPlacedTurn: bonusPlacedTurn);
                 break;
             case RelikiaEffect.DrawAndPlace:
                 DrawOne(p, new EngineContinuation { Kind = ContinuationKind.RelikiaPlacement, Actor = actor });
@@ -145,6 +147,7 @@ public sealed partial class GameEngine
     private void TakeBonus(PlayerState source, PlayerState recipient)
     {
         var id = source.Bonus!;
+        ForgetFieldCodeSource(source, FieldZone.Bonus);
         source.Bonus = null;
         recipient.Hand.Add(id);
         BonusClaimed?.Invoke(Array.IndexOf(State.Players, source), Array.IndexOf(State.Players, recipient), recipient.Hand.Count - 1, id);

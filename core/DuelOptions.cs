@@ -21,6 +21,25 @@ public static class DuelOptions
         {
             switch (s.Phase)
             {
+                case Phase.GoldenTotemChoice:
+                    var maxTotems = Math.Min(2, p.Hand.Count(id => id == CardCatalog.Totem.Id));
+                    for (var count = p.Equipment == null ? 1 : 0; count <= maxTotems; count++)
+                        Add(DuelMoveKind.GoldenTotem, count == 0 ? "Colocar Tótem de Oro sin mostrar Tótems" : $"Mostrar y colocar {count} Tótem(s) de Salvación", discards: count);
+                    break;
+                case Phase.TotemChoice:
+                    Add(DuelMoveKind.Totem, $"Destruir un Tótem · cancelar {s.PendingTotemDamage!.Amount} de daño", flag: true);
+                    Add(DuelMoveKind.Totem, $"Recibir {s.PendingTotemDamage.Amount} de daño sin protección del Tótem");
+                    break;
+                case Phase.Draw:
+                    Add(DuelMoveKind.Advance, s.ExtraDrawStages > 0 ? "Repetir etapa de robo" : "Ir a combate");
+                    break;
+                case Phase.TurnBuffDiscard:
+                    for (var i = 0; i < p.Hand.Count; i++)
+                        Add(DuelMoveKind.TurnBuffDiscard, $"Descartar {Card(p.Hand[i])} para {Card(s.PendingTurnBuff!.CardId)} · carta {i + 1}", i);
+                    break;
+                case Phase.EffectDamageChoice:
+                    Add(DuelMoveKind.EffectDamage, "Resolver el daño de Jessica Lee");
+                    break;
                 case Phase.DestructionResponse:
                     Add(DuelMoveKind.ProtectDestruction, "Permitir la destrucción");
                     foreach (var slot in game.DestructionProtectors(actor))
@@ -31,6 +50,8 @@ public static class DuelOptions
                     Add(DuelMoveKind.Sniper, "Colocar Mira de Sniper en canje");
                     break;
                 case Phase.Combat:
+                    foreach (var source in game.FieldCombatTargets(actor))
+                        Add(DuelMoveKind.FieldCode, $"Activar {Card(source.CardId)} · {(source.Zone == FieldZone.Bonus ? "Bonus" : $"canje {source.Index + 1}")} · sin acciones", source.Index, (int)source.Zone);
                     for (var i = 0; i < p.Hand.Count; i++)
                     {
                         var card = CardCatalog.Get(p.Hand[i]);
@@ -40,7 +61,7 @@ public static class DuelOptions
                             for (var skill = 0; skill < p.Skills.Count; skill++)
                                 Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {p.SkillPosition(skill) + 1} · carta {i + 1}", i, skill);
                     }
-                    Add(DuelMoveKind.Advance, "Ir a acciones");
+                    Add(DuelMoveKind.Advance, s.ExtraCombatStages > 0 ? "Repetir etapa de combate" : "Ir a acciones");
                     break;
                 case Phase.Actions:
                     if (p.ActionsLeft > 0)
@@ -59,11 +80,15 @@ public static class DuelOptions
                         }
                         else if (game.CanUseRelikiaEffect(actor, effect.Id)) Add(DuelMoveKind.Relikia, $"{effect.Name} · {effect.Cost} PR", value: (int)effect.Id);
                     }
-                    Add(DuelMoveKind.Advance, "Terminar turno");
+                    Add(DuelMoveKind.Advance, s.ExtraActionStages > 0 ? "Repetir etapa de acciones" : "Terminar turno");
                     break;
                 case Phase.Discard:
-                case Phase.Final:
                     for (var i = 0; i < p.Hand.Count; i++) Add(DuelMoveKind.Discard, $"Descartar {Card(p.Hand[i])} · carta {i + 1}", i);
+                    break;
+                case Phase.Final:
+                    if (p.Hand.Count > GameEngine.MaxHandSize)
+                        for (var i = 0; i < p.Hand.Count; i++) Add(DuelMoveKind.Discard, $"Descartar {Card(p.Hand[i])} · carta {i + 1}", i);
+                    else Add(DuelMoveKind.Advance, s.ExtraFinalStages > 0 ? "Repetir etapa final" : "Terminar turno");
                     break;
                 case Phase.RecycleChoice:
                     Add(DuelMoveKind.Recycle, $"Reciclar {game.RecyclingCount} cartas de tu memoria", discards: game.RecyclingCount);
@@ -98,6 +123,14 @@ public static class DuelOptions
                                 result[^1].CardId = s.Players[reset.Target].Hand[i];
                             }
                     break;
+                case Phase.MemoryRecoveryChoice:
+                    foreach (var selection in game.RecoverableMemoryCards())
+                    {
+                        var id = s.Players[selection.Owner].Memory[selection.Index];
+                        Add(DuelMoveKind.RecoverMemory, $"Recuperar {Card(id)} · memoria de {s.Players[selection.Owner].Name} · carta {selection.Index + 1}", selection.Index, target: selection.Owner);
+                        result[^1].CardId = id;
+                    }
+                    break;
                 case Phase.DeckSearchChoice:
                     foreach (var index in game.SearchableDeckCards(actor))
                     {
@@ -130,7 +163,7 @@ public static class DuelOptions
                     break;
                 case Phase.CodeResponse:
                     Add(DuelMoveKind.CodeResponse, "Dejar resolver el código");
-                    Add(DuelMoveKind.CodeResponse, "Cancelar con Caja de Cartón", flag: true);
+                    if (p.Equipment == CardCatalog.CardboardBox.Id) Add(DuelMoveKind.CodeResponse, "Cancelar con Caja de Cartón", flag: true);
                     break;
                 case Phase.ErrorResponse:
                     Add(DuelMoveKind.PassError, "No responder con Error de Carga");
@@ -152,12 +185,13 @@ public static class DuelOptions
                             {
                                 FieldZone.Hand => own ? "Tu mano al azar" : "Mano rival al azar",
                                 FieldZone.Equipment => own ? "Tu equipo" : "Equipo rival",
+                                FieldZone.EquipmentCover => $"{(own ? "Tu" : "Rival")} Tótem de Oro · copia {t.Index + 1}",
                                 _ => own ? "Tu Bonus" : "Bonus rival"
                             };
-                            Add(DuelMoveKind.Destroy, place, -1, (int)t.Zone, t.Owner);
+                            Add(DuelMoveKind.Destroy, place, t.Index, (int)t.Zone, t.Owner);
                             continue;
                         }
-                        var zone = t.Zone switch { FieldZone.Equipment => "equipo", FieldZone.Attached => "sobre Yuno", FieldZone.Bonus => "Bonus", _ => "canje" };
+                        var zone = t.Zone switch { FieldZone.Equipment or FieldZone.EquipmentCover => "equipo", FieldZone.Attached => "sobre Yuno", FieldZone.Bonus => "Bonus", _ => "canje" };
                         Add(DuelMoveKind.Destroy, $"Destruir {Card(t.CardId)} de {s.Players[t.Owner].Name} · {zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : ""), t.Index, (int)t.Zone, t.Owner);
                     }
                     break;

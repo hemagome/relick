@@ -4,11 +4,11 @@ static class MindResetTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
-        ("Resetear: Jugada COMBO cuesta una acción y mazo conserva 33 cartas", () =>
+        ("Resetear: Jugada COMBO cuesta una acción y mazo conserva 42 cartas", () =>
         {
             var c = CardCatalog.MindReset;
             Check(c.IsCombo && c.CodeType == CodeType.Play && c.ActionCost == 1 && c.ResetMind);
-            Check(CardCatalog.TrainingDeck().Count == 33 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 42 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Resetear: memorias propias, rivales o mixtas; baraja solo mazos afectados y roba solo objetivo", () =>
         {
@@ -149,7 +149,7 @@ static class MindResetTests
         }
         g.State.Active.Hand.Insert(0, CardCatalog.MindReset.Id); return (g, rng);
     }
-    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Deck.Count + p.Hand.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count + p.AttachedCards.Count + p.Exchange.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));
+    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Deck.Count + p.Hand.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count + p.AttachedCards.Count + p.Exchange.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1));
     private static void Reject(GameEngine g, Func<CommandResult> act) { var before = g.SaveSnapshot(); Check(!act().Success && g.SaveSnapshot() == before); }
     private static void Check(bool value) { if (!value) throw new Exception("Regla de Resetear la Mente no satisfecha"); }
 }

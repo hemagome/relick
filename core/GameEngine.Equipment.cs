@@ -4,8 +4,8 @@ public enum PendantEffect { Reroll, AddOne, AddTwo }
 
 public sealed partial class GameEngine
 {
-    private static int DamageAfterEquipment(PlayerState player, int amount) =>
-        Math.Max(0, amount - (player.Equipment == null ? 0 : CardCatalog.Get(player.Equipment).DamageReduction));
+    private int DamageWithEquipmentBonus(int actor, int damage) => damage +
+        (State.Players[actor].Equipment is { } id ? CardCatalog.Get(id).DamageBonus : 0);
     public CommandResult Equip(int actor, int handIndex)
     {
         var error = ValidateAction(actor);
@@ -24,13 +24,23 @@ public sealed partial class GameEngine
     private void FinishEquipmentInstall()
     {
         var frame = _activeActivation!; var p = State.Players[frame.Actor];
-        if (p.Equipment == null)
+        if (p.Equipment == null || p.Equipment == frame.CardId && CardCatalog.Get(frame.CardId).Stackable)
         {
             p.Memory.RemoveAt(frame.MemoryIndex); ShiftSniperIndices(frame.Actor, frame.MemoryIndex);
+            if (p.Equipment != null)
+            {
+                p.EquipmentStackedCopies++;
+                Log($"{p.Name} apila {CardCatalog.Get(frame.CardId).Name}: {p.EquipmentStackedCopies + 1} copias equipadas.");
+                CompleteActivationIfFinished(); return;
+            }
             p.Equipment = frame.CardId; p.EquipmentDie = 0; p.EquipmentCounters = 0;
-            Log($"{p.Name} pone {CardCatalog.Get(frame.CardId).Name} en su zona de equipo (1 acción).");
+            p.EquipmentStackedCopies = 0;
+            var card = CardCatalog.Get(frame.CardId);
+            p.EquipmentExpiresAtTurnStart = card.DestroyAtNextTurnStart;
+            Log($"{p.Name} pone {card.Name} en su zona de equipo (1 acción).");
+            if (card.Heal > 0) Heal(p, card.Heal);
             if (frame.FinishSniperExchange) CompleteExchange(p);
-            if (CardCatalog.Get(frame.CardId).StoreDie)
+            if (card.StoreDie)
                 RollWithRelikario(p, DiePurpose.PcStore, new DieEffect { Purpose = DiePurpose.PcStore, Actor = frame.Actor });
         }
         else
@@ -46,8 +56,23 @@ public sealed partial class GameEngine
         if (p.Equipment == null) return;
         var id = p.Equipment;
         NotifyPileMove(p, id, CardZone.Equipment);
+        if (p.EquipmentStackedCopies > 0)
+        {
+            p.EquipmentStackedCopies--; p.Memory.Add(id);
+            Log($"{p.Name} destruye una copia de {CardCatalog.Get(id).Name}: quedan {p.EquipmentStackedCopies + 1} equipadas.");
+            return;
+        }
         p.Equipment = null; p.EquipmentDie = 0; p.EquipmentCounters = 0; p.Memory.Add(id);
+        p.EquipmentExpiresAtTurnStart = false;
         Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: va a su memoria.");
+    }
+
+    private void ReplaceEquipment(EngineContinuation next)
+    {
+        var frame = _activeActivation!; var p = State.Players[frame.Actor];
+        if (next.Prevented || p.Equipment == null || p.Equipment == frame.CardId && CardCatalog.Get(frame.CardId).Stackable)
+            FinishEquipmentInstall();
+        else DestroyEquipment(p, next);
     }
 
     public bool CanUseYunoOnPendingDie(int actor)
@@ -63,9 +88,9 @@ public sealed partial class GameEngine
         return false;
     }
 
-    private bool CanRespondToAttackDie() => CanUseYunoOnPendingDie(State.CurrentPlayer) ||
+    private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || CanUseYunoOnPendingDie(State.CurrentPlayer) ||
         State.Players[State.CurrentPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
-    private bool CanRespondToEffectDie() => CanUseYunoOnPendingDie(State.DecisionPlayer) ||
+    private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || CanUseYunoOnPendingDie(State.DecisionPlayer) ||
         State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)

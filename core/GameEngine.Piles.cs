@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill }
+public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover }
 public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination);
 
 public sealed partial class GameEngine

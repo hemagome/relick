@@ -1,5 +1,289 @@
 # Cartas
 
+## Tótem de Oro
+
+`golden-totem-clean.png` restaura el PNG aportado en Downloads mediante la
+herramienta integrada `image_gen`, a 1054×1492. Se retiró la marca diagonal
+conservando ilustración, diseño, texto, identificador y copyright del autor.
+La reconstrucción generativa puede introducir pequeñas diferencias. Original y
+prompt completo: `output/imagegen/golden-totem-original.png` y
+`golden-totem-prompt.txt`.
+
+Código Personaje sin COMBO, una acción y cero PR, siguiendo el encabezado de la
+carta. Según lo confirmado por el usuario, no se puede activar con Relikia y
+necesita al menos un equipo debajo: puede mostrar cero Tótems si ya hay equipo,
+o uno o dos Tótems de Salvación de la mano. La selección usa copias distintas y
+no es un descarte ni cobra acciones de equipo adicionales. Las copias mostradas
+se apilan con las existentes; si hay otro equipo lo sustituyen. Si Reverse
+conserva el equipo anterior, los Tótems mostrados quedan en memoria y Oro se
+coloca sobre el equipo conservado, siguiendo la sustitución de equipo normal.
+
+Error de Carga cancela antes de confirmar las cartas, devuelve la acción y deja
+Oro en memoria; no se muestran ni mueven Tótems. Un contraerror conserva la
+selección pendiente. Caja de Cartón no responde a un Personaje. Tras confirmar,
+se muestran solo las copias elegidas; las destrucciones pendientes por sustituir
+el equipo y el progreso completo persisten al reconectar. Al terminar, Oro pasa
+de memoria a la zona de equipos como cobertura pública independiente.
+
+Si un Tótem de Salvación equipado fuera a ser destruido, Oro se destruye en su
+lugar de forma automática, tanto por daño, coste para cancelar daño, destrucción
+externa como por sustituir equipo. Cada intento consume una sola cobertura y
+conserva todas las copias de Salvación. Reverse puede sustituir la destrucción
+de Oro. La cancelación de daño y los demás efectos continúan después de estas
+decisiones. Oro puede elegirse directamente con Huevo o Bomba y no protege a
+otros tipos de equipo ni a otro Oro. Si el equipo inferior desaparece, Oro
+permanece en la zona; eso no permite colocar otro Oro sin un equipo debajo.
+
+El tablero muestra Oro encima del equipo y permite inspeccionar todas las
+copias. Se conserva la privacidad de las cartas de mano que no se muestran.
+Una copia se añade a cada mazo nuevo: 42 cartas, incluidos doce Ataques.
+
+## Tótem de Salvación
+
+`salvation-totem-clean.png` restaura el PNG aportado en Downloads mediante la
+herramienta integrada `image_gen`, a 1054×1492. Se retiró la marca diagonal
+conservando ilustración, diseño, reglas, identificador y copyright del autor.
+La reconstrucción generativa puede introducir pequeñas diferencias. Original y
+prompt completo: `output/imagegen/salvation-totem-original.png` y
+`salvation-totem-prompt.txt`.
+
+Equipo de una acción y cero PR. Otra copia se apila sobre el Tótem existente sin
+destruirlo, ocupando la misma zona. Las copias cuentan como cartas reales; la
+cantidad es pública y persiste al reconectar. Error de Carga puede anular la
+copia que se equipa y devuelve su acción, sin alterar la pila previa. Cada
+destrucción externa retira una copia. Equipar otro equipo sustituye toda la pila;
+si Reverse protege una de las copias restantes, el nuevo equipo queda en memoria.
+
+Antes de aplicar daño positivo que llevaría a cero, el dueño elige si lo cancela
+destruyendo un Tótem. También protege de un nuevo daño estando ya a cero. Evita
+todo el daño de esa ocasión y consume una sola copia, incluso si estaba apilado.
+Con dos o más copias, recibir daño no letal aplica ese daño y destruye una copia;
+si se rechaza la protección contra cero, se aplica el mismo consumo de la pila.
+Con una sola copia, recibir daño no letal no la consume. El daño cancelado por
+Destiny o reducido a cero por Estrella no consume Tótems. El agotamiento que
+resta vidas inevitables no admite esta protección. Reverse puede sustituir la
+destrucción propia, tanto al cancelar daño como al consumir una copia apilada.
+
+Con dos o más copias, los resultados fallidos de ataque (1–3) infligen daño normal
+y no ejecutan las penalizaciones del fallo, según lo confirmado por el usuario.
+El uno convertido tampoco destruye Casco de Diamantes. La tirada conserva su
+número para relanzamientos, registro y presentación; no se convierte en crítico
+ni en seis natural. Magnet tira su D6 de daño normal. Los demás resultados
+mantienen mitad/normal/crítico. Se aplican defensas y modificadores normales;
+el premio y los efectos críticos esperan a terminar las decisiones pendientes.
+La cancelación de daño conserva el robo de Jessica y el efecto crítico de Magnet.
+
+Una copia se añade a cada mazo nuevo: 41 cartas, incluidos doce Ataques.
+
+## Doblador de Tiempo
+
+`time-bender-clean.png` restaura el PNG aportado en Downloads mediante la
+herramienta integrada `image_gen`, a 1054×1492. Se retiró la marca diagonal
+conservando diseño, reglas, identificador y crédito del autor. La reconstrucción
+generativa puede introducir pequeñas diferencias en la ilustración. Original y
+prompt completo: `output/imagegen/time-bender-original.png` y `time-bender-prompt.txt`.
+
+Código Objeto COMBO, una acción y cero PR, con dos descartes elegidos como coste.
+Según lo confirmado por el usuario, repite una etapa completa del turno
+propio: la etapa adicional empieza después de acabar la actual y no cambia de
+jugador ni incrementa el turno. Varias copias acumulan repeticiones. En Combate
+renueva ataque, aprendizaje y usos de Jessica; en Acciones concede dos acciones
+nuevas. Robo repite el robo normal (una carta, o tres con mano vacía). Final aplica
+el límite de siete y espera confirmación antes de terminar la etapa repetida.
+Se abre una ventana de Robo cuando hay un Doblador que se puede activar y en los
+robos repetidos. Los límites por turno, el relanzamiento de Yuno, la Destreza, los
+efectos de Estrella y la fecha de entrada de Jessica permanecen intactos.
+
+Se eligen ambos descartes antes de abrir las respuestas. Error de Carga devuelve
+los dos descartes y los recursos gastados; Caja de Cartón devuelve los recursos
+pero conserva los descartes. Ninguna cancelación concede la repetición. Los efectos
+de descarte de Mira se resuelven después de las respuestas; Error devuelve las
+cartas sin dispararlos. Relikia permite repetir Acciones desde memoria, cobra dos
+acciones y 400 PR y corrompe la copia cuando resuelve. El coste, las elecciones,
+el contexto interrumpido y las repeticiones pendientes se guardan al reconectar.
+
+Una copia se añade a cada mazo nuevo: 40 cartas, incluidos doce Ataques.
+
+## Cartucho de Re-carga
+
+`reload-cartridge-clean.png` restaura el PNG aportado en Downloads mediante la
+herramienta integrada `image_gen`. Se retiró la marca diagonal conservando diseño,
+reglas, identificador y crédito del autor. La reconstrucción generativa puede
+introducir pequeñas diferencias en la ilustración. Original y prompt completo:
+`output/imagegen/reload-cartridge-original.png` y `reload-cartridge-prompt.txt`.
+
+Código Jugada sin COMBO, una acción y cero PR, prohibido en el primer turno global
+del juego. Al activarlo ambos jugadores necesitan al menos una carta restante en
+la mano; el Cartucho que se juega no cuenta para ese mínimo. Relikia también exige
+esa carta en la mano propia, cobra dos acciones y 400 PR y corrompe su copia.
+El mínimo se comprueba al anunciar la activación; las respuestas pueden consumir
+cartas de esas manos antes de resolver.
+
+Tras las respuestas se descartan ambas manos restantes antes de resolver cualquier
+disparador o robo. Los efectos de Mira de Sniper se eligen primero para el activador
+y después para su rival. Las cartas de Bonus obtenidas por esos canjes no se vuelven
+a descartar: el conjunto de descartes ya quedó fijado. Después roba cuatro cartas
+el activador y cuatro el rival, con reciclaje y recuperación del progreso al reconectar.
+Si un agotamiento termina el duelo, los pasos restantes se interrumpen.
+
+Error de Carga puede anularlo antes de que se descarten las manos y devuelve los
+costes. Caja de Cartón no responde a una Jugada. Una vez realizados los descartes,
+Error puede responder a equipos gratuitos de Mira, con su coste cero, sin deshacer
+el Cartucho. Durante las pausas de reciclaje se permiten los modificadores de dado
+comunes. Los descartes se animan como paquetes sin revelar manos ocultas; las nuevas
+manos permanecen privadas y las cartas descartadas son públicas en memoria.
+
+Una copia se añade a cada mazo nuevo: 39 cartas, incluidos doce Ataques.
+
+## Carga Rápida
+
+`quick-load-clean.png` restaura el PNG aportado en Downloads mediante `image_gen`.
+Se retiró la marca diagonal conservando diseño, reglas, identificador y crédito del
+autor. La reconstrucción generativa puede introducir pequeñas diferencias en la
+ilustración. Original y prompt completo: `output/imagegen/quick-load-original.png`
+y `quick-load-prompt.txt`.
+
+Código Jugada sin COMBO, una acción y cero PR. Primero roba dos cartas y después
+lanza un dado de efecto: 1–2 exige dos descartes elegidos; 3–4 exige uno; 5 roba
+una carta adicional y 6 roba dos adicionales. El dado admite los modificadores
+comunes, incluidas cartas recién robadas, con sus costes normales. Yuno Lv 2 no
+le aplica el aumento del dado de ataque. Si quedan menos cartas para descartar,
+se eligen las disponibles. Los descartes usan el flujo común de Mira de Sniper.
+
+Error de Carga puede cancelar antes de resolver o mientras está pendiente el dado.
+Si ya se completaron los dos robos iniciales, esas cartas permanecen en la mano;
+la cancelación devuelve los costes y evita el resultado pendiente. Caja de Cartón
+no responde a una Jugada. Aceptar el dado compromete el resultado antes de elegir
+los descartes o realizar los robos adicionales.
+
+Relikia cobra sus dos acciones y 400 PR, corrompe la copia activada y utiliza los
+mismos pasos. El reciclaje se completa antes de continuar los robos o lanzar el
+dado; un agotamiento que termina el duelo interrumpe los pasos restantes. Las
+decisiones y cantidades de descarte persisten al reconectar; el límite de siete
+se comprueba al terminar el turno, después de todos los efectos.
+
+Una copia se añade a cada mazo nuevo: 38 cartas, incluidos doce Ataques.
+
+## Jessica Lee
+
+`jessica-lee-clean.png` restaura el PNG aportado en Downloads mediante `image_gen`.
+Se retiró la marca diagonal conservando diseño, texto, firma, créditos y copyright.
+La reconstrucción generativa puede introducir pequeñas diferencias en la ilustración.
+Original y prompt completo: `output/imagegen/jessica-lee-original.png` y
+`jessica-lee-prompt.txt`.
+
+Código Personaje con efecto de zona. Cada copia en el canje o Bonus propio puede
+activarse una vez durante la etapa de combate propia, antes o después del ataque,
+sin acciones ni PR. No se juega desde la mano ni se activa con Relikia desde memoria;
+el canje y los demás mecanismos de movimiento conservan sus reglas normales.
+Los usos se guardan por copia y posición, se muestran públicamente y persisten al
+reconectar. Reponer el Bonus no transfiere el uso de la copia anterior a la nueva;
+quitar una carta del canje desplaza los usos de las restantes. Se renuevan al cambiar
+de turno o al empezar una repetición de Combate con Doblador de Tiempo.
+
+Lanza un dado de efecto: 1–4 no hacen nada, 5 inflige dos daños y 6 inflige tres
+daños y luego roba una carta. El dado admite los modificadores comunes; Yuno Lv 2
+no le aplica el aumento de ataque. No consume el ataque, no entrega su premio ni
+activa defensas de ataque. Caja de Cartón no anula un Personaje. Según lo confirmado
+por el usuario, Error de Carga puede cancelarla solamente en el turno en que entra
+en juego (se enseña), antes o durante el dado, y enviar la copia de origen a memoria, sin
+destruirla ni activar Reverse. Si el origen ya salió de la zona, cancelar su efecto
+no retira una carta de reemplazo ni otra copia.
+
+En turnos posteriores no se abre respuesta de Error ni se permite jugarlo durante
+el dado de Jessica. El turno de entrada se guarda por copia al colocarla en canje
+o revelar un Bonus; pasar del Bonus al canje conserva su antigüedad y una copia
+nueva repuesta recibe su propio turno de entrada. Las copias de guardados anteriores
+sin historial de entrada se consideran ya establecidas, sin nueva ventana de Error.
+
+Mira de Sniper suma uno a los daños de Jessica y Estrella del Fontanero duplica el
+total antes de las reducciones del rival. Casco, Hoguera e inmunidad de Estrella se
+aplican al daño. Si el rival puede activar Estrella, dispone de una respuesta antes
+de recibir el daño. Un seis roba aunque el daño se absorba, después de las decisiones
+de destrucción pendientes; si el daño termina el duelo, no continúa el robo.
+El agotamiento y la recuperación de decisiones utilizan el flujo común.
+
+Una copia se añade a cada mazo nuevo: 37 cartas, incluidos doce Ataques.
+
+## Estrella del Fontanero
+
+`plumber-star-clean.png` restaura el PNG aportado en Downloads mediante la herramienta
+integrada `image_gen`. Se retiraron las marcas diagonales conservando diseño, texto,
+identificador, crédito de Freepik y copyright. La reconstrucción generativa puede
+introducir pequeñas diferencias en la ilustración. Original y prompt completo:
+`output/imagegen/plumber-star-original.png` y `plumber-star-prompt.txt`.
+
+Código Objeto COMBO: una acción, cero PR y un descarte elegido de otra carta de la
+mano. El activador elige el coste antes de las respuestas. Sin otra carta para
+descartar no se permite activarlo. Puede usarse durante el turno propio o rival,
+incluidas las decisiones de ataque, defensa y efectos; primero deben completarse
+los descartes por otros efectos, el reciclaje, Error de Carga, las elecciones de
+Mira de Sniper y las decisiones de sustitución de destrucción.
+
+Mientras se completa su activación se conservan la decisión y los dados originales.
+Al resolver, su dueño no recibe daño y duplica el daño de sus cartas y habilidades
+hasta el final del turno en curso. La duplicación se aplica antes de las reducciones
+del defensor, incluye el aumento de Mira y no duplica premios ni modifica dados.
+Dos activaciones acumulan dos duplicaciones (×4). Los efectos son públicos, persisten
+al reconectar y desaparecen para ambos jugadores al pasar el turno, después de los
+descartes finales y sus efectos. No impiden las vidas inevitables del agotamiento.
+
+Según lo confirmado por el usuario, Error de Carga devuelve a la mano el descarte
+pagado, además de devolver acciones y PR; Caja de Cartón devuelve acciones y PR,
+pero conserva el descarte en memoria. Los efectos de esa carta al descartarse se
+resuelven una vez que las respuestas deciden si el descarte permanece: Mira puede
+equiparse gratis o ir a canje si Estrella resuelve o Caja la cancela; no dispara si
+Error devuelve la carta. Cancelar después ese equipo gratuito no cancela Estrella.
+Relikia exige una carta de la mano como descarte y cobra sus dos acciones y 400 PR;
+su copia de Estrella se corrompe al resolver, con las respuestas comunes.
+
+Una copia se añade a cada mazo nuevo: 36 cartas, incluidos doce Ataques.
+
+## Disquete
+
+`floppy-disk-clean.png` restaura `/home/hemagome/Downloads/disquete.png` con la
+herramienta integrada `image_gen`. Se retiró la marca diagonal, conservando diseño,
+reglas, identificador y copyright, incluido el rótulo RELICK impreso en el disquete.
+La reconstrucción generativa puede introducir pequeñas diferencias en la ilustración.
+Original y prompt: `output/imagegen/floppy-disk-original.png` y `floppy-disk-prompt.txt`.
+
+Código Objeto sin COMBO, una acción y cero PR. El activador elige una carta de la
+memoria normal propia o rival y la añade a su mano, incluidas habilidades y otras
+copias de Disquete. La copia que se está activando no puede recuperarse a sí misma,
+según lo confirmado por el usuario. Las cartas corruptas no son seleccionables.
+No permite activarse sin objetivos; mediante Relikia, la copia activada se corrompe
+y se requiere otra carta en las memorias.
+
+Admite Caja de Cartón y Error de Carga, también durante la selección. Las respuestas
+se resuelven antes de mover la carta elegida; cancelar devuelve los costes según
+las reglas comunes. La elección persiste al reconectar. La interfaz muestra las
+cartas de ambas memorias y el dueño de cada origen, y anima el traslado a la mano
+del activador sin emitir un robo del mazo ni revelar permanentemente la carta.
+Resetear la Mente puede modificar los objetivos pendientes; si desaparecen todos,
+Disquete finaliza sin recuperar cartas. Una copia se añade a cada mazo nuevo:
+35 cartas en total, incluidos doce Ataques.
+
+## Hoguera
+
+`bonfire-clean.png` restaura el PNG aportado en `/home/hemagome/Downloads/hoguera.png`
+mediante la herramienta integrada `image_gen`. Se eliminó la marca diagonal,
+conservando el texto y los créditos impresos. La reconstrucción generativa puede
+introducir pequeñas diferencias en la ilustración. El original y el prompt completo
+están en `output/imagegen/bonfire-original.png` y `bonfire-prompt.txt`.
+
+Equipo normal: una acción, cero PR. Al instalarse recupera una vida hasta el máximo
+del Relikario; Error de Carga puede anularlo antes de curar o reemplazar el equipo
+anterior. Mientras está equipado convierte en cero cada daño recibido por su dueño,
+sin anular el ataque, su premio ni sus otros efectos. Las vidas inevitables del
+segundo agotamiento conservan su regla común.
+
+Al inicio del siguiente turno propio se destruye a memoria antes de robar. La
+destrucción admite Reverse Shuffle y la decisión persiste al reconectar. Si Reverse
+sustituye esa destrucción, Hoguera permanece equipada; el disparador de «tu siguiente
+turno» ya se consumió y no se repite. Proteger el equipo anterior al intentar equipar
+Hoguera deja Hoguera en memoria sin curar. Destruirla o reemplazarla elimina su
+vencimiento pendiente. Una copia se añade a cada mazo nuevo: 34 cartas, doce Ataques.
+
 ## Reverso
 
 `card-back.png` es la conversión a PNG, sin redimensionar ni retocar, del reverso
@@ -201,7 +485,8 @@ una de Magnet Shuffle, conservando veinte cartas y ambos tipos de habilidad inic
 `sniper-scope-clean.png` restaura el PNG aportado con `image_gen`, sin marca diagonal,
 a 697×987. Conserva texto y créditos; puede presentar pequeñas diferencias generativas.
 Original y prompt: `output/imagegen/sniper-scope-original.png` y `sniper-scope-prompt.txt`.
-Equipada suma uno al daño de ataques acertados, después del cálculo de mitad/normal/crítico.
+Equipada suma uno al daño de ataques acertados, después del cálculo de mitad/normal/crítico,
+y al daño de efectos propios como Jessica Lee. Los efectos sin daño no reciben ese aumento.
 Cada ocasión de daño recibido añade un contador; al tercero se destruye a memoria.
 Los contadores se muestran públicamente, se guardan al reconectar y se reinician al equipar.
 Los descartes por efectos y por Destiny permiten equiparla gratis o colocarla en canje.

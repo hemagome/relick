@@ -52,7 +52,7 @@ public sealed partial class GameEngine
         var skill = CardCatalog.Get(pending.SkillId);
         if (pending.NormalDamage is int normal && pending.CriticalDamage is int critical)
             skill = skill with { NormalDamage = normal, CriticalDamage = critical };
-        if (skill.Id == CardCatalog.Magnet.Id && die is 4 or 5)
+        if (skill.Id == CardCatalog.Magnet.Id && (die is 4 or 5 || die < 4 && HasStackedTotem(pending.Attacker)))
             RollWithRelikario(p, DiePurpose.MagnetDamage, new DieEffect { Purpose = DiePurpose.MagnetDamage, Actor = pending.Attacker, SkillId = skill.Id, AttackDie = die, Rerolled = rerolled });
         else ResolveAttackResult(pending.Attacker, skill, die, skill.NormalDamage, rerolled);
     }
@@ -60,15 +60,16 @@ public sealed partial class GameEngine
     private void ResolveAttackResult(int actor, CardDefinition skill, int die, int normal, bool rerolled)
     {
         var p = State.Players[actor];
-        var damage = DamageFor(die, normal, skill.CriticalDamage);
-        if (die >= 4 && p.Equipment is { } equipment) damage += CardCatalog.Get(equipment).DamageBonus;
-        var outcome = die < 4 ? "Fallido" : die == 4 ? "Reducido" : die == 5 ? "Normal" : "Crítico";
+        var converted = die < 4 && HasStackedTotem(actor);
+        var damage = DamageFor(converted ? 5 : die, normal, skill.CriticalDamage);
+        if (die >= 4 || converted) damage = DamageWithEquipmentBonus(actor, damage);
+        var outcome = converted ? "Normal por Tótem de Salvación" : die < 4 ? "Fallido" : die == 4 ? "Reducido" : die == 5 ? "Normal" : "Crítico";
         State.LastCombat = $"{p.Name} · {outcome} · {damage} de daño" +
             (rerolled ? $" · Dado final: {die}" : "");
         Log($"{p.Name} usa {skill.Name} contra {State.Players[1 - actor].Name}: dado {die}, {outcome.ToLowerInvariant()}, {damage} de daño.");
-        if (die >= 4) AttackPerformed?.Invoke(actor);
-        if (die < 4) return;
-        State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true);
+        if (die >= 4 || converted) AttackPerformed?.Invoke(actor);
+        if (die < 4 && !converted) return;
+        State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true, NormalFromMiss: converted);
         if (CanDefend(1 - actor, die == 6)) State.Phase = Phase.DefenseChoice;
         else ResolveAttackDamage(false);
     }

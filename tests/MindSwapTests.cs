@@ -9,7 +9,7 @@ static class MindSwapTests
         {
             var c = CardCatalog.MindSwap;
             Check(c.Kind == CardKind.Code && c.CodeType == CodeType.Play && c.ActionCost == 1 && c.PrCost == 0 && !c.IsCombo && c.EarliestTurn == 2);
-            Check(CardCatalog.TrainingDeck().Count == 33 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 42 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Cambio de Mentes: prohíbe el primer turno global, también desde memoria, sin cobrar costes", () =>
         {
@@ -127,6 +127,6 @@ static class MindSwapTests
         g.State.Active.Hand.Add(CardCatalog.MindSwap.Id); return g;
     }
     static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count +
-        p.AttachedCards.Count + p.Exchange.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));
+        p.AttachedCards.Count + p.Exchange.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1));
     static void Check(bool value) { if (!value) throw new Exception("Regla de Cambio de Mentes no satisfecha."); }
 }

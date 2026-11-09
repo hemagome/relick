@@ -110,6 +110,8 @@ public sealed partial class GameEngine
                 // Suspended code activations keep their source indices aligned.
                 for (var frame = _activeActivation?.Parent; frame != null; frame = frame.Parent)
                     if (frame.Actor == group.Key && frame.MemoryIndex > selection.Index) frame.MemoryIndex--;
+                    else if (frame.Actor == group.Key && frame.MemoryIndex == selection.Index &&
+                        !frame.ReplayCorrupted && CardCatalog.Get(frame.CardId).RecoverMemory) frame.MemoryIndex = -1;
             }
         }
         CardReturnedToDeck?.Invoke(pending.Target, handIndex, target.Hand[handIndex]);

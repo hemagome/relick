@@ -41,7 +41,7 @@ static class SenshuniTests
         var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Actions; g.State.CurrentPlayer = 0; g.State.ActionsLeft = 2;
         g.State.Active.Hand.Clear(); g.State.Active.Hand.Add("senshuni"); g.State.Players[1].Hand.Clear(); return (g, rng);
     }
-    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.Skills.Count + p.CorruptedMemory.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));
+    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.Skills.Count + p.CorruptedMemory.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1));
     private static string Snapshot(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);
     private static void Check(bool value) { if (!value) throw new Exception("Regla de Senshuni no satisfecha"); }
 }

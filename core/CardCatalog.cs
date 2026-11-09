@@ -12,7 +12,9 @@ public sealed record CardDefinition(
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, bool ChangePointsFromDie = false, int PrCost = 0, bool DestroyNonSkill = false, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
     int DamageReduction = 0, bool DestroyOnAttackOne = false, bool DestroyChosenZone = false, bool SearchNonSkill = false,
     bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false, int SearchAttacks = 0,
-    int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false)
+    int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
+    bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool RecoverMemory = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false, bool DrawThenDie = false, bool ReloadBothHands = false,
+    int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false, bool DeployTotems = false)
 {
     public int NormalDamageAt(int counters) => MaxNormalDamage > 0 ? Math.Min(MaxNormalDamage, NormalDamage + counters * DamagePerReroll) : NormalDamage + counters * DamagePerReroll;
     public int CriticalDamageAt(int counters) => CriticalDamage + counters * DamagePerReroll;
@@ -20,6 +22,31 @@ public sealed record CardDefinition(
 
 public static class CardCatalog
 {
+    public static readonly CardDefinition GoldenTotem = new("golden-totem", "Tótem de Oro", CardKind.Code,
+        "Muestra hasta 2 Tótems de Salvación de tu mano y colócalos en la zona de equipos. Coloca esta carta encima de tu equipo. Necesita al menos un equipo debajo. Si un Tótem de Salvación equipado fuera a ser destruido, destruye esta carta en su lugar. No puede activarse con Relikia.",
+        CodeType: CodeType.Character, DeployTotems: true);
+    public static readonly CardDefinition Totem = new("salvation-totem", "Tótem de Salvación", CardKind.Equipment,
+        "Si el daño te llevaría a 0 vidas, puedes cancelarlo y destruir un Tótem de Salvación equipado. Al equipar otra copia, apílala sobre este equipo. Con dos o más copias, destruye una si recibes daño y todos tus fallos de ataque infligen daño normal.", Stackable: true);
+    public static readonly CardDefinition TimeBender = new("time-bender", "Doblador de Tiempo", CardKind.Code,
+        "COMBO. Descarta 2 cartas: al terminar la etapa actual de tu turno, juégala una vez más. La repetición de Combate permite volver a aprender, atacar y usar efectos de etapa; la de Acciones concede dos acciones nuevas.",
+        CodeType: CodeType.Object, IsCombo: true, DiscardCost: 2, RepeatStage: true);
+    public static readonly CardDefinition ReloadCartridge = new("reload-cartridge", "Cartucho de Re-carga", CardKind.Code,
+        "No puedes usar esta carta en el primer turno del juego. Ambos jugadores descartan sus manos (mín. 1) y roban 4 cartas.",
+        Draw: 4, CodeType: CodeType.Play, EarliestTurn: 2, ReloadBothHands: true);
+    public static readonly CardDefinition QuickLoad = new("quick-load", "Carga Rápida", CardKind.Code,
+        "Roba 2 cartas. Luego lanza 1D6: 1–2: descarta 2 cartas; 3–4: descarta 1 carta; 5: roba 1 carta; 6: roba 2 cartas.",
+        Draw: 2, CodeType: CodeType.Play, DrawThenDie: true);
+    public static readonly CardDefinition Jessica = new("jessica-lee", "Jessica Lee", CardKind.Code,
+        "Una vez en tu etapa de combate, si esta carta está en tu zona de canje/Bonus, puedes lanzar 1D6: 5: 2 daños al adversario; 6: 3 daños al adversario y tú robas 1 carta. Error de Carga solo puede cancelarla en el turno en que entra en juego.",
+        CodeType: CodeType.Character, ActionCost: 0, FieldCombatDie: true);
+    public static readonly CardDefinition PlumberStar = new("plumber-star", "Estrella del Fontanero", CardKind.Code,
+        "COMBO. Descarta 1 carta para activar hasta el final del turno: no recibes daño y duplicas todo el daño que inflijan tus cartas o habilidades. Error de Carga devuelve el descarte; Caja de Cartón no.",
+        CodeType: CodeType.Object, IsCombo: true, DiscardForTurnBuff: true, DiscardCost: 1);
+    public static readonly CardDefinition FloppyDisk = new("floppy-disk", "Disquete", CardKind.Code,
+        "Selecciona una carta de cualquier memoria y añádela a tu mano. No puede recuperar la copia que se está activando; sí otra copia de Disquete.", CodeType: CodeType.Object, RecoverMemory: true);
+    public static readonly CardDefinition Bonfire = new("bonfire", "Hoguera", CardKind.Equipment,
+        "Al equipar: gana +1 vida. Mientras esta carta esté equipada, todos los daños que recibas se transforman en 0. Destruye esta carta al inicio de tu siguiente turno luego de haber sido equipada.",
+        Heal: 1, PreventDamage: true, DestroyAtNextTurnStart: true);
     public static readonly CardDefinition Reverse = new("reverse-shuffle", "Relick Reverse Shuffle", CardKind.Skill,
         "Al relanzar un dado propio: +1 al daño normal (máx. 5) y crítico de esta copia. Si una carta propia va a ser destruida, puedes destruir esta habilidad enseñada en su lugar, incluidos costes de equipos. Al enseñarla en el espacio de 500 o 1000 PR: lanza D6, puedes relanzarlo hasta dos veces y roba la mitad del resultado final, redondeada hacia arriba.",
         NormalDamage: 2, CriticalDamage: 4, Reward: 600, DamagePerReroll: 1, MaxNormalDamage: 5, ProtectOwnCard: true, DrawOnExpensiveLearn: true);
@@ -80,13 +107,13 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o resolviendo, o un equipo esté siendo equipado: cancélalo y envíalo a memoria. La activación anulada recupera sus costes.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Reverse, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack }.ToDictionary(c => c.Id);
+        new[] { Attack, Magnet, Destiny, Reverse, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 
     public static List<string> TrainingDeck() =>
         Enumerable.Repeat(Attack.Id, 12)
             .Concat(new[] { TripleAttack.Id, MindReset.Id, Agility.Id, Pc.Id, Magnet.Id, Destiny.Id, Reverse.Id, Sniper.Id,
-                Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Dodge.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, MindSwap.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id }).ToList();
+                Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Dodge.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, MindSwap.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id, Bonfire.Id, FloppyDisk.Id, PlumberStar.Id, Jessica.Id, QuickLoad.Id, ReloadCartridge.Id, TimeBender.Id, Totem.Id, GoldenTotem.Id }).ToList();
 }
 

@@ -8,11 +8,26 @@ static class SimulationDriver
         var s = game.State;
         if (s.IsOver || s.DecisionPlayer != actor) return CommandResult.Fail("El rival no puede jugar ahora.");
         var p = s.Players[actor];
+        if (s.Phase == Phase.GoldenTotemChoice)
+            return game.ResolveGoldenTotem(actor, p.Hand.Select((id, index) => (id, index)).Where(c => c.id == CardCatalog.Totem.Id).Take(2).Select(c => c.index));
+        if (s.Phase == Phase.TotemChoice) return game.ResolveTotem(actor, true);
+        if (s.Phase == Phase.Draw) return game.Advance(actor);
+        if (s.Phase == Phase.TurnBuffDiscard) return game.ResolveTurnBuffDiscard(actor, 0);
+        if (s.Phase == Phase.EffectDamageChoice)
+        {
+            var star = p.Hand.FindIndex(id => CardCatalog.Get(id).DiscardForTurnBuff);
+            return star >= 0 && game.CodeUnavailableReason(actor, star) == null ? game.PlayCode(actor, star) : game.ResolveEffectDamage(actor);
+        }
         if (s.Phase == Phase.DestructionResponse) return game.ResolveDestructionProtection(actor, game.DestructionProtectors(actor).FirstOrDefault(-1));
         if (s.Phase == Phase.SniperChoice) return game.ResolveSniper(actor, true);
         if (s.Phase == Phase.RecycleChoice) return game.ResolveRecycling(actor, Enumerable.Range(0, game.RecyclingCount));
         if (s.Phase == Phase.MindResetChoice) return DuelOptions.For(game, actor).First(o => o.Move.Kind is DuelMoveKind.MindResetTarget or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand).Move.Apply(game, actor);
         if (s.Phase == Phase.DeckSearchChoice) return game.ResolveDeckSearch(actor, game.SearchableDeckCards(actor).First());
+        if (s.Phase == Phase.MemoryRecoveryChoice)
+        {
+            var card = game.RecoverableMemoryCards().First();
+            return game.ResolveMemoryRecovery(actor, card.Owner, card.Index);
+        }
         if (s.Phase == Phase.ErrorResponse)
         {
             var error = p.Hand.FindIndex(id => CardCatalog.Get(id).CancelActivation);
@@ -45,6 +60,8 @@ static class SimulationDriver
         if (s.Phase == Phase.CodeResponse) return game.ResolveCodeResponse(actor, true);
         if (s.Phase == Phase.DefenseChoice)
         {
+            var star = p.Hand.FindIndex(id => CardCatalog.Get(id).DiscardForTurnBuff);
+            if (star >= 0 && game.CodeUnavailableReason(actor, star) == null) return game.PlayCode(actor, star);
             if (game.CanCancelAttackWithBox(actor)) return game.CancelAttackWithBox(actor);
             var slot = game.AvailableDefenses(actor).FirstOrDefault(-1);
             return slot < 0 ? game.PassDefense(actor) : game.ResolveDefense(actor, slot,
@@ -70,6 +87,8 @@ static class SimulationDriver
         }
         if (s.Phase == Phase.Combat)
         {
+            var field = game.FieldCombatTargets(actor).FirstOrDefault();
+            if (field != null) return game.UseFieldCode(actor, field.Zone, field.Index);
             if (!s.LearnedThisTurn && !s.AttackedThisTurn && p.Skills.Count < GameEngine.MaxSkills)
             {
                 var learn = p.Hand.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Skill);
@@ -90,7 +109,7 @@ static class SimulationDriver
         {
             if (s.ActionsLeft > 0)
             {
-                var heal = p.Hand.FindIndex(id => CardCatalog.Get(id).HealFromDie || CardCatalog.Get(id).Heal > 0);
+                var heal = p.Hand.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Code && (CardCatalog.Get(id).HealFromDie || CardCatalog.Get(id).Heal > 0));
                 if (heal >= 0 && p.Health < p.MaxHealth) return game.PlayCode(actor, heal);
                 var equipment = p.Hand.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Equipment);
                 if (equipment >= 0 && p.Equipment == null) return game.Equip(actor, equipment);
@@ -109,6 +128,7 @@ static class SimulationDriver
         }
         if (s.Phase is Phase.Discard or Phase.Final)
         {
+            if (s.Phase == Phase.Final && p.Hand.Count <= GameEngine.MaxHandSize) return game.Advance(actor);
             var index = p.Hand.FindIndex(id => p.Skills.Contains(id));
             if (index < 0) index = p.Hand.FindIndex(id => id != CardCatalog.Attack.Id);
             return game.Discard(actor, index < 0 ? 0 : index);

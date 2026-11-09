@@ -62,7 +62,9 @@ static class DuelTests
                 var choices = DuelOptions.For(game, actor).Where(o => o.Move.Kind != DuelMoveKind.Concede).ToList();
                 if (choices.Count == 0) throw new Exception($"Sin decisión en {game.State.Phase}, seed {seed}.");
                 var choice = choices[0];
-                choice.Move.Discards = Enumerable.Range(0, choice.RequiredDiscards).ToArray();
+                choice.Move.Discards = choice.Move.Kind == DuelMoveKind.GoldenTotem
+                    ? game.State.Players[actor].Hand.Select((id, index) => (id, index)).Where(c => c.id == CardCatalog.Totem.Id).Take(choice.RequiredDiscards).Select(c => c.index).ToArray()
+                    : Enumerable.Range(0, choice.RequiredDiscards).ToArray();
                 resumed.Random.Record(live.Next);
                 var result = choice.Move.Apply(game, actor);
                 if (!result.Success) throw new Exception($"{choice.Label}: {result.Message}");
@@ -76,7 +78,7 @@ static class DuelTests
                 if (JsonSerializer.Serialize(game.State) != JsonSerializer.Serialize(resumed.Game.State))
                     throw new Exception($"Reconstrucción diferente en {game.State.Phase}, seed {seed}.");
                 var count = game.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count +
-                    p.Skills.Count + p.AttachedCards.Count + p.Exchange.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));
+                    p.Skills.Count + p.AttachedCards.Count + p.Exchange.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1));
                 if (count != 2 * CardCatalog.TrainingDeck().Count) throw new Exception("Se perdió una carta al ejecutar el duelo.");
             }
             if (!resumed.Game.State.IsOver) throw new Exception("El duelo reconstruido no termina.");

@@ -8,7 +8,7 @@ static class CardboardBoxTests
         {
             var (g, _) = Fixture(); var p = g.State.Active; g.State.Phase = Phase.Actions; g.State.ActionsLeft = 2;
             p.Hand.Clear(); p.Hand.Add(CardCatalog.CardboardBox.Id); p.Equipment = CardCatalog.Pendant.Id;
-            Check(CardCatalog.TrainingDeck().Count == 33 && CardCatalog.TrainingDeck().Count(id => id == CardCatalog.CardboardBox.Id) == 1);
+            Check(CardCatalog.TrainingDeck().Count == 42 && CardCatalog.TrainingDeck().Count(id => id == CardCatalog.CardboardBox.Id) == 1);
             Check(g.Equip(0, 0).Success && p.Equipment == CardCatalog.CardboardBox.Id && p.Memory.Single() == CardCatalog.Pendant.Id && g.State.ActionsLeft == 1);
         }),
         ("Caja cancela daño reducido, normal y crítico sin requerir Destiny ni descartes", () =>
@@ -106,7 +106,7 @@ static class CardboardBoxTests
         Check(g.Attack(0, 0, 0).Success);
         if (g.State.Phase == Phase.AttackRerollChoice) Check(g.ResolveAttackReroll(0, false).Success);
     }
-    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : 1) + (p.Bonus == null ? 0 : 1));
+    private static int Count(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1));
     private static string Snapshot(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);
     private static void Check(bool value) { if (!value) throw new Exception("Regla de Caja de Cartón no satisfecha"); }
 }

@@ -113,6 +113,6 @@ static class EggComboTests
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add("destiny-shuffle"); return (g, rng);
     }
     private static string Snapshot(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);
-    private static int CardCount(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Bonus == null ? 0 : 1) + (p.Equipment == null ? 0 : 1));
+    private static int CardCount(GameEngine g) => g.State.Players.Sum(p => p.Hand.Count + p.Deck.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count + p.Exchange.Count + p.AttachedCards.Count + (p.Bonus == null ? 0 : 1) + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0));
     private static void Check(bool value) { if (!value) throw new Exception("Regla de Huevo/Combo no satisfecha"); }
 }

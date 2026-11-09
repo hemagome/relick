@@ -24,12 +24,14 @@ public sealed partial class GameEngine
         if (pending.MemoryIndices.Count == 0) State.PendingSniper = null;
         if (equip)
             BeginActivation(new EngineActivation(actor, CardCatalog.Sniper.Id, 0, 0, State.Phase)
-                { Kind = ActivationKind.Equipment, MemoryIndex = index, FinishSniperExchange = true });
+                { Kind = ActivationKind.Equipment, MemoryIndex = index, FinishSniperExchange = true,
+                    Parent = State.PendingTurnBuff != null || State.PendingReload != null ? _activeActivation : null });
         else
         {
             p.Memory.RemoveAt(index); ShiftSniperIndices(actor, index);
             PlaceInExchange(p, CardCatalog.Sniper.Id);
         }
+        CompleteActivationIfFinished();
         return CommandResult.Ok();
     }
     private void ShiftSniperIndices(int actor, int removed)

@@ -14,6 +14,7 @@ public sealed partial class GameEngine
     }
 
     private bool CanDefend(int actor, bool critical) =>
+        HasTurnBuffInHand(actor) ||
         State.Players[actor].Hand.Any(id => CardCatalog.Get(id).DodgeAttack && State.Players[actor].ActionsLeft >= CardCatalog.Get(id).ActionCost) || State.Players[actor].Equipment == CardCatalog.CardboardBox.Id ||
         (State.Players[actor].Hand.Count >= (critical ? 4 : 3) && AvailableDefenses(actor).Any());
 
@@ -57,7 +58,7 @@ public sealed partial class GameEngine
         else
         {
             DealDamage(1 - attack.Attacker, attack.Damage, State.LastAttackDie,
-                new EngineContinuation { Kind = ContinuationKind.FinishAttackDamage, Actor = attack.Attacker, Flag = deferCompletion });
+                new EngineContinuation { Kind = ContinuationKind.FinishAttackDamage, Actor = attack.Attacker, Flag = deferCompletion }, source: attack.Attacker);
             return;
         }
         FinishAttackDamage(deferCompletion);
