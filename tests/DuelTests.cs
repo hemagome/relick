@@ -129,7 +129,7 @@ static class DuelTests
     static (GameEngine Game, ScriptedRandom Random) ImpactFixture(int actor = 0, string skill = "destiny-shuffle")
     {
         var random = new ScriptedRandom(); var game = TestGame.Create(random);
-        game.State.Phase = Phase.Combat; game.State.CurrentPlayer = actor;
+        game.State.Phase = Phase.Combat; game.State.CurrentPlayer = actor; game.State.Turn = 2;
         foreach (var player in game.State.Players) { player.Hand.Clear(); player.Skills.Clear(); player.Bonus = null; }
         game.State.Active.Hand.Add(CardCatalog.Attack.Id); game.State.Active.Skills.Add(skill);
         return (game, random);

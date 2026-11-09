@@ -59,7 +59,7 @@ static class AgilityTests
     private static (GameEngine, ScriptedRandom) Fixture()
     {
         var rng = new ScriptedRandom(); var g = TestGame.Create(rng);
-        g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat;
+        g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat; g.State.Turn = 2;
         foreach (var p in g.State.Players)
         {
             p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); p.Equipment = null;

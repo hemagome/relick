@@ -128,7 +128,7 @@ static class DexterityTests
     private static (GameEngine, ScriptedRandom) Fixture(int seat = 0)
     {
         var rng = new ScriptedRandom(); var g = new GameEngine(rng);
-        g.State.Phase = Phase.Combat; g.State.CurrentPlayer = seat; g.State.Turn = 1;
+        g.State.Phase = Phase.Combat; g.State.CurrentPlayer = seat; g.State.Turn = 2;
         foreach (var p in g.State.Players)
         {
             p.Deck.Clear(); p.Deck.AddRange(Enumerable.Repeat("attack", 20));

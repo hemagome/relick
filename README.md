@@ -15,7 +15,7 @@ Necesitas Godot .NET y el SDK de .NET 8. Abre `project.godot` y pulsa F5, o ejec
 3. Elige una habilidad entre las presentes en tu mazo. Esa carta y otras cuatro forman tu mano inicial.
 4. Selecciona las cartas que quieres cambiar —también puedes cambiar la habilidad elegida— o conserva las cinco. Confirma y espera al rival.
 5. Se resuelven los cambios, los Bonus y la iniciativa. Quien empieza roba una carta adicional.
-6. Enseña habilidades, ataca, juega códigos, equipa o canjea cartas. Las opciones visibles están autorizadas por el servidor.
+6. Enseña habilidades, ataca, juega códigos, equipa o canjea cartas. Quien inicia no puede atacar durante el primer turno de la partida; el rival sí puede atacar en el siguiente, y después ambos pueden hacerlo. Las opciones visibles están autorizadas por el servidor.
 7. Al terminar, cierra la sala para volver a la pantalla de creación y acceso. Durante preparación puedes cerrarla; durante un duelo puedes abandonar mediante su confirmación.
 
 La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RELICK_DATABASE` permiten usar otra base de desarrollo. La identidad del dispositivo se guarda para recuperar una sala con Reconectar. El directorio de identidad anterior se conserva aunque el título del juego ahora sea Relick.

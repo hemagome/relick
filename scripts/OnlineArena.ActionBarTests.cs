@@ -103,6 +103,10 @@ public partial class OnlineArena
 
                 game.State.Phase = Phase.Combat;
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 311)); await Layout(); await TapCard(2);
+                Check(!PresentsKind(DuelMoveKind.Attack) && _ownSkills.All(t => !t.Targetable) && _selection.Text.Contains("primer turno"),
+                    "El turno inicial ofrece un ataque o no explica por qué está bloqueado.");
+                game.State.Turn = 2;
+                PresentTestSnapshot(DuelSnapshot.For(game, seat, 311)); await Layout(); await TapCard(2);
                 Check(_ownSkills.Count(t => t.Targetable) == 2 && !PresentsKind(DuelMoveKind.Attack) && _selection.Text.Contains("habilidad"),
                     "Atacar no pide elegir una habilidad entre los objetivos válidos.");
                 Check(_selection.GetGlobalRect().End.Y <= ((Control)_inspector.FindChild("InspectorReading", true, false)).GetGlobalRect().End.Y + 1,

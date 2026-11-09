@@ -41,7 +41,7 @@ static class DodgeTests
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat; g.State.Turn = 2;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Skills.Clear(); p.Equipment = null; p.Deck.Clear(); p.Deck.AddRange(Enumerable.Repeat("attack", 8)); }
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add("magnet-shuffle"); g.State.Active.Relikia = 0;
         g.State.Players[1].Hand.Add(CardCatalog.Dodge.Id);

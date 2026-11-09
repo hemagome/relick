@@ -82,7 +82,7 @@ static class EquipmentTests
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0; g.State.Turn = 2;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); }
         g.State.Active.Hand.Add("attack"); g.State.Active.Skills.Add(CardCatalog.Destiny.Id); return (g, rng);
     }

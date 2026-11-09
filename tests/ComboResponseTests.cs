@@ -138,7 +138,7 @@ static class ComboResponseTests
     };
     static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Actions;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Actions; g.State.Turn = 2;
         foreach (var p in g.State.Players)
         {
             p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; p.Equipment = null;

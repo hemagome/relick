@@ -45,7 +45,7 @@ static class BonfireTests
             foreach (var actor in new[] { 0, 1 }) foreach (var die in new[] { 4, 5, 6 })
             {
                 var (g, rng) = Fixture(actor); Check(g.Equip(actor, 0).Success);
-                g.State.Phase = Phase.Combat; g.State.Active.Hand.Add(CardCatalog.Attack.Id); g.State.Active.Skills.Add(CardCatalog.Destiny.Id);
+                g.State.Turn = 2; g.State.Phase = Phase.Combat; g.State.Active.Hand.Add(CardCatalog.Attack.Id); g.State.Active.Skills.Add(CardCatalog.Destiny.Id);
                 var cues = DuelVisualEvents.Capture(g); rng.EnqueueDie(die);
                 Check(g.Attack(actor, 0, 0).Success && g.ResolveAttackReroll(actor, false).Success);
                 var damage = GameEngine.DamageFor(die, 3, 5);

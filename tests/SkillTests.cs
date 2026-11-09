@@ -122,7 +122,7 @@ static class SkillTests
     private static (GameEngine, ScriptedRandom) Fixture(string skill)
     {
         var rng = new ScriptedRandom(); var g = TestGame.Create(rng);
-        g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat;
+        g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat; g.State.Turn = 2;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Skills.Clear(); p.SkillCounters.Clear(); p.Memory.Clear(); }
         g.State.Active.Skills.Add(skill); g.State.Active.Hand.Add("attack");
         return (g, rng);

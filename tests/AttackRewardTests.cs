@@ -127,7 +127,7 @@ static class AttackRewardTests
     private static (GameEngine, ScriptedRandom) Fixture(string? skill = null)
     {
         var rng = new ScriptedRandom(); var g = TestGame.Create(rng);
-        g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat;
+        g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat; g.State.Turn = 2;
         foreach (var p in g.State.Players)
         {
             p.Hand.Clear(); p.Memory.Clear(); p.Skills.Clear(); p.Deck.Clear(); p.Deck.AddRange(Enumerable.Repeat("attack", 20)); p.Bonus = null;

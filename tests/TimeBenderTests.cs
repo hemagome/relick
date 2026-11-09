@@ -28,14 +28,14 @@ static class TimeBenderTests
         {
             foreach (var actor in new[] { 0, 1 })
             {
-                var (g, rng) = Fixture(actor); var p = g.State.Active;
+                var (g, rng) = Fixture(actor); g.State.Turn = 2; var p = g.State.Active;
                 g.State.AttackedThisTurn = true; g.State.LearnedThisTurn = true; p.AttackRerollUsedThisTurn = true; p.StarEffects = 1;
                 p.Skills.Add(CardCatalog.Destiny.Id); p.Hand.Add(CardCatalog.Magnet.Id); p.Relikia = 300; var deck = p.Deck.Count;
                 Cast(g, actor); Check(g.State.AttackedThisTurn && g.State.LearnedThisTurn && p.ActionsLeft == 1);
                 Reject(g, () => g.Attack(actor, 0, 0));
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
                 Check(g.Advance(actor).Success && g.State.Phase == Phase.Combat && !g.State.AttackedThisTurn && !g.State.LearnedThisTurn);
-                Check(g.State.Turn == 1 && g.State.CurrentPlayer == actor && p.ActionsLeft == 1 && p.AttackRerollUsedThisTurn && p.StarEffects == 1 && p.Deck.Count == deck);
+                Check(g.State.Turn == 2 && g.State.CurrentPlayer == actor && p.ActionsLeft == 1 && p.AttackRerollUsedThisTurn && p.StarEffects == 1 && p.Deck.Count == deck);
                 Check(g.Learn(actor, p.Hand.IndexOf(CardCatalog.Magnet.Id)).Success);
                 rng.EnqueueDie(5); Check(g.Attack(actor, p.Hand.IndexOf(CardCatalog.Attack.Id), 0).Success && g.State.Phase == Phase.Combat);
                 Check(!g.CanUseYunoOnPendingDie(actor) && g.State.Players[1 - actor].Health == 2);
@@ -139,7 +139,7 @@ static class TimeBenderTests
         }),
         ("Doblador: puede programar Combate durante un ataque pendiente y conserva su dado al reconectar", () =>
         {
-            var (g, rng) = Fixture(); var p = g.State.Active; p.Skills.Add(CardCatalog.Destiny.Id); rng.EnqueueDie(5);
+            var (g, rng) = Fixture(); g.State.Turn = 2; var p = g.State.Active; p.Skills.Add(CardCatalog.Destiny.Id); rng.EnqueueDie(5);
             Check(g.Attack(0, p.Hand.IndexOf(CardCatalog.Attack.Id), 0).Success && g.State.Phase == Phase.AttackRerollChoice);
             Cast(g, 0); g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             Check(g.State.PendingAttackRoll?.Die == 5 && g.State.ExtraCombatStages == 1 && g.State.Phase == Phase.AttackRerollChoice);

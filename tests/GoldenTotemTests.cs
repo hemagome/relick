@@ -191,6 +191,7 @@ static class GoldenTotemTests
             Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor, Hands = hands,
             Decks = [Enumerable.Repeat("attack", 30).ToList(), Enumerable.Repeat("attack", 30).ToList()], Bonuses = [null, null]
         }, rng);
+        g.State.Turn = 2;
         foreach (var p in g.State.Players) { p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; }
         g.State.Phase = Phase.Actions; g.State.Active.Skills.Add(CardCatalog.Destiny.Id); return (g, rng);
     }

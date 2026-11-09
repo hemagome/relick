@@ -249,6 +249,8 @@ try
     starter.Connection.Reducers.PlayDuelV2(nextCode, 0, learnId, learn, []);
     Until(() => fighterA.Duel?.Revision == 1 && b.Duel?.Revision == 1);
     Check(starter.Duel!.Players[starter.Duel.MySeat].Skills.Length == 1, "Enseñar una habilidad actualiza ambos tableros");
+    Check(starter.Duel.Turn == 1 && starter.Duel.Options.All(o => o.Move.Kind != DuelMoveKind.Attack),
+        "El servidor permite enseñar pero no ofrece ataques a quien inicia en el turno uno");
     Check(fighterA.Hand.Length == 0 && b.Hand.Length == 0, "Las manos iniciales dejan de usarse cuando el motor de combate toma el control");
     starter.Connection.Reducers.PlayDuelV2(nextCode, 0, learnId, learn, []);
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, learnId, learn + 1, []), "Un identificador reutilizado con otra jugada se rechaza");

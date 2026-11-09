@@ -57,7 +57,7 @@ public static class DuelOptions
                         var card = CardCatalog.Get(p.Hand[i]);
                         if (card.Kind == CardKind.Skill && !s.LearnedThisTurn && !s.AttackedThisTurn && p.Skills.Count < GameEngine.MaxSkills && p.Relikia >= game.SkillCost(p))
                             Add(DuelMoveKind.Learn, $"Enseñar {card.Name} · {game.SkillCost(p)} PR · carta {i + 1}", i);
-                        if (card.Kind == CardKind.Attack && !s.AttackedThisTurn)
+                        if (card.Kind == CardKind.Attack && game.CanAttack(actor))
                             for (var skill = 0; skill < p.Skills.Count; skill++)
                                 Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {p.SkillPosition(skill) + 1} · carta {i + 1}", i, skill);
                     }

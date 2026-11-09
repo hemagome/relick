@@ -558,7 +558,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(ComboResponseTests.Cases).Concat(GoldenTotemTests.Cases).Concat(TotemTests.Cases).Concat(TimeBenderTests.Cases).Concat(ReloadCartridgeTests.Cases).Concat(QuickLoadTests.Cases).Concat(JessicaTests.Cases).Concat(PlumberStarTests.Cases).Concat(FloppyDiskTests.Cases).Concat(BonfireTests.Cases).Concat(ReverseTests.Cases).Concat(AttackRewardTests.Cases).Concat(DexterityTests.Cases).Concat(HandLimitTests.Cases).Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(OpeningTurnTests.Cases).Concat(ComboResponseTests.Cases).Concat(GoldenTotemTests.Cases).Concat(TotemTests.Cases).Concat(TimeBenderTests.Cases).Concat(ReloadCartridgeTests.Cases).Concat(QuickLoadTests.Cases).Concat(JessicaTests.Cases).Concat(PlumberStarTests.Cases).Concat(FloppyDiskTests.Cases).Concat(BonfireTests.Cases).Concat(ReverseTests.Cases).Concat(AttackRewardTests.Cases).Concat(DexterityTests.Cases).Concat(HandLimitTests.Cases).Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)
@@ -590,7 +590,7 @@ static (GameEngine, ScriptedRandom) Combat()
 {
     var rng = new ScriptedRandom();
     var g = TestGame.Create(rng);
-    g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0; g.State.Turn = 1;
+    g.State.Phase = Phase.Combat; g.State.CurrentPlayer = 0; g.State.Turn = 2;
     foreach (var player in g.State.Players) player.Hand.Clear();
     g.State.Active.Hand.Add("attack");
     g.State.Active.Skills.Add("destiny-shuffle");

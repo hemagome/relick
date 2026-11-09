@@ -85,7 +85,7 @@ public partial class OnlineArena
                 if (step == 1 && !game.ResolveDestructionProtection(actor).Success) throw new Exception("No se sustituye el equipo anterior.");
                 if (step == 2)
                 {
-                    game.State.CurrentPlayer = 1 - actor; game.State.Phase = Phase.Combat;
+                    game.State.CurrentPlayer = 1 - actor; game.State.Phase = Phase.Combat; game.State.Turn = 2;
                     game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
                     if (!game.Attack(1 - actor, 0, 0).Success) throw new Exception("No se ataca la pila protegida por Oro.");
                 }
@@ -110,6 +110,7 @@ public partial class OnlineArena
                 Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
             }, random);
             foreach (var p in game.State.Players) { p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; }
+            game.State.Turn = 2;
             game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
             var target = game.State.Players[owner]; target.Equipment = CardCatalog.Totem.Id; target.EquipmentStackedCopies = 2; target.Health = 3;
             var cues = new List<DuelVisualEvent>();
@@ -426,6 +427,7 @@ public partial class OnlineArena
                 Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null]
             }, random);
             foreach (var p in game.State.Players) { p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; }
+            game.State.Turn = 2;
             game.State.Active.Skills.Add(CardCatalog.Destiny.Id); game.State.Active.Hand.Add(CardCatalog.LoadError.Id);
             var owner = game.State.Players[actor]; owner.Hand.Clear();
             owner.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Senshuni.Id, CardCatalog.Attack.Id]);
@@ -588,7 +590,7 @@ public partial class OnlineArena
     {
         foreach (var actor in new[] { 0, 1 })
         {
-            var game = new GameEngine(17); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Combat;
+            var game = new GameEngine(17); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Combat; game.State.Turn = 2;
             var p = game.State.Active; p.Skills.Add(CardCatalog.Destiny.Id); p.SkillPositions = new() { [0] = 1 }; p.SkillCounters[0] = 1;
             p.Hand.Add("attack");
             foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
@@ -623,6 +625,7 @@ public partial class OnlineArena
                 Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor,
                 Hands = [["attack"], ["attack"]], Decks = [["attack"], ["attack"]], Bonuses = [null, null]
             }, random);
+            game.State.Turn = 2;
             var p = game.State.Active; p.Relikario = RelikarioCatalog.YunoLv2; p.AttackRerollUsedThisTurn = true; p.Dexterity = 0;
             p.Skills.Add(CardCatalog.Destiny.Id);
             var cues = DuelVisualEvents.Capture(game);

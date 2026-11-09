@@ -230,7 +230,7 @@ static class ReverseTests
 
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat; g.State.Turn = 1;
+        var rng = new ScriptedRandom(); var g = new GameEngine(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Combat; g.State.Turn = 2;
         foreach (var p in g.State.Players) { p.Dexterity = 0; p.Deck.Clear(); p.Deck.AddRange(Enumerable.Repeat("attack", 30)); }
         return (g, rng);
     }

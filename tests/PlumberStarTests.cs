@@ -180,6 +180,7 @@ static class PlumberStarTests
             Hands = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
             Decks = [Enumerable.Repeat("attack", 30).ToList(), Enumerable.Repeat("attack", 30).ToList()], Bonuses = [null, null]
         }, rng);
+        g.State.Turn = 2;
         var p = g.State.Active; p.Hand.Clear(); p.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Senshuni.Id, CardCatalog.Attack.Id]);
         p.Skills.Add(CardCatalog.Destiny.Id);
         foreach (var player in g.State.Players) player.Dexterity = 0;

@@ -42,7 +42,7 @@ static class PcTests
     };
     private static (GameEngine, ScriptedRandom) Fixture()
     {
-        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Actions;
+        var rng = new ScriptedRandom(); var g = TestGame.Create(rng); g.State.CurrentPlayer = 0; g.State.Phase = Phase.Actions; g.State.Turn = 2;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Skills.Clear(); p.Equipment = null; p.Deck.Clear(); p.Deck.AddRange(Enumerable.Repeat("attack", 8)); }
         g.State.Active.Hand.Add(CardCatalog.Pc.Id); return (g, rng);
     }

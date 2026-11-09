@@ -279,7 +279,9 @@ public partial class OnlineArena
         if (s.Phase == Phase.DestroyChoice && _fieldSelection?.Zone == FieldZone.Hand) return "Se destruirá una carta al azar de esa mano.";
         if (s.Phase == Phase.MagnetChoice && _fieldSelection == null) return "Elige una carta de la mano rival o su Bonus.";
         if (_selected.Count == 1 && s.Players[s.MySeat].Hand.ElementAtOrDefault(_selected.Single()) == CardCatalog.Attack.Id && !ChoosingEffectCards)
-            return _selectedSkill < 0 ? "Elige una habilidad iluminada." : "Usando " + CardCatalog.Get(s.Players[s.MySeat].Skills[_selectedSkill]).Name;
+            return myTurn && s.Phase == Phase.Combat && s.Turn == 1
+                ? "Quien inicia no puede atacar en su primer turno. Podrás atacar en tu siguiente turno."
+                : _selectedSkill < 0 ? "Elige una habilidad iluminada." : "Usando " + CardCatalog.Get(s.Players[s.MySeat].Skills[_selectedSkill]).Name;
         if (SelectedCardId() != null) return _moveButtons.Any(b => b.GetParent() == _moves) ? "" : "Sin acciones disponibles para esta carta ahora.";
         return myTurn ? "Elige una carta para ver sus acciones." : "Esperando al rival · puedes seleccionar un COMBO.";
     }

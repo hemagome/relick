@@ -106,7 +106,7 @@ public sealed partial class GameEngine
         return State.Phase switch
         {
             Phase.Combat => FieldCombatTargets(actor).Any() || !State.AttackedThisTurn && (
-                (p.Skills.Count > 0 && p.Hand.Contains(CardCatalog.Attack.Id)) ||
+                CanAttack(actor) ||
                 (!State.LearnedThisTurn && p.Skills.Count < MaxSkills && p.Relikia >= SkillCost(p) &&
                  p.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Skill))),
             Phase.Actions => (State.ActionsLeft > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment || CodeUnavailableReason(actor, c.i) == null)) ||
@@ -147,16 +147,26 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    public CommandResult Attack(int actor, int handIndex, int skillIndex)
+    private string? AttackUnavailableReason(int actor)
     {
         var error = ValidateTurn(actor, Phase.Combat);
+        if (error != null) return error;
+        if (State.Turn <= 1) return "Quien inicia la partida no puede atacar en su primer turno.";
+        return State.AttackedThisTurn ? "Ya atacaste este turno." : null;
+    }
+
+    public bool CanAttack(int actor) => AttackUnavailableReason(actor) == null &&
+        State.Active.Skills.Count > 0 && State.Active.Hand.Contains(CardCatalog.Attack.Id);
+
+    public CommandResult Attack(int actor, int handIndex, int skillIndex)
+    {
+        var error = AttackUnavailableReason(actor);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Active;
         if (!InHand(p, handIndex) || p.Hand[handIndex] != CardCatalog.Attack.Id)
             return CommandResult.Fail("Selecciona una carta de ataque.");
         if (skillIndex < 0 || skillIndex >= p.Skills.Count)
             return CommandResult.Fail("Primero enseña y selecciona una habilidad.");
-        if (State.AttackedThisTurn) return CommandResult.Fail("Ya atacaste este turno.");
         var skill = CardCatalog.Get(p.Skills[skillIndex]);
         SendHandToMemory(p, handIndex);
         State.AttackedThisTurn = true;

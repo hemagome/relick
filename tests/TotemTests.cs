@@ -221,6 +221,7 @@ static class TotemTests
             Names = ["Jugador 1", "Jugador 2"], StartingSeat = actor, Hands = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
             Decks = [Enumerable.Repeat("attack", 30).ToList(), Enumerable.Repeat("attack", 30).ToList()], Bonuses = [null, null]
         }, rng);
+        g.State.Turn = 2;
         g.State.Phase = Phase.Combat; g.State.Active.Skills.Add(CardCatalog.Destiny.Id);
         foreach (var p in g.State.Players) { p.Dexterity = 0; p.AttackRerollUsedThisTurn = true; }
         return (g, rng);

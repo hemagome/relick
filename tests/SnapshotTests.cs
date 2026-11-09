@@ -34,6 +34,9 @@ static class SnapshotTests
             for (var step = 0; step < test.Steps.Length; step++)
             {
                 var expected = test.Steps[step]; random.Replay(expected.Entry.RandomValues);
+                // Opening attacks were legal in these recordings; the new opening-turn
+                // regression tests cover their rejection and recovery under the current rule.
+                if (game.State.Turn == 1 && expected.Entry.Move.Kind == DuelMoveKind.Attack) break;
                 var recycled = game.State.Players.Select(p => p.Recycled).ToArray();
                 var result = expected.Entry.Move.Apply(game, expected.Entry.Actor);
                 // These historical recordings chose random memory cards. Their suffix is

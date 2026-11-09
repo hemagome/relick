@@ -88,7 +88,7 @@ static class DiamondHelmetTests
     };
     static (GameEngine, ScriptedRandom) Fixture(int actor = 0)
     {
-        var r = new ScriptedRandom(); var g = TestGame.Create(r); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = actor;
+        var r = new ScriptedRandom(); var g = TestGame.Create(r); g.State.Phase = Phase.Combat; g.State.CurrentPlayer = actor; g.State.Turn = 2;
         foreach (var p in g.State.Players) { p.Hand.Clear(); p.Skills.Clear(); p.Bonus = null; }
         g.State.Active.Hand.Add(CardCatalog.Attack.Id); g.State.Active.Skills.Add(CardCatalog.Destiny.Id);
         return (g, r);

@@ -95,7 +95,7 @@ static class SimulationDriver
                 if (learn >= 0 && p.Relikia >= game.SkillCost(p)) return game.Learn(actor, learn);
             }
             var attack = p.Hand.IndexOf(CardCatalog.Attack.Id);
-            if (!s.AttackedThisTurn && attack >= 0 && p.Skills.Count > 0)
+            if (game.CanAttack(actor))
             {
                 var best = Enumerable.Range(0, p.Skills.Count)
                     .OrderByDescending(i => CardCatalog.Get(p.Skills[i]).CriticalDamage)

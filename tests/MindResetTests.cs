@@ -143,7 +143,7 @@ static class MindResetTests
     private static (GameEngine, ScriptedRandom) Fixture(int actor = 0)
     {
         var rng = new ScriptedRandom(); var g = TestGame.Create(rng);
-        g.State.CurrentPlayer = actor; g.State.Phase = Phase.Actions;
+        g.State.CurrentPlayer = actor; g.State.Phase = Phase.Actions; g.State.Turn = 2;
         foreach (var p in g.State.Players)
         {
             p.Hand.Clear(); p.Hand.AddRange(["senshuni", "destiny-shuffle"]);
