@@ -20,6 +20,20 @@ Necesitas Godot .NET y el SDK de .NET 8. Abre `project.godot` y pulsa F5, o ejec
 
 La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RELICK_DATABASE` permiten usar otra base de desarrollo. La identidad del dispositivo se guarda para recuperar una sala con Reconectar. El directorio de identidad anterior se conserva aunque el título del juego ahora sea Relick.
 
+## Exportar para Windows
+
+Con Godot 4.7.2 .NET, el SDK de .NET 8 y las plantillas de exportación **.NET de la misma versión** instaladas, ejecuta desde Linux:
+
+```bash
+./export-windows.sh
+```
+
+El script importa los recursos, compila en modo Release para Windows x86_64 y crea `artifacts/Relick-windows-x86_64.zip`. Comprueba que se incluyan el ejecutable, los recursos, el ensamblado del juego y el runtime de .NET, y verifica la integridad del ZIP. Requiere Python 3 para empaquetar y acceso a NuGet durante la primera compilación para descargar el runtime de Windows.
+
+Comparte el ZIP completo. El jugador debe extraerlo y abrir `Relick/Relick.exe`, conservando todos los archivos juntos. No necesita instalar Godot ni el SDK de .NET. Necesita internet porque el único modo de juego es PvP; esta versión incluye la conexión de desarrollo de `network/server.cfg`.
+
+El preset `Windows Desktop` también está disponible en **Proyecto → Exportar**. Incluye explícitamente `network/server.cfg` y todos los recursos para conservar las imágenes cargadas dinámicamente. Las plantillas oficiales conservan su icono predeterminado; no se requiere Wine ni rcedit para generar este paquete. Antes de distribuir una versión nueva, comprueba el inicio y un duelo entre dos equipos en Windows.
+
 ## Alcance actual
 
 - Yuno Gyambura y su evolución, con animaciones de reposo, ataque y daño. Las hojas actuales conservan la marca de agua de Ludo del recurso aportado.
