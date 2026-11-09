@@ -41,7 +41,7 @@ public partial class OnlineArena : Control
     private ScrollContainer? _arenaScroll;
     internal int BoardBuildCount { get; private set; }
     internal int PlayedVisualRevisions { get; private set; }
-    public bool IsAnimating => _die.IsBusy || _flights.Count > 0 || _flight != null;
+    public bool IsAnimating => _die.IsBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null;
     private bool Compact => ArenaViewport.Compact(this);
     private bool Short => ArenaViewport.Short(this);
     private bool ChoosingRecycling => _snapshot is { Phase: Phase.RecycleChoice } s && s.DecisionPlayer == s.MySeat;
@@ -67,6 +67,7 @@ public partial class OnlineArena : Control
         column.AddChild(ArenaPresentation.Text("LANZANDO EL DADO", 12, BoardArt.Gold)); column.AddChild(_die);
         _diceCaption = ArenaPresentation.Text("", 13); _diceCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(_diceCaption);
         _die.RollFinished += PlayPendingPortraits;
+        BuildInitiativeOverlay();
         Resized += QueueLayout;
     }
 
@@ -95,7 +96,7 @@ public partial class OnlineArena : Control
             ApplyPrivateComboPreference(snapshot);
         }
         if (snapshot == null) UpdatePreparation();
-        if (Connection.Ready && snapshot != null && (_needsBaseline || _preparing || _snapshot?.Revision != snapshot.Revision))
+        if (Connection.Ready && snapshot != null && _openingInitiative == null && (_needsBaseline || _preparing || _snapshot?.Revision != snapshot.Revision))
         {
             var previous = _snapshot;
             var fromPreparation = _preparing;
@@ -114,7 +115,7 @@ public partial class OnlineArena : Control
                 }
             }
             _needsBaseline = false; Render();
-            if (openingFlights != null) AnimateOpening(snapshot, openingFlights);
+            if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins);
         }
         if (_root == null) return;

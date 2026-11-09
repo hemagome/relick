@@ -48,11 +48,19 @@ public partial class OnlineLobby
             if (_arena != preparationArena || _arena!.OpeningSelectionCount != 2 || _arena.IsAnimating)
                 throw new Exception("Reconectar pierde o repite la preparación confirmada.");
             rival.Confirm([]);
+            await Until(() => _arena!.PlayedInitiativeRolls == 1);
+            var dice = _arena!.FindChildren("InitiativeDice*", "Control", true, false).OfType<DiceFace>().OrderBy(d => d.Name.ToString()).ToArray();
+            var opening = _lobby.OpeningResult!;
+            if (dice.Length != 2 || dice.Any(d => !d.IsRolling) || dice[0].LatestResult != opening.RollOne || dice[1].LatestResult != opening.RollTwo)
+                throw new Exception("La iniciativa no anima ambos resultados autorizados por el servidor.");
             await Until(() => _lobby.Duel != null && _arena != null && !_arena.IsPreparing && !_arena.IsAnimating);
             if (_arena != preparationArena) throw new Exception("El combate reemplazó el tablero de preparación.");
             if (_content.Visible) throw new Exception("La preparación sigue disponible después del inicio.");
             var expected = _lobby.Duel!.CurrentPlayer == _lobby.Room!.MySeat ? 6 : 5;
             if (_lobby.Duel!.Players[_lobby.Room.MySeat].Hand.Length != expected) throw new Exception("La mano visible no incluye el robo del primer turno.");
+            Connect();
+            await Until(() => _lobby.Ready && _arena!.OpeningCardCount == 5 && !_arena.IsPreparing && !_arena.IsAnimating);
+            if (_arena!.PlayedInitiativeRolls != 1) throw new Exception("Reconectar repite los dados de iniciativa.");
             var path = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--pvp-screenshot="))?.Split('=', 2)[1];
             if (path != null)
             {

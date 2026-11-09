@@ -103,7 +103,7 @@ public partial class OnlineArena
 
     private void PlayPendingPortraits()
     {
-        if (_die.IsBusy || _flight != null || _flights.Count > 0 || _snapshot == null) return;
+        if (_die.IsBusy || _flight != null || _flights.Count > 0 || _openingInitiative != null || _snapshot == null) return;
         foreach (var (player, motion) in _pendingPortraits) _portraits[player == _snapshot.MySeat ? 0 : 1].Play(motion);
         _pendingPortraits.Clear();
     }
@@ -111,6 +111,8 @@ public partial class OnlineArena
     private void UpdateFlights(double delta)
     {
         if (_flightLayoutFrames > 0) { _flightLayoutFrames--; return; }
+        if (_flight == null && _flights.Count == 0 && _openingInitiative != null)
+        { UpdateOpeningInitiative(delta); return; }
         if (_flight == null && _flights.TryDequeue(out var next))
         {
             var own = next.Event.Player == _snapshot!.MySeat;
@@ -202,6 +204,7 @@ public partial class OnlineArena
     private void ResetAnimations()
     {
         SetQueuedDestinationsOpacity(1);
+        ResetOpeningInitiative();
         _flights.Clear(); _pendingPortraits.Clear(); FinishFlight(); _die.Value = 0;
         foreach (var portrait in _portraits) portrait.ReturnToRest();
     }

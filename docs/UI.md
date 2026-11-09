@@ -10,6 +10,8 @@ Cuando entra el segundo jugador, la misma arena representa elección de habilida
 
 El mulligan usa identificadores de copias: dos cartas iguales pueden seleccionarse por separado. Se bloquea durante el envío y después de confirmar. Una reconexión recupera la elección confirmada sin repetir el reparto. Se representan devoluciones propias, barajado visual, reemplazos, Bonus y robo de iniciativa. No se inventan identidades ni cantidades del mulligan rival que el servidor no haya autorizado.
 
+Después de colocar los Bonus, la iniciativa muestra dos dados 3D que ruedan a la vez, identificados con los nombres de los jugadores y «TÚ»/«RIVAL». Aterrizan con los resultados autorizados por el servidor; entonces se muestran los valores y quién empieza, antes del robo de su primer turno. Las jugadas esperan a que termine la presentación. Reconectar recupera el combate sin repetir los dados.
+
 ## Presentación
 
 `ArenaPresentation`, `ArenaMotion` y los controles de cartas, personajes, pilas y dado componen la arena PvP. `OnlineArena` solo consume las vistas autorizadas y envía una opción ligada a sala y revisión; no ejecuta ni predice las reglas.
@@ -98,6 +100,8 @@ dotnet build Relick.csproj
 ```
 
 Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-search-only` a los argumentos de la prueba; para Cambio de Mentes, usa `--mind-swap-only`. Se puede combinar con `--ui-screenshot-dir=/tmp/relick-ui` para guardar las capturas de PC y móvil horizontal.
+
+`--preparation-only` comprueba elección inicial, mulligan y ambos dados de iniciativa en los cuatro tamaños y desde ambos asientos, incluido el resultado, la espera del robo inicial y la recuperación sin repetir la animación.
 
 La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. Incluye las seis zonas de Bomba de Tiempo y la selección de seis cartas de memoria para reciclar, con una memoria mayor que la mano. También comprueba los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos: orden tras el dado, repetición, reconstrucción y recuperación visual sin reproducir efectos pasados. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
 

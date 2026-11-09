@@ -18,6 +18,7 @@ public partial class OnlineArena
         {
             for (var i = 0; IsAnimating && i < 100; i++)
             {
+                foreach (var die in _initiativeDice) die.AdvancePlayback(0.5);
                 UpdateFlights(0.5); await Layout();
                 Check(_activeFlight?.Event.Kind != DuelVisualKind.Draw || _activeFlight.Event.Player == _snapshot!.MySeat || _flightFront == null,
                     "El reparto revela una carta rival.");
@@ -35,7 +36,7 @@ public partial class OnlineArena
         foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
         foreach (byte seat in new byte[] { 0, 1 })
         {
-            GetWindow().ContentScaleSize = size; await Layout();
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size; await Layout();
             GetParent().MoveChild(this, GetParent().GetChildCount() - 1);
             ResetAnimations(); _openingKey = null; _openingDealt = false; _openingReturns.Clear(); _initialSkillCandidate = null;
             var room = new RoomInfo("UITEST00", seat, "Ana", "Beto", true);
@@ -79,11 +80,36 @@ public partial class OnlineArena
                 Turn = 1, Players = _snapshot.Players };
             var origins = CaptureMulliganOrigins(combat);
             _snapshot = combat; _preparing = false; _selected.Clear(); ResetAnimations(); Render(); await Layout();
-            AnimateOpening(combat, origins);
-            Check(_flights.Count(f => f.Event.Kind == DuelVisualKind.Draw && f.Event.Player == seat) == 3, "Faltan los reemplazos o el robo de turno.");
+            var opening = new PreparationInfo { Started = true, StartingSeat = seat,
+                RollOne = (byte)(seat == 0 ? 6 : 1), RollTwo = (byte)(seat == 1 ? 6 : 1) };
+            var initiativeCount = PlayedInitiativeRolls;
+            AnimateOpening(combat, origins, opening);
+            Check(_flights.Count(f => f.Event.Kind == DuelVisualKind.Draw && f.Event.Player == seat) == 2 &&
+                _openingTurnDraw?.Event.Player == seat, "Faltan los reemplazos o el robo de turno posterior a la iniciativa.");
             Check(_flights.All(f => f.Event.Kind != DuelVisualKind.Return || f.Event.Player == seat), "Se inventó un mulligan oculto del rival.");
+            Check(!_initiativeOverlay.Visible, "Los dados se muestran antes de terminar el mulligan y los Bonus.");
+            for (var i = 0; !_initiativeStarted && i < 40; i++) { UpdateFlights(0.5); await Layout(); }
+            Check(_initiativeOverlay.Visible && _initiativeDice.All(d => d.IsRolling) && PlayedInitiativeRolls == initiativeCount + 1,
+                "No se lanzan los dos dados de iniciativa a la vez.");
+            Check(_initiativeNames[seat].Text.Contains("TÚ") && _initiativeNames[1 - seat].Text.Contains("RIVAL") &&
+                _initiativeValues.All(v => v.Text == "Rodando…") && !_initiativeWinner.Text.Contains("Empieza"),
+                "La iniciativa confunde al dueño de un dado o revela el ganador antes de aterrizar.");
+            UpdateEnabled(); Check(_handCards.All(c => c.Disabled), "Se puede jugar durante la iniciativa.");
+            Check(_openingTurnDraw != null && _flights.Count == 0, "El robo inicial se adelanta a los dados.");
+            await Capture($"initiative-rolling-seat{seat}-{size.X}x{size.Y}");
+            foreach (var die in _initiativeDice) die.AdvancePlayback(DiceFace.RollSeconds);
+            UpdateFlights(0);
+            Check(_initiativeDice[0].DisplayedValue == opening.RollOne && _initiativeDice[1].DisplayedValue == opening.RollTwo &&
+                _initiativeValues[0].Text == opening.RollOne.ToString() && _initiativeValues[1].Text == opening.RollTwo.ToString() &&
+                _initiativeWinner.Text == $"Empieza {combat.Players[seat].Name}", "El resultado visual no coincide con la iniciativa del servidor.");
+            await Capture($"initiative-result-seat{seat}-{size.X}x{size.Y}");
+            Check(new Rect2(Vector2.Zero, Size).Encloses(_initiativePanel.GetGlobalRect()), $"La iniciativa desborda {size}.");
             await Drain(); UpdateEnabled();
+            Check(!_initiativeOverlay.Visible && _openingTurnDraw == null, "La iniciativa permanece encima del combate.");
             Check(FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().All(c => c.Modulate.A == 1), "Quedan cartas invisibles al entrar en combate.");
+            ResetAnimations(); Render(); await Layout();
+            Check(!IsAnimating && !_initiativeOverlay.Visible && PlayedInitiativeRolls == initiativeCount + 1,
+                "Recuperar o reconstruir el combate repite la iniciativa.");
             GD.Print($"PVP_OPENING_LAYOUT_PASS · {size} · asiento {seat} · reparto, selección, espera, recuperación y combate.");
         }
     }

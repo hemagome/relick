@@ -151,7 +151,7 @@ public partial class OnlineArena
         return flights;
     }
 
-    private void AnimateOpening(DuelSnapshot combat, List<Flight> returns)
+    private void AnimateOpening(DuelSnapshot combat, List<Flight> returns, PreparationInfo? opening)
     {
         foreach (var flight in returns) _flights.Enqueue(flight);
         if (_openingReturns.Count > 0)
@@ -165,11 +165,8 @@ public partial class OnlineArena
         foreach (var seat in new[] { 0, 1 })
             _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.BonusPlace, Player = seat }, Face: combat.Players[seat].Bonus, Duration: 0.28));
         var starter = combat.CurrentPlayer;
-        _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.Draw, Player = starter, Value = combat.Players[starter].Hand.Length - 1 }, Duration: 0.28));
-        if (Connection.OpeningResult is { } opening)
-        {
-            _combatMessage.Text = $"Iniciativa · {combat.Players[0].Name} {opening.RollOne} · {combat.Players[1].Name} {opening.RollTwo}\nEmpieza {combat.Players[starter].Name}";
-        }
+        QueueOpeningInitiative(combat, opening, new(new DuelVisualEvent
+            { Kind = DuelVisualKind.Draw, Player = starter, Value = combat.Players[starter].Hand.Length - 1 }, Duration: 0.28));
         HideOpeningDestinations(); _flightLayoutFrames = 2; _lastDisabled = null;
     }
 
@@ -177,7 +174,7 @@ public partial class OnlineArena
 
     private void SetQueuedDestinationsOpacity(float alpha)
     {
-        foreach (var flight in _flights)
+        foreach (var flight in _openingTurnDraw is { } draw ? _flights.Append(draw) : _flights)
         {
             var relative = flight.Event.Player == _snapshot!.MySeat ? 0 : 1;
             var target = flight.Event.Kind == DuelVisualKind.Draw ? ZoneNode(relative, CardZone.Hand, flight.Event.Value) :
