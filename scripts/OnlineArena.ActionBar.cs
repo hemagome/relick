@@ -8,7 +8,8 @@ public partial class OnlineArena
     private Label _contextTitle = null!, _contextCost = null!;
     private CardInspector _inspector = null!;
     private HBoxContainer _turnControls = null!;
-    private Button? _advanceButton;
+    private AdvancePhaseButton? _advanceButton;
+    private string _decisionHint = "";
     private readonly List<MenuButton> _actionMenus = [];
     private bool _skillContext, _showReplayMemory;
     private int? _pointsTarget;
@@ -51,7 +52,10 @@ public partial class OnlineArena
     private Button AddOption(Node parent, int index, string? label = null)
     {
         var s = _snapshot!; var option = s.Options[index];
-        var button = ArenaPresentation.Button(parent, label ?? ArenaActionText.Label(option, s), () => PlayOption(index, s));
+        Button button = option.Move.Kind == DuelMoveKind.Advance ? new AdvancePhaseButton() : new Button();
+        button.Text = label ?? ArenaActionText.Label(option, s);
+        button.CustomMinimumSize = new(0, 48); button.MouseDefaultCursorShape = CursorShape.PointingHand;
+        button.Pressed += () => PlayOption(index, s); parent.AddChild(button);
         button.Name = "DuelOption" + index; button.AddThemeFontSizeOverride("font_size", Short ? 13 : 15);
         button.AutowrapMode = TextServer.AutowrapMode.Off;
         button.CustomMinimumSize = new(Math.Clamp(ThemeDB.FallbackFont.GetStringSize(button.Text, HorizontalAlignment.Left, -1, Short ? 13 : 15).X + 30, 64, Short ? 240 : 320), 48);
@@ -113,8 +117,13 @@ public partial class OnlineArena
         }
         _turnControls.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var advance = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Advance);
-        _advanceButton = advance < 0 ? null : AddOption(_turnControls, advance);
-        if (_advanceButton != null) _advanceButton.Name = "AdvanceStage";
+        _advanceButton = advance < 0 ? null : (AdvancePhaseButton)AddOption(_turnControls, advance);
+        if (_advanceButton != null)
+        {
+            _advanceButton.Name = "AdvanceStage";
+            _advanceButton.TooltipText = ArenaGuidance.SuggestAdvance(s)
+                ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.";
+        }
         _turnControls.Visible = !_preparing && (advance >= 0 || relikia.Length > 0);
     }
 
@@ -166,6 +175,7 @@ public partial class OnlineArena
             AddLocalButton(_moves, "×", ClearContext, "Limpiar selección");
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
             DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense, -1);
+        if (main < 0 && die.Length > 0) main = die[0];
         if (main >= 0)
         {
             var primary = _moveButtons.LastOrDefault(b => (int)b.GetMeta("option_index", -1) == main);
@@ -184,6 +194,7 @@ public partial class OnlineArena
         _contextCost.Visible = _contextCost.Text.Length > 0; _contextCost.TooltipText = _contextCost.Text;
         _selection.Text = ContextHint(); _selection.TooltipText = _selection.Text;
         RefreshInspector();
+        _decisionHint = _selection.Text;
     }
 
     private Button AddLocalButton(Node parent, string label, Action pressed, string? hint = null)
@@ -230,6 +241,7 @@ public partial class OnlineArena
             counters = s.Players[s.MySeat].Counters.ElementAtOrDefault(_selectedSkill);
         var title = _preparing ? card?.Name ?? (_choosingOpeningSkill ? "Elige una habilidad" : "Mano inicial") : ContextTitle();
         _inspector.Present(card, title, _preparing ? "" : _contextCost.Text, _selection.Text, counters);
+
     }
 
     private string ContextTitle()
@@ -250,7 +262,8 @@ public partial class OnlineArena
             Phase.CodeResponse or Phase.ErrorResponse => "Respuesta", Phase.RecycleChoice => "Reciclar memoria",
             Phase.PointsChoice => _pointsTarget is int target ? s.Players[target].Name : "Relick Points",
             Phase.MagnetChoice => "Crítico de Magnet",
-            _ => ChoosingEffectCards ? "Elige una carta" : _fieldSelection?.Zone == FieldZone.Hand ? _fieldSelection.Value.Owner == s.MySeat ? "Mi mano" : "Mano rival" : "Tu mano"
+            _ => ChoosingEffectCards ? "Elige una carta" : _fieldSelection?.Zone == FieldZone.Hand ? _fieldSelection.Value.Owner == s.MySeat ? "Mi mano" : "Mano rival" : s.DecisionPlayer != s.MySeat ? "Decisión del rival" : s.Phase switch
+            { Phase.Combat => "Tu combate", Phase.Actions => $"Tus acciones · {s.Players[s.MySeat].Actions} disponibles", Phase.Draw => "Fase de robo", Phase.Final => "Cierre del turno", _ => "Tu decisión" }
         };
     }
 
@@ -259,28 +272,50 @@ public partial class OnlineArena
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return "Anula la activación o deja que se resuelva.";
-        if (ChoosingRecycling) return $"Selecciona {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas para reciclar.";
+        if (ChoosingRecycling) return $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas elegidas. " + (_selected.Count == s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards ? "Confirma para reciclar." : "Elige las cartas que faltan.");
         if (s.Phase == Phase.GoldenTotemChoice && myTurn) return $"Elige hasta dos Tótems · {_selected.Count}/2 seleccionados.";
-        if (s.Phase == Phase.TurnBuffDiscard && myTurn) return $"Faltan {s.ActivationDiscardsRemaining} descarte(s) · " + (_selected.Count == 1 ? CardCatalog.Get(SelectableCards[_selected.Single()]!).Name : "elige una carta");
+        if (s.Phase == Phase.TurnBuffDiscard && myTurn) return $"Descarta {s.ActivationDiscardsRemaining} carta(s) para completar la activación · " + (_selected.Count == 1 ? CardCatalog.Get(SelectableCards[_selected.Single()]!).Name : "elige una carta");
         if (s.Phase == Phase.Discard && myTurn) return $"Descarta {s.DiscardsRemaining} carta(s) para resolver el efecto.";
         if (s.Phase == Phase.Final && myTurn) return s.Players[s.MySeat].HandCount > GameEngine.MaxHandSize
-            ? $"Descarta {s.Players[s.MySeat].HandCount - GameEngine.MaxHandSize} carta(s) para terminar el turno." : "Puedes finalizar el turno o usar un COMBO.";
+            ? $"Descarta {s.Players[s.MySeat].HandCount - GameEngine.MaxHandSize} carta(s) para terminar el turno." : ArenaGuidance.Instruction(s);
         if (ChoosingEffectCards) return _selected.Count == 1 ? ChoiceOrigin(_deckSearchOptions[_selected.Single()]) : "Elige una carta y confirma.";
         if (s.Phase == Phase.DefenseChoice && myTurn)
         {
             var defense = s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.DestinyDefense && o.Move.Index == _selectedSkill);
             if (defense != null) return $"Descartes {_selected.Count}/{defense.RequiredDiscards} · confirma para defender.";
         }
-        if (s.Phase == Phase.DestroyChoice && _fieldSelection == null) return "Elige un objetivo en el tablero.";
-        if (s.Phase == Phase.DestroyChoice && _fieldSelection?.Zone == FieldZone.Hand) return "Se destruirá una carta al azar de esa mano.";
-        if (s.Phase == Phase.MagnetChoice && _fieldSelection == null) return "Elige una carta de la mano rival o su Bonus.";
-        if (_selected.Count == 1 && s.Players[s.MySeat].Hand.ElementAtOrDefault(_selected.Single()) == CardCatalog.Attack.Id && !ChoosingEffectCards)
-            return myTurn && s.Phase == Phase.Combat && s.Turn == 1
-                ? "Quien inicia no puede atacar en su primer turno. Podrás atacar en tu siguiente turno."
-                : _selectedSkill < 0 ? "Elige una habilidad iluminada." : "Usando " + CardCatalog.Get(s.Players[s.MySeat].Skills[_selectedSkill]).Name;
-        if (SelectedCardId() != null) return _moveButtons.Any(b => b.GetParent() == _moves) ? "" : "Sin acciones disponibles para esta carta ahora.";
-        return myTurn ? "Elige una carta para ver sus acciones." : "Esperando al rival · puedes seleccionar un COMBO.";
+        if (s.Phase == Phase.DestroyChoice && myTurn && _fieldSelection == null) return "Elige un objetivo en el tablero.";
+        if (s.Phase == Phase.DestroyChoice && myTurn && _fieldSelection?.Zone == FieldZone.Hand) return "Se destruirá una carta al azar de esa mano.";
+        if (s.Phase == Phase.MagnetChoice && myTurn && _fieldSelection == null) return "Elige una carta de la mano rival o su Bonus.";
+        if (_selected.Count == 1 && !ChoosingEffectCards && !ChoosingRecycling && !_skillContext && _fieldSelection == null)
+        {
+            var index = _selected.Single();
+            var handOptions = s.Options.Where(o => IsHandAction(o.Move.Kind) && o.Move.Index == index).ToArray();
+            if (handOptions.Length == 0) return ArenaGuidance.UnavailableCard(s, index);
+            if (handOptions.Any(o => o.Move.Kind == DuelMoveKind.Attack))
+                return _selectedSkill < 0 ? "Elige una habilidad iluminada para atacar." : "Confirma el ataque con " + CardCatalog.Get(s.Players[s.MySeat].Skills[_selectedSkill]).Name + ".";
+            return "";
+        }
+        if (SelectedCardId() != null)
+            return _moveButtons.Any(b => b.GetParent() == _moves) ? "" :
+                _fieldSelection != null || _skillContext ? ArenaGuidance.Instruction(s) : "Esta carta no tiene una activación disponible ahora.";
+        return ArenaGuidance.Instruction(s);
     }
+
+    private void RefreshRuntimeGuidance()
+    {
+        if (_preparing || _snapshot == null) return;
+        var text = _snapshot.Winner != null ? _decisionHint : !Connection.Ready
+            ? "Conexión interrumpida. Abre Menú para reconectar."
+            : Connection.PlayPending ? "Enviando tu decisión…"
+            : IsAnimating ? _die.IsBusy ? "Resolviendo el dado…" : "Resolviendo la jugada…"
+            : _decisionHint;
+        _inspector.SetHint(text);
+    }
+
+    private void RefreshAdvanceInvitation(bool blocked)
+        => _advanceButton?.SetInvitation(!blocked && !_preparing && _snapshot != null && ArenaGuidance.SuggestAdvance(_snapshot));
+
 
     private string ChoiceOrigin(DuelOption option) => option.Move.Kind switch
     {

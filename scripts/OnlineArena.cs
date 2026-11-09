@@ -127,7 +127,7 @@ public partial class OnlineArena : Control
         _diceOverlay.Modulate = new Color(1, 1, 1, _die.PresentationOpacity);
         _combatMessage.Visible = !_die.IsBusy && _combatMessage.Text.Length > 0;
         if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
-        UpdateEnabled();
+        UpdateEnabled(); RefreshRuntimeGuidance();
     }
 
     private void Render()
@@ -273,6 +273,7 @@ public partial class OnlineArena : Control
     private void UpdateEnabled()
     {
         var disabled = _preparing ? !(_choosingOpeningSkill ? CanChooseInitialSkill : CanChooseOpening) || IsAnimating : !Connection.Ready || Connection.PlayPending || IsAnimating;
+        RefreshAdvanceInvitation(disabled);
         if (_lastDisabled == disabled) return;
         _lastDisabled = disabled;
         foreach (var button in _moveButtons)
@@ -298,6 +299,7 @@ public partial class OnlineArena : Control
             var popup = _arenaMenu.GetPopup(); var abandon = popup.GetItemIndex(1);
             if (abandon >= 0) popup.SetItemDisabled(abandon, disabled);
         }
+        RefreshAdvanceInvitation(disabled);
         if (_evolveButton is Button evolve)
             evolve.Disabled = disabled || !_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve);
         if (_choosingOpeningSkill && InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled |= _initialSkillCandidate == null;

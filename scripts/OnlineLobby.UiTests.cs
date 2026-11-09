@@ -29,6 +29,11 @@ public partial class OnlineLobby
                 GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
                 GD.Print("PVP_COMBO_RESPONSES_ONLY_PASS"); GetTree().Quit(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--guidance-only"))
+            {
+                await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
+                GD.Print("PVP_GUIDANCE_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--context-only"))
             {
                 await online.CheckContextActionBar(); online.QueueFree(); await Layout();
@@ -122,6 +127,7 @@ public partial class OnlineLobby
             await online.CheckVisualCues(DuelSnapshot.For(game, 1, 8));
             await online.CheckComboResponseToggle();
             await online.CheckContextActionBar();
+            await online.CheckDecisionGuidance();
             await online.CheckMemoryInspection();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);

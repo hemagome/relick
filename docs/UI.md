@@ -81,6 +81,16 @@ Con menos de 1100 unidades lógicas de ancho, el campo admite desplazamiento ver
 
 La configuración contempla densidad y área segura. No constituye una exportación Android/iOS ni una validación en hardware móvil; todavía deben comprobarse teclado virtual, rendimiento y consumo en dispositivos físicos.
 
+## Guía de decisiones y avance de fase
+
+El inspector prioriza una instrucción concreta en descartes, objetivos, respuestas y dados. Al tocar una carta sin jugadas disponibles explica el bloqueo usando la fase, los recursos visibles y las opciones autorizadas del propio jugador. La espera solo anuncia un COMBO si el servidor ofrece uno. Enviar una decisión, perder conexión y resolver una animación tienen mensajes específicos; una instrucción nueva vuelve al inicio de la lectura. Los costes permanecen en su campo único.
+
+`ArenaGuidance.SuggestAdvance` consulta todas las opciones del snapshot, independientemente de la carta seleccionada. Solo sugiere avanzar al jugador de turno que debe decidir, en robo, combate, acciones o final, si existe `Advance` y las únicas otras opciones son abandonar. Un COMBO legal, evolución, aprendizaje, Bonus/canje o Relikia impiden la sugerencia. Un COMBO sin sus condiciones cumplidas no la impide.
+
+`AdvancePhaseButton` invita con un pulso dorado de 1,8 segundos, sin mover ni escalar el objetivo táctil. Se detiene al enviar, desconectar, ocultar el control, entrar en una resolución o recuperar una jugada disponible; fuera de la invitación no procesa fotogramas. El botón conserva el destino y el índice del servidor, incluyendo fases repetidas. Avanzar siempre requiere pulsarlo.
+
+Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. Con `--ui-screenshot-dir=/tmp/relick-guidance` y renderizado habilitado genera capturas de la invitación en cuatro resoluciones.
+
 ## Actualizaciones y animaciones
 
 - La selección de habilidad inicial actualiza las cartas y el botón existentes: no reconstruye la arena.

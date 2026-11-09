@@ -49,6 +49,7 @@ public partial class CardInspector : PanelContainer
     private ScrollContainer _reading = null!;
     private HBoxContainer _cost = null!;
     private string? _cardId;
+    private string _lastHint = "";
 
     public override void _Ready()
     {
@@ -64,7 +65,7 @@ public partial class CardInspector : PanelContainer
         var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", ShortScreen ? 2 : 6); _reading.AddChild(content);
         // Pending choices must stay ahead of a long card description, including on phones.
-        HintLabel = Wrapped("ContextHint", 12, BoardArt.Muted); content.AddChild(HintLabel);
+        HintLabel = Wrapped("ContextHint", ShortScreen ? 13 : 14, BoardArt.Ink); content.AddChild(HintLabel);
         ClassificationLabel = ArenaPresentation.Text("", 12, ArenaPresentation.Mint);
         ClassificationLabel.Name = "InspectorClassification"; ClassificationLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart; content.AddChild(ClassificationLabel);
         TitleLabel = Wrapped("ContextCardName", ShortScreen ? 17 : 20); content.AddChild(TitleLabel);
@@ -92,6 +93,13 @@ public partial class CardInspector : PanelContainer
         return label;
     }
 
+    internal void SetHint(string hint)
+    {
+        if (_lastHint != hint) _reading.ScrollVertical = 0;
+        _lastHint = hint;
+        HintLabel.Text = hint; HintLabel.Visible = hint.Length > 0; HintLabel.TooltipText = hint;
+    }
+
     internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null)
     {
         if (_cardId != card?.Id) _reading.ScrollVertical = 0;
@@ -110,6 +118,6 @@ public partial class CardInspector : PanelContainer
         CounterLabel.Text = counters.HasValue && card?.Id == CardCatalog.Destiny.Id ? $"Contadores: {counters}/2" : "";
         CounterLabel.Visible = CounterLabel.Text.Length > 0;
         CostLabel.Text = cost; _cost.Visible = cost.Length > 0;
-        HintLabel.Text = hint; HintLabel.Visible = hint.Length > 0;
+        SetHint(hint);
     }
 }
