@@ -16,8 +16,12 @@ public partial class OnlineLobby
         // Keep the notice above both the lobby and the arena opened later.
         var layer = new CanvasLayer { Layer = 100 };
         AddChild(layer);
-        _connectionNotice = new Control { Name = "ConnectionNotice", Visible = false };
+        var overlay = new ConnectionNoticeOverlay { Name = "ConnectionNotice", Visible = false, FocusMode = FocusModeEnum.All };
+        _connectionNotice = overlay;
         layer.AddChild(_connectionNotice);
+        _connectionNotice.FocusNeighborTop = _connectionNotice.FocusNeighborBottom = _connectionNotice.GetPath();
+        _connectionNotice.FocusNext = _connectionNotice.FocusPrevious = _connectionNotice.GetPath();
+        _connectionNotice.FocusNeighborLeft = _connectionNotice.FocusNeighborRight = _connectionNotice.GetPath();
         _connectionNotice.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var shade = new ColorRect { Color = new Color(0.02f, 0.03f, 0.05f, 0.88f) };
         _connectionNotice.AddChild(shade);
@@ -44,9 +48,11 @@ public partial class OnlineLobby
         column.AddChild(_connectionNoticeDescription);
         _reconnect = AddButton(column, "Reconectar", Connect);
         _reconnect.Name = "Reconnect";
+        overlay.Retry = _reconnect;
         AccentButton(_reconnect, LobbyMint);
         _reconnect.FocusNeighborTop = _reconnect.GetPath();
         _reconnect.FocusNeighborBottom = _reconnect.GetPath();
+        _reconnect.FocusNeighborLeft = _reconnect.FocusNeighborRight = _reconnect.GetPath();
         _reconnect.FocusNext = _reconnect.GetPath();
         _reconnect.FocusPrevious = _reconnect.GetPath();
         Resized += AdjustConnectionNotice;
@@ -63,7 +69,7 @@ public partial class OnlineLobby
     {
         // Initial loading uses the small status. Once an outage appears, keep the
         // notice up throughout reconnection until the room subscription is ready.
-        var show = !ready && (!connecting || _connectionNotice.Visible);
+        var show = !ready && (!connecting || _arena != null || _connectionNotice.Visible);
         if (show)
         {
             _connectionNoticeTitle.Text = connecting ? "Reconectando…" : "Sin conexión";
@@ -76,9 +82,20 @@ public partial class OnlineLobby
             {
                 _focusBeforeConnectionNotice = GetViewport().GuiGetFocusOwner();
                 _focusBeforeConnectionNotice?.ReleaseFocus();
+                // Embedded/native windows render above CanvasLayers and would
+                // otherwise hide the notice or keep consuming input.
+                if (_arena != null)
+                    foreach (var window in _arena.FindChildren("*", "Window", true, false).OfType<Window>())
+                    {
+                        window.Hide();
+                        if (window is not PopupMenu) window.QueueFree();
+                    }
                 _connectionNotice.Show();
-                _reconnect.GrabFocus();
             }
+            // Keep keyboard navigation inside the notice even while the retry
+            // button is disabled, without pausing network recovery processing.
+            var focus = connecting ? _connectionNotice : _reconnect;
+            if (!focus.HasFocus()) focus.GrabFocus();
         }
         else if (_connectionNotice.Visible)
         {

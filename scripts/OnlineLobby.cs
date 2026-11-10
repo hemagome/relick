@@ -115,7 +115,6 @@ public partial class OnlineLobby : Control
     {
         _resultExitRequested = false;
         var arena = new OnlineArena { Connection = _lobby, RoomCode = roomCode };
-        arena.ReconnectRequested += Connect;
         arena.ReturnToLobbyRequested += () =>
         {
             _resultExitRequested = true;

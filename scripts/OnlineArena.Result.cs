@@ -7,13 +7,13 @@ public partial class OnlineArena
 {
     private PanelContainer? _resultPanel;
     private Label? _resultStatus, _resultCloseHint;
-    private Button? _resultReturn, _resultReconnect;
+    private Button? _resultReturn;
     private bool _resultDismissed;
     private bool ResultSettled => !IsAnimating && _pendingPortraits.Count == 0 && _portraits.All(p => !p.IsActionPlaying);
 
     private void BuildResultPanel(VBoxContainer parent)
     {
-        _resultPanel = null; _resultReturn = _resultReconnect = null; _resultStatus = null;
+        _resultPanel = null; _resultReturn = null; _resultStatus = null;
         if (_snapshot?.Winner is not int winner) return;
         var s = _snapshot;
         var panel = new PanelContainer { Name = "DuelResultPanel", Visible = false,
@@ -49,9 +49,6 @@ public partial class OnlineArena
         history.SizeFlagsHorizontal = SizeFlags.ExpandFill; history.AddThemeFontSizeOverride("font_size", 12);
         var review = ArenaPresentation.Button(secondary, "Revisar tablero", () => { _resultDismissed = true; UpdateResultPresentation(); });
         review.Name = "ReviewResultBoard"; review.SizeFlagsHorizontal = SizeFlags.ExpandFill; review.AddThemeFontSizeOverride("font_size", 12);
-        _resultReconnect = ArenaPresentation.Button(column, "Reconectar", () => ReconnectRequested?.Invoke());
-        _resultReconnect.Name = "ResultReconnect";
-        column.MoveChild(_resultReconnect, _resultReturn.GetIndex() + 1); RelickVisuals.Primary(_resultReconnect);
     }
 
     private void UpdateResultPresentation()
@@ -61,11 +58,8 @@ public partial class OnlineArena
         _resultPanel.Visible = visible; _actionDock.Visible = !visible;
         var closing = Connection.PendingRoomRequest == RoomRequest.Leave;
         _resultReturn!.Disabled = !Connection.Ready || Connection.PendingRoomRequest != RoomRequest.None || !ResultSettled;
-        _resultReturn.Visible = Connection.Ready;
         _resultReturn.Text = closing ? "Cerrando sala…" : "Volver al lobby";
         _resultCloseHint!.Text = Connection.Room == null ? "Vuelve al lobby cuando termines de leer." : "Volver cierra la sala para ambos.";
-        _resultReconnect!.Visible = !Connection.Ready;
-        _resultReconnect.Disabled = Connection.Connecting;
         _resultStatus!.Text = !Connection.Ready ? "Reconecta para comprobar la sala y volver al lobby."
             : closing ? "Esperando la confirmación del servidor…"
             : Connection.RoomError.Length > 0 ? Connection.RoomError

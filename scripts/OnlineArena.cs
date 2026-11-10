@@ -9,7 +9,6 @@ public partial class OnlineArena : Control
 {
     public LobbyConnection Connection { get; set; } = null!;
     public string RoomCode { get; set; } = "";
-    public event Action? ReconnectRequested;
     public event Action? ReturnToLobbyRequested;
     internal bool HasFinishedResult => _snapshot?.Winner != null;
     private VBoxContainer? _root;
@@ -176,7 +175,7 @@ public partial class OnlineArena : Control
             ArenaPresentation.Player(arena, player, relative, relative == 1, !_preparing && s.CurrentPlayer == seat && s.Winner == null,
                 _selectedSkill, _portraits[relative], _life[relative], new ArenaPlayerActions
                 {
-                    Memory = corrupt => ShowCards(corrupt ? "Memoria corrupta" : "Memoria", corrupt ? null : player.Memory, player.CorruptedCount),
+                    Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory, player.CorruptedCount),
                     Attached = () => SelectFieldPile(seat, FieldZone.Attached),
                     Equipment = () => SelectEquipment(seat),
                     EquipmentCovers = () => SelectFieldPile(seat, FieldZone.EquipmentCover),
@@ -343,24 +342,24 @@ public partial class OnlineArena : Control
     private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null)
     {
         if (GetChildren().OfType<Window>().Any(w => w.Visible)) return;
-        var dialog = new AcceptDialog { Title = title, OkButtonText = "Volver al duelo" };
-        var scroll = new ScrollContainer { CustomMinimumSize = new(Math.Min(620, Size.X - 48), Math.Min(390, Size.Y - 110)), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        var list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; scroll.AddChild(list);
-        // Inspectors build their controls in _Ready; attach the dialog before presenting cards.
-        dialog.AddChild(scroll); AddChild(dialog);
-        if (ids == null) list.AddChild(ArenaPresentation.Text($"{hiddenCount} cartas corruptas boca abajo. Su identidad permanece oculta."));
-        else for (var index = 0; index < ids.Count; index++)
+        var dialog = new AcceptDialog { Name = "CardCollectionDialog", Title = title, OkButtonText = "Volver al duelo" };
+        if (ids is { Count: > 0 })
         {
-            var id = ids[index];
-            if (id == null) { list.AddChild(ArenaPresentation.Text("Carta oculta · mano del rival")); continue; }
-            var card = CardCatalog.Get(id);
-            var item = new HandCard { Card = card, Disabled = select == null }; list.AddChild(item);
-            var chosen = index;
-            if (select != null) item.Pressed += () => { select(chosen); dialog.QueueFree(); };
-            var inspector = new CardInspector { ReadingHeight = 160, ShortScreen = Short }; list.AddChild(inspector);
-            inspector.Present(card, card.Name, ArenaActionText.CardCost(card));
+            var view = new CardCollectionView { Cards = ids.ToArray(), ShortScreen = Short,
+                InspectorWidth = Short ? 260 : Math.Clamp(Size.X * 0.3f, 320, 380),
+                CustomMinimumSize = new(Math.Min(960, Size.X - 72), Math.Min(480, Size.Y - 140)) };
+            if (select != null) view.CardPressed += index => { select(index); dialog.QueueFree(); };
+            dialog.AddChild(view);
         }
-        if (ids?.Count == 0) list.AddChild(ArenaPresentation.Text("No hay cartas en esta zona."));
+        else
+        {
+            var message = ArenaPresentation.Text(ids == null ? $"{hiddenCount} cartas corruptas boca abajo. Su identidad permanece oculta." : "No hay cartas en esta zona.");
+            message.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            message.CustomMinimumSize = new(Math.Min(620, Size.X - 72), Math.Min(120, Size.Y - 140));
+            dialog.AddChild(message);
+        }
+        AddChild(dialog); // The shared inspector is ready before its initial card is presented.
+        dialog.GetOkButton().CustomMinimumSize = new(0, 48);
         dialog.Confirmed += () => dialog.QueueFree(); dialog.Canceled += () => dialog.QueueFree();
         ArenaViewport.FitDialog(dialog, Size);
     }

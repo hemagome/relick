@@ -312,7 +312,7 @@ public partial class OnlineArena
     {
         if (_preparing || _snapshot == null) return;
         var text = _snapshot.Winner != null ? _decisionHint : !Connection.Ready
-            ? "Conexión interrumpida. Abre Menú para reconectar."
+            ? "Conexión interrumpida. Reconecta para continuar."
             : Connection.PlayPending ? "Enviando tu decisión…"
             : IsAnimating ? _die.IsBusy ? "Resolviendo el dado…" : "Resolviendo la jugada…"
             : _decisionHint;

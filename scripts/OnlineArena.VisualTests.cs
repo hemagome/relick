@@ -5,7 +5,11 @@ namespace Relick;
 
 public partial class OnlineArena
 {
-    internal void PresentTestSnapshot(DuelSnapshot snapshot) { _snapshot = snapshot; ResetInteraction(); Render(); }
+    internal void PresentTestSnapshot(DuelSnapshot snapshot)
+    {
+        _preparing = _choosingOpeningSkill = false;
+        _snapshot = snapshot; ResetInteraction(); Render();
+    }
 
     internal async Task CheckGoldenTotemLayout()
     {

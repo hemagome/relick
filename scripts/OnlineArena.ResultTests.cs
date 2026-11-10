@@ -34,8 +34,8 @@ public partial class OnlineArena
                 Check(((Label)_resultPanel!.FindChild("DuelResultTitle", true, false)).Text == expected, "El resultado confunde vencedor y asiento.");
                 Check(((Label)_resultPanel.FindChild("DuelResultReason", true, false)).Text == (s.EndReason ?? "Resultado confirmado por el servidor."), "El cierre inventa una causa o pierde la causa persistida.");
                 CheckPendingCodeBounds();
-                Check(new Rect2(Vector2.Zero, Size).Encloses(_resultPanel.GetGlobalRect()) && RectVisible(_resultReconnect!, _resultReconnect!.GetGlobalRect()), "El cierre o su acción disponible queda fuera de pantalla.");
-                Check(_resultReturn!.Disabled && _resultReconnect!.Visible, "El cierre desconectado permite enviar sin reconectar.");
+                Check(new Rect2(Vector2.Zero, Size).Encloses(_resultPanel.GetGlobalRect()) && RectVisible(_resultReturn!, _resultReturn!.GetGlobalRect()), "El cierre o su acción disponible queda fuera de pantalla.");
+                Check(_resultReturn!.Disabled, "El cierre desconectado permite enviar sin reconectar.");
                 GuiInputTestDriver.Click((Button)_resultPanel.FindChild("ReviewResultBoard", true, false)); await Layout();
                 Check(!_resultPanel.Visible && _actionDock.Visible, "No se puede volver a consultar el tablero final.");
                 GuiInputTestDriver.Click(_arenaMenu!); await Layout();

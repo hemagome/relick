@@ -39,6 +39,10 @@ esa confirmación; no se simulan jugadores, porcentajes ni estimaciones de esper
 
 El estado normal no muestra «Conectado». Al perder la conexión aparece un cuadro
 central grande «Sin conexión», sobre la sala o el tablero, con el botón Reconectar.
+Es el único punto para reconectar también en preparación y resultado: el menú
+del duelo no ofrece esta acción mientras estás conectado. Al aparecer cierra
+menús y consultas abiertos para que no tapen el aviso; los clics y la navegación
+por teclado permanecen en él, incluso durante el reintento.
 Permanece visible durante el reintento y se retira cuando la suscripción de la sala
 vuelve a estar lista. Una lectura autenticada por el mismo socket cada tres segundos
 detecta cortes silenciosos: si no responde en siete segundos, se bloquean las
@@ -69,7 +73,7 @@ recupera la lectura de cartas; Menú → Ver resultado permite volver. El histor
 sigue disponible. «Volver al lobby» cierra la sala, muestra la espera de
 confirmación y permite a cada jugador terminar de leer su resultado aunque el
 rival ya la haya cerrado. El resultado autorizado se conserva en memoria hasta
-ese retorno; si no hay conexión se ofrece Reconectar. No se presenta una causa
+ese retorno; si no hay conexión se muestra el mismo aviso central de Reconectar. No se presenta una causa
 inventada para resultados antiguos sin ese dato.
 
 `ArenaPresentation`, `ArenaMotion` y los controles de cartas, personajes, pilas y dado componen la arena PvP. `OnlineArena` solo consume las vistas autorizadas y envía una opción ligada a sala y revisión; no ejecuta ni predice las reglas.
@@ -92,6 +96,13 @@ menú y Abandonar está en el menú general con su confirmación habitual.
 
 La lectura de cartas usa un inspector compartido en mano, elección inicial y
 consultas de zonas. Conserva las cartas completas y sus tamaños de presentación.
+La consulta de Memoria propia o rival muestra una cuadrícula de todas sus copias
+y un único inspector fijo a la derecha. Al seleccionar una carta, cambia ese
+inspector y se marca la copia elegida; la galería y la descripción se desplazan
+por separado. Las columnas se ajustan al espacio disponible, con la misma escala
+compacta de cartas en pantallas cortas. La cabecera identifica al propietario de
+la memoria. Las corruptas conservan su consulta por cantidad sin identidades;
+elegir una carta oculta limpia el texto y los atributos del inspector anterior.
 La clasificación incluye el subtipo actual —por ejemplo, Código Personaje— y
 COMBO cuando corresponde. Las habilidades muestran daño normal, daño crítico y
 premio en un orden fijo; su descripción omite el prefijo que ya repite esos datos.
@@ -231,6 +242,11 @@ lobby; una ejecución gráfica restaura el portapapeles al terminar. La prueba d
 dos procesos PvP exige que ambos vuelvan al lobby y conserva el resultado del
 jugador cuyo rival cierra primero.
 
+`--connection-only` comprueba el aviso compartido durante preparación, duelo y
+resultado, con menú y consultas abiertos, bloqueo de clics y teclado, reintento
+fallido y recuperación, en cuatro tamaños y ambos asientos. Incluye los controles
+de conexión del lobby; `--ui-screenshot-dir` permite capturar el aviso en el duelo.
+
 `--preparation-only` comprueba elección inicial, mulligan y ambos dados de iniciativa en los cuatro tamaños y desde ambos asientos, incluido el resultado, la espera del robo inicial y la recuperación sin repetir la animación.
 
 La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. La lectura del inspector añade 1280×480: verifica el modo vacío compacto y desplaza efectos largos mediante eventos de rueda, comprobando que cabecera, atributos, coste, botones y mano permanecen fijos. `--inspector-only` ejecuta esa revisión enfocada. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. Incluye las seis zonas de Bomba de Tiempo y la selección de seis cartas de memoria para reciclar, con una memoria mayor que la mano. También comprueba los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos: orden tras el dado, repetición, reconstrucción y recuperación visual sin reproducir efectos pasados. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
@@ -243,6 +259,12 @@ Para capturas:
 ```
 
 La vista previa de salas no se conecta a ningún servidor. Las pruebas de preparación, combate y dos procesos con entrada real están descritas en [PvP](PVP.md).
+
+`--memory-inspection-only` comprueba la galería y el único inspector actualizable
+de ambas memorias, 36 cartas con copias repetidas, desplazamiento independiente,
+visibilidad de corruptas/cartas ocultas, índices de selección de objetivos y
+cierre sin modificar el duelo, en cuatro tamaños y ambos asientos. Con
+`--ui-screenshot-dir` guarda capturas de la galería en una ejecución gráfica.
 
 ## Respuestas COMBO
 

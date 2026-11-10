@@ -12,14 +12,12 @@ public partial class OnlineArena
         var s = _snapshot!;
         _arenaMenu = new MenuButton { Name = "ArenaMenu", Text = "Menú", CustomMinimumSize = new(70, 48) };
         header.AddChild(_arenaMenu); var popup = _arenaMenu.GetPopup(); ArenaViewport.TouchMenu(popup);
-        popup.AddItem("Reconectar", 0);
         if (!_preparing) popup.AddItem("Historial de jugadas", 3);
         if (s.Options.Any(o => o.Move.Kind == DuelMoveKind.Concede)) popup.AddItem("Abandonar duelo", 1);
         if (s.Winner != null || _preparing) popup.AddItem(s.Winner != null ? "Volver al lobby" : "Cerrar sala", 2);
         if (s.Winner != null) popup.AddItem("Ver resultado", 4);
         popup.IdPressed += id =>
         {
-            if (id == 0) ReconnectRequested?.Invoke();
             if (id == 3) ShowDuelHistory();
             if (id == 1) { var option = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Concede); if (option >= 0) PlayOption(option, s); }
             if (id == 2) { if (s.Winner != null) RequestResultExit(); else Connection.Leave(RoomCode); }
