@@ -8,6 +8,8 @@ using System.Diagnostics;
 
 namespace Relick.Network;
 
+public enum RoomRequest { None, Create, Join, Leave }
+
 /// <summary>Only receives authorized views; it never runs the practice engine.</summary>
 public sealed class LobbyConnection : IDisposable
 {
@@ -41,6 +43,13 @@ public sealed class LobbyConnection : IDisposable
     public bool LastPlayAccepted { get; private set; }
     public event Action<string>? TokenReceived;
     public bool Ready { get; private set; }
+    public bool Connecting { get; private set; }
+    public RoomRequest PendingRoomRequest { get; private set; }
+    public string RoomError { get; private set; } = "";
+    public DuelSnapshot? LastResult { get; private set; }
+    public string LastResultRoom { get; private set; } = "";
+    private string? _sessionToken;
+    private string _sessionServer = "", _sessionDatabase = "";
     public ulong Epoch { get; private set; }
     public string Message { get; private set; } = "Sin conexión";
     public RoomInfo? Room => _connection?.Db.MyRoom.Iter().SingleOrDefault();
@@ -85,16 +94,21 @@ public sealed class LobbyConnection : IDisposable
 
     public void Connect(string server, string database, string? token)
     {
+        if (token != _sessionToken || server != _sessionServer || database != _sessionDatabase) ClearResult();
+        _sessionServer = server; _sessionDatabase = database;
         Dispose();
         Epoch++;
+        Connecting = true; RoomError = "";
         Message = "Conectando…";
         var builder = DbConnection.Builder().WithUri(server).WithDatabaseName(database)
             .OnConnect((connection, _, newToken) =>
             {
+                _sessionToken = newToken;
                 TokenReceived?.Invoke(newToken);
                 connection.SubscriptionBuilder().OnApplied(_ =>
                 {
                     Ready = true;
+                    Connecting = false; PendingRoomRequest = RoomRequest.None;
                     Message = "Conectado";
                     connection.Reducers.EnsureDuel();
                     if (Duel == null) SubscribePreparation();
@@ -106,11 +120,12 @@ public sealed class LobbyConnection : IDisposable
                 }).OnError((_, error) =>
                 {
                     Ready = false;
+                    Connecting = false;
                     Message = "No se pudo sincronizar la sala: " + error.Message;
                 }).Subscribe(new[] { "SELECT * FROM my_room", "SELECT * FROM my_board", "SELECT * FROM my_duel_hand", "SELECT * FROM my_choices", "SELECT * FROM my_move_result" });
             })
-            .OnConnectError(error => { Ready = false; Message = "No se pudo conectar: " + error.Message; })
-            .OnDisconnect((_, error) => { Ready = false; Message = error == null ? "Sin conexión" : "Se perdió la conexión. Pulsa Reconectar."; });
+            .OnConnectError(error => { Ready = Connecting = false; Message = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; })
+            .OnDisconnect((_, error) => { Ready = Connecting = false; Message = "Se perdió la conexión. Pulsa Reconectar para recuperar tu sala."; });
         if (!string.IsNullOrEmpty(token)) builder = builder.WithToken(token);
         _connection = builder.Build();
         void HandChanged() { _preparationHandDirty = true; PreparationRevision++; }
@@ -127,6 +142,30 @@ public sealed class LobbyConnection : IDisposable
         _connection.Db.MyRoom.OnUpdate += (_, _, _) => PreparationRevision++;
         _connection.Db.MyRoom.OnDelete += (_, _) => PreparationRevision++;
         _connection.OnUnhandledReducerError += (_, error) => Message = error.Message;
+        _connection.Reducers.OnCreateRoom += (context, _) => RoomReply(context);
+        _connection.Reducers.OnJoinRoom += (context, _, _) => RoomReply(context);
+        _connection.Reducers.OnLeaveRoom += context => RoomReply(context);
+        void BoardResult(string json, string roomCode)
+        {
+            var packet = JsonSerializer.Deserialize(json, DuelJson.Default.DuelBoardPacket)!;
+            if (packet.Board.Winner == null || Room is not { } room || room.Code != roomCode) return;
+            // Keep a public, read-only result even if the room disappears in the same FrameTick.
+            packet.Board.MySeat = room.MySeat; packet.Board.Options = []; packet.Board.Visuals = [];
+            foreach (var player in packet.Board.Players) player.Hand = [];
+            LastResult = packet.Board; LastResultRoom = roomCode;
+            RememberFullResult();
+        }
+        void RememberFullResult()
+        {
+            if (Duel is { Winner: not null } final && Room is { } room)
+            { LastResult = final; LastResultRoom = room.Code; }
+        }
+        _connection.Db.MyBoard.OnInsert += (_, row) => BoardResult(row.Json, row.RoomCode);
+        _connection.Db.MyBoard.OnUpdate += (_, _, row) => BoardResult(row.Json, row.RoomCode);
+        _connection.Db.MyDuelHand.OnInsert += (_, _) => RememberFullResult();
+        _connection.Db.MyDuelHand.OnUpdate += (_, _, _) => RememberFullResult();
+        _connection.Db.MyChoices.OnInsert += (_, _) => RememberFullResult();
+        _connection.Db.MyChoices.OnUpdate += (_, _, _) => RememberFullResult();
         _connection.Db.MyBoard.OnInsert += (_, row) => GamePayloadBytes += Encoding.UTF8.GetByteCount(row.Json);
         _connection.Db.MyBoard.OnUpdate += (_, _, row) => GamePayloadBytes += Encoding.UTF8.GetByteCount(row.Json);
         _connection.Db.MyDuelHand.OnInsert += (_, row) => GamePayloadBytes += Encoding.UTF8.GetByteCount(row.Json);
@@ -212,6 +251,8 @@ public sealed class LobbyConnection : IDisposable
     public void Tick()
     {
         _connection?.FrameTick(); ResolvePlayResult();
+        if (Duel is { Winner: not null } final && Room is { } finalRoom)
+        { LastResult = final; LastResultRoom = finalRoom.Code; }
         var preparation = Preparation;
         if (preparation?.Started == true) { _openingResult = preparation; _openingRoom = Room?.Code; }
         if (Duel != null && _preparationSubscription != null)
@@ -220,15 +261,60 @@ public sealed class LobbyConnection : IDisposable
         }
         else if (Ready && Duel == null && _preparationSubscription == null) SubscribePreparation();
     }
-    public void Create(string name) => Send(() => _connection!.Reducers.CreateRoom(name));
-    public void Join(string code, string name) => Send(() => _connection!.Reducers.JoinRoom(code, name));
-    public void Leave()
+    public void ClearResult() { LastResult = null; LastResultRoom = ""; }
+
+    private void RoomReply(ReducerEventContext context)
     {
+        var request = PendingRoomRequest;
+        if (request == RoomRequest.None) return;
+        PendingRoomRequest = RoomRequest.None;
+        switch (context.Event.Status)
+        {
+            case Status.Committed:
+                RoomError = "";
+                Message = request == RoomRequest.Leave ? "Sala cerrada." : request == RoomRequest.Create ? "Sala creada. Comparte el código con tu rival." : "Te uniste a la sala.";
+                break;
+            case Status.Failed(var reason): RoomError = Message = reason; break;
+            case Status.OutOfEnergy: RoomError = Message = "El servidor no pudo completar la solicitud. Inténtalo de nuevo."; break;
+            default: RoomError = Message = "No se recibió la confirmación. Pulsa Reconectar para comprobar tu sala."; break;
+        }
+    }
+    private bool ValidName(string name)
+    {
+        if (name.Trim().Length is >= 1 and <= 24 && !name.Any(char.IsControl)) return true;
+        RoomError = Message = "Escribe un nombre de 1 a 24 caracteres."; return false;
+    }
+    private void RequestRoom(RoomRequest request, Action send)
+    {
+        RoomError = ""; PendingRoomRequest = request;
+        Message = request switch { RoomRequest.Create => "Creando sala…", RoomRequest.Join => "Entrando a la sala…", _ => "Cerrando sala…" };
+        try { send(); }
+        catch (Exception) { RoomError = Message = "No se pudo confirmar la solicitud. Pulsa Reconectar para comprobar tu sala."; }
+    }
+    public void Create(string name)
+    {
+        if (!Ready || PendingRoomRequest != RoomRequest.None || Room != null || !ValidName(name)) return;
+        ClearResult(); RequestRoom(RoomRequest.Create, () => _connection!.Reducers.CreateRoom(name.Trim()));
+    }
+    public void Join(string code, string name)
+    {
+        if (!Ready || PendingRoomRequest != RoomRequest.None || Room != null || !ValidName(name)) return;
+        code = code.Trim().ToUpperInvariant();
+        if (code.Length != 8 || !code.All(char.IsAsciiLetterOrDigit))
+        { RoomError = Message = "Escribe el código de 8 letras y números que compartió tu rival."; return; }
+        ClearResult(); RequestRoom(RoomRequest.Join, () => _connection!.Reducers.JoinRoom(code, name.Trim()));
+    }
+    public void Leave() => Leave(Room?.Code);
+    public void Leave(string? expectedRoom)
+    {
+        if (!Ready || PendingRoomRequest != RoomRequest.None || Room == null || Room.Code != expectedRoom) return;
+        if (Duel is { Winner: null, Revision: > 0 })
+        { RoomError = Message = "Abandona el duelo desde Menú antes de cerrar la sala."; return; }
         _initialSkillCommand = null;
         _confirmationId = null;
         _playId = null;
         _comboId = null;
-        Send(() => _connection!.Reducers.LeaveRoom());
+        RequestRoom(RoomRequest.Leave, () => _connection!.Reducers.LeaveRoom());
     }
 
     public void SetComboResponses(bool enabled, string expectedRoom)
@@ -296,17 +382,9 @@ public sealed class LobbyConnection : IDisposable
         }
     }
 
-    private void Send(Action send)
-    {
-        if (!Ready) return;
-        Message = "Conectado";
-        try { send(); }
-        catch (Exception error) { Message = error.Message; }
-    }
-
     public void Dispose()
     {
-        Ready = false;
+        Ready = Connecting = false;
         _preparationHand = []; _preparationHandDirty = true; PreparationRevision++;
         _cachedDuelJson = _cachedHandJson = _cachedOptionsJson = null; _cachedDuel = null;
         if (_connection?.IsActive == true) _connection.Disconnect();

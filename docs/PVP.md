@@ -268,3 +268,22 @@ tablas ni borró los datos existentes.
 Pasaron también las 85 comprobaciones PvP en Maincloud, incluido el historial
 compartido, los reintentos, la reconexión, el límite de veinte entradas, un duelo
 completo y el agotamiento del mazo. Las salas de prueba se cerraron al finalizar.
+
+## Causa pública y cierre del duelo
+
+`EndReason` es un campo opcional del tablero público y del checkpoint del motor.
+Se escribe en el punto de finalización con una causa pública controlada, sin
+leer ni publicar el registro interno. Persiste al reconectar y no modifica las
+reglas ni las tablas del servidor. Los resultados anteriores sin ese dato
+muestran una confirmación genérica del servidor.
+
+El cliente conserva el resultado autorizado antes de procesar el borrado de la
+sala, incluso si ambos eventos llegan en el mismo procesamiento. Cada jugador
+confirma por separado su regreso al lobby. La conservación es local a esa
+sesión y se limpia al regresar, cambiar de identidad o iniciar otra sala.
+
+La validación local pasó 415 comprobaciones del motor, 91 de red y dos procesos
+Godot independientes con entrada real en 844×390, incluidos resultado, cierre
+desde un jugador y retorno de ambos al lobby. El módulo WASM compila y está
+publicado únicamente en una base local aislada de pruebas. La actualización de
+Maincloud para enviar la causa del resultado sigue pendiente de publicación.

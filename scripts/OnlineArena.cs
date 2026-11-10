@@ -10,6 +10,8 @@ public partial class OnlineArena : Control
     public LobbyConnection Connection { get; set; } = null!;
     public string RoomCode { get; set; } = "";
     public event Action? ReconnectRequested;
+    public event Action? ReturnToLobbyRequested;
+    internal bool HasFinishedResult => _snapshot?.Winner != null;
     private VBoxContainer? _root;
     private HFlowContainer _moves = null!;
     private Label _status = null!;
@@ -89,7 +91,8 @@ public partial class OnlineArena : Control
         {
             if (!_needsBaseline) { _needsBaseline = true; ResetAnimations(); }
         }
-        var snapshot = Connection.Duel;
+        var snapshot = Connection.Room?.Code == RoomCode ? Connection.Duel : null;
+        snapshot ??= Connection.LastResultRoom == RoomCode ? Connection.LastResult : null;
         if (snapshot != null && _snapshot != null && snapshot.Revision == _snapshot.Revision &&
             snapshot.AutoPassCombos != _snapshot.AutoPassCombos)
         {
@@ -128,6 +131,7 @@ public partial class OnlineArena : Control
         UpdateResolutionPresentation();
         if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
         UpdateEnabled(); RefreshRuntimeGuidance();
+        UpdateResultPresentation();
     }
 
     private void Render()
@@ -149,6 +153,8 @@ public partial class OnlineArena : Control
         brandColumn.AddThemeConstantOverride("separation", 0); brandColumn.AddChild(brand); header.AddChild(brandColumn);
         _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;
         _status.Visible = !Short; brandColumn.AddChild(_status);
+        if (!_preparing && s.Phase != Phase.Preparation)
+            ArenaPresentation.ActionCounters(header, s.Players[s.MySeat], s.Players[1 - s.MySeat]);
         BuildComboResponseToggle(header); BuildArenaMenu(header);
         var phase = s.Winner != null ? s.Winner == -1 ? "EMPATE" : s.Winner == s.MySeat ? "¡VICTORIA!" : "DERROTA" :
             $"TURNO {s.Turn:00} · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
@@ -205,6 +211,7 @@ public partial class OnlineArena : Control
         if (Short) { interaction.AddChild(inspectorColumn); interaction.AddChild(handColumn); }
         else { interaction.AddChild(handColumn); interaction.AddChild(inspectorColumn); }
         BuildActionArea(inspectorColumn);
+        BuildResultPanel(inspectorColumn);
         if (Short)
         {
             _turnControls.GetParent().RemoveChild(_turnControls); header.AddChild(_turnControls);
@@ -220,6 +227,7 @@ public partial class OnlineArena : Control
         _ownSkills.Clear(); _ownSkills.AddRange(_root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>());
         _evolveButton = _root.FindChild("EvolveRelikario", true, false) as Button;
         BuildMoves(); MoveChild(_diceOverlay, GetChildCount() - 1);
+        UpdateResultPresentation();
         BoardBuildCount++;
     }
 

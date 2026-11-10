@@ -20,6 +20,8 @@ public sealed class EngineSnapshot
     public string DieCaption { get; set; } = "";
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DuelHistory? PublicHistory { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? EndReason { get; set; }
 }
 
 [JsonSourceGenerationOptions(IgnoreReadOnlyProperties = true)]
@@ -42,7 +44,7 @@ public sealed partial class GameEngine
             return id;
         }
         var snapshot = new EngineSnapshot { State = State, PendingDie = _pendingDieEffect, ErrorResume = _errorResumePhase,
-            DieCaption = CurrentDieCaption, PublicHistory = PublicHistory, Active = Register(_activeActivation), Chain = _activationChain.Select(Register).ToArray(), Frames = frames };
+            DieCaption = CurrentDieCaption, PublicHistory = PublicHistory, EndReason = PublicEndReason, Active = Register(_activeActivation), Chain = _activationChain.Select(Register).ToArray(), Frames = frames };
         // Online snapshots never retain an ever-growing log. The private audit has its own retention.
         var log = State.Log;
         if (!keepLog) State.Log = [];
@@ -65,7 +67,7 @@ public sealed partial class GameEngine
             throw new InvalidOperationException("Activación persistida inválida.");
         for (var i = 0; i < saved.Frames.Count; i++) saved.Frames[i].Frame.Parent = Frame(saved.Frames[i].Parent);
         var game = new GameEngine(saved.State, random) { _pendingDieEffect = saved.PendingDie, _errorResumePhase = saved.ErrorResume,
-            _activeActivation = Frame(saved.Active), CurrentDieCaption = saved.DieCaption, PublicHistory = saved.PublicHistory };
+            _activeActivation = Frame(saved.Active), CurrentDieCaption = saved.DieCaption, PublicHistory = saved.PublicHistory, PublicEndReason = saved.EndReason };
         game._activationChain.AddRange(saved.Chain.Select(i => Frame(i) ?? throw new InvalidOperationException("Cadena persistida inválida.")));
         return game;
     }

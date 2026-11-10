@@ -22,6 +22,25 @@ Después de colocar los Bonus, la iniciativa muestra dos dados 3D que ruedan a l
 
 ## Presentación
 
+El lobby confirma «Copiado ✓» durante dos segundos solo si el portapapeles
+contiene el código mostrado. Crear, entrar y cerrar bloquean solicitudes
+repetidas mientras esperan respuesta; la reconexión recupera la pertenencia
+real a la sala antes de volver a habilitar esas acciones. Los nombres y el
+formato del código se validan antes del envío, y el servidor conserva la
+validación definitiva. Las salas inexistentes o completas incluyen un siguiente
+paso concreto. Los errores nuevos se desplazan a la vista una sola vez en
+pantallas pequeñas; los campos conservan el texto para poder corregirlo.
+
+El duelo terminado presenta victoria, derrota o empate, causa pública y vidas/PR
+finales de ambos jugadores. Espera al dado, los movimientos de cartas y el último
+impacto antes de reemplazar el inspector por el resultado. «Revisar tablero»
+recupera la lectura de cartas; Menú → Ver resultado permite volver. El historial
+sigue disponible. «Volver al lobby» cierra la sala, muestra la espera de
+confirmación y permite a cada jugador terminar de leer su resultado aunque el
+rival ya la haya cerrado. El resultado autorizado se conserva en memoria hasta
+ese retorno; si no hay conexión se ofrece Reconectar. No se presenta una causa
+inventada para resultados antiguos sin ese dato.
+
 `ArenaPresentation`, `ArenaMotion` y los controles de cartas, personajes, pilas y dado componen la arena PvP. `OnlineArena` solo consume las vistas autorizadas y envía una opción ligada a sala y revisión; no ejecuta ni predice las reglas.
 
 - Vida, PR, fase, dueño del turno y cantidades de zonas permanecen consultables.
@@ -85,6 +104,15 @@ La configuración contempla densidad y área segura. No constituye una exportaci
 
 ## Guía de decisiones y avance de fase
 
+La cabecera mantiene un contador «ACCIONES» con valores separados para TÚ y
+RIVAL. Permanece fuera del desplazamiento del tablero en todos los tamaños,
+también durante respuestas y resoluciones. Lee las acciones restantes de cada
+jugador del snapshot autorizado; gastar, recuperar costes por una anulación o
+comenzar un turno actualiza esos valores. No descuenta acciones al seleccionar
+cartas ni durante el envío. El cero sigue visible con tratamiento atenuado y el
+contador se omite durante la preparación. Los costes de cartas conservan su
+campo único; el título contextual no repite el presupuesto disponible.
+
 El inspector prioriza una instrucción concreta en descartes, objetivos, respuestas y dados. Al tocar una carta sin jugadas disponibles explica el bloqueo usando la fase, los recursos visibles y las opciones autorizadas del propio jugador. La espera solo anuncia un COMBO si el servidor ofrece uno. Enviar una decisión, perder conexión y resolver una animación tienen mensajes específicos; una instrucción nueva vuelve al inicio de la lectura. Los costes permanecen en su campo único.
 
 `ArenaGuidance.SuggestAdvance` consulta todas las opciones del snapshot, independientemente de la carta seleccionada. Solo sugiere avanzar al jugador de turno que debe decidir, en robo, combate, acciones o final, si existe `Advance` y las únicas otras opciones son abandonar. Un COMBO legal, evolución, aprendizaje, Bonus/canje o Relikia impiden la sugerencia. Un COMBO sin sus condiciones cumplidas no la impide.
@@ -103,6 +131,7 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. C
 - Código Konamy muestra en esa fila solo las no-habilidades del mazo propio. Seleccionar una ilustración ofrece la opción autorizada correspondiente; la mano del adversario y su vista del mazo permanecen ocultas.
 - Cambio de Mentes reconstruye ambas manos desde el estado autorizado. Anima un paquete boca abajo por cada mano no vacía, sin identidades en las señales y con duración independiente de la cantidad de cartas. Conserva las revelaciones de cada copia y comprueba los destinos de ambos asientos, también con manos vacías o desiguales.
 - Las señales visuales representan una revisión aceptada; tiradas consecutivas iguales siguen siendo eventos distintos. Una recuperación o salto de revisión restaura el estado sin reproducir efectos antiguos.
+- Los robos pendientes mantienen ocultas sus cartas de destino desde que se recibe la revisión. Cada carta aparece en la mano al terminar su propio vuelo; las siguientes siguen esperando, también con Triple Ataque Cruzado. Si una zona queda fuera de pantalla se omite su vuelo y se muestra su destino. Interrumpir las animaciones restaura las cartas, y reconectar presenta el estado recuperado sin repetir robos.
 - Las cartas no mantienen procesamiento de hover cuando ya no necesitan animarlo. Los personajes ocultos no avanzan; los visibles solicitan redibujado cuando cambia su fotograma. El dado deja de actualizar continuamente su viewport 3D cuando está inmóvil.
 - A cero vidas, Yuno usa un reposo agotado con respiración lenta, gesto preocupado y raspones. Se termina la reacción del último golpe antes de entrar al bucle. La vida recibida selecciona el reposo para ambos jugadores, también al recuperar la partida; volver a construir la arena no reinicia ese bucle.
 - Cuando el motor aplica una curación efectiva, emite `Heal` con el destinatario y las vidas recuperadas. La arena reproduce una acción de 1,2 segundos con gesto de alivio y corazones verdes de píxel después del dado y de los movimientos de cartas pendientes; luego vuelve al reposo. La señal no contiene identidades de cartas y se descarta al recuperar el estado, igual que los demás efectos visuales.
@@ -147,6 +176,22 @@ Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-searc
 `--history-only` verifica activación, Error y contraerror, resultados, privacidad,
 apertura/cierre mediante entrada real, recuperación sin duplicados y bloqueo
 durante el dado en cinco tamaños, desde ambos asientos.
+
+`--triple-attack-only` reproduce los tres robos de Triple Ataque Cruzado y
+comprueba su aparición individual, la carta conservada, la privacidad rival y
+la recuperación/interrupción en cuatro tamaños y ambos jugadores/asientos.
+
+`--actions-only` comprueba gasto, respuesta rival, devolución por Error, cero,
+reinicio de ambos presupuestos, selección sin gasto, recuperación y cabecera
+visible al desplazar el campo en cinco tamaños y ambos jugadores/asientos.
+
+`--closure-only` comprueba victoria/derrota/empate, causa persistida y heredada,
+espera del dado e impacto final, revisión del tablero y reapertura del resultado
+en cinco tamaños y ambos asientos. También verifica conexión, bloqueo de
+solicitudes, errores visibles y copia del código sin falsos positivos en el
+lobby; una ejecución gráfica restaura el portapapeles al terminar. La prueba de
+dos procesos PvP exige que ambos vuelvan al lobby y conserva el resultado del
+jugador cuyo rival cierra primero.
 
 `--preparation-only` comprueba elección inicial, mulligan y ambos dados de iniciativa en los cuatro tamaños y desde ambos asientos, incluido el resultado, la espera del robo inicial y la recuperación sin repetir la animación.
 

@@ -11,6 +11,7 @@ public sealed partial class GameEngine
     public const int MaxHandSize = 7;
     private readonly IGameRandom _random;
     public GameState State { get; } = new();
+    internal string? PublicEndReason { get; private set; }
     public event Action<int>? AttackPerformed;
     public event Action<int, int, int>? DamageReceived;
     public event Action<int, int>? HealingReceived;
@@ -540,6 +541,7 @@ public sealed partial class GameEngine
 
     private void Finish(int winner, string reason)
     {
+        PublicEndReason = reason; // Finish callers supply only a public outcome, never diagnostic log entries.
         State.Winner = winner;
         State.Phase = Phase.Finished;
         Log(reason);

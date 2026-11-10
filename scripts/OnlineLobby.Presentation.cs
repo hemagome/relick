@@ -1,4 +1,6 @@
 using Godot;
+using Relick.Network;
+using Relick.Network.Types;
 
 namespace Relick;
 
@@ -14,6 +16,11 @@ public partial class OnlineLobby
     private readonly List<Label> _entryTitles = [];
     private readonly List<Control> _entryDescriptions = [];
     private Label _connectionDot = null!;
+    private Button _reconnect = null!;
+    private string _presentedRoomCode = "", _copiedCode = "", _lobbyNotice = "";
+    private double _copyFeedbackSeconds;
+    private ScrollContainer _lobbyPage = null!;
+    private string _shownLobbyProblem = "";
     private static readonly Color LobbyMint = new("5ed6b3");
     private static readonly Color LobbyBlue = new("9ebdff");
 
@@ -25,6 +32,7 @@ public partial class OnlineLobby
         _content = new MarginContainer(); AddChild(_content);
         _content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var page = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true };
+        _lobbyPage = page;
         _content.AddChild(page);
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddThemeConstantOverride("separation", 18); page.AddChild(column); _lobbyColumn = column;
@@ -57,7 +65,7 @@ public partial class OnlineLobby
         var explanation = Description("Crea una sala privada y comparte el código con tu rival.");
         create.AddChild(explanation); _entryDescriptions.Add(explanation);
         create.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new(0, 10) });
-        _create = AddButton(create, "Crear sala", () => _lobby.Create(_name.Text));
+        _create = AddButton(create, "Crear sala", () => { _lobbyNotice = _localError = ""; _lobby.Create(_name.Text); });
         AccentButton(_create, LobbyMint);
 
         var join = EntryCard(cards, GameIcon.Exchange, LobbyBlue, "Tengo un código", "Entra a la sala de tu rival.");
@@ -65,16 +73,17 @@ public partial class OnlineLobby
             CustomMinimumSize = new(0, 48), Alignment = HorizontalAlignment.Center };
         _code.AddThemeFontSizeOverride("font_size", 20); join.AddChild(_code);
         join.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        _join = AddButton(join, "Unirse", () => _lobby.Join(_code.Text, _name.Text));
+        _join = AddButton(join, "Unirse", JoinRoom);
         AccentButton(_join, LobbyBlue);
-        _code.TextSubmitted += _ => { if (!_join.Disabled) _lobby.Join(_code.Text, _name.Text); };
+        _code.TextSubmitted += _ => { if (!_join.Disabled) JoinRoom(); };
 
         _roomPanel = Surface(column, 24); _roomPanel.Visible = false;
         var roomColumn = new VBoxContainer(); roomColumn.AddThemeConstantOverride("separation", 14); _roomPanel.AddChild(roomColumn);
         roomColumn.AddChild(Caption("TU SALA · DUELO PRIVADO", LobbyMint));
         var roomRow = new HBoxContainer(); roomRow.AddThemeConstantOverride("separation", 16); roomColumn.AddChild(roomRow);
         _room = Text("", 34); _room.SizeFlagsHorizontal = SizeFlags.ExpandFill; roomRow.AddChild(_room);
-        _copy = AddButton(roomRow, "Copiar código", () => DisplayServer.ClipboardSet(_lobby.Room?.Code ?? ""));
+        _copy = AddButton(roomRow, "Copiar código", CopyRoomCode);
+        _copy.Name = "CopyRoomCode";
         AccentButton(_copy, LobbyMint);
         _players = Text("", 18); roomColumn.AddChild(_players);
         _preparation = Description(""); roomColumn.AddChild(_preparation);
@@ -86,7 +95,7 @@ public partial class OnlineLobby
         _connectionDot = Text("●", 12); _connectionDot.SizeFlagsVertical = SizeFlags.ShrinkCenter; connection.AddChild(_connectionDot);
         _status = Description("Conectando…"); _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _status.SizeFlagsVertical = SizeFlags.ShrinkCenter; connection.AddChild(_status);
-        var reconnect = AddButton(connection, "Reconectar", Connect); reconnect.CustomMinimumSize = new(126, 48);
+        _reconnect = AddButton(connection, "Reconectar", Connect); _reconnect.CustomMinimumSize = new(126, 48);
         Resized += AdjustLobbyLayout; AdjustLobbyLayout();
     }
 
@@ -96,6 +105,62 @@ public partial class OnlineLobby
         _roomPanel.Visible = inRoom;
         var color = _localError.Length > 0 ? ArenaPresentation.Coral : _lobby.Ready ? LobbyMint : BoardArt.Gold;
         _connectionDot.Modulate = color;
+    }
+
+    private void JoinRoom() { _lobbyNotice = _localError = ""; _lobby.Join(_code.Text, _name.Text); }
+
+    private void CopyRoomCode()
+    {
+        if (_copy.Disabled || _presentedRoomCode.Length == 0) return;
+        if (!DisplayServer.HasFeature(DisplayServer.Feature.Clipboard))
+        { _localError = "No se pudo copiar. Comparte el código que aparece en tu sala."; return; }
+        DisplayServer.ClipboardSet(_presentedRoomCode);
+        if (DisplayServer.ClipboardGet() != _presentedRoomCode)
+        { _localError = "No se pudo copiar. Comparte el código que aparece en tu sala."; return; }
+        _localError = ""; _copiedCode = _presentedRoomCode; _copyFeedbackSeconds = 2;
+        _copy.Text = "Copiado ✓";
+    }
+
+    private void PresentLobbyState(RoomInfo? room, bool ready, bool connecting, RoomRequest pending, string error, string message)
+    {
+        var roomCode = room?.Code ?? "";
+        if (_presentedRoomCode != roomCode) { _copyFeedbackSeconds = 0; _copiedCode = ""; }
+        _presentedRoomCode = roomCode;
+        var failed = _localError.Length > 0 ? _localError : ready ? error : "";
+        _status.Text = failed.Length > 0 ? failed switch
+        {
+            "No se encontró la sala." => "No encontramos esa sala. Revisa el código con tu rival y vuelve a intentarlo.",
+            "La sala ya está completa." => "La sala está completa o el duelo ya empezó. Pide a tu rival un código nuevo.",
+            _ => failed
+        } : connecting ? "Conectando con Relick…" : !ready ? "Sin conexión. Comprueba tu conexión y pulsa Reconectar para recuperar tu sala."
+            : pending != RoomRequest.None ? message : _lobbyNotice.Length > 0 && room == null ? _lobbyNotice : message == "Conectado" && room == null ? "Conectado. Crea una sala o entra con un código." : message;
+        UpdateLobbyPresentation(room != null);
+        _connectionDot.Modulate = failed.Length > 0 ? ArenaPresentation.Coral : ready ? LobbyMint : BoardArt.Gold;
+        var busy = pending != RoomRequest.None;
+        _create.Disabled = _join.Disabled = !ready || busy || room != null;
+        _create.Text = pending == RoomRequest.Create ? "Creando…" : "Crear sala";
+        _join.Text = pending == RoomRequest.Join ? "Entrando…" : "Unirse";
+        _name.Editable = _code.Editable = room == null && !busy;
+        _copy.Visible = _leave.Visible = room != null;
+        _copy.Disabled = !ready || busy;
+        _copy.Text = _copiedCode == roomCode && _copyFeedbackSeconds > 0 ? "Copiado ✓" : "Copiar código";
+        _leave.Disabled = !ready || busy;
+        _leave.Text = pending == RoomRequest.Leave ? "Cerrando…" : "Cerrar sala";
+        _reconnect.Visible = !ready; _reconnect.Disabled = connecting;
+        _room.Text = room == null ? "Sin sala" : $"Sala · {room.Code}";
+        _players.Text = room == null ? "" : $"{room.PlayerOne}  vs  {(room.PlayerTwo.Length > 0 ? room.PlayerTwo : "Esperando rival…")}\nTu lugar: jugador {room.MySeat + 1}";
+        _preparation.Text = "Comparte el código con tu rival. Entraréis al tablero cuando se una.";
+        var problem = failed.Length > 0 ? failed : !ready && !connecting ? "desconectado" : "";
+        if (problem != _shownLobbyProblem)
+        {
+            _shownLobbyProblem = problem;
+            if (problem.Length > 0) CallDeferred(nameof(ScrollToLobbyStatus));
+        }
+    }
+
+    private void ScrollToLobbyStatus()
+    {
+        if (_shownLobbyProblem.Length > 0 && _status.IsVisibleInTree()) _lobbyPage.EnsureControlVisible(_status);
     }
 
     private static Label Caption(string text, Color color)

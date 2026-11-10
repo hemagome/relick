@@ -96,6 +96,8 @@ public partial class OnlineArena
                     break;
             }
         }
+        // The snapshot already contains all drawn cards; reveal each destination only on arrival.
+        SetQueuedDestinationsOpacity(0);
         _flightLayoutFrames = 2;
         _lastDisabled = null;
         PlayPendingPortraits();

@@ -43,9 +43,9 @@ public partial class OnlineLobby
         {
             var menu = (MenuButton)_arena!.FindChild("ArenaMenu", true, false);
             await Click(menu); var popup = menu.GetPopup(); await Until(() => popup.Visible);
-            popup.SetFocusedItem(popup.GetItemIndex(id));
-            popup.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = true }, true);
-            popup.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = false }, true);
+            popup.GrabFocus(); popup.SetFocusedItem(popup.GetItemIndex(id)); await Frame();
+            GetTree().Root.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = true }, true);
+            GetTree().Root.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = false }, true);
             await Frame();
         }
         try
@@ -101,13 +101,29 @@ public partial class OnlineLobby
             }
             await Until(() => _lobby.Duel?.Winner != null);
             if (_lobby.Duel!.Winner != 1) throw new Exception("Los clientes no ven la victoria del segundo jugador.");
+            await Until(() => _arena!.FindChild("DuelResultPanel", true, false) is Control { Visible: true });
+            if (((Label)_arena!.FindChild("DuelResultTitle", true, false)).Text != (host ? "DERROTA" : "VICTORIA"))
+                throw new Exception("El cierre atribuye la victoria al jugador equivocado.");
+            var resultShot = args.FirstOrDefault(a => a.StartsWith("--pvp-screenshot="))?.Split('=', 2)[1];
+            if (resultShot != null && DisplayServer.GetName() != "headless")
+            {
+                await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                GetViewport().GetTexture().GetImage().SavePng(resultShot);
+            }
             if (host)
             {
                 await Until(() => System.IO.File.Exists(session + ".guest.result"));
-                await ArenaMenu(2);
+                await Click((Button)_arena.FindChild("ReturnToLobby", true, false));
             }
             else System.IO.File.WriteAllText(session + ".guest.result", "seen");
             await Until(() => _lobby.Room == null);
+            if (!host)
+            {
+                if (_arena == null || !_arena.HasFinishedResult || !((Control)_arena.FindChild("DuelResultPanel", true, false)).Visible)
+                    throw new Exception("Cerrar desde el rival elimina el resultado antes de leerlo.");
+                await Click((Button)_arena.FindChild("ReturnToLobby", true, false));
+            }
+            await Until(() => _arena == null && _content.Visible && !_create.Disabled && !_join.Disabled);
             GD.Print($"PVP_INPUT_PEER_PASS · {role} · nombre, código, sala, cambio de carta, confirmación, arena, diálogos y cierre con eventos de entrada.");
             GetTree().Quit();
         }

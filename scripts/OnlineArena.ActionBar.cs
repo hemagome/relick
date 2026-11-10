@@ -269,7 +269,7 @@ public partial class OnlineArena
             Phase.PointsChoice => _pointsTarget is int target ? s.Players[target].Name : "Relick Points",
             Phase.MagnetChoice => "Crítico de Magnet",
             _ => ChoosingEffectCards ? "Elige una carta" : _fieldSelection?.Zone == FieldZone.Hand ? _fieldSelection.Value.Owner == s.MySeat ? "Mi mano" : "Mano rival" : s.DecisionPlayer != s.MySeat ? "Decisión del rival" : s.Phase switch
-            { Phase.Combat => "Tu combate", Phase.Actions => $"Tus acciones · {s.Players[s.MySeat].Actions} disponibles", Phase.Draw => "Fase de robo", Phase.Final => "Cierre del turno", _ => "Tu decisión" }
+            { Phase.Combat => "Tu combate", Phase.Actions => "Tus acciones", Phase.Draw => "Fase de robo", Phase.Final => "Cierre del turno", _ => "Tu decisión" }
         };
     }
 

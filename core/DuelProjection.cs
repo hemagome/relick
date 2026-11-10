@@ -63,6 +63,8 @@ public sealed class DuelSnapshot
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int ExtraFinalStages { get; set; }
     public int? Winner { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? EndReason { get; set; }
     public int Die { get; set; }
     public string DieCaption { get; set; } = "";
     public string LastCombat { get; set; } = "";
@@ -98,7 +100,7 @@ public sealed class DuelSnapshot
                 stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
                 stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase,
             DieCaption = game.CurrentDieCaption,
-            LastCombat = s.LastCombat, Resolution = game.PublicResolution(), History = game.PublicHistory?.Entries.ToList(),
+            LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(), History = game.PublicHistory?.Entries.ToList(),
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
             Players = s.Players.Select((p, index) => new DuelPlayerView
             {

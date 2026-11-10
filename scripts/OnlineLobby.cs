@@ -25,6 +25,7 @@ public partial class OnlineLobby : Control
     private string _localError = "";
     private MarginContainer _content = null!;
     private OnlineArena? _arena;
+    private bool _resultExitRequested;
 
     public override void _Ready()
     {
@@ -78,32 +79,43 @@ public partial class OnlineLobby : Control
             var token = System.IO.File.Exists(_tokenPath) ? System.IO.File.ReadAllText(_tokenPath) : null;
             _lobby.Connect(_server, _database, token);
         }
-        catch (Exception error) { _localError = "No se pudo conectar: " + error.Message; }
+        catch (Exception) { _localError = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; }
     }
 
     public override void _Process(double delta)
     {
         _lobby.Tick();
         var room = _lobby.Room;
-        if (_arena != null && _lobby.Ready && room == null)
+        if (_presentedRoomCode.Length > 0 && room == null && _lobby.Ready)
+            _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
+        if (_arena == null && room == null && _lobby.LastResult != null && !_resultExitRequested)
+            OpenArena(_lobby.LastResultRoom);
+        if (_arena != null && _lobby.Ready && (room == null && !_arena.HasFinishedResult && _lobby.LastResult == null ||
+            _resultExitRequested && room?.Code != _arena.RoomCode))
         {
             RemoveChild(_arena); _arena.QueueFree(); _arena = null; _content.Visible = true;
+            _lobby.ClearResult(); _resultExitRequested = false;
+            _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
         }
         if (_arena == null && room != null && (room.Dealt || _lobby.Duel != null))
         {
-            _arena = new OnlineArena { Connection = _lobby, RoomCode = room!.Code };
-            _arena.ReconnectRequested += Connect;
-            _content.Visible = false; AddChild(_arena);
+            OpenArena(room!.Code);
         }
-        _status.Text = _localError.Length > 0 ? _localError : _lobby.Message;
-        UpdateLobbyPresentation(room != null);
-        _create.Disabled = _join.Disabled = !_lobby.Ready || room != null;
-        _name.Editable = _code.Editable = room == null;
-        _copy.Visible = _leave.Visible = room != null;
-        _leave.Disabled = !_lobby.Ready;
-        _room.Text = room == null ? "Sin sala" : $"Sala · {room.Code}";
-        _players.Text = room == null ? "" : $"{room.PlayerOne}  vs  {(room.PlayerTwo.Length > 0 ? room.PlayerTwo : "Esperando rival…")}\nTu lugar: jugador {room.MySeat + 1}";
-        _preparation.Text = "Comparte el código con tu rival. Entraréis al tablero cuando se una.";
+        _copyFeedbackSeconds = Math.Max(0, _copyFeedbackSeconds - delta);
+        PresentLobbyState(room, _lobby.Ready, _lobby.Connecting, _lobby.PendingRoomRequest, _lobby.RoomError, _lobby.Message);
+    }
+
+    private void OpenArena(string roomCode)
+    {
+        _resultExitRequested = false;
+        var arena = new OnlineArena { Connection = _lobby, RoomCode = roomCode };
+        arena.ReconnectRequested += Connect;
+        arena.ReturnToLobbyRequested += () =>
+        {
+            _resultExitRequested = true;
+            if (_lobby.Room?.Code == roomCode) _lobby.Leave(roomCode);
+        };
+        _arena = arena; _content.Visible = false; AddChild(arena);
     }
 
     private void AdjustLobbyLayout()

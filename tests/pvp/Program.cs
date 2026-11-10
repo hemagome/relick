@@ -196,7 +196,15 @@ try
     services.Add(service);
     service.Connect(server, database, null);
     Until(() => service.Ready);
+    service.Create("   ");
+    Check(service.RoomError.Contains("nombre") && service.PendingRoomRequest == Relick.Network.RoomRequest.None && service.Room == null,
+        "El lobby explica un nombre inválido sin enviar ni crear sala");
+    service.Join("corto", "Cliente Godot");
+    Check(service.RoomError.Contains("8") && service.PendingRoomRequest == Relick.Network.RoomRequest.None,
+        "El lobby exige un código completo antes de enviar");
     service.Create("Cliente Godot");
+    service.Create("Solicitud repetida");
+    Check(service.PendingRoomRequest == Relick.Network.RoomRequest.Create, "Crear bloquea solicitudes repetidas hasta recibir respuesta");
     Until(() => service.Room != null);
     var nextCode = service.Room!.Code;
     b.Connection.Reducers.JoinRoom(nextCode, "Beto");
@@ -344,6 +352,8 @@ try
         if (combatSteps % 20 == 0) Console.WriteLine($"PROGRESS combate: {combatSteps} jugadas, turno {fighterA.Duel.Turn}, fase {fighterA.Duel.Phase}");
     }
     Check(fighterA.Duel.Winner != null && b.Duel!.Winner == fighterA.Duel.Winner, "Duelo completo resuelto por el servidor con ganador consistente");
+    Check(!string.IsNullOrEmpty(fighterA.Duel.EndReason) && fighterA.Duel.EndReason == b.Duel!.EndReason,
+        "Ambos jugadores reciben la misma causa pública del resultado");
     Check(fighterA.Duel.History!.Count == DuelHistory.Capacity,
         "El duelo completo mantiene solo las últimas veinte jugadas públicas en ambos clientes");
     Console.WriteLine($"IMPACT_TRANSPORT · {verifiedImpacts} impactos con resultado final verificado.");
@@ -352,6 +362,8 @@ try
     Check(decisions.Contains(Phase.AttackRerollChoice) || decisions.Contains(Phase.DieRerollChoice), "La partida remota ejercita decisiones de dado persistidas");
     service.Leave();
     Until(() => service.Room == null && b.Room == null && fighterA.Duel == null);
+    Check(service.LastResult?.Winner != null && !string.IsNullOrEmpty(service.LastResult.EndReason),
+        "Cerrar la sala conserva el resultado autorizado para terminar de leerlo");
     Check(service.Duel == null && b.Duel == null, "Cerrar el resultado limpia las vistas de combate y sus registros");
     foreach (var table in new[] { "duel", "duel_step" })
     {
@@ -368,11 +380,19 @@ try
     Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
     service.Confirm([]); b.Connection.Reducers.ConfirmPreparation(surrenderCode, [], Guid.NewGuid().ToString("N"));
     Until(() => service.Duel != null && b.Duel != null);
+    using var bufferedResult = new Relick.Network.LobbyConnection();
+    bufferedResult.Connect(server, database, b.Token); services.Add(bufferedResult);
+    Until(() => bufferedResult.Ready && bufferedResult.Duel != null); services.Remove(bufferedResult);
     var surrender = b.Duel!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Concede);
     b.Connection.Reducers.PlayDuelV2(surrenderCode, 0, Guid.NewGuid().ToString("N"), surrender, []);
     Until(() => service.Duel?.Winner == 0 && b.Duel?.Winner == 0);
     Check(b.Duel.Options.Count == 0, "Abandonar concede la victoria al rival y termina el duelo");
     service.Leave(); Until(() => service.Room == null && b.Room == null);
+    services.Add(bufferedResult);
+    Until(() => bufferedResult.Room == null && bufferedResult.LastResult?.Winner == 0);
+    Check(bufferedResult.LastResult!.EndReason?.Contains("abandona el duelo") == true,
+        "Recibir victoria y borrado en el mismo procesamiento conserva la causa del resultado");
+    services.Remove(bufferedResult); bufferedResult.Dispose();
     service.Create("Agotamiento"); Until(() => service.Room != null);
     var recycleCode = service.Room!.Code;
     b.Connection.Reducers.JoinRoom(recycleCode, "Memoria");

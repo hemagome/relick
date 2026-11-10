@@ -17,6 +17,11 @@ public partial class OnlineLobby
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+            if (OS.GetCmdlineUserArgs().Contains("--closure-only"))
+            {
+                await online.CheckDuelResults(); online.Hide(); await CheckLobbyPolish();
+                online.QueueFree(); await Layout(); GD.Print("PVP_CLOSURE_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--preparation-only"))
             {
                 await online.CheckPreparationLayout(); online.QueueFree(); await Layout();
@@ -29,6 +34,11 @@ public partial class OnlineLobby
                 GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
                 GD.Print("PVP_COMBO_RESPONSES_ONLY_PASS"); GetTree().Quit(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--actions-only"))
+            {
+                await online.CheckActionCounters(); online.QueueFree(); await Layout();
+                GD.Print("PVP_ACTION_COUNTERS_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--guidance-only"))
             {
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
@@ -38,6 +48,11 @@ public partial class OnlineLobby
             {
                 await online.CheckCardInspector(); online.QueueFree(); await Layout();
                 GD.Print("PVP_INSPECTOR_ONLY_PASS"); GetTree().Quit(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--triple-attack-only"))
+            {
+                await online.CheckTripleAttackDraws(); online.QueueFree(); await Layout();
+                GD.Print("PVP_TRIPLE_ATTACK_ONLY_PASS"); GetTree().Quit(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--history-only"))
             {
@@ -138,8 +153,10 @@ public partial class OnlineLobby
             await online.CheckComboResponseToggle();
             await online.CheckContextActionBar();
             await online.CheckDecisionGuidance();
+            await online.CheckActionCounters();
             await online.CheckMemoryInspection();
             await online.CheckPublicHistory();
+            await online.CheckTripleAttackDraws();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();
@@ -159,7 +176,9 @@ public partial class OnlineLobby
             await online.CheckDexterityLayout();
             await online.CheckYunoEvolutionLayout();
             await online.CheckReverseLayout();
+            await online.CheckDuelResults();
             await online.CheckPreparationLayout();
+            online.Hide(); await CheckLobbyPolish();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
             GD.Print("PVP_UI_PASS · solo PvP, cuatro tamaños, ambos asientos, selección inicial, mulligan, recuperación y animaciones.");

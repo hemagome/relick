@@ -254,6 +254,26 @@ public static class ArenaPresentation
         text.Name = "DuelScoreline"; text.AutowrapMode = TextServer.AutowrapMode.WordSmart; parent.AddChild(text);
     }
 
+    public static void ActionCounters(Node parent, DuelPlayerView own, DuelPlayerView rival)
+    {
+        var panel = new PanelContainer { Name = "ActionCounters", CustomMinimumSize = new(124, 48),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            TooltipText = $"Acciones restantes · {own.Name}: {own.Actions} · {rival.Name}: {rival.Actions}.\nSe actualizan al gastar, recuperar o comenzar un turno." };
+        var frame = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame);
+        frame.ContentMarginLeft = frame.ContentMarginRight = 10;
+        frame.ContentMarginTop = frame.ContentMarginBottom = 4;
+        panel.AddThemeStyleboxOverride("panel", frame); parent.AddChild(panel);
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 0); panel.AddChild(column);
+        var caption = Text("ACCIONES", 10, BoardArt.Muted);
+        caption.HorizontalAlignment = HorizontalAlignment.Center; column.AddChild(caption);
+        var values = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        values.AddThemeConstantOverride("separation", 12); column.AddChild(values);
+        var mine = Text($"TÚ {own.Actions}", 14, own.Actions == 0 ? BoardArt.Muted : Mint);
+        mine.Name = "OwnActionsCounter"; values.AddChild(mine);
+        var theirs = Text($"RIVAL {rival.Actions}", 14, rival.Actions == 0 ? BoardArt.Muted : Coral);
+        theirs.Name = "RivalActionsCounter"; values.AddChild(theirs);
+    }
+
     public static void Phases(Node parent, Phase stage, string caption, int turn, bool ownTurn, bool compact)
     {
         if (compact)
