@@ -12,7 +12,12 @@ Los significados de `RelickVisuals.State` son independientes del tapete: selecci
 
 ## Salas y preparación
 
-La entrada agrupa el nombre del jugador y dos tarjetas: crear una sala o unirse con código. Usa el fondo de arena, superficies oscuras, acentos verde/azul y foco visible. En pantallas cortas se reducen márgenes y descripciones. Enter en el código permite unirse cuando hay conexión.
+La entrada agrupa el nombre del jugador y dos tarjetas: Partida rápida y Sala privada.
+La primera ofrece Buscar rival y, durante la espera, un contador y Cancelar búsqueda.
+La segunda conserva Crear sala y Unirse mediante código. Buscar bloquea el nombre,
+el código y las acciones privadas hasta cancelar o encontrar rival. Usa el fondo de
+arena, superficies oscuras, acentos verde/azul y foco visible. En pantallas cortas se
+reducen márgenes y descripciones. Enter en el código permite unirse cuando hay conexión.
 
 El estado normal no muestra «Conectado». Al perder la conexión aparece un cuadro
 central grande «Sin conexión», sobre la sala o el tablero, con el botón Reconectar.

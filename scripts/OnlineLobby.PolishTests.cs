@@ -54,6 +54,29 @@ public partial class OnlineLobby
                 PresentLobbyState(null, true, false, RoomRequest.None, "", "Conectado"); await Layout();
                 Check(!_connectionNotice.Visible && !_status.GetParent<Control>().Visible && _status.Text.Length == 0,
                     "La recuperación no retira el cuadro o sigue anunciando Conectado.");
+                Check(!_quickMatch.Disabled && _quickMatch.Text == "Buscar rival", "No se puede iniciar partida rápida.");
+                PresentLobbyState(null, true, false, RoomRequest.None, "", "Conectado", quickMatchAvailable: false);
+                Check(_quickMatch.Disabled && !_create.Disabled && !_join.Disabled,
+                    "Un servidor sin cola impide usar las salas privadas.");
+                PresentLobbyState(null, true, false, RoomRequest.FindQuickMatch, "", "Iniciando búsqueda…"); await Layout();
+                Check(_quickMatch.Disabled && _create.Disabled && _join.Disabled && !_name.Editable,
+                    "Iniciar búsqueda permite repetir solicitudes o entrar a una sala privada.");
+                PresentLobbyState(null, true, false, RoomRequest.None, "", "Buscando rival…", true); await Layout();
+                Check(!_quickMatch.Disabled && _quickMatch.Text == "Cancelar búsqueda" && _quickMatchStatus.Visible && _create.Disabled && _join.Disabled && !_code.Editable,
+                    "La búsqueda no ofrece cancelar o mantiene acciones privadas activas.");
+                _lobbyPage.EnsureControlVisible(_quickMatch); await Layout();
+                var quickClicks = 0;
+                void QuickClick() => quickClicks++;
+                _quickMatch.Pressed -= QuickMatch; _quickMatch.Pressed += QuickClick;
+                try { GuiInputTestDriver.Click(_quickMatch); Check(quickClicks == 1, "Cancelar búsqueda no recibe el clic."); }
+                finally { _quickMatch.Pressed -= QuickClick; _quickMatch.Pressed += QuickMatch; }
+                if (size.X is 1440 or 700) await Capture($"lobby-searching-{size.X}x{size.Y}");
+                PresentLobbyState(null, true, false, RoomRequest.CancelQuickMatch, "", "Cancelando búsqueda…", true);
+                Check(_quickMatch.Disabled && _quickMatch.Text == "Cancelando…", "Cancelar permite solicitudes repetidas.");
+                PresentLobbyState(null, true, false, RoomRequest.None, "", "Búsqueda cancelada."); await Layout();
+                Check(!_quickMatch.Disabled && !_create.Disabled && !_join.Disabled && _name.Editable && !_quickMatchStatus.Visible,
+                    "La cancelación no recupera el lobby.");
+                _lobbyNotice = "";
                 PresentLobbyState(null, true, false, RoomRequest.Create, "", "Creando sala…");
                 Check(_create.Disabled && _join.Disabled && !_name.Editable && !_code.Editable && _create.Text.Contains("Creando"), "La solicitud pendiente sigue editable o se puede repetir.");
                 foreach (var error in new[] { "No se encontró la sala.", "La sala ya está completa." })

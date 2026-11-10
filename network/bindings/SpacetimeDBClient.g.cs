@@ -36,6 +36,7 @@ namespace Relick.Network.Types
             AddTable(MyInitialSkill = new(conn));
             AddTable(MyMoveResult = new(conn));
             AddTable(MyPreparation = new(conn));
+            AddTable(MyQuickSearch = new(conn));
             AddTable(MyRoom = new(conn));
         }
     }
@@ -541,6 +542,7 @@ namespace Relick.Network.Types
             new QueryBuilder().From.MyInitialSkill().ToSql(),
             new QueryBuilder().From.MyMoveResult().ToSql(),
             new QueryBuilder().From.MyPreparation().ToSql(),
+            new QueryBuilder().From.MyQuickSearch().ToSql(),
             new QueryBuilder().From.MyRoom().ToSql(),
         }
         ;
@@ -556,6 +558,7 @@ namespace Relick.Network.Types
         public global::SpacetimeDB.Table<InitialSkillInfo, MyInitialSkillCols, MyInitialSkillIxCols> MyInitialSkill() => new("my_initial_skill", new MyInitialSkillCols("my_initial_skill"), new MyInitialSkillIxCols("my_initial_skill"));
         public global::SpacetimeDB.Table<MoveResult, MyMoveResultCols, MyMoveResultIxCols> MyMoveResult() => new("my_move_result", new MyMoveResultCols("my_move_result"), new MyMoveResultIxCols("my_move_result"));
         public global::SpacetimeDB.Table<PreparationInfo, MyPreparationCols, MyPreparationIxCols> MyPreparation() => new("my_preparation", new MyPreparationCols("my_preparation"), new MyPreparationIxCols("my_preparation"));
+        public global::SpacetimeDB.Table<QuickSearchInfo, MyQuickSearchCols, MyQuickSearchIxCols> MyQuickSearch() => new("my_quick_search", new MyQuickSearchCols("my_quick_search"), new MyQuickSearchIxCols("my_quick_search"));
         public global::SpacetimeDB.Table<RoomInfo, MyRoomCols, MyRoomIxCols> MyRoom() => new("my_room", new MyRoomCols("my_room"), new MyRoomIxCols("my_room"));
     }
 
@@ -638,11 +641,14 @@ namespace Relick.Network.Types
             var eventContext = (ReducerEventContext)context;
             return reducer switch
             {
+                Reducer.CancelQuickMatch args => Reducers.InvokeCancelQuickMatch(eventContext, args),
                 Reducer.ChooseInitialSkill args => Reducers.InvokeChooseInitialSkill(eventContext, args),
                 Reducer.ConfirmPreparation args => Reducers.InvokeConfirmPreparation(eventContext, args),
                 Reducer.CreateRoom args => Reducers.InvokeCreateRoom(eventContext, args),
                 Reducer.EnsureDuel args => Reducers.InvokeEnsureDuel(eventContext, args),
+                Reducer.FindQuickMatch args => Reducers.InvokeFindQuickMatch(eventContext, args),
                 Reducer.JoinRoom args => Reducers.InvokeJoinRoom(eventContext, args),
+                Reducer.KeepQuickMatchAlive args => Reducers.InvokeKeepQuickMatchAlive(eventContext, args),
                 Reducer.LeaveRoom args => Reducers.InvokeLeaveRoom(eventContext, args),
                 Reducer.PlayDuelV2 args => Reducers.InvokePlayDuelV2(eventContext, args),
                 Reducer.SetComboResponses args => Reducers.InvokeSetComboResponses(eventContext, args),

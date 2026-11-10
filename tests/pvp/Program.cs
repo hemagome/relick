@@ -3,6 +3,7 @@ using Relick.Core;
 using System.Text.Json;
 
 if (args.FirstOrDefault() == "--connection-health") return await ConnectionHealthChecks.Run(args);
+if (args.FirstOrDefault() == "--quick-match") return await QuickMatchChecks.Run(args);
 if (args.FirstOrDefault()?.StartsWith("--") == true) return await ScalabilityChecks.Run(args);
 
 var server = args.ElementAtOrDefault(0) ?? "http://127.0.0.1:3100";

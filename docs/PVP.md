@@ -20,6 +20,34 @@ Implementado y probado el 6 de noviembre de 2026 con CLI, Runtime y SDK 2.14.1:
 
 ## Probar entre dos equipos
 
+Para jugar sin compartir códigos, escribe tu nombre y pulsa **Buscar rival** en
+Partida rápida. Es una cola casual única, sin rangos ni puntuaciones. Puedes
+cancelar mientras esperas. Cuando llega otro jugador, el servidor crea una sala
+completa y ambos pasan automáticamente a elegir habilidad y preparar la mano.
+
+La cola es privada: cada identidad solo consulta su propia búsqueda mediante
+`my_quick_search`. Repetir la búsqueda no crea otra entrada ni permite jugar
+contra la misma identidad. Cancelar usa el identificador de la búsqueda: una
+cancelación atrasada no afecta una búsqueda nueva ni cierra un duelo ya asignado.
+Las salas privadas y la cola son excluyentes, también en el servidor.
+
+La búsqueda se elimina al desconectarse su conexión propietaria. Para los cortes
+silenciosos se renueva una vigencia de quince segundos cada cinco segundos; una
+entrada vencida no se empareja, y el planificador la retira. Reconectar recupera
+un duelo ya asignado, pero no inicia otra búsqueda automáticamente. El cliente
+consulta la disponibilidad de la cola por separado: un servidor anterior sigue
+permitiendo las salas privadas y muestra Buscar rival deshabilitado.
+
+Implementación del 10 de noviembre de 2026: validada en una base local aislada
+con quince comprobaciones de cola, la regresión PvP completa, dos procesos Godot
+con entrada real y cuatro tamaños de interfaz. Publicada el mismo día en
+`relick-pvp-dev-c2006ee7` de Maincloud con `--delete-data=never`. La migración
+añadió únicamente la tabla privada `quick_search` y la vista `my_quick_search`,
+sin eliminar tablas ni datos existentes.
+La verificación remota emparejó dos identidades temporales en la misma sala,
+completó la elección de habilidad y el reparto de cinco cartas por jugador,
+y cerró la sala de prueba al finalizar.
+
 Abre el juego con `./jugar.sh`: entrarás directamente a las salas PvP. Escribe tu nombre y crea una sala. El rival abre la misma versión e introduce el código. Al entrar el segundo jugador se abre el tablero para ambos, en **Preparación**: aparecen los Relikarios y primero eliges una habilidad entre las de tu mazo. Después se reparte esa habilidad junto a otras cuatro cartas; la del rival permanece boca abajo. Toca las cartas que quieres cambiar —incluida la habilidad elegida, si quieres— o conserva las cinco, y confirma. Tu selección queda bloqueada mientras esperas al rival. Cuando ambos confirman, se muestran tus devoluciones, el barajado visual, los reemplazos y los Bonus; el resumen de iniciativa identifica quién empieza y se anima su robo de turno. El combate continúa en el mismo tablero. Reconectar conserva una preparación confirmada. En combate, pulsa una carta para filtrar sus jugadas o elige una opción general. Para defender con Destiny, selecciona los descartes y después la defensa del espacio elegido. Abandonar duelo pide confirmación y concede la victoria al rival.
 
 La conexión de desarrollo está en `network/server.cfg`:
@@ -69,7 +97,21 @@ Pruebas contra un servidor real ya iniciado y con el módulo publicado:
 dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj
 ```
 
-Acepta servidor y base como argumentos para verificar otra publicación. La prueba crea identidades temporales, comprueba aislamiento, rechazo del tercer jugador, denegación de consultas privadas, selección de cero/dos/cinco cartas, solicitudes inválidas, espera mutua, Bonus, iniciativa, conservación de cartas, reintentos y reconexión antes/después del inicio. También completa un duelo, reconecta durante el combate, comprueba abandono, descarta jugadas obsoletas y verifica que el estado interno no sea consultable; cierra sus salas al finalizar. Las reglas locales se comprueban por separado:
+Acepta servidor y base como argumentos para verificar otra publicación. La prueba crea identidades temporales, comprueba aislamiento, rechazo del tercer jugador, denegación de consultas privadas, selección de cero/dos/cinco cartas, solicitudes inválidas, espera mutua, Bonus, iniciativa, conservación de cartas, reintentos y reconexión antes/después del inicio. También completa un duelo, reconecta durante el combate, comprueba abandono, descarta jugadas obsoletas y verifica que el estado interno no sea consultable; cierra sus salas al finalizar.
+
+La cola casual tiene su propia matriz de red:
+
+```bash
+dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --quick-match http://127.0.0.1:3100 relick-dev
+```
+
+Comprueba privacidad, nombres e identificadores, repetición, cancelación antigua
+y posterior al emparejamiento, exclusión de salas privadas, renovación/caducidad,
+desconexión, preparación, recuperación y cuatro jugadores formando dos parejas.
+Para recorrer la interfaz con dos procesos mediante partida rápida, añade
+`--pvp-input-quick` a los comandos de prueba host/guest descritos más adelante.
+
+Las reglas locales se comprueban por separado:
 
 ```bash
 dotnet run --project tests/Relick.Core.Tests.csproj
@@ -133,7 +175,7 @@ Consulta [el informe de escalabilidad](SCALABILITY.md) para el diseño, polític
 
 El recorrido funcional es sala → preparación → duelo completo → resultado. La arena PvP usa componentes de presentación separados del motor; véase [interfaz adaptable, animaciones y optimizaciones](UI.md). Se probaron tamaños móviles simulados y capturas; la exportación y validación en Android/iOS físicos siguen pendientes.
 
-Las identidades son de dispositivo con token persistente. La reconexión es manual con Reconectar o reabriendo PvP con el mismo perfil; los envíos pendientes en la misma sesión reutilizan su identificador. Aún faltan cuentas entre dispositivos, controles de tráfico/conexiones en infraestructura, emparejamiento y clasificación. La auditoría reciente no garantiza conservar una repetición completa de cada partida.
+Las identidades son de dispositivo con token persistente. La reconexión es manual con Reconectar o reabriendo PvP con el mismo perfil; los envíos pendientes en la misma sesión reutilizan su identificador. El emparejamiento casual usa orden de llegada, sin estimación de habilidad. Aún faltan cuentas entre dispositivos, controles de tráfico/conexiones en infraestructura y clasificación. La auditoría reciente no garantiza conservar una repetición completa de cada partida.
 
 ## Estado de la elección inicial de habilidad
 
@@ -297,6 +339,6 @@ sesión y se limpia al regresar, cambiar de identidad o iniciar otra sala.
 
 La validación local pasó 415 comprobaciones del motor, 91 de red y dos procesos
 Godot independientes con entrada real en 844×390, incluidos resultado, cierre
-desde un jugador y retorno de ambos al lobby. El módulo WASM compila y está
-publicado únicamente en una base local aislada de pruebas. La actualización de
-Maincloud para enviar la causa del resultado sigue pendiente de publicación.
+desde un jugador y retorno de ambos al lobby. El módulo WASM compila. La causa
+del resultado quedó publicada en Maincloud el 10 de noviembre de 2026 junto con
+la actualización de partida rápida casual, sin eliminar tablas ni datos.

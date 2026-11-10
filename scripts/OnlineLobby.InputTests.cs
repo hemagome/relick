@@ -56,7 +56,17 @@ public partial class OnlineLobby
             await Until(() => _lobby.Ready);
             if (_lobby.Room != null) throw new Exception("La prueba necesita un perfil sin sala activa.");
             GuiInputTestDriver.ReplaceText(_name, host ? "Ana teclado" : "Beto teclado");
-            if (host)
+            if (args.Contains("--pvp-input-quick"))
+            {
+                if (!host) await Until(() => System.IO.File.Exists(session + ".queue"));
+                await Click(_quickMatch);
+                if (host)
+                {
+                    await Until(() => _lobby.Searching);
+                    System.IO.File.WriteAllText(session + ".queue", "ready");
+                }
+            }
+            else if (host)
             {
                 await Click(_create);
                 await Until(() => _lobby.Room != null);
@@ -124,7 +134,7 @@ public partial class OnlineLobby
                 await Click((Button)_arena.FindChild("ReturnToLobby", true, false));
             }
             await Until(() => _arena == null && _content.Visible && !_create.Disabled && !_join.Disabled);
-            GD.Print($"PVP_INPUT_PEER_PASS · {role} · nombre, código, sala, cambio de carta, confirmación, arena, diálogos y cierre con eventos de entrada.");
+            GD.Print($"PVP_INPUT_PEER_PASS · {role} · {(args.Contains("--pvp-input-quick") ? "partida rápida" : "sala privada")} · nombre, emparejamiento, cambio de carta, confirmación, arena, diálogos y cierre con eventos de entrada.");
             GetTree().Quit();
         }
         catch (Exception error)

@@ -40,6 +40,8 @@ La auditoría acotada sirve para diagnóstico reciente. Una repetición completa
 | Solicitudes de jugada nuevas, por participante de sala | 120 por ventana de 10 segundos |
 | Nuevas salas admitidas, por base | 200 por minuto |
 | Salas retenidas simultáneamente, incluidos resultados | 500 |
+| Búsquedas casuales en espera | Hasta 500, una por identidad |
+| Renovación / vigencia de búsqueda casual | 5 / 15 segundos |
 | Sala en espera o preparación sin actividad | 10 minutos |
 | Duelo preparado/en curso sin jugadas ni reconexión | 2 horas |
 | Resultado sin cerrar ni volver a conectar | 24 horas |
@@ -49,6 +51,13 @@ Los reintentos idénticos de comandos ya aceptados se resuelven con su comproban
 Cada sala recibe su temporizador al crearse; las jugadas y reconexiones renuevan el vencimiento. Cada renovación crea un identificador de temporizador nuevo para que un aviso antiguo no elimine una sala renovada. Solo el planificador de la base puede ejecutar la expiración. Se retiró el mantenimiento que buscaba salas antiguas sin temporizador y sus dos tablas auxiliares; la caducidad normal continúa en `room_expiry`.
 
 Son límites operativos iniciales, no una capacidad garantizada. La protección del módulo no sustituye límites de conexiones/tráfico en infraestructura ni cuentas de usuario estables.
+
+La cola casual es una tabla privada con vencimiento programado. Buscar empareja
+la entrada viva más antigua y crea ambos miembros/repartos en una sola transacción;
+no recorre salas privadas para elegir rival. La consulta está acotada por el límite
+de cola. Las renovaciones reemplazan el identificador de temporizador para que
+una expiración antigua no elimine una búsqueda renovada. Los controles de admisión
+de salas también se aplican a los duelos casuales.
 
 Las mediciones siguientes preceden a las señales visuales añadidas al tablero compartido de [interfaz](UI.md). Esas señales agregan datos al JSON por revisión; las cifras de volumen no deben interpretarse como una medición del protocolo visual posterior.
 

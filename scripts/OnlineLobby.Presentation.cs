@@ -21,6 +21,10 @@ public partial class OnlineLobby
     private string _shownLobbyProblem = "";
     private static readonly Color LobbyMint = new("5ed6b3");
     private static readonly Color LobbyBlue = new("9ebdff");
+    private Button _quickMatch = null!;
+    private Label _quickMatchStatus = null!;
+    private bool _presentedSearching;
+    private double _searchSeconds;
 
     private void BuildLobby()
     {
@@ -43,7 +47,7 @@ public partial class OnlineLobby
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
         _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);
-        heading.AddChild(Description("Invita a un rival o entra a su sala para comenzar."));
+        heading.AddChild(Description("Encuentra un rival o juega con alguien que conozcas."));
 
         var identity = Surface(column, 16); _identityPanel = identity;
         var identityRow = new HBoxContainer(); identityRow.AddThemeConstantOverride("separation", 20); identity.AddChild(identityRow);
@@ -56,19 +60,25 @@ public partial class OnlineLobby
 
         var cards = new HBoxContainer { Name = "RoomEntryCards" }; cards.AddThemeConstantOverride("separation", 18);
         column.AddChild(cards); _entryCards = cards;
-        var create = EntryCard(cards, GameIcon.Flag, LobbyMint, "Crear una sala", "Tu duelo, tu invitación.");
-        var explanation = Description("Crea una sala privada y comparte el código con tu rival.");
-        create.AddChild(explanation); _entryDescriptions.Add(explanation);
-        create.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new(0, 10) });
-        _create = AddButton(create, "Crear sala", () => { _lobbyNotice = _localError = ""; _lobby.Create(_name.Text); });
-        AccentButton(_create, LobbyMint);
+        var quick = EntryCard(cards, GameIcon.Sword, LobbyMint, "Partida rápida", "Casual · Sin clasificación");
+        var explanation = Description("Busca un rival y comienza un duelo sin compartir códigos.");
+        quick.AddChild(explanation); _entryDescriptions.Add(explanation);
+        _quickMatchStatus = Text("", 18); quick.AddChild(_quickMatchStatus);
+        quick.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
+        _quickMatch = AddButton(quick, "Buscar rival", QuickMatch);
+        _quickMatch.Name = "QuickMatch"; AccentButton(_quickMatch, LobbyMint);
 
-        var join = EntryCard(cards, GameIcon.Exchange, LobbyBlue, "Tengo un código", "Entra a la sala de tu rival.");
+        var join = EntryCard(cards, GameIcon.Flag, LobbyBlue, "Sala privada", "Crea una sala o entra con un código.");
         _code = new LineEdit { Name = "RoomCode", PlaceholderText = "Código de 8 caracteres", MaxLength = 8,
             CustomMinimumSize = new(0, 48), Alignment = HorizontalAlignment.Center };
         _code.AddThemeFontSizeOverride("font_size", 20); join.AddChild(_code);
         join.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        _join = AddButton(join, "Unirse", JoinRoom);
+        var privateActions = new HBoxContainer(); privateActions.AddThemeConstantOverride("separation", 10); join.AddChild(privateActions);
+        _create = AddButton(privateActions, "Crear sala", () => { _lobbyNotice = _localError = ""; _lobby.Create(_name.Text); });
+        _create.CustomMinimumSize = new(0, 48); _create.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _join = AddButton(privateActions, "Unirse", JoinRoom);
+        _join.CustomMinimumSize = new(0, 48); _join.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        AccentButton(_create, LobbyBlue);
         AccentButton(_join, LobbyBlue);
         _code.TextSubmitted += _ => { if (!_join.Disabled) JoinRoom(); };
 
@@ -101,6 +111,12 @@ public partial class OnlineLobby
 
     private void JoinRoom() { _lobbyNotice = _localError = ""; _lobby.Join(_code.Text, _name.Text); }
 
+    private void QuickMatch()
+    {
+        _lobbyNotice = _localError = "";
+        if (_lobby.Searching) _lobby.CancelQuickMatch(); else _lobby.FindQuickMatch(_name.Text);
+    }
+
     private void CopyRoomCode()
     {
         if (_copy.Disabled || _presentedRoomCode.Length == 0) return;
@@ -113,8 +129,13 @@ public partial class OnlineLobby
         _copy.Text = "Copiado ✓";
     }
 
-    private void PresentLobbyState(RoomInfo? room, bool ready, bool connecting, RoomRequest pending, string error, string message)
+    private void PresentLobbyState(RoomInfo? room, bool ready, bool connecting, RoomRequest pending, string error, string message, bool searching = false, bool quickMatchAvailable = true)
     {
+        searching &= room == null;
+        if (searching && !_presentedSearching) _searchSeconds = 0;
+        if (_presentedSearching && !searching && ready && room == null && pending == RoomRequest.None)
+            _lobbyNotice = message == "Búsqueda cancelada." ? message : "La búsqueda terminó. Pulsa Buscar rival para intentarlo de nuevo.";
+        _presentedSearching = searching;
         var roomCode = room?.Code ?? "";
         if (_presentedRoomCode != roomCode) { _copyFeedbackSeconds = 0; _copiedCode = ""; }
         _presentedRoomCode = roomCode;
@@ -124,16 +145,21 @@ public partial class OnlineLobby
             "No se encontró la sala." => "No encontramos esa sala. Revisa el código con tu rival y vuelve a intentarlo.",
             "La sala ya está completa." => "La sala está completa o el duelo ya empezó. Pide a tu rival un código nuevo.",
             _ => failed
-        } : connecting ? "Conectando con Relick…" : !ready ? ""
+        } : connecting ? "Conectando con Relick…" : !ready || searching && pending == RoomRequest.None ? ""
             : pending != RoomRequest.None ? message : _lobbyNotice.Length > 0 && room == null ? _lobbyNotice : message == "Conectado" ? "" : message;
         _status.GetParent<Control>().Visible = _status.Text.Length > 0;
         UpdateLobbyPresentation(room != null);
         _status.Modulate = failed.Length > 0 ? ArenaPresentation.Coral : Colors.White;
         var busy = pending != RoomRequest.None;
-        _create.Disabled = _join.Disabled = !ready || busy || room != null;
+        _create.Disabled = _join.Disabled = !ready || busy || searching || room != null;
+        _quickMatch.Disabled = !ready || !quickMatchAvailable || busy || room != null;
+        _quickMatch.TooltipText = quickMatchAvailable ? "" : "La partida rápida no está disponible en este servidor.";
+        _quickMatch.Text = pending == RoomRequest.FindQuickMatch ? "Iniciando…" : pending == RoomRequest.CancelQuickMatch ? "Cancelando…" : searching ? "Cancelar búsqueda" : "Buscar rival";
+        _quickMatchStatus.Text = searching ? $"Buscando rival… {(int)_searchSeconds / 60:00}:{(int)_searchSeconds % 60:00}" : "";
+        _quickMatchStatus.Visible = searching;
         _create.Text = pending == RoomRequest.Create ? "Creando…" : "Crear sala";
         _join.Text = pending == RoomRequest.Join ? "Entrando…" : "Unirse";
-        _name.Editable = _code.Editable = room == null && !busy;
+        _name.Editable = _code.Editable = room == null && !busy && !searching;
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;
         _copy.Text = _copiedCode == roomCode && _copyFeedbackSeconds > 0 ? "Copiado ✓" : "Copiar código";

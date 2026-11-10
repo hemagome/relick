@@ -106,7 +106,8 @@ public partial class OnlineLobby : Control
             OpenArena(room!.Code);
         }
         _copyFeedbackSeconds = Math.Max(0, _copyFeedbackSeconds - delta);
-        PresentLobbyState(room, _lobby.Ready, _lobby.Connecting, _lobby.PendingRoomRequest, _lobby.RoomError, _lobby.Message);
+        if (_lobby.Ready && _lobby.Searching) _searchSeconds += delta;
+        PresentLobbyState(room, _lobby.Ready, _lobby.Connecting, _lobby.PendingRoomRequest, _lobby.RoomError, _lobby.Message, _lobby.Searching, _lobby.QuickMatchAvailable);
     }
 
     private void OpenArena(string roomCode)

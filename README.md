@@ -10,8 +10,8 @@ Necesitas Godot .NET y el SDK de .NET 8. Abre `project.godot` y pulsa F5, o ejec
 ./jugar.sh
 ```
 
-1. Escribe tu nombre y crea una sala o introduce el código de tu rival.
-2. Cuando entra el segundo jugador, ambos pasan al tablero.
+1. Escribe tu nombre y pulsa **Buscar rival** para una partida rápida casual. También puedes crear una sala privada o introducir el código de tu rival.
+2. Al encontrar rival o completarse la sala privada, ambos pasan al tablero. Puedes cancelar mientras esperas en partida rápida.
 3. Elige una habilidad entre las presentes en tu mazo. Esa carta y otras cuatro forman tu mano inicial.
 4. Selecciona las cartas que quieres cambiar —también puedes cambiar la habilidad elegida— o conserva las cinco. Confirma y espera al rival.
 5. Se resuelven los cambios, los Bonus y la iniciativa. Quien empieza roba una carta adicional.

@@ -78,14 +78,21 @@ public static partial class Module
         name = ValidateName(name);
         // Retrying after a lost acknowledgement does not create extra rooms or cards.
         if (ctx.Db.Member.Player.Find(ctx.Sender) is not null) return;
+        RequireNoQuickSearch(ctx);
+        CreateRoomFor(ctx, ctx.Sender, name);
+    }
+
+    private static Room CreateRoomFor(ReducerContext ctx, Identity player, string name)
+    {
         AdmitRoom(ctx);
         const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         string code;
         do { code = new string(Enumerable.Range(0, 8).Select(_ => alphabet[ctx.Rng.Next(alphabet.Length)]).ToArray()); }
         while (ctx.Db.Room.Code.Find(code) is not null);
-        ctx.Db.Room.Insert(new Room { Code = code });
-        ctx.Db.Member.Insert(new Member { Player = ctx.Sender, RoomCode = code, Seat = 0, Name = name });
+        var room = ctx.Db.Room.Insert(new Room { Code = code });
+        ctx.Db.Member.Insert(new Member { Player = player, RoomCode = code, Seat = 0, Name = name });
         TouchRoom(ctx, code);
+        return room;
     }
 
     [Reducer]
@@ -99,16 +106,22 @@ public static partial class Module
             if (current.RoomCode == code) return;
             throw new Exception("Ya estás en una sala. Sal de ella antes de entrar a otra.");
         }
+        RequireNoQuickSearch(ctx);
         if (ctx.Db.Room.Code.Find(code) is not Room room) throw new Exception("No se encontró la sala.");
         var members = ctx.Db.Member.RoomCode.Filter(code).ToList();
         if (room.Dealt || members.Count != 1) throw new Exception("La sala ya está completa.");
-        var member = new Member { Player = ctx.Sender, RoomCode = code, Seat = 1, Name = name };
+        CompleteRoom(ctx, room, members[0], ctx.Sender, name);
+    }
+
+    private static void CompleteRoom(ReducerContext ctx, Room room, Member first, Identity player, string name)
+    {
+        var member = new Member { Player = player, RoomCode = room.Code, Seat = 1, Name = name };
         ctx.Db.Member.Insert(member);
-        Deal(ctx, members[0]);
+        Deal(ctx, first);
         Deal(ctx, member);
         room.Dealt = true;
         ctx.Db.Room.Code.Update(room);
-        TouchRoom(ctx, code);
+        TouchRoom(ctx, room.Code);
     }
 
     [Reducer]
