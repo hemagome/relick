@@ -47,7 +47,6 @@ public partial class OnlineLobby
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
         _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);
-        heading.AddChild(Description("Encuentra un rival o juega con alguien que conozcas."));
 
         var identity = Surface(column, 16); _identityPanel = identity;
         var identityRow = new HBoxContainer(); identityRow.AddThemeConstantOverride("separation", 20); identity.AddChild(identityRow);
@@ -134,7 +133,7 @@ public partial class OnlineLobby
         searching &= room == null;
         if (searching && !_presentedSearching) _searchSeconds = 0;
         if (_presentedSearching && !searching && ready && room == null && pending == RoomRequest.None)
-            _lobbyNotice = message == "Búsqueda cancelada." ? message : "La búsqueda terminó. Pulsa Buscar rival para intentarlo de nuevo.";
+            _lobbyNotice = message.Length == 0 ? "" : "La búsqueda terminó. Pulsa Buscar rival para intentarlo de nuevo.";
         _presentedSearching = searching;
         var roomCode = room?.Code ?? "";
         if (_presentedRoomCode != roomCode) { _copyFeedbackSeconds = 0; _copiedCode = ""; }

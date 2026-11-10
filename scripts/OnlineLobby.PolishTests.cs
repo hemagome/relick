@@ -73,9 +73,11 @@ public partial class OnlineLobby
                 if (size.X is 1440 or 700) await Capture($"lobby-searching-{size.X}x{size.Y}");
                 PresentLobbyState(null, true, false, RoomRequest.CancelQuickMatch, "", "Cancelando búsqueda…", true);
                 Check(_quickMatch.Disabled && _quickMatch.Text == "Cancelando…", "Cancelar permite solicitudes repetidas.");
-                PresentLobbyState(null, true, false, RoomRequest.None, "", "Búsqueda cancelada."); await Layout();
+                PresentLobbyState(null, true, false, RoomRequest.None, "", ""); await Layout();
                 Check(!_quickMatch.Disabled && !_create.Disabled && !_join.Disabled && _name.Editable && !_quickMatchStatus.Visible,
                     "La cancelación no recupera el lobby.");
+                Check(_status.Text.Length == 0 && !_status.GetParent<Control>().Visible,
+                    "Cancelar la búsqueda deja un mensaje innecesario en el lobby.");
                 _lobbyNotice = "";
                 PresentLobbyState(null, true, false, RoomRequest.Create, "", "Creando sala…");
                 Check(_create.Disabled && _join.Disabled && !_name.Editable && !_code.Editable && _create.Text.Contains("Creando"), "La solicitud pendiente sigue editable o se puede repetir.");

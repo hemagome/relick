@@ -343,7 +343,7 @@ public sealed partial class LobbyConnection : IDisposable
                     RoomRequest.Leave => "Sala cerrada.",
                     RoomRequest.Create => "Sala creada. Comparte el código con tu rival.",
                     RoomRequest.FindQuickMatch => Room == null ? "Buscando rival…" : "Rival encontrado.",
-                    RoomRequest.CancelQuickMatch => Room == null ? "Búsqueda cancelada." : "Rival encontrado.",
+                    RoomRequest.CancelQuickMatch => Room == null ? "" : "Rival encontrado.",
                     _ => "Te uniste a la sala."
                 };
                 break;
