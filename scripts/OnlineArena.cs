@@ -125,7 +125,7 @@ public partial class OnlineArena : Control
         UpdateFlights(delta);
         _diceOverlay.Visible = _die.IsPresented;
         _diceOverlay.Modulate = new Color(1, 1, 1, _die.PresentationOpacity);
-        _combatMessage.Visible = !_die.IsBusy && _combatMessage.Text.Length > 0;
+        UpdateResolutionPresentation();
         if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
         UpdateEnabled(); RefreshRuntimeGuidance();
     }
@@ -188,7 +188,7 @@ public partial class OnlineArena : Control
         var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? phase : s.LastCombat;
         var combat = ArenaPresentation.Combat(arena, _preparing, s.Winner != null, combatMessage, relativePlayers, BuildOpponentHand,
             relative => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Bonus, -1),
-            (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), boardCompact);
+            (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), boardCompact, BuildResolution);
         _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
         Player(1);
         var railColumns = Short ? Size.X >= 820 ? 2 : 1 : 0;

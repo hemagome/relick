@@ -30,7 +30,16 @@ public sealed class DuelMove
     public bool Flag { get; set; }
     public int[] Discards { get; set; } = [];
 
-    public CommandResult Apply(GameEngine game, int actor) => Kind switch
+    public CommandResult Apply(GameEngine game, int actor)
+    {
+        if (Kind == DuelMoveKind.ComboResponses) return ApplyRules(game, actor);
+        using var observation = new PublicDuelObservation(game, actor, this);
+        var result = ApplyRules(game, actor);
+        if (result.Success) observation.Complete();
+        return result;
+    }
+
+    private CommandResult ApplyRules(GameEngine game, int actor) => Kind switch
     {
         DuelMoveKind.Learn => game.Learn(actor, Index),
         DuelMoveKind.Attack => game.Attack(actor, Index, Value),

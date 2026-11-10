@@ -9,6 +9,7 @@ public sealed partial class GameEngine
         resumed = false;
         if (actor < 0 || actor >= State.Players.Length || State.IsOver || State.Phase == Phase.Preparation)
             return CommandResult.Fail("No puedes cambiar las respuestas COMBO ahora.");
+        using var observation = new PublicDuelObservation(this, actor, new DuelMove { Kind = DuelMoveKind.ComboResponses, Flag = enabled });
         State.Players[actor].AutoPassCombos = !enabled;
         if (!enabled && State.DecisionPlayer == actor)
         {
@@ -26,6 +27,7 @@ public sealed partial class GameEngine
                     ResolveDieReroll(actor, false); resumed = true; break;
             }
         }
+        if (resumed) observation.Complete();
         return CommandResult.Ok();
     }
 

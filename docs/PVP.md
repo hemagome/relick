@@ -240,3 +240,31 @@ Pasaron las 78 comprobaciones PvP, incluido un duelo completo y el agotamiento
 del mazo; las salas de prueba se cerraron al finalizar.
 Si un cliente ya mostraba «No such reducer», usa Menú → Reconectar para reenviar
 la solicitud pendiente al módulo actualizado.
+
+## Resolución e historial público
+
+El módulo prepara una vista pública de la activación original y sus respuestas,
+además de las últimas veinte jugadas aceptadas con identificadores persistentes.
+Las entradas describen intención y resultados públicos, sin reutilizar el log
+interno ni revelar identidades de robos, descartes privados o búsquedas de mazo.
+El registro vive en el checkpoint y se entrega igual a ambos participantes;
+no necesita tablas, reducers ni bindings nuevos. Las preferencias COMBO sin
+continuación y los comandos rechazados no generan entradas.
+
+Las partidas anteriores conservan su estado y empiezan el historial con su
+siguiente jugada aceptada después de actualizar el módulo. No se reconstruyen
+jugadas pasadas a partir de los registros privados. El cliente conserva la
+presentación anterior al conectar contra un módulo todavía sin estos campos.
+
+Validación local del 9 de noviembre de 2026: 412 comprobaciones del motor,
+85 comprobaciones PvP con dos clientes y duelos completos, reconexión,
+reintentos y límite de veinte entradas; matriz completa de interfaz sin ventana
+y revisión específica del historial en cinco tamaños desde ambos asientos.
+Compilan el cliente y el módulo WASM.
+
+Publicado el 9 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud,
+con autorización explícita y `--delete-data=never`. La actualización no cambió
+tablas ni borró los datos existentes.
+Pasaron también las 85 comprobaciones PvP en Maincloud, incluido el historial
+compartido, los reintentos, la reconexión, el límite de veinte entradas, un duelo
+completo y el agotamiento del mazo. Las salas de prueba se cerraron al finalizar.

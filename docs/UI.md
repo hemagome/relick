@@ -111,6 +111,29 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. C
 
 Los siete atlas de Yuno conservan un lienzo lógico de 608×504 por cuadro. La importación limita el ancho a 2432 píxeles y mantiene la cuadrícula: reposo, ataque, daño reducido, normal y crítico, reposo agotado y curación usan el mismo tamaño visual. Los clips, su procedencia y sus prompts están documentados en [las animaciones de Yuno](../assets/characters/yuno/README.md).
 
+## Resolución e historial público
+
+La resolución central distingue respuesta, resolución, resultado y activación
+anulada. Identifica la carta original y a su jugador; las respuestas encadenadas
+aparecen debajo, sin atribuir la activación original a quien contraataca. Presenta
+el resultado cuando terminan el dado y los movimientos de cartas.
+
+«Historial» abre las últimas veinte jugadas públicas, de la más reciente a la más
+antigua. También está disponible en Menú para pantallas pequeñas. Cada entrada
+identifica turno, jugada y resultados públicos: daño/curación y destinatario,
+vidas, PR, robos por cantidad, cambios de zona públicos y anulaciones. No enumera
+cartas robadas, descartes privados ni elecciones de mano o mazo. Consultarlo y
+cerrarlo conserva la selección y no envía jugadas. Permanece bloqueado durante
+la animación para no adelantar sus resultados.
+
+El servidor asigna identificadores y conserva el registro acotado en el estado
+recuperable; el cliente lo presenta sin acumular entradas propias. Reconectar,
+reintentar una jugada o reconstruir la interfaz no duplica el historial. Los
+cambios privados de preferencia COMBO solo generan una entrada si efectivamente
+reanudan una resolución pendiente. Los duelos anteriores a esta actualización
+empiezan su registro público con la siguiente jugada aceptada; no se reconstruye
+desde el registro interno del motor, que contiene información privada.
+
 ## Validación
 
 ```bash
@@ -120,6 +143,10 @@ dotnet build Relick.csproj
 ```
 
 Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-search-only` a los argumentos de la prueba; para Cambio de Mentes, usa `--mind-swap-only`. Se puede combinar con `--ui-screenshot-dir=/tmp/relick-ui` para guardar las capturas de PC y móvil horizontal.
+
+`--history-only` verifica activación, Error y contraerror, resultados, privacidad,
+apertura/cierre mediante entrada real, recuperación sin duplicados y bloqueo
+durante el dado en cinco tamaños, desde ambos asientos.
 
 `--preparation-only` comprueba elección inicial, mulligan y ambos dados de iniciativa en los cuatro tamaños y desde ambos asientos, incluido el resultado, la espera del robo inicial y la recuperación sin repetir la animación.
 

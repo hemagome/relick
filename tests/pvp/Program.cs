@@ -62,6 +62,16 @@ void Rejected(Client client, Action command, string message)
 string OpeningFingerprint(Client client) => System.Text.Json.JsonSerializer.Serialize(
     new { Start = client.Preparation, Hand = client.Hand }, new System.Text.Json.JsonSerializerOptions { IncludeFields = true });
 
+string HistoryFingerprint(DuelSnapshot duel) => JsonSerializer.Serialize(duel.History);
+void VerifyPublicHistory(DuelSnapshot first, DuelSnapshot second)
+{
+    var entries = first.History;
+    if (entries == null || entries.Count != (int)Math.Min(first.Revision, (ulong)DuelHistory.Capacity) ||
+        entries[^1].Id != first.Revision || entries.Select(e => e.Id).Distinct().Count() != entries.Count ||
+        HistoryFingerprint(first) != HistoryFingerprint(second))
+        throw new Exception("El historial público difiere entre jugadores, duplica jugadas o pierde su límite/orden.");
+}
+
 int VerifyHandSwap(DuelSnapshot[] before, DuelSnapshot[] after)
 {
     var cues = after[0].Visuals;
@@ -240,6 +250,8 @@ try
     Rejected(fighterA, () => fighterA.Connection.Reducers.SetComboResponses(code, Guid.NewGuid().ToString("N"), false), "Una preferencia atrasada no se aplica a otra sala");
     Rejected(fighterA, () => fighterA.Connection.Reducers.SetComboResponses(nextCode, "inválido", false), "Una preferencia con identificador inválido se rechaza");
     Check(!fighterA.Duel!.AutoPassCombos && !b.Duel!.AutoPassCombos, "Las preferencias rechazadas no modifican a ninguno de los jugadores");
+    Check(fighterA.Duel.History == null && b.Duel.History == null,
+        "Preferencias privadas y comandos rechazados no añaden entradas al historial público");
 
     var starter = fighterA.Duel.CurrentPlayer == 0 ? fighterA : b;
     var learn = starter.Duel!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Learn);
@@ -249,12 +261,18 @@ try
     starter.Connection.Reducers.PlayDuelV2(nextCode, 0, learnId, learn, []);
     Until(() => fighterA.Duel?.Revision == 1 && b.Duel?.Revision == 1);
     Check(starter.Duel!.Players[starter.Duel.MySeat].Skills.Length == 1, "Enseñar una habilidad actualiza ambos tableros");
+    VerifyPublicHistory(fighterA.Duel!, b.Duel!);
+    Check(starter.Duel.History!.Single().CardId == starter.Duel.Players[starter.Duel.MySeat].Skills[0],
+        "La jugada aceptada añade una sola carta anunciada al historial compartido");
+    var acceptedHistory = HistoryFingerprint(starter.Duel);
     Check(starter.Duel.Turn == 1 && starter.Duel.Options.All(o => o.Move.Kind != DuelMoveKind.Attack),
         "El servidor permite enseñar pero no ofrece ataques a quien inicia en el turno uno");
     Check(fighterA.Hand.Length == 0 && b.Hand.Length == 0, "Las manos iniciales dejan de usarse cuando el motor de combate toma el control");
     starter.Connection.Reducers.PlayDuelV2(nextCode, 0, learnId, learn, []);
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, learnId, learn + 1, []), "Un identificador reutilizado con otra jugada se rechaza");
     Check(starter.Duel.Revision == 1 && starter.Duel.Players[starter.Duel.MySeat].Skills.Length == 1, "Reenviar una jugada confirmada no la ejecuta dos veces");
+    Check(HistoryFingerprint(starter.Duel) == acceptedHistory,
+        "Reintentos y rechazos conservan los mismos identificadores y resultados públicos");
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), learn, []), "Una selección de un tablero anterior se rechaza");
     Rejected(starter, () => starter.Connection.Reducers.LeaveRoom(), "Cerrar una sala no elimina un duelo en curso");
     using (var turnService = new Relick.Network.LobbyConnection())
@@ -268,6 +286,8 @@ try
         turnService.Connect(server, database, starter.Token);
         Until(() => turnService.Ready && !turnService.PlayPending && turnService.Duel?.Revision == 2);
         Check(turnService.Duel.Phase == Phase.Actions, "Reconectar durante una jugada confirma su entrega sin repetir el avance");
+        Check(turnService.Duel.History?.Count == 2 && turnService.Duel.History[^1].Id == 2,
+            "Reconectar durante el envío recupera el historial sin repetir entradas");
         services.Remove(turnService);
     }
     Until(() => fighterA.Duel?.Revision == 2 && b.Duel?.Revision == 2);
@@ -294,6 +314,7 @@ try
             if (actor.Errors.Count > errors) throw new Exception(choice.Option.Label + ": " + actor.Errors.Last());
             return fighterA.Duel?.Revision == before.Revision + 1 && b.Duel?.Revision == before.Revision + 1;
         });
+        VerifyPublicHistory(fighterA.Duel!, b.Duel!);
         if (choice.Option.Move.Kind == DuelMoveKind.SearchDeck)
         {
             var other = actor == fighterA ? b : fighterA;
@@ -304,9 +325,11 @@ try
         }
         verifiedSwaps += VerifyHandSwap(beforeViews, new[] { fighterA.Duel!, b.Duel! });
         if (before.Phase is Phase.Combat or Phase.AttackRerollChoice or Phase.DefenseChoice)
-        foreach (var hit in fighterA.Duel!.Visuals.Where(v => v.Kind == DuelVisualKind.Hit && v.Player != before.CurrentPlayer))
+        // A combat-phase command can also cause effect/exhaustion damage, whose attack die is 0.
+        foreach (var hit in fighterA.Duel!.Visuals.Where(v => v.Kind == DuelVisualKind.Hit && v.Player != before.CurrentPlayer && v.AttackDie != 0))
         {
-            if (hit.AttackDie is not (4 or 5 or 6)) throw new Exception("El servidor no transporta el resultado final del impacto.");
+            // Stacked Totems can turn a 1, 2 or 3 into a successful normal attack.
+            if (hit.AttackDie is < 1 or > 6) throw new Exception($"El servidor no transporta el resultado final del impacto: {hit.AttackDie}, {before.Phase}.");
             verifiedImpacts++;
         }
         if (combatSteps % 12 == 0)
@@ -316,11 +339,15 @@ try
             b = Connect(b.Token);
             Until(() => b.Duel?.Revision == previous.Revision);
             if (b.Duel!.Phase != previous.Phase || b.Duel.Die != previous.Die) throw new Exception("La reconexión alteró una decisión o un dado.");
+            if (HistoryFingerprint(b.Duel) != HistoryFingerprint(previous)) throw new Exception("La reconexión alteró el historial público.");
         }
         if (combatSteps % 20 == 0) Console.WriteLine($"PROGRESS combate: {combatSteps} jugadas, turno {fighterA.Duel.Turn}, fase {fighterA.Duel.Phase}");
     }
     Check(fighterA.Duel.Winner != null && b.Duel!.Winner == fighterA.Duel.Winner, "Duelo completo resuelto por el servidor con ganador consistente");
+    Check(fighterA.Duel.History!.Count == DuelHistory.Capacity,
+        "El duelo completo mantiene solo las últimas veinte jugadas públicas en ambos clientes");
     Console.WriteLine($"IMPACT_TRANSPORT · {verifiedImpacts} impactos con resultado final verificado.");
+    Check(verifiedImpacts > 0, "El duelo remoto transporta dados finales de impactos de ataque");
     Check(fighterA.Duel.Options.Count == 0 && b.Duel!.Options.Count == 0, "La partida terminada no acepta nuevas jugadas");
     Check(decisions.Contains(Phase.AttackRerollChoice) || decisions.Contains(Phase.DieRerollChoice), "La partida remota ejercita decisiones de dado persistidas");
     service.Leave();

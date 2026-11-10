@@ -39,6 +39,11 @@ public partial class OnlineLobby
                 await online.CheckCardInspector(); online.QueueFree(); await Layout();
                 GD.Print("PVP_INSPECTOR_ONLY_PASS"); GetTree().Quit(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--history-only"))
+            {
+                await online.CheckPublicHistory(); online.QueueFree(); await Layout();
+                GD.Print("PVP_HISTORY_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--context-only"))
             {
                 await online.CheckContextActionBar(); online.QueueFree(); await Layout();
@@ -134,6 +139,7 @@ public partial class OnlineLobby
             await online.CheckContextActionBar();
             await online.CheckDecisionGuidance();
             await online.CheckMemoryInspection();
+            await online.CheckPublicHistory();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();

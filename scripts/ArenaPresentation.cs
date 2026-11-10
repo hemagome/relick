@@ -154,7 +154,7 @@ public static class ArenaPresentation
 
     public static PanelContainer Combat(Node arena, bool preparing, bool over, string message,
         DuelPlayerView[] players, Action<VBoxContainer> opponentHand, Action<int> bonusPressed,
-        Action<int, int> exchangePressed, bool compact)
+        Action<int, int> exchangePressed, bool compact, Action<VBoxContainer, Label, Label>? resolution = null)
     {
         var panel = Panel(arena, RelickVisuals.Playmat.Surface.ToHtml(), RelickVisuals.Playmat.Frame); panel.Name = "CombatCenter";
         panel.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
@@ -166,6 +166,7 @@ public static class ArenaPresentation
         var status = Text(message, 20); status.Name = "CombatMessage";
         status.AutowrapMode = TextServer.AutowrapMode.WordSmart; status.HorizontalAlignment = HorizontalAlignment.Center;
         status.CustomMinimumSize = new(0, 32); status.Visible = message.Length > 0; column.AddChild(status);
+        resolution?.Invoke(column, title, status);
         column.AddChild(new HSeparator { Modulate = new("38415a") });
         var caption = Text("CANJE  →  BONUS", 9, BoardArt.Muted); caption.HorizontalAlignment = HorizontalAlignment.Center; column.AddChild(caption);
         foreach (var index in new[] { 1, 0 })

@@ -67,6 +67,10 @@ public sealed class DuelSnapshot
     public string DieCaption { get; set; } = "";
     public string LastCombat { get; set; } = "";
     public List<DuelVisualEvent> Visuals { get; set; } = [];
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DuelResolutionView? Resolution { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<DuelHistoryEntry>? History { get; set; }
     public DuelPlayerView[] Players { get; set; } = [];
     public List<DuelOption> Options { get; set; } = [];
 
@@ -94,7 +98,7 @@ public sealed class DuelSnapshot
                 stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
                 stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase,
             DieCaption = game.CurrentDieCaption,
-            LastCombat = s.LastCombat,
+            LastCombat = s.LastCombat, Resolution = game.PublicResolution(), History = game.PublicHistory?.Entries.ToList(),
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
             Players = s.Players.Select((p, index) => new DuelPlayerView
             {
