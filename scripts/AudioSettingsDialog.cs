@@ -24,8 +24,6 @@ public partial class AudioSettingsDialog : AcceptDialog
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 14); AddChild(column);
         (_music, _musicValue) = AddVolume(column, "Música", "MusicVolume");
         (_effects, _effectsValue) = AddVolume(column, "Efectos de sonido", "EffectsVolume");
-        var hint = ArenaPresentation.Text("Se guarda en este dispositivo.", 13, BoardArt.Muted);
-        column.AddChild(hint);
         _music.ValueChanged += value => { Preferences.SetMusicVolume((float)value / 100); Caption(_musicValue, value); };
         _effects.ValueChanged += value => { Preferences.SetEffectsVolume((float)value / 100); Caption(_effectsValue, value); };
         Confirmed += Preferences.Flush; CloseRequested += Preferences.Flush;
