@@ -14,6 +14,14 @@ Los significados de `RelickVisuals.State` son independientes del tapete: selecci
 
 La entrada agrupa el nombre del jugador y dos tarjetas: crear una sala o unirse con código. Usa el fondo de arena, superficies oscuras, acentos verde/azul y foco visible. En pantallas cortas se reducen márgenes y descripciones. Enter en el código permite unirse cuando hay conexión.
 
+El estado normal no muestra «Conectado». Al perder la conexión aparece un cuadro
+central grande «Sin conexión», sobre la sala o el tablero, con el botón Reconectar.
+Permanece visible durante el reintento y se retira cuando la suscripción de la sala
+vuelve a estar lista. Una lectura autenticada por el mismo socket cada tres segundos
+detecta cortes silenciosos: si no responde en siete segundos, se bloquean las
+operaciones y se muestra el aviso. El intento inicial vence tras quince segundos.
+Los datos de sala y los comandos pendientes se conservan para la recuperación.
+
 Cuando entra el segundo jugador, la misma arena representa elección de habilidad, reparto, mulligan y combate. La selección inicial muestra habilidades presentes en el propio mazo y recibe después otras cuatro cartas. La elegida puede devolverse en el mulligan.
 
 El mulligan usa identificadores de copias: dos cartas iguales pueden seleccionarse por separado. Se bloquea durante el envío y después de confirmar. Una reconexión recupera la elección confirmada sin repetir el reparto. Se representan devoluciones propias, barajado visual, reemplazos, Bonus y robo de iniciativa. No se inventan identidades ni cantidades del mulligan rival que el servidor no haya autorizado.

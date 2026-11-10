@@ -97,6 +97,19 @@ RELICK_SERVER=http://127.0.0.1:3199 RELICK_DATABASE=input-check ./jugar.sh --hea
 
 Inyecta clics y teclas mediante el `Viewport`, sin emitir directamente las señales de los botones. El juego inicia en salas PvP; la matriz sin conexión comprueba que no existan accesos a práctica.
 
+La prueba de salas puede ejecutarse por separado con `--pvp-ui-test --lobby-only`.
+Verifica la ausencia del mensaje «Conectado», el cuadro de desconexión, el estado
+de reintento y la recuperación en cuatro tamaños. Para comprobar cortes silenciosos
+contra un servidor local publicado:
+
+```bash
+dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --connection-health http://127.0.0.1:3100 relick-dev
+```
+
+Esta prueba descarta tráfico mediante un proxy TCP local, sin cambiar la red del
+equipo. Comprueba la sala vacía, el corte con sala, el bloqueo de operaciones, la
+recuperación con la misma identidad y el tiempo límite de conexión inicial.
+
 Para probar dos procesos con entrada real de la interfaz contra el servidor local publicado, ejecuta estas órdenes en dos terminales. Usa una ruta de sesión nueva en cada ejecución, compartida por ambas órdenes:
 
 ```bash

@@ -15,8 +15,6 @@ public partial class OnlineLobby
     private readonly List<PanelContainer> _entryPanels = [];
     private readonly List<Label> _entryTitles = [];
     private readonly List<Control> _entryDescriptions = [];
-    private Label _connectionDot = null!;
-    private Button _reconnect = null!;
     private string _presentedRoomCode = "", _copiedCode = "", _lobbyNotice = "";
     private double _copyFeedbackSeconds;
     private ScrollContainer _lobbyPage = null!;
@@ -41,9 +39,6 @@ public partial class OnlineLobby
         var brand = RelickVisuals.Logo();
         brand.SizeFlagsHorizontal = SizeFlags.ShrinkBegin; brand.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         navigation.AddChild(brand);
-        var onlineCaption = Caption("EN LÍNEA", BoardArt.Muted);
-        onlineCaption.AutowrapMode = TextServer.AutowrapMode.Off;
-        onlineCaption.SizeFlagsVertical = SizeFlags.ShrinkCenter; navigation.AddChild(onlineCaption);
         navigation.AddThemeConstantOverride("separation", 16);
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
@@ -92,10 +87,9 @@ public partial class OnlineLobby
         _leave.TooltipText = "Cierra esta sala de preparación para ambos jugadores.";
 
         var connection = new HBoxContainer(); connection.AddThemeConstantOverride("separation", 10); column.AddChild(connection);
-        _connectionDot = Text("●", 12); _connectionDot.SizeFlagsVertical = SizeFlags.ShrinkCenter; connection.AddChild(_connectionDot);
         _status = Description("Conectando…"); _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _status.SizeFlagsVertical = SizeFlags.ShrinkCenter; connection.AddChild(_status);
-        _reconnect = AddButton(connection, "Reconectar", Connect); _reconnect.CustomMinimumSize = new(126, 48);
+        BuildConnectionNotice();
         Resized += AdjustLobbyLayout; AdjustLobbyLayout();
     }
 
@@ -103,8 +97,6 @@ public partial class OnlineLobby
     {
         _entryCards.Visible = !inRoom;
         _roomPanel.Visible = inRoom;
-        var color = _localError.Length > 0 ? ArenaPresentation.Coral : _lobby.Ready ? LobbyMint : BoardArt.Gold;
-        _connectionDot.Modulate = color;
     }
 
     private void JoinRoom() { _lobbyNotice = _localError = ""; _lobby.Join(_code.Text, _name.Text); }
@@ -132,10 +124,11 @@ public partial class OnlineLobby
             "No se encontró la sala." => "No encontramos esa sala. Revisa el código con tu rival y vuelve a intentarlo.",
             "La sala ya está completa." => "La sala está completa o el duelo ya empezó. Pide a tu rival un código nuevo.",
             _ => failed
-        } : connecting ? "Conectando con Relick…" : !ready ? "Sin conexión. Comprueba tu conexión y pulsa Reconectar para recuperar tu sala."
-            : pending != RoomRequest.None ? message : _lobbyNotice.Length > 0 && room == null ? _lobbyNotice : message == "Conectado" && room == null ? "Conectado. Crea una sala o entra con un código." : message;
+        } : connecting ? "Conectando con Relick…" : !ready ? ""
+            : pending != RoomRequest.None ? message : _lobbyNotice.Length > 0 && room == null ? _lobbyNotice : message == "Conectado" ? "" : message;
+        _status.GetParent<Control>().Visible = _status.Text.Length > 0;
         UpdateLobbyPresentation(room != null);
-        _connectionDot.Modulate = failed.Length > 0 ? ArenaPresentation.Coral : ready ? LobbyMint : BoardArt.Gold;
+        _status.Modulate = failed.Length > 0 ? ArenaPresentation.Coral : Colors.White;
         var busy = pending != RoomRequest.None;
         _create.Disabled = _join.Disabled = !ready || busy || room != null;
         _create.Text = pending == RoomRequest.Create ? "Creando…" : "Crear sala";
@@ -146,7 +139,7 @@ public partial class OnlineLobby
         _copy.Text = _copiedCode == roomCode && _copyFeedbackSeconds > 0 ? "Copiado ✓" : "Copiar código";
         _leave.Disabled = !ready || busy;
         _leave.Text = pending == RoomRequest.Leave ? "Cerrando…" : "Cerrar sala";
-        _reconnect.Visible = !ready; _reconnect.Disabled = connecting;
+        PresentConnectionNotice(ready, connecting);
         _room.Text = room == null ? "Sin sala" : $"Sala · {room.Code}";
         _players.Text = room == null ? "" : $"{room.PlayerOne}  vs  {(room.PlayerTwo.Length > 0 ? room.PlayerTwo : "Esperando rival…")}\nTu lugar: jugador {room.MySeat + 1}";
         _preparation.Text = "Comparte el código con tu rival. Entraréis al tablero cuando se una.";

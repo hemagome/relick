@@ -27,9 +27,33 @@ public partial class OnlineLobby
             {
                 GetWindow().ContentScaleSize = size; await Layout(); _localError = _lobbyNotice = "";
                 PresentLobbyState(null, false, true, RoomRequest.None, "", "Conectando…"); await Layout();
-                Check(_create.Disabled && _join.Disabled && _reconnect.Visible && _reconnect.Disabled, "Conectar permite solicitudes repetidas.");
+                Check(_create.Disabled && _join.Disabled && !_connectionNotice.Visible, "La conexión inicial muestra un aviso de desconexión o permite solicitudes.");
                 PresentLobbyState(null, false, false, RoomRequest.None, "", "Sin conexión");
-                Check(!_reconnect.Disabled && _status.Text.Contains("Reconectar"), "La desconexión no ofrece un siguiente paso.");
+                await Layout();
+                Check(_connectionNotice.IsVisibleInTree() && !_reconnect.Disabled && _connectionNoticeDescription.Text.Contains("Reconectar"), "La desconexión no muestra el cuadro con un siguiente paso.");
+                var notice = _connectionNoticePanel.GetGlobalRect();
+                Check(notice.Position.X >= 0 && notice.Position.Y >= 0 && notice.End.X <= Size.X && notice.End.Y <= Size.Y,
+                    "El cuadro de desconexión sale de la pantalla.");
+                Check(_reconnect.HasFocus(), "El aviso no toma el foco del teclado.");
+                GuiInputTestDriver.Click(_name);
+                Check(!_name.HasFocus(), "El aviso deja pasar clics a los campos de la sala.");
+                var retryClicks = 0;
+                void Retry() => retryClicks++;
+                _reconnect.Pressed -= Connect; _reconnect.Pressed += Retry;
+                try
+                {
+                    GuiInputTestDriver.Click(_reconnect);
+                    Check(retryClicks == 1, "Reconectar no recibe un clic dentro del cuadro.");
+                }
+                finally { _reconnect.Pressed -= Retry; _reconnect.Pressed += Connect; }
+                if (size.X is 1440 or 700) await Capture($"lobby-disconnected-{size.X}x{size.Y}");
+                PresentLobbyState(null, false, true, RoomRequest.None, "", "Conectando…"); await Layout();
+                Check(_connectionNotice.Visible && _reconnect.Disabled && _connectionNoticeTitle.Text.Contains("Reconectando"), "El cuadro desaparece antes de recuperar la conexión o permite reintentos repetidos.");
+                PresentLobbyState(null, false, false, RoomRequest.None, "", "No se pudo conectar.");
+                Check(_connectionNotice.Visible && !_reconnect.Disabled, "Un reintento fallido no permite volver a conectar.");
+                PresentLobbyState(null, true, false, RoomRequest.None, "", "Conectado"); await Layout();
+                Check(!_connectionNotice.Visible && !_status.GetParent<Control>().Visible && _status.Text.Length == 0,
+                    "La recuperación no retira el cuadro o sigue anunciando Conectado.");
                 PresentLobbyState(null, true, false, RoomRequest.Create, "", "Creando sala…");
                 Check(_create.Disabled && _join.Disabled && !_name.Editable && !_code.Editable && _create.Text.Contains("Creando"), "La solicitud pendiente sigue editable o se puede repetir.");
                 foreach (var error in new[] { "No se encontró la sala.", "La sala ya está completa." })
@@ -42,6 +66,10 @@ public partial class OnlineLobby
                 if (size.X is 1440 or 700) await Capture($"lobby-error-{size.X}x{size.Y}");
                 var room = new RoomInfo { Code = "AB12CD34", MySeat = 0, PlayerOne = "Ana", PlayerTwo = "", Dealt = false };
                 PresentLobbyState(room, true, false, RoomRequest.None, "", "Sala creada."); await Layout();
+                PresentLobbyState(room, false, false, RoomRequest.None, "", "Sin conexión"); await Layout();
+                Check(_connectionNotice.Visible && _copy.Disabled && _leave.Disabled && _roomPanel.Visible,
+                    "Perder conexión en una sala borra la vista o permite operaciones.");
+                PresentLobbyState(room, true, false, RoomRequest.None, "", "Conectado"); await Layout();
                 var scroll = (ScrollContainer)_content.GetChild(0); scroll.EnsureControlVisible(_copy); await Layout();
                 GuiInputTestDriver.Click(_copy);
                 Check(clipboardAvailable ? _copy.Text == "Copiado ✓" && DisplayServer.ClipboardGet() == room.Code : _copy.Text != "Copiado ✓" && _localError.Length > 0,
@@ -58,6 +86,6 @@ public partial class OnlineLobby
             }
         }
         finally { if (clipboardAvailable) DisplayServer.ClipboardSet(previousClipboard); _localError = ""; _content.Hide(); }
-        GD.Print("PVP_LOBBY_POLISH_PASS · conexión/reconexión, solicitudes bloqueadas, errores accionables, copia sin falsos positivos, cierre y recuperación de entrada; cuatro tamaños.");
+        GD.Print("PVP_LOBBY_POLISH_PASS · sin mensaje Conectado, cuadro de desconexión y reintentos, recuperación, solicitudes bloqueadas, errores accionables, copia y cierre; cuatro tamaños.");
     }
 }

@@ -79,7 +79,11 @@ public partial class OnlineLobby : Control
             var token = System.IO.File.Exists(_tokenPath) ? System.IO.File.ReadAllText(_tokenPath) : null;
             _lobby.Connect(_server, _database, token);
         }
-        catch (Exception) { _localError = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; }
+        catch (Exception)
+        {
+            _lobby.Dispose();
+            _localError = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar.";
+        }
     }
 
     public override void _Process(double delta)

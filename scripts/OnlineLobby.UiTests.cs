@@ -14,9 +14,14 @@ public partial class OnlineLobby
                 typeof(OnlineLobby).Assembly.GetType("Relick.Core.SimulationDriver") != null)
                 throw new Exception("El juego aún incluye el controlador o rival de práctica.");
             _content.Hide();
+            async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+            if (OS.GetCmdlineUserArgs().Contains("--lobby-only"))
+            {
+                await CheckLobbyPolish();
+                await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); GetTree().Quit(); return;
+            }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
-            async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
             if (OS.GetCmdlineUserArgs().Contains("--closure-only"))
             {
                 await online.CheckDuelResults(); online.Hide(); await CheckLobbyPolish();

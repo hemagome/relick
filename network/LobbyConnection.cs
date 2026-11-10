@@ -14,6 +14,11 @@ public enum RoomRequest { None, Create, Join, Leave }
 public sealed class LobbyConnection : IDisposable
 {
     private DbConnection? _connection;
+    private Task<bool>? _healthCheck;
+    private long _connectionStarted, _lastHealthCheck, _healthCheckStarted;
+    private static readonly TimeSpan HealthCheckInterval = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan HealthCheckTimeout = TimeSpan.FromSeconds(7);
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(15);
     private string? _initialSkillCommand;
     private string _initialSkillRoom = "", _initialSkillDefinition = "";
     public InitialSkillInfo? InitialSkills => _connection?.Db.MyInitialSkill.Iter().SingleOrDefault();
@@ -98,16 +103,20 @@ public sealed class LobbyConnection : IDisposable
         _sessionServer = server; _sessionDatabase = database;
         Dispose();
         Epoch++;
+        _connectionStarted = Stopwatch.GetTimestamp();
         Connecting = true; RoomError = "";
         Message = "Conectando…";
         var builder = DbConnection.Builder().WithUri(server).WithDatabaseName(database)
             .OnConnect((connection, _, newToken) =>
             {
+                if (!Connecting) return;
                 _sessionToken = newToken;
                 TokenReceived?.Invoke(newToken);
                 connection.SubscriptionBuilder().OnApplied(_ =>
                 {
+                    if (!Connecting) return;
                     Ready = true;
+                    _lastHealthCheck = Stopwatch.GetTimestamp();
                     Connecting = false; PendingRoomRequest = RoomRequest.None;
                     Message = "Conectado";
                     connection.Reducers.EnsureDuel();
@@ -250,7 +259,9 @@ public sealed class LobbyConnection : IDisposable
     }
     public void Tick()
     {
-        _connection?.FrameTick(); ResolvePlayResult();
+        _connection?.FrameTick();
+        CheckConnectionHealth();
+        ResolvePlayResult();
         if (Duel is { Winner: not null } final && Room is { } finalRoom)
         { LastResult = final; LastResultRoom = finalRoom.Code; }
         var preparation = Preparation;
@@ -260,6 +271,53 @@ public sealed class LobbyConnection : IDisposable
             _preparationSubscription.Unsubscribe(); _preparationSubscription = null;
         }
         else if (Ready && Duel == null && _preparationSubscription == null) SubscribePreparation();
+    }
+
+    private void CheckConnectionHealth()
+    {
+        if (Connecting && Stopwatch.GetElapsedTime(_connectionStarted) >= ConnectTimeout)
+        {
+            LoseConnection("No se pudo conectar. Comprueba tu conexión y pulsa Reconectar.");
+            return;
+        }
+        if (!Ready || _connection == null) return;
+        if (!_connection.IsActive)
+        {
+            LoseConnection();
+            return;
+        }
+        if (_healthCheck is { IsCompleted: true })
+        {
+            var healthy = _healthCheck.GetAwaiter().GetResult();
+            _healthCheck = null;
+            if (!healthy) { LoseConnection(); return; }
+            _lastHealthCheck = Stopwatch.GetTimestamp();
+        }
+        if (_healthCheck != null)
+        {
+            if (Stopwatch.GetElapsedTime(_healthCheckStarted) >= HealthCheckTimeout) LoseConnection();
+            return;
+        }
+        if (Stopwatch.GetElapsedTime(_lastHealthCheck) < HealthCheckInterval) return;
+        _healthCheckStarted = Stopwatch.GetTimestamp();
+        _healthCheck = CheckServer(_connection);
+    }
+
+    private static async Task<bool> CheckServer(DbConnection connection)
+    {
+        // A read over the same socket detects silent outages even in an idle, empty lobby.
+        // It neither changes room state nor depends on the machine's Wi-Fi interface.
+        try { await connection.Db.MyRoom.RemoteQuery(""); return true; }
+        catch (Exception) { return false; }
+    }
+
+    private void LoseConnection(string message = "Se perdió la conexión. Pulsa Reconectar para recuperar tu sala.")
+    {
+        Ready = Connecting = false;
+        Message = message;
+        _healthCheck = null;
+        // Keep cached room data and pending commands until the player reconnects.
+        _connection?.Disconnect();
     }
     public void ClearResult() { LastResult = null; LastResultRoom = ""; }
 
@@ -385,6 +443,7 @@ public sealed class LobbyConnection : IDisposable
     public void Dispose()
     {
         Ready = Connecting = false;
+        _healthCheck = null;
         _preparationHand = []; _preparationHandDirty = true; PreparationRevision++;
         _cachedDuelJson = _cachedHandJson = _cachedOptionsJson = null; _cachedDuel = null;
         if (_connection?.IsActive == true) _connection.Disconnect();
