@@ -1,0 +1,18 @@
+Wooden dice on wodden table roll
+Author: Wuzzy
+Original filename: Holzwürfel_auf_Holztisch_3.flac
+Source: https://opengameart.org/content/wooden-dice-on-wodden-table-roll
+Original download: https://opengameart.org/sites/default/files/Holzw%C3%BCrfel_auf_Holztisch_3.flac
+License: Creative Commons CC0 1.0 Universal (public domain dedication)
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+Retrieved: 2026-11-10
+
+The author describes this as a real wooden die rolling on a wooden table,
+recorded with a Philips SBC MD110 microphone. Attribution is retained here
+for provenance, although CC0 does not require attribution.
+
+wooden-dice-roll-3.flac is the unmodified original recording.
+../sfx/dice-roll.wav is derived from it by tools/audio/process-recordings.py:
+70 Hz high-pass, mild transient compression, normalization to -3 dBFS,
+2 ms fade-in, 15 ms fade-out, stereo PCM16 at 44.1 kHz.
+The actual contact timings, length and pitch are preserved.

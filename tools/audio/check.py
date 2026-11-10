@@ -5,7 +5,8 @@ from pathlib import Path
 import subprocess
 
 root = Path(__file__).resolve().parents[2]
-for path in sorted((root / "assets/audio").glob("*/*")):
+paths = [path for folder in ("music", "sfx") for path in (root / "assets/audio" / folder).iterdir()]
+for path in sorted(paths):
     if path.suffix not in (".wav", ".ogg"):
         continue
     decoded = subprocess.check_output([

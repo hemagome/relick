@@ -130,6 +130,7 @@ public partial class OnlineArena
             var returning = next.Event.Kind == DuelVisualKind.Return;
             var kind = next.Event.Kind;
             if (kind == DuelVisualKind.Draw) PlaySound(SoundCue.CardDraw);
+            if (kind == DuelVisualKind.Shuffle) PlaySound(SoundCue.CardShuffle);
             var target = kind switch
             {
                 DuelVisualKind.Return or DuelVisualKind.Shuffle => null,

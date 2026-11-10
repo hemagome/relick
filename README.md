@@ -36,7 +36,7 @@ El preset `Windows Desktop` también está disponible en **Proyecto → Exportar
 
 ## Alcance actual
 
-- Audio original: menú compartido, combate y clímax según el Relikario rival —incluidos los dos temas de Yuno—, efectos de robo, dado, curación y ataque, y volúmenes independientes guardados en el dispositivo.
+- Audio original: menú compartido, combate y clímax según el Relikario rival —incluidos los dos temas de Yuno—, efectos de robo, barajado, dado, curación y ataque, y volúmenes independientes guardados en el dispositivo.
 - Yuno Gyambura y su evolución, con animaciones de reposo, ataque y daño. Las hojas actuales conservan la marca de agua de Ludo del recurso aportado.
 - Treinta y una definiciones aportadas: Ataque, Magnet Shuffle, Destiny Shuffle, Colgante de la Suerte, Senshuni, Caja de Cartón, Vida Extra, Aumento de Relick Points, Huevo Azul Explosivo, Re-lanza, Error de Carga, Casco de Diamantes, Bomba de Tiempo, Código Konamy, Cambio de Mentes, Agilidad al 100%, Resetear la Mente, Esquivar, PC 8BITS, Mira de Sniper, Triple Ataque Cruzado, Relick Reverse Shuffle, Hoguera, Disquete, Estrella del Fontanero, Jessica Lee, Carga Rápida, Cartucho de Re-carga, Doblador de Tiempo, Tótem de Salvación y Tótem de Oro.
 - Mazos de desarrollo simétricos de 42 cartas (doce Ataques y una copia de cada otra carta), cuatro espacios de habilidad con costes 0/300/500/1000 PR, Memoria, Corruptas, Bonus, canje, respuestas, COMBO y efectos de Relikia.

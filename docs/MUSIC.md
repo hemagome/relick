@@ -1,6 +1,6 @@
 # Música adaptativa y efectos
 
-El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. Las tres composiciones originales están incluidas y asignadas en `assets/audio/music.tres`; los cuatro efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
+El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. Las tres composiciones originales están incluidas y asignadas en `assets/audio/music.tres`; los cinco efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
 
 ## Estados
 
@@ -48,16 +48,17 @@ La arena llama a `PresentDuel(RoomCode, snapshot)` al presentar un estado autori
 
 ## Efectos y volumen
 
-`SoundDirector` mantiene cuatro reproductores con hasta cuatro voces simultáneas por efecto, en el bus `Sfx`:
+`SoundDirector` mantiene cinco reproductores con hasta cuatro voces simultáneas por efecto, en el bus `Sfx`:
 
 - Robo: al comenzar a retirar cada carta de la cola de vuelos, también si su destino está fuera de pantalla. Incluye reparto inicial, mulligan y robos de ambos jugadores.
-- Dado: `DiceFace.RollStarted`, cuando empieza cada lanzamiento o relanzamiento, incluidos los dos dados de iniciativa. Ajustar el resultado no vuelve a lanzar el sonido.
+- Barajado: grabación CC0 de Brian MacIntosh (BMacZero), de 0,78 segundos. Suena una sola vez al retirar un evento `Shuffle` de la cola de animación, también si el mazo queda fuera de pantalla.
+- Dado: grabación real de un dado de madera, publicada por Wuzzy bajo CC0. `DiceFace.RollStarted` la reproduce al empezar cada lanzamiento o relanzamiento, incluidos los dos dados de iniciativa. Dura 1,37 segundos y termina dentro de los 1,45 segundos de la animación. Ajustar el resultado no vuelve a lanzar el sonido.
 - Curación: al comenzar la animación de una curación efectiva.
 - Ataque: al comenzar la animación del ataque ejecutado.
 
 Las vistas de recuperación y los cambios de diseño no reproducen efectos históricos: reutilizan el filtro existente de revisiones y las colas de animación.
 
-El botón **Sonido** de la sala y **Menú → Sonido** del duelo abren el mismo diálogo persistente, independiente de la reconstrucción del tablero. Tiene dos controles de 0–100 %, con silencio real en cero. Los valores iniciales son 65 % para música y 80 % para efectos. `AudioPreferences` aplica cada cambio al instante y guarda los niveles en `user://audio.cfg`, con escritura diferida mientras se arrastra y guardado inmediato al confirmar o salir. El bus Master tiene un limitador para las superposiciones.
+El botón **Sonido** de la sala y **Menú → Sonido** del duelo abren el mismo diálogo persistente, independiente de la reconstrucción del tablero. Cada canal tiene un control de 0–100 % y un interruptor **Silenciar**. El interruptor conserva el porcentaje: al desactivarlo vuelve a escucharse al volumen anterior. Se puede ajustar el nivel mientras está silenciado para preparar el volumen de regreso. El volumen cero también silencia el canal. Los valores iniciales son 65 % para música y 80 % para efectos, con ambos interruptores apagados. `AudioPreferences` aplica cada cambio al instante y guarda niveles y silencios en `user://audio.cfg`, con escritura diferida mientras se arrastra y guardado inmediato al confirmar o salir. Las configuraciones anteriores que solo contienen volúmenes siguen siendo compatibles. El bus Master tiene un limitador para las superposiciones.
 
 Al cerrar la ventana, `QuitWithAudio` guarda las preferencias, libera las voces y los recursos y permite procesar su eliminación antes de terminar Godot. La salida tarda unos 150 ms y no añade confirmaciones. Las pruebas de interfaz y audio usan esa misma salida.
 

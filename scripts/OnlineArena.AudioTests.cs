@@ -34,6 +34,11 @@ public partial class OnlineArena
             UpdateFlights(0); UpdateFlights(0); UpdateFlights(0);
             Check(played.Count(c => c == SoundCue.CardDraw) == 1, "El robo no suena al comenzar su vuelo.");
             ResetAnimations();
+            Animate([new() { Kind = DuelVisualKind.Shuffle, Player = _snapshot.MySeat }], new());
+            Check(!played.Contains(SoundCue.CardShuffle), "El barajado suena antes de comenzar su animación.");
+            UpdateFlights(0); UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.1);
+            Check(played.Count(c => c == SoundCue.CardShuffle) == 1, "El barajado debe sonar una sola vez al comenzar.");
+            ResetAnimations();
             var before = played.Count;
             PresentTestSnapshot(_snapshot!);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -41,7 +46,7 @@ public partial class OnlineArena
             foreach (var die in _initiativeDice) die.RollTo(4);
             Check(played.Count(c => c == SoundCue.DiceRoll) == 4, "Los dados de iniciativa no tienen sonido.");
             ResetAnimations();
-            GD.Print("SFX_PASS · cuatro efectos, vuelos, ataque/curación, dado real y relanzamiento, iniciativa, ajustes silenciosos y recuperación sin repeticiones.");
+            GD.Print("SFX_PASS · cinco efectos, robo y barajado sin repeticiones, ataque/curación, dado y relanzamiento, iniciativa, ajustes silenciosos y recuperación.");
         }
         finally { sound.SoundPlayed -= Record; ResetAnimations(); }
     }

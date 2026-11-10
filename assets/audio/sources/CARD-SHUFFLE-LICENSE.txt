@@ -1,0 +1,17 @@
+Playing Card Sounds
+Author: Brian MacIntosh (BMacZero)
+Original filename: shuffle.wav
+Source: https://opengameart.org/content/playing-card-sounds
+Original download: https://opengameart.org/sites/default/files/shuffle.wav
+License: Creative Commons CC0 1.0 Universal (public domain dedication)
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+Retrieved: 2026-11-10
+
+The creator optionally requests credit as Brian MacIntosh. Credit is
+retained here for provenance, although CC0 does not require attribution.
+
+card-shuffle-bmaczero.wav is the unmodified original.
+../sfx/card-shuffle.wav is derived by tools/audio/process-recordings.py:
+70 Hz high-pass, mild transient compression, normalization to -3 dBFS,
+2 ms fade-in, 15 ms fade-out, stereo PCM16 at 44.1 kHz.
+The recording's timing, length and pitch are preserved.

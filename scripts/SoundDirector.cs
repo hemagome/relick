@@ -2,7 +2,7 @@ using Godot;
 
 namespace Relick;
 
-public enum SoundCue { CardDraw, DiceRoll, Heal, Attack }
+public enum SoundCue { CardDraw, DiceRoll, Heal, Attack, CardShuffle }
 
 public partial class SoundDirector : Node
 {
@@ -15,7 +15,7 @@ public partial class SoundDirector : Node
         foreach (var (cue, file) in new[]
         {
             (SoundCue.CardDraw, "card-draw"), (SoundCue.DiceRoll, "dice-roll"),
-            (SoundCue.Heal, "heal"), (SoundCue.Attack, "attack")
+            (SoundCue.Heal, "heal"), (SoundCue.Attack, "attack"), (SoundCue.CardShuffle, "card-shuffle")
         })
         {
             var player = new AudioStreamPlayer

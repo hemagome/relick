@@ -1,4 +1,4 @@
-// Original Relick score and sound design. No samples, external music or libraries.
+// Original Relick score and synthesized effects. Recorded dice are processed separately.
 // Build: g++ -O2 -std=c++17 tools/audio/render.cpp -o /tmp/relick-audio
 // Run: /tmp/relick-audio /tmp/relick-audio-wav
 #include <algorithm>
@@ -214,7 +214,7 @@ Audio music(int mode) {
 }
 
 Audio effect(int kind) {
-    double length = kind == 0 ? 0.22 : kind == 1 ? 1.42 : kind == 2 ? 1.05 : 0.46;
+    double length = kind == 0 ? 0.22 : kind == 1 ? 1.05 : 0.46;
     Audio a(int(length * SR));
     if (kind == 0) {
         double lp = 0;
@@ -225,17 +225,6 @@ Audio effect(int kind) {
             add(a, i, value, -0.2+0.4*t/length, false);
         }
     } else if (kind == 1) {
-        const double impacts[] = {0.015,0.11,0.205,0.30,0.39,0.49,0.60,0.73,0.88,1.06,1.25};
-        for (int k = 0; k < 11; k++) {
-            for (int i = 0; i < int(0.085*SR); i++) {
-                double t = double(i)/SR;
-                double click = (sine((620+k*39)*t)+0.50*sine((1430+k*57)*t))*std::exp(-t*100);
-                click += noise()*std::exp(-t*180)*0.55;
-                double amp = (0.18+0.16*std::sin(PI*k/10.0))*(k == 10 ? 0.75 : 1);
-                add(a, int(impacts[k]*SR)+i, click*amp, k%2 ? -0.18 : 0.18, false);
-            }
-        }
-    } else if (kind == 2) {
         // A short, distinct rising restorative chime, with no voice sample.
         for (int k = 0; k < 5; k++) note(a, k*0.23, 0.28, std::array<int,5>{74,77,81,86,89}[k], Bell, 0.15, (k-2)*0.18, false);
         space(a, false, 0.55);
@@ -257,6 +246,6 @@ int main(int argc, char **argv) {
     std::filesystem::create_directories(output);
     std::array<std::string,3> songs = {"menu", "yuno-combat", "yuno-climax"};
     for (int i = 0; i < 3; i++) writeWav((output/(songs[i]+".wav")).string(), music(i), true, i == 0 ? 0.15 : 0.18);
-    std::array<std::string,4> sounds = {"card-draw", "dice-roll", "heal", "attack"};
-    for (int i = 0; i < 4; i++) writeWav((output/(sounds[i]+".wav")).string(), effect(i), false, 0.18);
+    std::array<std::string,3> sounds = {"card-draw", "heal", "attack"};
+    for (int i = 0; i < 3; i++) writeWav((output/(sounds[i]+".wav")).string(), effect(i), false, 0.18);
 }
