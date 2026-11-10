@@ -90,6 +90,7 @@ public partial class OnlineLobby : Control
     {
         _lobby.Tick();
         var room = _lobby.Room;
+        if (HoldForQuickMatch(room, _lobby.Ready, _lobby.Searching, _lobby.PendingRoomRequest, delta)) return;
         if (_presentedRoomCode.Length > 0 && room == null && _lobby.Ready)
             _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
         if (_arena == null && room == null && _lobby.LastResult != null && !_resultExitRequested)
@@ -130,9 +131,12 @@ public partial class OnlineLobby : Control
         foreach (var side in new[] { "left", "right" }) _content.AddThemeConstantOverride("margin_" + side, horizontal);
         foreach (var side in new[] { "top", "bottom" }) _content.AddThemeConstantOverride("margin_" + side, ArenaViewport.Short(this) ? 12 : 28);
         var shortScreen = ArenaViewport.Short(this);
+        _matchLink.Compact = shortScreen;
+        _quickMatchStatus.AddThemeFontSizeOverride("font_size", shortScreen ? 14 : 16);
         if (_lobbyHeading != null) _lobbyHeading.Visible = !shortScreen;
         if (_lobbyColumn != null) _lobbyColumn.AddThemeConstantOverride("separation", shortScreen ? 12 : 18);
         foreach (var description in _entryDescriptions) description.Visible = !shortScreen;
+        _quickExplanation.Visible = _matchLink.State == MatchmakingLinkState.Idle && !shortScreen;
         foreach (var title in _entryTitles) title.AddThemeFontSizeOverride("font_size", shortScreen ? 20 : 24);
         foreach (var panel in _entryPanels)
         {

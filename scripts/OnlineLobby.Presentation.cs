@@ -29,7 +29,7 @@ public partial class OnlineLobby
     private void BuildLobby()
     {
         Theme = LobbyTheme();
-        var background = new ArenaBackground(); AddChild(background);
+        var background = new LobbyBackground(); AddChild(background);
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _content = new MarginContainer(); AddChild(_content);
         _content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -61,9 +61,15 @@ public partial class OnlineLobby
         column.AddChild(cards); _entryCards = cards;
         var quick = EntryCard(cards, GameIcon.Sword, LobbyMint, "Partida rápida", "Casual · Sin clasificación");
         var explanation = Description("Busca un rival y comienza un duelo sin compartir códigos.");
-        quick.AddChild(explanation); _entryDescriptions.Add(explanation);
-        _quickMatchStatus = Text("", 18); quick.AddChild(_quickMatchStatus);
-        quick.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
+        quick.AddChild(explanation); _entryDescriptions.Add(explanation); _quickExplanation = explanation;
+        _matchFeedback = new HBoxContainer { Name = "MatchmakingFeedback", Visible = false, SizeFlagsVertical = SizeFlags.ExpandFill };
+        _matchFeedback.AddThemeConstantOverride("separation", 10); quick.AddChild(_matchFeedback);
+        _matchLink = new MatchmakingLink { Name = "MatchmakingLink", SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            ReducedMotion = DisplayServer.AccessibilityShouldReduceAnimation() == 1 || ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool() };
+        _matchFeedback.AddChild(_matchLink);
+        _quickMatchStatus = Text("", 16); _quickMatchStatus.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _quickMatchStatus.SizeFlagsVertical = SizeFlags.ShrinkCenter; _matchFeedback.AddChild(_quickMatchStatus);
+        _quickIdleSpace = new Control { SizeFlagsVertical = SizeFlags.ExpandFill }; quick.AddChild(_quickIdleSpace);
         _quickMatch = AddButton(quick, "Buscar rival", QuickMatch);
         _quickMatch.Name = "QuickMatch"; AccentButton(_quickMatch, LobbyMint);
 
@@ -114,6 +120,7 @@ public partial class OnlineLobby
     {
         _lobbyNotice = _localError = "";
         if (_lobby.Searching) _lobby.CancelQuickMatch(); else _lobby.FindQuickMatch(_name.Text);
+        if (_lobby.PendingRoomRequest == RoomRequest.FindQuickMatch) _quickMatchRequested = true;
     }
 
     private void CopyRoomCode()
@@ -128,7 +135,7 @@ public partial class OnlineLobby
         _copy.Text = "Copiado ✓";
     }
 
-    private void PresentLobbyState(RoomInfo? room, bool ready, bool connecting, RoomRequest pending, string error, string message, bool searching = false, bool quickMatchAvailable = true)
+    private void PresentLobbyState(RoomInfo? room, bool ready, bool connecting, RoomRequest pending, string error, string message, bool searching = false, bool quickMatchAvailable = true, bool matched = false)
     {
         searching &= room == null;
         if (searching && !_presentedSearching) _searchSeconds = 0;
@@ -154,8 +161,7 @@ public partial class OnlineLobby
         _quickMatch.Disabled = !ready || !quickMatchAvailable || busy || room != null;
         _quickMatch.TooltipText = quickMatchAvailable ? "" : "La partida rápida no está disponible en este servidor.";
         _quickMatch.Text = pending == RoomRequest.FindQuickMatch ? "Iniciando…" : pending == RoomRequest.CancelQuickMatch ? "Cancelando…" : searching ? "Cancelar búsqueda" : "Buscar rival";
-        _quickMatchStatus.Text = searching ? $"Buscando rival… {(int)_searchSeconds / 60:00}:{(int)_searchSeconds % 60:00}" : "";
-        _quickMatchStatus.Visible = searching;
+        PresentMatchmakingFeedback(searching, ready, pending, matched);
         _create.Text = pending == RoomRequest.Create ? "Creando…" : "Crear sala";
         _join.Text = pending == RoomRequest.Join ? "Entrando…" : "Unirse";
         _name.Editable = _code.Editable = room == null && !busy && !searching;

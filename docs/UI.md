@@ -15,9 +15,27 @@ Los significados de `RelickVisuals.State` son independientes del tapete: selecci
 La entrada agrupa el nombre del jugador y dos tarjetas: Partida rápida y Sala privada.
 La primera ofrece Buscar rival y, durante la espera, un contador y Cancelar búsqueda.
 La segunda conserva Crear sala y Unirse mediante código. Buscar bloquea el nombre,
-el código y las acciones privadas hasta cancelar o encontrar rival. Usa el fondo de
-arena, superficies oscuras, acentos verde/azul y foco visible. En pantallas cortas se
+el código y las acciones privadas hasta cancelar o encontrar rival. El fondo propio
+del lobby combina un degradado gris azulado, tramas de manga, diagonales y los
+chevrones del logotipo en cian/rojo de bajo contraste. La decoración se concentra
+en los bordes; las superficies de lectura conservan su contraste. Es estático,
+se adapta al tamaño y deja pasar los clics a los controles. Los acentos de las
+acciones y el foco visible conservan sus significados. En pantallas cortas se
 reducen márgenes y descripciones. Enter en el código permite unirse cuando hay conexión.
+
+Durante la partida rápida, un enlace de dos cartas ocupa el espacio central de
+su panel: reverso propio, silueta rival y tres flechas con un ciclo suave de dos
+segundos. El tiempo de espera y Cancelar búsqueda permanecen visibles; el botón
+conserva su posición. La animación solo avanza durante una búsqueda confirmada
+y se pausa al cancelar, perder conexión u ocultarse. La preferencia de reducir
+animaciones del sistema, cuando está disponible, y el ajuste de proyecto
+`relick/accessibility/reduced_motion` habilitan una variante estática.
+
+Una sala confirmada después de solicitar partida rápida muestra «Rival
+encontrado», completa el reverso rival y entra a preparación tras 350 ms. También
+se presenta cuando el segundo jugador es emparejado inmediatamente sin pasar por
+la cola. Una sala privada o la recuperación de una partida ya abierta no repite
+esa confirmación; no se simulan jugadores, porcentajes ni estimaciones de espera.
 
 El estado normal no muestra «Conectado». Al perder la conexión aparece un cuadro
 central grande «Sin conexión», sobre la sala o el tablero, con el botón Reconectar.
@@ -177,6 +195,13 @@ empiezan su registro público con la siguiente jugada aceptada; no se reconstruy
 desde el registro interno del motor, que contiene información privada.
 
 ## Validación
+
+`--pvp-ui-test --matchmaking-only` verifica el ciclo, la cancelación sin mover el
+botón, la pausa/desconexión, el movimiento reducido, el emparejamiento inmediato,
+la confirmación autorizada y su duración acotada, en cuatro tamaños. Se incluye
+también en `--lobby-only`. Con `--ui-screenshot-dir` guarda los estados de búsqueda
+y rival encontrado en una ejecución gráfica. La prueba de dos procesos con
+`--pvp-input-quick` exige una sola confirmación visual en cada cliente.
 
 ```bash
 dotnet run --project tests/Relick.Core.Tests.csproj

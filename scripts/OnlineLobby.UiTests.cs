@@ -15,9 +15,13 @@ public partial class OnlineLobby
                 throw new Exception("El juego aún incluye el controlador o rival de práctica.");
             _content.Hide();
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+            if (OS.GetCmdlineUserArgs().Contains("--matchmaking-only"))
+            {
+                await CheckMatchmakingAnimation(); await Layout(); GD.Print("PVP_MATCHMAKING_ONLY_PASS"); GetTree().Quit(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--lobby-only"))
             {
-                await CheckLobbyPolish();
+                await CheckLobbyPolish(); await CheckMatchmakingAnimation();
                 await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); GetTree().Quit(); return;
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
@@ -183,7 +187,7 @@ public partial class OnlineLobby
             await online.CheckReverseLayout();
             await online.CheckDuelResults();
             await online.CheckPreparationLayout();
-            online.Hide(); await CheckLobbyPolish();
+            online.Hide(); await CheckLobbyPolish(); await CheckMatchmakingAnimation();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
             GD.Print("PVP_UI_PASS · solo PvP, cuatro tamaños, ambos asientos, selección inicial, mulligan, recuperación y animaciones.");

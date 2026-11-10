@@ -79,6 +79,8 @@ public partial class OnlineLobby
                 await Click(_join);
             }
             await Until(() => _arena?.IsChoosingInitialSkill == true);
+            if (args.Contains("--pvp-input-quick") && PlayedMatchConfirmations != 1)
+                throw new Exception("La partida rápida omite o repite la confirmación visual del emparejamiento.");
             await ClickCurrent(() => _arena!.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>().Single(c => c.Card.Id == (host ? "destiny-shuffle" : "magnet-shuffle")));
             await ClickCurrent(() => _arena!.InitialSkillConfirmButton!);
             await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false);
