@@ -9,6 +9,11 @@ run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 config/icon="res://assets/icon.svg"
 
+[autoload]
+AudioPreferences="*res://scripts/AudioPreferences.cs"
+SoundDirector="*res://scripts/SoundDirector.cs"
+MusicDirector="*res://scenes/MusicDirector.tscn"
+
 [display]
 window/size/viewport_width=1440
 window/size/viewport_height=1024

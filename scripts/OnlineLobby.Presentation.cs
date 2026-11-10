@@ -44,6 +44,9 @@ public partial class OnlineLobby
         brand.SizeFlagsHorizontal = SizeFlags.ShrinkBegin; brand.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         navigation.AddChild(brand);
         navigation.AddThemeConstantOverride("separation", 16);
+        navigation.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var sound = AddButton(navigation, "Sonido", () => GetNode<AudioPreferences>("/root/AudioPreferences").OpenControls());
+        sound.Name = "LobbyAudioSettings"; sound.CustomMinimumSize = new(90, 44);
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
         _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);

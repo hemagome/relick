@@ -17,136 +17,136 @@ public partial class OnlineLobby
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
             if (OS.GetCmdlineUserArgs().Contains("--matchmaking-only"))
             {
-                await CheckMatchmakingAnimation(); await Layout(); GD.Print("PVP_MATCHMAKING_ONLY_PASS"); GetTree().Quit(); return;
+                await CheckMatchmakingAnimation(); await Layout(); GD.Print("PVP_MATCHMAKING_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--lobby-only"))
             {
                 await CheckLobbyPolish(); await CheckMatchmakingAnimation();
-                await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); GetTree().Quit(); return;
+                await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); QuitWithAudio(); return;
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
             if (OS.GetCmdlineUserArgs().Contains("--connection-only"))
             {
                 await CheckArenaConnectionNotice(online); online.Hide(); await CheckLobbyPolish();
-                online.QueueFree(); await Layout(); GD.Print("PVP_CONNECTION_ONLY_PASS"); GetTree().Quit(); return;
+                online.QueueFree(); await Layout(); GD.Print("PVP_CONNECTION_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--closure-only"))
             {
                 await online.CheckDuelResults(); online.Hide(); await CheckLobbyPolish();
-                online.QueueFree(); await Layout(); GD.Print("PVP_CLOSURE_ONLY_PASS"); GetTree().Quit(); return;
+                online.QueueFree(); await Layout(); GD.Print("PVP_CLOSURE_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--preparation-only"))
             {
                 await online.CheckPreparationLayout(); online.QueueFree(); await Layout();
                 GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
-                GD.Print("PVP_PREPARATION_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_PREPARATION_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--combo-responses-only"))
             {
                 await online.CheckComboResponseToggle(); online.QueueFree(); await Layout();
                 GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
-                GD.Print("PVP_COMBO_RESPONSES_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_COMBO_RESPONSES_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--actions-only"))
             {
                 await online.CheckActionCounters(); online.QueueFree(); await Layout();
-                GD.Print("PVP_ACTION_COUNTERS_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_ACTION_COUNTERS_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--guidance-only"))
             {
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
-                GD.Print("PVP_GUIDANCE_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_GUIDANCE_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--inspector-only"))
             {
                 await online.CheckCardInspector(); online.QueueFree(); await Layout();
-                GD.Print("PVP_INSPECTOR_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_INSPECTOR_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--triple-attack-only"))
             {
                 await online.CheckTripleAttackDraws(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TRIPLE_ATTACK_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_TRIPLE_ATTACK_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--history-only"))
             {
                 await online.CheckPublicHistory(); online.QueueFree(); await Layout();
-                GD.Print("PVP_HISTORY_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_HISTORY_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--context-only"))
             {
                 await online.CheckContextActionBar(); online.QueueFree(); await Layout();
-                GD.Print("PVP_CONTEXT_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_CONTEXT_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--memory-inspection-only"))
             {
                 await online.CheckMemoryInspection(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MEMORY_INSPECTION_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_MEMORY_INSPECTION_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--golden-totem-only"))
             {
                 await online.CheckGoldenTotemLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_GOLDEN_TOTEM_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_GOLDEN_TOTEM_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--totem-only"))
             {
                 await online.CheckTotemLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TOTEM_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_TOTEM_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--time-bender-only"))
             {
                 await online.CheckTimeBenderLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TIME_BENDER_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_TIME_BENDER_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--reload-cartridge-only"))
             {
                 await online.CheckReloadCartridgeLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_RELOAD_CARTRIDGE_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_RELOAD_CARTRIDGE_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--quick-load-only"))
             {
                 await online.CheckQuickLoadLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_QUICK_LOAD_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_QUICK_LOAD_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--jessica-only"))
             {
                 await online.CheckJessicaLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_JESSICA_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_JESSICA_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--star-only"))
             {
                 await online.CheckPlumberStarLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_PLUMBER_STAR_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_PLUMBER_STAR_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--memory-recovery-only"))
             {
                 await online.CheckMemoryRecoveryLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MEMORY_RECOVERY_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_MEMORY_RECOVERY_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--reverse-only"))
             {
                 await online.CheckReverseLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_REVERSE_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_REVERSE_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--evolution-only"))
             {
                 await online.CheckYunoEvolutionLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_YUNO_EVOLUTION_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_YUNO_EVOLUTION_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--mind-reset-only"))
             {
                 await online.CheckMindResetLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MIND_RESET_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_MIND_RESET_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--mind-swap-only"))
             {
                 await online.CheckMindSwapLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MIND_SWAP_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_MIND_SWAP_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--deck-search-only"))
             {
                 await online.CheckDeckSearchLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_DECK_SEARCH_ONLY_PASS"); GetTree().Quit(); return;
+                GD.Print("PVP_DECK_SEARCH_ONLY_PASS"); QuitWithAudio(); return;
             }
             foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
             foreach (var seat in new[] { 0, 1 })
@@ -197,7 +197,7 @@ public partial class OnlineLobby
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
             GD.Print("PVP_UI_PASS · solo PvP, cuatro tamaños, ambos asientos, selección inicial, mulligan, recuperación y animaciones.");
-            GetTree().Quit();
+            QuitWithAudio();
         }
         catch (Exception error) { GD.PushError("PVP_UI_FAIL · " + error); GetTree().Quit(1); }
     }

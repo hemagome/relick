@@ -33,7 +33,14 @@ public partial class OnlineLobby : Control
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         ArenaViewport.Configure(GetWindow());
         GetWindow().SizeChanged += () => ArenaViewport.Configure(GetWindow());
+        GetTree().AutoAcceptQuit = false;
+        GetWindow().CloseRequested += QuitWithAudio;
         BuildLobby();
+        GetNode<MusicDirector>("/root/MusicDirector").ShowMenu();
+        if (OS.GetCmdlineUserArgs().Any(a => a is "--music-test" or "--audio-test"))
+        {
+            SetProcess(false); CallDeferred(nameof(MusicSmokeTest)); return;
+        }
         if (OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--lobby-preview-dir=")))
         {
             SetProcess(false);
@@ -99,6 +106,7 @@ public partial class OnlineLobby : Control
             _resultExitRequested && room?.Code != _arena.RoomCode))
         {
             RemoveChild(_arena); _arena.QueueFree(); _arena = null; _content.Visible = true;
+            GetNode<MusicDirector>("/root/MusicDirector").ShowMenu();
             _lobby.ClearResult(); _resultExitRequested = false;
             _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
         }

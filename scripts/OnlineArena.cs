@@ -70,8 +70,11 @@ public partial class OnlineArena : Control
         _diceCaption = ArenaPresentation.Text("", 13); _diceCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(_diceCaption);
         _die.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
+        foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
     }
+
+    private void PlaySound(SoundCue cue) => GetNodeOrNull<SoundDirector>("/root/SoundDirector")?.Play(cue);
 
     private void QueueLayout()
     {
@@ -144,6 +147,7 @@ public partial class OnlineArena : Control
         _root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); ArenaViewport.ApplyInsets(_root, Compact ? 10 : 24, Compact ? 8 : 16);
         _root.AddThemeConstantOverride("separation", Short ? 4 : 8);
         var s = _snapshot!;
+        GetNodeOrNull<MusicDirector>("/root/MusicDirector")?.PresentDuel(RoomCode, s);
         RefreshEffectCardOptions();
         if (_selectedSkill >= s.Players[s.MySeat].Skills.Length) _selectedSkill = -1;
         var header = new HBoxContainer(); _root.AddChild(header);

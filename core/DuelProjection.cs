@@ -3,7 +3,10 @@ namespace Relick.Core;
 public sealed class DuelPlayerView
 {
     public string Name { get; set; } = "";
+    public string RelikarioId { get; set; } = "yuno";
     public int Health { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool HasReachedZero { get; set; }
     public int MaxHealth { get; set; }
     public int Level { get; set; }
     public int Pr { get; set; }
@@ -105,6 +108,8 @@ public sealed class DuelSnapshot
             Players = s.Players.Select((p, index) => new DuelPlayerView
             {
                 Name = p.Name, Health = p.Health, MaxHealth = p.MaxHealth, Level = p.Level, Pr = p.Relikia, Dexterity = p.Dexterity,
+                HasReachedZero = p.HasReachedZero,
+                RelikarioId = p.Relikario.Id,
                 Actions = p.ActionsLeft, DeckCount = p.Deck.Count, HandCount = p.Hand.Count,
                 Hand = p.Hand.Select((id, i) => index == seat || p.IsHandCardRevealed(i) ||
                     (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ||

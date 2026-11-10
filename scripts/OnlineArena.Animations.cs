@@ -106,7 +106,12 @@ public partial class OnlineArena
     private void PlayPendingPortraits()
     {
         if (_die.IsBusy || _flight != null || _flights.Count > 0 || _openingInitiative != null || _snapshot == null) return;
-        foreach (var (player, motion) in _pendingPortraits) _portraits[player == _snapshot.MySeat ? 0 : 1].Play(motion);
+        foreach (var (player, motion) in _pendingPortraits)
+        {
+            _portraits[player == _snapshot.MySeat ? 0 : 1].Play(motion);
+            if (motion == PortraitMotion.Attack) PlaySound(SoundCue.Attack);
+            if (motion == PortraitMotion.Heal) PlaySound(SoundCue.Heal);
+        }
         _pendingPortraits.Clear();
     }
 
@@ -124,6 +129,7 @@ public partial class OnlineArena
             var deckRect = new Rect2(deck.GlobalPosition + deck.TopRect.Position, deck.TopRect.Size);
             var returning = next.Event.Kind == DuelVisualKind.Return;
             var kind = next.Event.Kind;
+            if (kind == DuelVisualKind.Draw) PlaySound(SoundCue.CardDraw);
             var target = kind switch
             {
                 DuelVisualKind.Return or DuelVisualKind.Shuffle => null,

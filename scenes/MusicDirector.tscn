@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/MusicDirector.cs" id="1"]
+[ext_resource type="AudioStreamInteractive" path="res://assets/audio/music.tres" id="2"]
+
+[node name="MusicDirector" type="AudioStreamPlayer"]
+process_mode = 3
+stream = ExtResource("2")
+volume_db = -3.0
+bus = &"Music"
+script = ExtResource("1")

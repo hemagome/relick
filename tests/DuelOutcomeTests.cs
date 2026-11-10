@@ -5,6 +5,37 @@ static class DuelOutcomeTests
 {
     public static IEnumerable<(string Name, Action Run)> Cases => new (string, Action)[]
     {
+        ("Identidad pública: cada asiento recibe los Relikarios reales y sus evoluciones", () =>
+        {
+            var game = Fixture(); game.State.Players[1].Relikario = RelikarioCatalog.YunoLv2;
+            foreach (var seat in new[] { -1, 0, 1 })
+            {
+                var json = JsonSerializer.Serialize(DuelSnapshot.For(game, seat, 1), DuelJson.Default.DuelSnapshot);
+                var view = JsonSerializer.Deserialize(json, DuelJson.Default.DuelSnapshot)!;
+                Check(view.Players[0].RelikarioId == "yuno" && view.Players[1].RelikarioId == "yuno-lv2");
+            }
+            Check(JsonSerializer.Deserialize("{\"Health\":8}", DuelJson.Default.DuelPlayerView)!.RelikarioId == "yuno");
+        }),
+        ("Primer cero público: persiste tras curación y recuperación para ambos clientes", () =>
+        {
+            var rng = new ScriptedRandom(); var game = Fixture(rng);
+            game.State.Phase = Phase.Combat; game.State.Turn = 2;
+            game.State.Active.Skills.Add(CardCatalog.Destiny.Id); game.State.Active.AttackRerollUsedThisTurn = true;
+            game.State.Players[1].Health = 1;
+            rng.EnqueueDie(5); Check(game.Attack(0, 0, 0).Success);
+            Check(game.State.Players[1].Health == 0 && game.State.Players[1].HasReachedZero && !game.State.IsOver);
+            game.State.Players[1].Health = 2;
+            var restored = GameEngine.FromSnapshot(game.SaveSnapshot(false), new SeededRandom(11));
+            foreach (var seat in new[] { -1, 0, 1 })
+            {
+                var view = DuelSnapshot.For(restored, seat, 1);
+                var json = JsonSerializer.Serialize(view, DuelJson.Default.DuelSnapshot);
+                var received = JsonSerializer.Deserialize(json, DuelJson.Default.DuelSnapshot)!;
+                Check(received.Players[1].Health == 2 && received.Players[1].HasReachedZero && !received.Players[0].HasReachedZero);
+            }
+            var legacy = JsonSerializer.Deserialize("{\"Health\":8}", DuelJson.Default.DuelPlayerView)!;
+            Check(!legacy.HasReachedZero);
+        }),
         ("Resultado público: abandono, privacidad y recuperación sin log interno", () =>
         {
             var game = Fixture(); game.State.Log.Add("SECRETO_INTERNO");

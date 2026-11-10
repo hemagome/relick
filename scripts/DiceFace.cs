@@ -31,6 +31,7 @@ public partial class DiceFace : Control
     private bool _renderedRolling;
 
     public event Action? RollFinished;
+    public event Action? RollStarted;
     public bool IsRolling { get; private set; }
     public bool IsPresented => IsRolling || _resultRemaining > 0;
     public float PresentationOpacity => IsRolling ? 1 : (float)Math.Clamp(_resultRemaining / 0.2, 0, 1);
@@ -247,6 +248,7 @@ public partial class DiceFace : Control
         _resultRemaining = 0;
         IsRolling = true;
         UpdatePose();
+        RollStarted?.Invoke();
     }
 
     public override void _Process(double delta) => AdvancePlayback(delta);
