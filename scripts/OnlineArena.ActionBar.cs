@@ -12,15 +12,19 @@ public partial class OnlineArena
     private VBoxContainer _actionDock = null!;
     private AdvancePhaseButton? _advanceButton;
     private string _decisionHint = "";
+    private string _selectionCost = "";
     private readonly List<MenuButton> _actionMenus = [];
     private bool _skillContext, _showReplayMemory;
     private int? _pointsTarget;
     private (int Owner, FieldZone Zone, int Index)? _fieldSelection;
+    private (CardDefinition Card, int? Counters)? _inspectorPreview;
+    private Vector2? _fieldPress;
 
     private void ResetInteraction()
     {
         _selected.Clear(); _selectedSkill = -1; _skillContext = false;
         _fieldSelection = null; _pointsTarget = null; _showReplayMemory = false;
+        _inspectorPreview = null;
     }
 
     private void BuildActionArea(VBoxContainer parent)
@@ -173,8 +177,6 @@ public partial class OnlineArena
                 var seat = player;
                 AddLocalButton(_moves, seat == s.MySeat ? "Mis PR" : "PR del rival", () => { _pointsTarget = seat; BuildMoves(); });
             }
-        if (_selected.Count > 0 || _fieldSelection != null || _skillContext || _showReplayMemory || _pointsTarget != null)
-            AddLocalButton(_moves, "×", ClearContext, "Limpiar selección");
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
             DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense, -1);
         if (main < 0 && die.Length > 0) main = die[0];
@@ -186,23 +188,20 @@ public partial class OnlineArena
                 RelickVisuals.Primary(primary);
             }
         }
-        _contextTitle.Text = ContextTitle(); _contextTitle.TooltipText = _contextTitle.Text;
         var costs = indices.Select(i => ArenaActionText.Cost(s.Options[i], s)).Where(v => v.Length > 0).Distinct().ToArray();
-        _contextCost.Text = main >= 0 ? (costs.Length > 1 ? ArenaActionText.Label(s.Options[main], s) + ": " : "") + ArenaActionText.Cost(s.Options[main], s)
+        _selectionCost = main >= 0 ? (costs.Length > 1 ? ArenaActionText.Label(s.Options[main], s) + ": " : "") + ArenaActionText.Cost(s.Options[main], s)
             : costs.Length == 1 ? costs[0] : "";
-        if (_contextCost.Text.Length == 0 && !_skillContext && _fieldSelection == null && _selected.Count == 1 &&
+        if (_selectionCost.Length == 0 && !_skillContext && _fieldSelection == null && _selected.Count == 1 &&
             s.Phase is Phase.Draw or Phase.Combat or Phase.Actions && SelectedCardId() is { } selected)
-            _contextCost.Text = ArenaActionText.CardCost(CardCatalog.Get(selected));
-        _contextCost.Visible = _contextCost.Text.Length > 0; _contextCost.TooltipText = _contextCost.Text;
+            _selectionCost = ArenaActionText.CardCost(CardCatalog.Get(selected));
         _selection.Text = ContextHint(); _selection.TooltipText = _selection.Text;
         RefreshInspector();
         _decisionHint = _selection.Text;
     }
 
-    private Button AddLocalButton(Node parent, string label, Action pressed, string? hint = null)
+    private Button AddLocalButton(Node parent, string label, Action pressed)
     {
-        var button = ArenaPresentation.Button(parent, label, pressed); button.TooltipText = hint ?? label;
-        if (label == "×") button.CustomMinimumSize = new(48, 48);
+        var button = ArenaPresentation.Button(parent, label, pressed); button.TooltipText = label;
         button.AddThemeFontSizeOverride("font_size", Short ? 13 : 15); return button;
     }
 
@@ -210,6 +209,62 @@ public partial class OnlineArena
     {
         var gallery = _showReplayMemory; ResetInteraction();
         if (gallery) Render(); else RefreshSelection();
+    }
+
+    private void ClearContextOnFieldClick(InputEvent input)
+    {
+        if (input is not InputEventMouseButton { ButtonIndex: MouseButton.Left } click) return;
+        var point = GetViewport().GetMousePosition();
+        if (click.Pressed)
+        {
+            _fieldPress = point;
+            return;
+        }
+        var start = _fieldPress;
+        _fieldPress = null;
+        if (start == null || start.Value.DistanceSquaredTo(point) > 36 || IsAnimating) return;
+        if (_preparing)
+        {
+            _inspectorPreview = null;
+            _openingInspection = null;
+            RefreshInspector();
+        }
+        else if (_inspectorPreview != null || HasContextSelection || _showReplayMemory) ClearContext();
+        else return;
+        GetViewport().SetInputAsHandled();
+    }
+
+    private bool HasContextSelection => _selected.Count > 0 || _selectedSkill >= 0 || _fieldSelection != null ||
+        _pointsTarget != null || _preparing && SelectedCardId() != null;
+
+    private void BindInspectorPreviews()
+    {
+        foreach (var control in _root!.FindChildren("*", "Button", true, false).OfType<Button>())
+        {
+            var card = control switch
+            {
+                HandCard hand when hand.MouseFilter != MouseFilterEnum.Ignore => hand.Card,
+                OpponentHandCard opponent => opponent.PublicCard,
+                SkillTile tile => tile.Skill,
+                ZoneCardButton zone => zone.Card,
+                _ => null
+            };
+            if (card == null && control is SkillTile or ZoneCardButton)
+                control.GuiInput += ClearContextOnFieldClick;
+            if (card == null && control is not OpponentHandCard) continue;
+            int? counters = control is SkillTile skill ? skill.Counters : null;
+            var tooltip = control.TooltipText;
+            control.MouseEntered += () =>
+            {
+                if (IsAnimating || HasContextSelection || InspectorActivationId() != null) return;
+                if (card != null) control.TooltipText = "";
+                (CardDefinition, int?)? preview = card == null ? null : (card, counters);
+                if (_inspectorPreview == preview) return;
+                _inspectorPreview = preview;
+                RefreshInspector();
+            };
+            if (card != null) control.MouseExited += () => control.TooltipText = tooltip;
+        }
     }
 
     private string? SelectedCardId()
@@ -222,19 +277,21 @@ public partial class OnlineArena
         return _selected.Count == 1 ? SelectableCards.ElementAtOrDefault(_selected.Single()) : null;
     }
 
-    private void RefreshInspector()
-    {
-        var s = _snapshot!;
-        var id = SelectedCardId();
-        // During mandatory responses the action context is the activation, not a discard candidate.
-        if (!_preparing && s.DecisionPlayer == s.MySeat)
-            id = s.Phase switch
+    private string? InspectorActivationId() =>
+        !_preparing && _snapshot is { } s && s.DecisionPlayer == s.MySeat
+            ? s.Phase switch
             {
                 Phase.ErrorResponse => CardCatalog.LoadError.Id,
                 Phase.GoldenTotemChoice => CardCatalog.GoldenTotem.Id,
                 Phase.TurnBuffDiscard => s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id,
-                _ => id
-            };
+                _ => null
+            } : null;
+
+    private void RefreshInspector()
+    {
+        var s = _snapshot!;
+        var activation = InspectorActivationId();
+        var id = activation ?? SelectedCardId();
         var card = id == null ? null : CardCatalog.Get(id);
         int? counters = null;
         if (_fieldSelection is { Zone: FieldZone.Skill } field)
@@ -242,7 +299,14 @@ public partial class OnlineArena
         else if (_skillContext && _selectedSkill >= 0)
             counters = s.Players[s.MySeat].Counters.ElementAtOrDefault(_selectedSkill);
         var title = _preparing ? card?.Name ?? (_choosingOpeningSkill ? "Elige una habilidad" : "Mano inicial") : ContextTitle();
-        _inspector.Present(card, title, _preparing ? "" : _contextCost.Text, _selection.Text, counters);
+        var cost = _preparing ? "" : _selectionCost;
+        if (activation == null && _inspectorPreview is { } preview && (preview.Card != card || preview.Counters != counters))
+        {
+            card = preview.Card; title = card.Name; counters = preview.Counters;
+            cost = _preparing ? "" : ArenaActionText.CardCost(card);
+        }
+        _inspector.Present(card, title, cost, _selection.Text, counters);
+        _contextCost.TooltipText = cost;
         _actionDock.SizeFlagsVertical = card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
         var interaction = (Control)_actionDock.GetParent().GetParent();
         interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;

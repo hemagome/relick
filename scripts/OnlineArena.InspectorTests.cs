@@ -55,6 +55,21 @@ public partial class OnlineArena
             Check(!_inspector.ReadingViewport.Visible && !_inspector.TitleLabel.Visible && compactHeight < 96,
                 "Sin selección el inspector reserva espacio para una carta inexistente.");
             if (seat == 0) await Capture($"inspector-empty-{size.X}x{size.Y}");
+            Check(_inspector.Material is ShaderMaterial { Shader: not null }, "Falta el material acrílico del inspector.");
+            var initialMoves = _moves.GetChildren().ToArray();
+            var hoverCard = _handCards[0];
+            _hand!.EnsureControlVisible(hoverCard); await Layout();
+            GuiInputTestDriver.Hover(hoverCard); await Layout();
+            Check(_inspector.ReadingViewport.Visible && _contextTitle.Text == hoverCard.Card.Name &&
+                _selected.Count == 0 && !hoverCard.Chosen && hoverCard.TooltipText.Length == 0 &&
+                _moves.GetChildren().SequenceEqual(initialMoves),
+                "Pasar el cursor no abre el inspector o cambia las jugadas disponibles.");
+            if (seat == 0 && size.X is 1440 or 844) await Capture($"inspector-hover-{size.X}x{size.Y}");
+            GuiInputTestDriver.Hover(_inspector.ReadingViewport); await Layout();
+            Check(_contextTitle.Text == hoverCard.Card.Name, "Mover el cursor al texto cierra la vista previa.");
+            void ClickEmptyField() => GuiInputTestDriver.Click(GetViewport(), panels[0].GlobalPosition + new Vector2(5, 5));
+            ClickEmptyField(); await Layout();
+            Check(!_inspector.HasCard, $"El campo vacío no cierra la vista previa en {size}.");
             for (var index = 0; index < player.Hand.Count; index++)
             {
                 var card = _handCards[index]; _hand!.EnsureControlVisible(card); await Layout();
@@ -133,11 +148,25 @@ public partial class OnlineArena
             SelectField(1 - seat, FieldZone.Equipment, -1);
             Check(_contextTitle.Text == CardCatalog.Pc.Name && !_inspector.Attributes.Visible && !_inspector.CounterLabel.Visible,
                 "Consultar un equipo rival conserva atributos o contadores de otra carta.");
+            Check(_moves.FindChildren("*", "Button", true, false).OfType<Button>().All(button => button.TooltipText != "Limpiar selección"),
+                "Sigue apareciendo el botón para limpiar la selección.");
             Check(FieldCardId((1 - seat, FieldZone.Hand, 0)) == null, "El inspector tiene acceso a una identidad privada.");
-            ClearContext(); await Layout();
+            _hand!.EnsureControlVisible(hoverCard); await Layout();
+            GuiInputTestDriver.Hover(hoverCard); await Layout();
+            Check(_contextTitle.Text == CardCatalog.Pc.Name && _fieldSelection == (1 - seat, FieldZone.Equipment, -1),
+                "Pasar el cursor sobre otra carta desplaza la selección fijada.");
+            ClickEmptyField(); await Layout();
             CheckPanelSize();
-            Check(!_inspector.ClassificationLabel.Visible && !_inspector.Attributes.Visible && !_inspector.DescriptionLabel.Visible && !_inspector.CounterLabel.Visible,
-                "Limpiar la selección deja datos antiguos del inspector.");
+            Check(_fieldSelection == null && _selected.Count == 0 && !_inspector.ClassificationLabel.Visible &&
+                !_inspector.Attributes.Visible && !_inspector.DescriptionLabel.Visible && !_inspector.CounterLabel.Visible,
+                $"El clic en el campo no limpia la selección o deja datos antiguos en {size}.");
+            if (!Compact && !Short)
+            {
+                SelectSkill(0); await Layout();
+                var emptySlot = (SkillTile)_root!.FindChild("Skill0_2", true, false);
+                GuiInputTestDriver.Click(GetViewport(), emptySlot.GetGlobalRect().GetCenter()); await Layout();
+                Check(!_inspector.HasCard && _selectedSkill < 0, "Un espacio de habilidad vacío no limpia la selección.");
+            }
             Check(_snapshot!.Players[1 - seat].Hand.All(id => id == null) &&
                 _root!.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().All(c => c.IsFaceDown), "El inspector revela cartas privadas del rival.");
             Check(game.SaveSnapshot() == before, "Consultar una carta o habilidad ejecuta una jugada.");

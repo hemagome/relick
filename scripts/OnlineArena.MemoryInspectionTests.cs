@@ -110,7 +110,10 @@ public partial class OnlineArena
                 ShowCards("Elegir copia", [CardCatalog.Attack.Id, CardCatalog.Attack.Id], select: index => chosenCopy = index); await Layout();
                 var selectable = GetChildren().OfType<AcceptDialog>().Single();
                 Check(chosenCopy == -1, "La selección inicial del inspector ejecuta una selección de juego.");
-                GuiInputTestDriver.Click((HandCard)selectable.FindChild("CollectionCard1", true, false)); await Layout();
+                var otherCopy = (HandCard)selectable.FindChild("CollectionCard1", true, false);
+                GuiInputTestDriver.Hover(otherCopy); await Layout();
+                Check(chosenCopy == -1 && otherCopy.Chosen && selectable.Visible, "La vista previa de una copia confirma la jugada.");
+                GuiInputTestDriver.Click(otherCopy); await Layout();
                 Check(chosenCopy == 1 && !GodotObject.IsInstanceValid(selectable), "La galería confunde el índice de dos copias iguales al seleccionar un objetivo.");
                 game.State.Players[seat].Memory.Clear();
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 411)); await Layout();

@@ -89,16 +89,17 @@ inventada para resultados antiguos sin ese dato.
 La barra contextual muestra el nombre de la carta elegida, el coste de su acción
 principal y verbos breves como Jugar, Equipar, Canjear o Atacar. Los índices de
 carta y espacio del protocolo no se usan como etiquetas de interfaz. El inspector
-muestra la carta seleccionada sin un botón adicional de lectura; Memoria y las
-pilas conservan sus consultas. La selección se puede limpiar sin ejecutar una
-jugada. El avance de etapa ocupa un control separado, Relikia tiene su propio
+tiene un fondo acrílico. Pasar el cursor sobre una carta visible abre su vista
+previa. Pulsar una carta fija la selección para jugar o consultar una zona.
+Un clic en el campo vacío limpia la selección del duelo y cierra la vista previa.
+El avance de etapa ocupa un control separado, Relikia tiene su propio
 menú y Abandonar está en el menú general con su confirmación habitual.
 
 La lectura de cartas usa un inspector compartido en mano, elección inicial y
 consultas de zonas. Conserva las cartas completas y sus tamaños de presentación.
 La consulta de Memoria propia o rival muestra una cuadrícula de todas sus copias
-y un único inspector fijo a la derecha. Al seleccionar una carta, cambia ese
-inspector y se marca la copia elegida; la galería y la descripción se desplazan
+y un único inspector fijo a la derecha. Pasar el cursor sobre una carta o
+pulsarla cambia el inspector y marca esa copia. La galería y la descripción se desplazan
 por separado. Las columnas se ajustan al espacio disponible, con la misma escala
 compacta de cartas en pantallas cortas. La cabecera identifica al propietario de
 la memoria. Las corruptas conservan su consulta por cantidad sin identidades;
@@ -113,7 +114,7 @@ El coste ocupa una sola fila, separado de los botones, y prioriza la opción
 autorizada de la acción actual. Al consultar una carta sin una acción disponible
 se puede mostrar su coste de catálogo; eso no habilita jugadas. Los contadores y
 el daño de una habilidad enseñada corresponden a su copia autorizada. Limpiar la
-selección retira esos datos. Sin carta seleccionada el inspector se contrae a la
+selección retira esos datos. Sin una carta para mostrar, el inspector se contrae a la
 instrucción actual; no reserva una zona de lectura vacía. Al consultar una carta,
 clasificación, nombre, atributos y contadores permanecen en la cabecera. Solo la
 descripción se desplaza: instrucción, coste y botones quedan fuera de esa lectura.

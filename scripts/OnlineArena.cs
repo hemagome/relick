@@ -151,6 +151,8 @@ public partial class OnlineArena : Control
 
     private void Render(bool animateActions = false, DuelSnapshot? previous = null)
     {
+        _inspectorPreview = null;
+        _fieldPress = null;
         var handPosition = _hand?.ScrollHorizontal ?? 0;
         var handVerticalPosition = _hand?.ScrollVertical ?? 0;
         var boardPosition = _arenaScroll?.ScrollVertical ?? 0;
@@ -184,6 +186,8 @@ public partial class OnlineArena : Control
         var boardCompact = Compact || Short;
         var arena = ArenaPresentation.Arena(body.Board, boardCompact);
         _arenaScroll = arena.GetParent() as ScrollContainer;
+        Control field = _arenaScroll ?? (Control)arena;
+        field.GuiInput += ClearContextOnFieldClick;
         if (_arenaScroll != null) _arenaScroll.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, boardPosition);
         var relativePlayers = new[] { s.Players[s.MySeat], s.Players[1 - s.MySeat] };
         void Player(int relative)
@@ -219,6 +223,7 @@ public partial class OnlineArena : Control
             (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), boardCompact, BuildResolution);
         _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
         Player(1);
+        foreach (var panel in arena.GetChildren().OfType<PanelContainer>()) panel.MouseFilter = MouseFilterEnum.Pass;
         var railColumns = Short ? Size.X >= 820 ? 2 : 1 : 0;
         BoxContainer interaction = new HBoxContainer();
         interaction.Name = "CardInteractionArea"; interaction.AddThemeConstantOverride("separation", Short ? 4 : 12);
@@ -249,7 +254,7 @@ public partial class OnlineArena : Control
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
         _ownSkills.Clear(); _ownSkills.AddRange(_root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>());
         _evolveButton = _root.FindChild("EvolveRelikario", true, false) as Button;
-        BuildMoves(); MoveChild(_diceOverlay, GetChildCount() - 1);
+        BuildMoves(); BindInspectorPreviews(); MoveChild(_diceOverlay, GetChildCount() - 1);
         UpdateResultPresentation();
         BoardBuildCount++;
     }
@@ -292,6 +297,7 @@ public partial class OnlineArena : Control
     }
     private void RefreshSelection()
     {
+        _inspectorPreview = null;
         foreach (var card in _handCards)
         { card.Chosen = _selected.Contains(int.Parse(card.Name.ToString()[8..])); card.QueueRedraw(); }
         BuildMoves();

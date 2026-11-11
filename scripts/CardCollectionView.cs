@@ -48,8 +48,8 @@ public partial class CardCollectionView : HBoxContainer
                 if (Cards[slot] != null) CardPressed?.Invoke(slot);
             };
             item.FocusEntered += () => Inspect(slot);
+            item.MouseEntered += () => Inspect(slot);
             _cards.Add(item); _grid.AddChild(item);
-            // The effect has a single reading area; hover only identifies the card.
             if (Cards[index] is string visibleId) item.TooltipText = CardCatalog.Get(visibleId).Name;
         }
         Gallery.Resized += () => CallDeferred(nameof(UpdateColumns));

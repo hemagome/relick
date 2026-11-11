@@ -5,7 +5,7 @@ namespace Relick;
 // Feed events through _Input and GUI hit testing, rather than invoking button signals.
 internal static class GuiInputTestDriver
 {
-    public static void Click(Control control)
+    private static (Viewport Viewport, Vector2 Point) PointerTarget(Control control)
     {
         if (!control.IsVisibleInTree()) throw new InvalidOperationException("Control oculto: " + control.Name);
         var viewport = control.GetViewport();
@@ -15,9 +15,31 @@ internal static class GuiInputTestDriver
             point += (Vector2)window.Position;
             viewport = control.GetTree().Root;
         }
+        return (viewport, point);
+    }
+
+    public static void Hover(Control control)
+    {
+        var (viewport, point) = PointerTarget(control);
+        viewport.PushInput(new InputEventMouseMotion { Position = point, GlobalPosition = point }, true);
+    }
+
+    public static void Click(Control control)
+    {
+        var (viewport, point) = PointerTarget(control);
         var pressed = false;
         void OnPressed() => pressed = true;
         if (control is Button button) button.Pressed += OnPressed;
+        Click(viewport, point);
+        if (control is Button clicked)
+        {
+            clicked.Pressed -= OnPressed;
+            if (!pressed) throw new InvalidOperationException($"El botón no recibe el clic: {clicked.Text}; punto={point}, tamaño={control.Size}, viewport={viewport.Name}, hover={viewport.GuiGetHoveredControl()?.Name}.");
+        }
+    }
+
+    public static void Click(Viewport viewport, Vector2 point)
+    {
         viewport.PushInput(new InputEventMouseMotion { Position = point, GlobalPosition = point }, true);
         viewport.PushInput(new InputEventMouseButton
         {
@@ -28,11 +50,6 @@ internal static class GuiInputTestDriver
         {
             Position = point, GlobalPosition = point, ButtonIndex = MouseButton.Left, Pressed = false
         }, true);
-        if (control is Button clicked)
-        {
-            clicked.Pressed -= OnPressed;
-            if (!pressed) throw new InvalidOperationException($"El botón no recibe el clic: {clicked.Text}; punto={point}, tamaño={control.Size}, viewport={viewport.Name}, hover={viewport.GuiGetHoveredControl()?.Name}.");
-        }
     }
 
     public static void ScrollDown(Control control, int steps = 6)

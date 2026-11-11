@@ -264,7 +264,8 @@ public partial class OnlineArena
                         Check(option.Move.Apply(copy, actor).Success && copy.State.Phase == Phase.Actions &&
                             copy.State.Players[target].Relikia == (option.Move.Flag ? points.State.PendingPoints!.Amount : 0), "El botón de PR resuelve otra opción.");
                     }
-                    GuiInputTestDriver.Click(_moves.GetChildren().OfType<Button>().Single(b => b.Text == "×")); await Layout();
+                    var field = (Control)_root!.FindChild("OwnRelikarioPanel", true, false);
+                    GuiInputTestDriver.Click(GetViewport(), field.GlobalPosition + new Vector2(5, 5)); await Layout();
                     Check(Targets().Length == 2 && points.SaveSnapshot() == before, "Seleccionar PR altera el duelo o pierde los destinos.");
                 }
             }

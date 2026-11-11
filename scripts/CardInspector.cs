@@ -56,7 +56,8 @@ public partial class CardInspector : PanelContainer
     public override void _Ready()
     {
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var style = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame);
+        Material = new ShaderMaterial { Shader = GD.Load<Shader>("res://scripts/card_inspector_acrylic.gdshader") };
+        var style = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame.Lightened(0.12f));
         style.ContentMarginLeft = style.ContentMarginRight = ShortScreen ? 10 : 16;
         style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 4 : 8;
         AddThemeStyleboxOverride("panel", style);
