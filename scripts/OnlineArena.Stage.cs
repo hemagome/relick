@@ -6,7 +6,9 @@ namespace Relick;
 public partial class OnlineArena
 {
     private StageBanner _stageBanner = null!;
-    private StageAnnouncement? _pendingStageAnnouncement;
+    private readonly Queue<StageAnnouncement> _stageAnnouncements = new();
+    private int _lastDrawAnnouncementTurn = -1, _lastFinalAnnouncementTurn = -1;
+    private int? _turnAwaitingCombat;
 
     private void BuildStageBanner()
     {
@@ -22,21 +24,49 @@ public partial class OnlineArena
 
     private void QueueStageAnnouncement(DuelSnapshot? previous, DuelSnapshot current, bool live)
     {
-        var stage = StageAppearance.Current(current);
-        if (!live || stage is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final))
+        if (!live || current.Winner != null)
         {
             ResetStageBanner();
             return;
         }
         if (previous == null) return;
 
-        var sameStage = StageAppearance.Current(previous) == stage;
+        var previousStage = StageAppearance.Current(previous);
+        var stage = StageAppearance.Current(current);
+        if (current.Turn == previous.Turn + 1)
+        {
+            // The engine can resolve Final and the next turn's draw in a single revision.
+            if (previousStage is not (Phase.Preparation or Phase.Final) && _lastFinalAnnouncementTurn != previous.Turn)
+                EnqueueStageAnnouncement(Phase.Final, previous);
+            if (stage != Phase.Draw) EnqueueStageAnnouncement(Phase.Draw, current);
+            _turnAwaitingCombat = current.Phase is Phase.Draw or Phase.Combat ? null : current.Turn;
+        }
+
+        var resumedCombat = false;
+        if (_turnAwaitingCombat == current.Turn)
+        {
+            // A recycling or equipment decision can pause the turn before combat.
+            if (current.Phase is not (Phase.Draw or Phase.Combat)) return;
+            resumedCombat = current.Phase == Phase.Combat;
+            _turnAwaitingCombat = null;
+        }
+        if (stage is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)) return;
+
+        var sameStage = previousStage == stage;
         var sameTurn = previous.Turn == current.Turn && previous.CurrentPlayer == current.CurrentPlayer;
         var repeated = sameStage && sameTurn && ExtraStages(current, stage) < ExtraStages(previous, stage);
-        if (sameStage && sameTurn && !repeated) return;
+        if (!repeated && !resumedCombat && sameStage && sameTurn) return;
+        if (!repeated && (stage == Phase.Draw && _lastDrawAnnouncementTurn == current.Turn ||
+            stage == Phase.Final && _lastFinalAnnouncementTurn == current.Turn)) return;
 
-        _stageBanner.Stop();
-        _pendingStageAnnouncement = new(stage, current.Turn, current.CurrentPlayer == current.MySeat, repeated);
+        EnqueueStageAnnouncement(stage, current, repeated);
+    }
+
+    private void EnqueueStageAnnouncement(Phase stage, DuelSnapshot snapshot, bool repeated = false)
+    {
+        if (stage == Phase.Draw) _lastDrawAnnouncementTurn = snapshot.Turn;
+        if (stage == Phase.Final) _lastFinalAnnouncementTurn = snapshot.Turn;
+        _stageAnnouncements.Enqueue(new(stage, snapshot.Turn, snapshot.CurrentPlayer == snapshot.MySeat, repeated));
     }
 
     private static int ExtraStages(DuelSnapshot snapshot, Phase stage) => stage switch
@@ -54,14 +84,21 @@ public partial class OnlineArena
             if (_stageBanner.Visible) _stageBanner.Stop();
             return;
         }
-        if (_pendingStageAnnouncement is not { } announcement) return;
-        _pendingStageAnnouncement = null;
-        _stageBanner.Play(announcement);
+        if (_stageBanner.Visible || !_stageAnnouncements.TryPeek(out var announcement)) return;
+        if (announcement.Stage == Phase.Combat && announcement.Turn == _snapshot?.Turn &&
+            (_activeFlight?.Event.Kind == DuelVisualKind.Draw || _flights.Any(f => f.Event.Kind == DuelVisualKind.Draw))) return;
+        _stageBanner.Play(_stageAnnouncements.Dequeue());
     }
+
+    private bool WaitForDrawAnnouncement(DuelVisualEvent cue) => cue.Kind == DuelVisualKind.Draw &&
+        _snapshot is { Turn: > 1 } current && cue.Player == current.CurrentPlayer &&
+        _stageAnnouncements.Any(a => a.Stage == Phase.Draw && a.Turn == current.Turn);
 
     private void ResetStageBanner()
     {
-        _pendingStageAnnouncement = null;
+        _stageAnnouncements.Clear();
+        _lastDrawAnnouncementTurn = _lastFinalAnnouncementTurn = -1;
+        _turnAwaitingCombat = null;
         _stageBanner?.Stop();
     }
 }

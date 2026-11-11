@@ -120,7 +120,7 @@ public partial class OnlineArena : Control
             var animate = !_preparing && !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
             var origins = CaptureOrigins(snapshot, previous);
             var placement = animate ? CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!) : null;
-            if (animate && IsAnimating) { ResetAnimations(); _die.Value = snapshot.Die; }
+            if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.Value = snapshot.Die; }
             _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
             if (!animate)
             {
@@ -139,8 +139,8 @@ public partial class OnlineArena : Control
         if (_root == null) return;
         if (_snapshot != null) UpdateComboResponseToggle(_snapshot);
         if (_status.Text != Connection.Message) _status.Text = Connection.Message;
-        UpdateFlights(delta);
         PresentQueuedStageAnnouncement();
+        UpdateFlights(delta);
         _diceOverlay.Visible = _die.IsPresented;
         _diceOverlay.Modulate = new Color(1, 1, 1, _die.PresentationOpacity);
         UpdateResolutionPresentation();

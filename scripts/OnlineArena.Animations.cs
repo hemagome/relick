@@ -240,8 +240,10 @@ public partial class OnlineArena
         if (_flightLayoutFrames > 0) { _flightLayoutFrames--; return; }
         if (_flight == null && _flights.Count == 0 && _openingInitiative != null)
         { UpdateOpeningInitiative(delta); return; }
-        if (_flight == null && _flights.TryDequeue(out var next))
+        if (_flight == null && _flights.TryPeek(out var next))
         {
+            if (WaitForDrawAnnouncement(next.Event)) return;
+            _flights.Dequeue();
             var own = next.Event.Player == _snapshot!.MySeat;
             var relative = own ? 0 : 1;
             var returning = next.Event.Kind == DuelVisualKind.Return;
@@ -359,10 +361,10 @@ public partial class OnlineArena
             if (parent is Control { ClipContents: true } clip && !clip.GetGlobalRect().Encloses(rect)) return false;
         return true;
     }
-    private void ResetAnimations()
+    private void ResetAnimations(bool preserveStageAnnouncements = false)
     {
         foreach (var pool in _actionPools) pool.Settle();
-        ResetStageBanner();
+        if (!preserveStageAnnouncements) ResetStageBanner();
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
         _placementDice.Clear();
