@@ -84,11 +84,41 @@ public partial class OnlineArena
                     button.Disabled = false; RefreshAdvanceInvitation(false); _lastDisabled = null; UpdateEnabled();
                     Check(!button.Inviting && button.Disabled, "La desconexión mantiene la invitación o permite avanzar.");
                     SelectCard(0);
+                    await Layout();
                     Check(_selection.Text.Contains("Ya realizaste tu ataque"), "Tocar un Ataque agotado no explica su bloqueo.");
                     SelectCard(2);
+                    await Layout();
                     Check(_selection.Text.Contains("fase de acciones"), "Tocar un código en combate no explica cuándo jugarlo.");
+                    Check(_advanceButton == button && button.GetGlobalRect() == rect,
+                        $"El inspector reemplaza o desplaza el avance en {size}.");
                     ClearContext(); RefreshRuntimeGuidance();
                     Check(_selection.Text.Contains("Conexión interrumpida"), "La instrucción no explica la desconexión.");
+                    await Layout();
+                    Check(button.GetGlobalRect() == rect, $"Cerrar el inspector desplaza el avance en {size}.");
+                    button.Disabled = false;
+                    GuiInputTestDriver.Click(button);
+
+                    foreach (var (phase, destination, label, repeat) in new[]
+                    {
+                        (Phase.Draw, Phase.Combat, "Ir a combate", false),
+                        (Phase.Actions, Phase.Final, "Finalizar turno", false),
+                        (Phase.Combat, Phase.Combat, "Repetir combate", true),
+                        (Phase.Actions, Phase.Actions, "Repetir acciones", true)
+                    })
+                    {
+                        var next = Fixture(actor);
+                        next.State.Phase = phase;
+                        if (repeat && phase == Phase.Combat) next.State.ExtraCombatStages = 1;
+                        if (repeat && phase == Phase.Actions) next.State.ExtraActionStages = 1;
+                        PresentTestSnapshot(DuelSnapshot.For(next, seat, 602)); await Layout();
+                        var nextButton = _advanceButton!;
+                        var frame = nextButton.GetThemeStylebox("normal");
+                        var textWidth = nextButton.GetThemeFont("font").GetStringSize(label, fontSize: nextButton.GetThemeFontSize("font_size")).X;
+                        Check(nextButton.Text == label && nextButton.GetGlobalRect() == rect &&
+                            frame is StyleBoxFlat flat && flat.BorderColor == StageAppearance.For(destination).Accent &&
+                            textWidth + frame.ContentMarginLeft + frame.ContentMarginRight <= rect.Size.X,
+                            $"El avance pierde su posición o el color de destino para {phase} en {size}.");
+                    }
                 }
                 Check(game.SaveSnapshot() == before, "El pulso o la consulta ejecutan una jugada automáticamente.");
                 var minimum = _root!.GetCombinedMinimumSize();

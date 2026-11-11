@@ -93,6 +93,8 @@ public partial class OnlineArena
             if (seat == actor)
             {
                 var before = game.SaveSnapshot();
+                var advance = _advanceButton!;
+                var advanceRect = advance.GetGlobalRect();
                 await TapCard(0);
                 var equip = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Equip && o.Move.Index == 0);
                 Check(PresentedButton(equip)?.Text == "Equipar" && _contextTitle.Text == "Hoguera" && _contextCost.Text == "1 acción", "Hoguera pierde el contexto o el coste breve.");
@@ -102,14 +104,16 @@ public partial class OnlineArena
                 var equipButton = PresentedButton(equip)!;
                 equipButton.Disabled = false;
                 GuiInputTestDriver.Click(equipButton);
-                Check(_advanceButton?.GetParent() == _turnControls && _turnControls.GetParent() != _moves, "El avance de turno se mezcla con la selección.");
-                Check(_advanceButton!.GetGlobalRect().End.Y <= Size.Y + 1,
-                    $"El avance queda fuera de vista en {size}: {_advanceButton.GetGlobalRect()}, inspector {_inspector.GetGlobalRect()}, dock {_actionDock.GetGlobalRect()}, decisiones {_decisionBar.GetGlobalRect()}, mano {_hand!.GetGlobalRect()}.");
+                Check(advance.GetParent().Name == "ArenaHeader" && _advanceButton == advance && advance.GetGlobalRect() == advanceRect &&
+                    new Rect2(GlobalPosition, Size).Grow(1).Encloses(advanceRect),
+                    $"El avance cambia de posición o queda fuera de vista en {size}: {advance.GetGlobalRect()}.");
                 Check(_contextCost.GetGlobalRect().End.Y <= Size.Y + 1, $"El coste de Hoguera queda fuera de la vista en {size}.");
                 await Capture($"context-equip-seat{seat}-{size.X}x{size.Y}");
                 await TapCard(1);
                 Check(_contextCost.Text.Contains("1 acción") && _contextCost.Text.Contains("1 descarte") &&
                     _moveButtons.Any(b => b.GetParent() == _cardActions && b.Text == "Activar"), "Estrella oculta el coste antes de anunciarla.");
+                Check(_advanceButton == advance && advance.GetGlobalRect() == advanceRect,
+                    $"Un coste de varias líneas desplaza el avance en {size}.");
                 Check(game.SaveSnapshot() == before, "Seleccionar una acción altera las reglas antes de confirmar.");
 
                 var withThirdAction = DuelSnapshot.For(game, seat, 310);

@@ -168,7 +168,7 @@ public partial class OnlineArena : Control
         GetNodeOrNull<MusicDirector>("/root/MusicDirector")?.PresentDuel(RoomCode, s);
         RefreshEffectCardOptions();
         if (_selectedSkill >= s.Players[s.MySeat].Skills.Length) _selectedSkill = -1;
-        var header = new HBoxContainer(); _root.AddChild(header);
+        var header = new HBoxContainer { Name = "ArenaHeader" }; _root.AddChild(header);
         var brand = RelickVisuals.Logo(Compact);
         var brandColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         brandColumn.AddThemeConstantOverride("separation", 0); brandColumn.AddChild(brand); header.AddChild(brandColumn);
@@ -183,7 +183,11 @@ public partial class OnlineArena : Control
         if (Short) stageDetail += $" · TÚ {s.Players[s.MySeat].Health}/{s.Players[s.MySeat].MaxHealth} · RIVAL {s.Players[1 - s.MySeat].Health}/{s.Players[1 - s.MySeat].MaxHealth}";
         ArenaPresentation.StageIndicator(Short ? _root : header, stage, stageDetail, Short);
         var rechargeActions = animateActions && previous != null && previous.Turn != s.Turn;
-        BuildComboResponseToggle(header); BuildArenaMenu(header);
+        BuildComboResponseToggle(header);
+        _turnControls = new HBoxContainer { Name = "TurnControls", Visible = false };
+        if (Short) header.AddChild(_turnControls);
+        BuildAdvanceControl(header);
+        BuildArenaMenu(header);
         if (Compact && !Short) ArenaPresentation.Scoreline(_root, [s.Players[s.MySeat], s.Players[1 - s.MySeat]]);
         var body = ArenaPresentation.Body(_root, Short && Size.X >= 700);
         var boardCompact = Compact || Short;
@@ -247,11 +251,6 @@ public partial class OnlineArena : Control
         else { interaction.AddChild(handColumn); interaction.AddChild(inspectorColumn); }
         BuildActionArea(inspectorColumn);
         BuildResultPanel(inspectorColumn);
-        if (Short)
-        {
-            _turnControls.GetParent().RemoveChild(_turnControls); header.AddChild(_turnControls);
-            header.MoveChild(_turnControls, header.GetChildCount() - 2);
-        }
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short, railColumns) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
                 ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null, railColumns,
@@ -319,7 +318,8 @@ public partial class OnlineArena : Control
             foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); }
         _cardActionAnchor = null;
         _cardActions.Hide();
-        _moveButtons.Clear(); _actionMenus.Clear(); _advanceButton = null;
+        _moveButtons.Clear(); _actionMenus.Clear();
+        if (_advanceButton != null) _moveButtons.Add(_advanceButton);
         if (_preparing)
         {
             _turnControls.Visible = false;

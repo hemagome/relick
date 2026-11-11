@@ -40,8 +40,7 @@ public partial class OnlineArena
         _movesScroll = scroll; actions.AddChild(scroll);
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 6); _moves.AddThemeConstantOverride("v_separation", 6); scroll.AddChild(_moves);
-        _turnControls = new HBoxContainer { Name = "TurnControls" };
-        _turnControls.AddThemeConstantOverride("separation", 6); actions.AddChild(_turnControls);
+        if (!Short) actions.AddChild(_turnControls);
     }
 
     private static bool IsHandAction(DuelMoveKind kind) => kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or
@@ -65,6 +64,13 @@ public partial class OnlineArena
         button.Pressed += () => PlayOption(index, s); parent.AddChild(button);
         button.Name = "DuelOption" + index;
         if (button is CardActionButton cardAction) cardAction.Style(primary, Short);
+        else if (button is AdvancePhaseButton advance) advance.Style(s.Phase switch
+        {
+            Phase.Draw => s.ExtraDrawStages > 0 ? Phase.Draw : Phase.Combat,
+            Phase.Combat => s.ExtraCombatStages > 0 ? Phase.Combat : Phase.Actions,
+            Phase.Actions when s.ExtraActionStages > 0 => Phase.Actions,
+            _ => Phase.Final
+        }, Short);
         else
         {
             var fontSize = Short ? 13 : 15;
@@ -130,16 +136,20 @@ public partial class OnlineArena
                 else PlayOption((int)id, s);
             };
         }
-        _turnControls.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        _turnControls.Visible = relikia.Length > 0;
+    }
+
+    private void BuildAdvanceControl(HBoxContainer header)
+    {
+        var s = _snapshot!;
+        _advanceButton = null;
+        if (_preparing) return;
         var advance = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Advance);
-        _advanceButton = advance < 0 ? null : (AdvancePhaseButton)AddOption(_turnControls, advance);
-        if (_advanceButton != null)
-        {
-            _advanceButton.Name = "AdvanceStage";
-            _advanceButton.TooltipText = ArenaGuidance.SuggestAdvance(s)
-                ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.";
-        }
-        _turnControls.Visible = !_preparing && (advance >= 0 || relikia.Length > 0);
+        if (advance < 0) return;
+        _advanceButton = (AdvancePhaseButton)AddOption(header, advance);
+        _advanceButton.Name = "AdvanceStage";
+        _advanceButton.TooltipText = ArenaGuidance.SuggestAdvance(s)
+            ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.";
     }
 
     private void BuildContextMoves()
@@ -346,7 +356,7 @@ public partial class OnlineArena
         interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
         var hasDecisions = _moves.GetChildCount() > 0;
         var hasTurnControls = _turnControls.GetParent() == _decisionBar && _turnControls.Visible;
-        // Preserve the footer's minimum height and alignment when its only controls are on the right.
+        // Keep Relikia aligned to the right when it is the only control in the row.
         _movesScroll.Visible = hasDecisions || hasTurnControls;
         _movesScroll.MouseFilter = hasDecisions ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
         _decisionBar.Visible = _movesScroll.Visible;
