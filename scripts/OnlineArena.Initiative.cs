@@ -13,6 +13,7 @@ public partial class OnlineArena
     private readonly Label[] _initiativeValues = [new(), new()];
     private CenterContainer _initiativeOverlay = null!;
     private PanelContainer _initiativePanel = null!;
+    private Label _initiativeHint = null!;
     private Label _initiativeWinner = null!;
     private OpeningInitiative? _openingInitiative;
     private Flight? _openingTurnDraw;
@@ -31,8 +32,8 @@ public partial class OnlineArena
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 8); _initiativePanel.AddChild(column);
         var title = ArenaPresentation.Text("¿QUIÉN EMPIEZA?", 20, BoardArt.Gold);
         title.HorizontalAlignment = HorizontalAlignment.Center; column.AddChild(title);
-        var hint = ArenaPresentation.Text("La tirada más alta comienza el duelo", 13, BoardArt.Muted);
-        hint.HorizontalAlignment = HorizontalAlignment.Center; column.AddChild(hint);
+        _initiativeHint = ArenaPresentation.Text("", 13, BoardArt.Muted);
+        _initiativeHint.HorizontalAlignment = HorizontalAlignment.Center; column.AddChild(_initiativeHint);
         var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", 16); column.AddChild(row);
         for (var seat = 0; seat < 2; seat++)
         {
@@ -50,10 +51,10 @@ public partial class OnlineArena
         column.AddChild(_initiativeWinner);
     }
 
-    private void QueueOpeningInitiative(DuelSnapshot combat, PreparationInfo? opening, Flight draw)
+    private void QueueOpeningInitiative(DuelSnapshot combat, PreparationInfo? opening, Flight? draw)
     {
         if (opening is not { Started: true, RollOne: >= 1 and <= 6, RollTwo: >= 1 and <= 6 })
-        { _flights.Enqueue(draw); return; }
+        { if (draw != null) _flights.Enqueue(draw); return; }
         _openingInitiative = new(opening.RollOne, opening.RollTwo, opening.StartingSeat,
             combat.Players.Select(p => p.Name).ToArray(), combat.MySeat);
         _openingTurnDraw = draw;
@@ -67,6 +68,7 @@ public partial class OnlineArena
         if (!_initiativeStarted)
         {
             _initiativeStarted = true; PlayedInitiativeRolls++;
+            _initiativeHint.Text = "La tirada más alta comienza el duelo";
             _initiativePanel.CustomMinimumSize = new(Short ? 440 : 540, 0);
             for (var seat = 0; seat < 2; seat++)
             {
@@ -89,6 +91,7 @@ public partial class OnlineArena
             _initiativeValues[0].Text = opening.RollOne.ToString();
             _initiativeValues[1].Text = opening.RollTwo.ToString();
             _initiativeWinner.Text = $"Empieza {opening.Names[opening.Starter]}";
+            if (_openingTurnDraw != null) _initiativeHint.Text = "Quien empieza roba una carta al iniciar su turno";
             _combatMessage.Text = $"Iniciativa · {opening.Names[0]} {opening.RollOne} · {opening.Names[1]} {opening.RollTwo}\nEmpieza {opening.Names[opening.Starter]}";
         }
         _initiativeResultRemaining -= Math.Max(0, delta);

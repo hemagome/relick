@@ -38,13 +38,15 @@ public partial class OnlineArena
         {
             GetWindow().Size = size; GetWindow().ContentScaleSize = size; await Layout();
             GetParent().MoveChild(this, GetParent().GetChildCount() - 1);
-            ResetAnimations(); _openingKey = null; _openingDealt = false; _openingReturns.Clear(); _initialSkillCandidate = null;
+            ResetAnimations(); _openingKey = null; Array.Clear(_openingHandsPresented); _openingReturns.Clear(); _initialSkillCandidate = null;
             var room = new RoomInfo("UITEST00", seat, "Ana", "Beto", true);
             var info = new PreparationInfo { HandCountOne = 5, HandCountTwo = 5, DeckCountOne = 15, DeckCountTwo = 15 };
             var hand = new[] { "magnet-shuffle", "magnet-shuffle", "senshuni", "extra-life", "attack" }
                 .Select((id, index) => new NetworkCard((ulong)(100 + index), id, (uint)index)).ToArray();
             var skills = new InitialSkillInfo(false, "", ["destiny-shuffle", "magnet-shuffle"]);
             var beforeDeal = new PreparationInfo { DeckCountOne = (uint)CardCatalog.TrainingDeck().Count, DeckCountTwo = (uint)CardCatalog.TrainingDeck().Count };
+            if (seat == 0) beforeDeal.HandCountTwo = 5; // The rival chose a skill before this player.
+            else info.HandCountOne = 0; // This player chooses first and receives their hand before the rival.
             PresentInitialSkillChoice(room, skills, true, false, beforeDeal); await Layout();
             Check(InitialSkillConfirmButton!.Disabled && _snapshot!.Players[seat].Hand.Length == 0, "Se reparte antes de elegir habilidad.");
             var buildCount = BoardBuildCount; var confirmId = InitialSkillConfirmButton.GetInstanceId();
@@ -56,7 +58,20 @@ public partial class OnlineArena
             await Capture($"initial-skill-seat{seat}-{size.X}x{size.Y}");
             PresentInitialSkillChoice(room, skills, true, true, beforeDeal); await Layout();
             Check(InitialSkillConfirmButton!.Disabled && _hand!.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>().All(c => c.Disabled), "La elección pendiente sigue editable.");
-            PresentPreparation(room, info, hand, true, false); await Layout(); await Drain(); UpdateEnabled();
+            PresentPreparation(room, info, hand, true, false);
+            Check(_flights.Count(f => f.Event.Kind == DuelVisualKind.Draw && f.Event.Player == seat) == 5 &&
+                !_flights.Any(f => f.Event.Kind == DuelVisualKind.Draw && f.Event.Player != seat),
+                "El reparto anima cartas rivales ya mostradas o que todavía no se repartieron.");
+            await Layout(); await Drain();
+            if (seat == 1)
+            {
+                info.HandCountOne = 5;
+                PresentPreparation(room, info, hand, true, false);
+                Check(_flights.Count == 5 && _flights.All(f => f.Event.Kind == DuelVisualKind.Draw && f.Event.Player == 0),
+                    "La primera mano rival no se reparte una sola vez cuando llega más tarde.");
+                await Layout(); await Drain();
+            }
+            UpdateEnabled();
             Check(!IsChoosingInitialSkill && _root!.FindChild("InitialSkillScroll", true, false) == null, "La elección de habilidad permanece sobre el mulligan.");
             var minimum = _root!.GetCombinedMinimumSize();
             Check(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1, $"Preparación desborda {size}: {minimum}, raíz {_root.Size}.");
@@ -66,27 +81,50 @@ public partial class OnlineArena
             for (var slot = 0; slot < 2; slot++) GuiInputTestDriver.Click((Control)_root.FindChild("HandCard" + slot, true, false));
             Check(OpeningSelectionCount == 2 && PreparationConfirmButton!.Text.Contains("Cambiar 2"), "Dos copias iguales no se seleccionan de forma independiente.");
             await Layout(); await Capture($"preparation-seat{seat}-{size.X}x{size.Y}");
-            info.MyConfirmed = true; info.MyReturnedCards = [100, 101];
-            PresentPreparation(room, info, hand, true, false); await Layout();
+            if (seat == 0)
+            {
+                info.OpponentConfirmed = true;
+                PresentPreparation(room, info, hand, true, true);
+            }
+            else
+            {
+                info.MyConfirmed = true; info.MyReturnedCards = [100, 101];
+                PresentPreparation(room, info, hand, true, false);
+            }
+            await Layout();
             Check(PreparationConfirmButton!.Disabled && FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().All(c => c.Disabled), "Se puede editar una mano confirmada.");
-            Check(_selection.Text.Contains("rival"), "No se muestra la espera del rival.");
-            _openingConnected = false; _lastDisabled = null; UpdateEnabled();
-            PresentPreparation(room, info, hand, true, false); await Layout();
-            Check(!IsAnimating && OpeningSelectionCount == 2 && PreparationConfirmButton!.Disabled, "Recuperar la preparación repite el reparto o pierde la elección.");
-            var own = _snapshot.Players[seat]; own.Hand = ["senshuni", "extra-life", "attack", "points-increase", "load-error", "attack"];
-            own.HandCount = 6; own.Bonus = "attack"; own.DeckCount = 13;
+            Check(!IsAnimating && OpeningSelectionCount == 2, "Confirmar repite el reparto o pierde la selección.");
+            if (seat == 1)
+            {
+                Check(_selection.Text.Contains("rival"), "No se muestra la espera del rival.");
+                _openingConnected = false; _lastDisabled = null; UpdateEnabled();
+                PresentPreparation(room, info, hand, true, false); await Layout();
+                Check(!IsAnimating && OpeningSelectionCount == 2 && PreparationConfirmButton!.Disabled, "Recuperar la preparación repite el reparto o pierde la elección.");
+            }
+            var starter = (byte)(size.X is 1440 or 844 ? 1 - seat : seat);
+            var own = _snapshot.Players[seat]; own.Hand = ["senshuni", "extra-life", "attack", "points-increase", "load-error"];
+            own.Bonus = "attack"; own.DeckCount = 13;
             _snapshot.Players[1 - seat].Bonus = "attack";
-            var combat = new DuelSnapshot { MySeat = seat, CurrentPlayer = seat, DecisionPlayer = seat, Phase = Phase.Combat,
-                Turn = 1, Players = _snapshot.Players };
+            var combat = new DuelSnapshot { MySeat = seat, CurrentPlayer = starter, DecisionPlayer = starter, Phase = Phase.Combat,
+                Revision = 1, Turn = 1, Players = _snapshot.Players };
+            Check(!IsLiveOpening(combat), "Una revisión posterior al inicio vuelve a representar la apertura.");
+            combat.Revision = 0;
+            Check(IsLiveOpening(combat), "La confirmación no conecta la preparación con el combate inicial.");
+            var startingPlayer = combat.Players[starter];
+            startingPlayer.Hand = [.. startingPlayer.Hand, starter == seat ? "attack" : null];
+            startingPlayer.HandCount++;
             var origins = CaptureMulliganOrigins(combat);
             _snapshot = combat; _preparing = false; _selected.Clear(); ResetAnimations(); Render(); await Layout();
-            var opening = new PreparationInfo { Started = true, StartingSeat = seat,
-                RollOne = (byte)(seat == 0 ? 6 : 1), RollTwo = (byte)(seat == 1 ? 6 : 1) };
+            var opening = new PreparationInfo { Started = true, StartingSeat = starter,
+                RollOne = (byte)(starter == 0 ? 6 : 1), RollTwo = (byte)(starter == 1 ? 6 : 1) };
             var initiativeCount = PlayedInitiativeRolls;
             AnimateOpening(combat, origins, opening);
             Check(_flights.Count(f => f.Event.Kind == DuelVisualKind.Draw && f.Event.Player == seat) == 2 &&
-                _openingTurnDraw?.Event.Player == seat, "Faltan los reemplazos o el robo de turno posterior a la iniciativa.");
-            Check(_flights.All(f => f.Event.Kind != DuelVisualKind.Return || f.Event.Player == seat), "Se inventó un mulligan oculto del rival.");
+                _openingTurnDraw?.Event.Player == starter && _openingTurnDraw.Event.Value == 5,
+                "Faltan los reemplazos o la sexta carta de quien empieza.");
+            Check(_flights.All(f => f.Event.Kind is not (DuelVisualKind.Return or DuelVisualKind.Draw) || f.Event.Player == seat) &&
+                Enumerable.Range(0, 5).All(slot => ZoneNode(1, CardZone.Hand, slot)?.Modulate.A == 1),
+                "Confirmar vuelve a animar u oculta la mano rival ya repartida.");
             Check(!_initiativeOverlay.Visible, "Los dados se muestran antes de terminar el mulligan y los Bonus.");
             for (var i = 0; !_initiativeStarted && i < 40; i++) { UpdateFlights(0.5); await Layout(); }
             Check(_initiativeOverlay.Visible && _initiativeDice.All(d => d.IsRolling) && PlayedInitiativeRolls == initiativeCount + 1,
@@ -101,9 +139,13 @@ public partial class OnlineArena
             UpdateFlights(0);
             Check(_initiativeDice[0].DisplayedValue == opening.RollOne && _initiativeDice[1].DisplayedValue == opening.RollTwo &&
                 _initiativeValues[0].Text == opening.RollOne.ToString() && _initiativeValues[1].Text == opening.RollTwo.ToString() &&
-                _initiativeWinner.Text == $"Empieza {combat.Players[seat].Name}", "El resultado visual no coincide con la iniciativa del servidor.");
+                _initiativeWinner.Text == $"Empieza {combat.Players[starter].Name}" && _initiativeHint.Text.Contains("roba una carta"),
+                "La iniciativa muestra otro ganador o no anuncia su robo de turno.");
             await Capture($"initiative-result-seat{seat}-{size.X}x{size.Y}");
             Check(new Rect2(Vector2.Zero, Size).Encloses(_initiativePanel.GetGlobalRect()), $"La iniciativa desborda {size}.");
+            UpdateFlights(2);
+            Check(_flights.Count == 1 && _flights.Peek().Event is { Kind: DuelVisualKind.Draw, Value: 5 } firstDraw && firstDraw.Player == starter,
+                "La iniciativa vuelve a repartir cartas en vez de animar un único robo.");
             await Drain(); UpdateEnabled();
             Check(!_initiativeOverlay.Visible && _openingTurnDraw == null, "La iniciativa permanece encima del combate.");
             Check(FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().All(c => c.Modulate.A == 1), "Quedan cartas invisibles al entrar en combate.");

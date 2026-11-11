@@ -48,6 +48,16 @@ public partial class OnlineLobby
             GetTree().Root.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = false }, true);
             await Frame();
         }
+        async Task<int> CountCardDraws(Func<Task> present)
+        {
+            var sound = GetNode<SoundDirector>("/root/SoundDirector");
+            var draws = 0;
+            void Count(SoundCue cue) { if (cue == SoundCue.CardDraw) draws++; }
+            sound.SoundPlayed += Count;
+            try { await present(); }
+            finally { sound.SoundPlayed -= Count; }
+            return draws;
+        }
         try
         {
             // Headless runs need embedded popups to exercise their GUI routing.
@@ -81,9 +91,17 @@ public partial class OnlineLobby
             await Until(() => _arena?.IsChoosingInitialSkill == true);
             if (args.Contains("--pvp-input-quick") && PlayedMatchConfirmations != 1)
                 throw new Exception("La partida rápida omite o repite la confirmación visual del emparejamiento.");
+            if (!host) await Until(() => _lobby.Preparation?.HandCountOne == 5);
             await ClickCurrent(() => _arena!.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>().Single(c => c.Card.Id == (host ? "destiny-shuffle" : "magnet-shuffle")));
-            await ClickCurrent(() => _arena!.InitialSkillConfirmButton!);
-            await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false);
+            var dealSounds = await CountCardDraws(async () =>
+            {
+                await ClickCurrent(() => _arena!.InitialSkillConfirmButton!);
+                await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false);
+            });
+            if (!host && dealSounds != 5) throw new Exception($"El último jugador en elegir habilidad oye {dealSounds} repartos en vez de cinco.");
+            if (host)
+                await Until(() => _arena?.FindChildren("OpponentHandCard*", "Button", true, false).Count == 5 &&
+                    _arena.PreparationConfirmButton?.Disabled == false);
             var preparationArena = _arena;
             if (_content.Visible || !_arena!.IsPreparing) throw new Exception("El mulligan sigue en la sala.");
             GD.Print($"PVP_INPUT_PEER_PROGRESS · {role} · sala compartida y cinco cartas.");
@@ -92,9 +110,16 @@ public partial class OnlineLobby
             await ClickCurrent(() => (Control)_arena!.FindChild("HandCard0", true, false));
             await Until(() => _arena!.OpeningSelectionCount == 1 && _arena.PreparationConfirmButton!.Text.Contains("Cambiar 1"));
             GD.Print($"PVP_INPUT_PEER_PROGRESS · {role} · carta seleccionada.");
-            await ClickCurrent(() => _arena!.PreparationConfirmButton!);
-            await Until(() => _arena != null && !_arena.IsPreparing && _lobby.Duel != null && !_arena.IsAnimating);
+            if (!host) await Until(() => _lobby.Preparation?.OpponentConfirmed == true);
+            var mulliganDraws = await CountCardDraws(async () =>
+            {
+                await ClickCurrent(() => _arena!.PreparationConfirmButton!);
+                await Until(() => _arena != null && !_arena.IsPreparing && _lobby.Duel != null && !_arena.IsAnimating);
+            });
             if (_arena != preparationArena) throw new Exception("No se conservó la arena al empezar el combate.");
+            if (_arena!.PlayedInitiativeRolls != 1) throw new Exception("El último mulligan omite o repite la iniciativa.");
+            if (!host && mulliganDraws != 2)
+                throw new Exception($"Confirmar el último mulligan anima {mulliganDraws} robos en vez de un reemplazo propio y el robo de turno.");
             GD.Print($"PVP_INPUT_PEER_PROGRESS · {role} · combate iniciado.");
             // Verify combat hit testing too, including an embedded dialog.
             await Click((Control)_arena!.FindChild("MemoryButton0", true, false));

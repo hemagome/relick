@@ -33,6 +33,8 @@ public partial class OnlineArena
             Hand = new string?[(int)(seat == 0 ? preparation?.HandCountOne ?? 0 : preparation?.HandCountTwo ?? 0)] };
         _snapshot = new DuelSnapshot { MySeat = room.MySeat, DecisionPlayer = room.MySeat, Phase = Phase.Preparation,
             Players = [Player(0), Player(1)] };
+        var opponent = 1 - room.MySeat;
+        if (_snapshot.Players[opponent].Hand.Length == OpeningHandSize) _openingHandsPresented[opponent] = true;
         ResetAnimations(); Render();
     }
 
