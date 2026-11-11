@@ -61,7 +61,7 @@ public partial class OnlineArena
         var field = (owner, zone, index);
         if (_snapshot!.Options.Any(o => MatchesField(o.Move, field)) || FieldCardId(field) != null)
         {
-            _selected.Clear(); _skillContext = false; _fieldSelection = field; RefreshSelection();
+            _selected.Clear(); _skillContext = false; _choosingAttackSkill = false; _fieldSelection = field; RefreshSelection();
         }
         else if (zone == FieldZone.Hand) ShowCards("Mano rival", _snapshot.Players[owner].Hand);
     }
@@ -79,8 +79,16 @@ public partial class OnlineArena
     private void SelectSkill(int index)
     {
         if (IsAnimating) return;
-        var s = _snapshot!; _selectedSkill = index; _fieldSelection = null;
-        var attacking = !ChoosingEffectCards && _selected.Count == 1 && s.Players[s.MySeat].Hand.ElementAtOrDefault(_selected.Single()) == CardCatalog.Attack.Id;
+        var s = _snapshot!;
+        var attacks = SelectedAttacks().ToArray();
+        if (_choosingAttackSkill)
+        {
+            var attack = attacks.FirstOrDefault(entry => entry.Option.Move.Value == index);
+            if (attack.Option != null) PlayOption(attack.Index, s);
+            return;
+        }
+        _selectedSkill = index; _fieldSelection = null;
+        var attacking = attacks.Length > 0;
         _skillContext = !attacking;
         if (!attacking && !s.Options.Any(o => o.Move.Kind == DuelMoveKind.DestinyDefense)) _selected.Clear();
         RefreshSelection();
@@ -89,10 +97,9 @@ public partial class OnlineArena
     private void RefreshBoardTargets()
     {
         var s = _snapshot!;
-        var attack = !ChoosingEffectCards && !ChoosingRecycling && _selected.Count == 1 &&
-            s.Players[s.MySeat].Hand.ElementAtOrDefault(_selected.Single()) == CardCatalog.Attack.Id;
-        var attackOptions = attack ? s.Options.Where(o => o.Move.Kind == DuelMoveKind.Attack && o.Move.Index == _selected.Single()).ToArray() : [];
-        var available = attackOptions.Select(o => o.Move.Value).Distinct().ToArray();
+        var available = SelectedAttacks().Select(entry => entry.Option.Move.Value).Distinct().ToArray();
+        var attack = available.Length > 0;
+        if (!attack) _choosingAttackSkill = false;
         if (attack && !available.Contains(_selectedSkill)) _selectedSkill = available.Length == 1 ? available[0] : -1;
         foreach (var tile in _ownSkills)
         {

@@ -193,13 +193,23 @@ public partial class DexterityBadge : Control
 public partial class ResourceBadge : Control
 {
     public int Amount { get; set; }
-    public override void _Ready() { CustomMinimumSize = new(94, 30); MouseFilter = MouseFilterEnum.Ignore; }
+    public override void _Ready()
+    {
+        CustomMinimumSize = new(94, 30);
+        MouseFilter = MouseFilterEnum.Ignore;
+        Resized += QueueRedraw;
+    }
+
     public override void _Draw()
     {
         BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 8);
-        BoardArt.Icon(this, GameIcon.Gem, new(17, Size.Y / 2), 18, BoardArt.Gold);
-        BoardArt.Text(this, Amount.ToString(), new(32, 21), 18, BoardArt.Gold);
-        BoardArt.Text(this, "PR", new(Size.X - 19, 20), 9, BoardArt.Gold);
+        var text = $"{Amount} PR";
+        var font = ThemeDB.FallbackFont;
+        var fontSize = 18;
+        while (fontSize > 9 && font.GetStringSize(text, fontSize: fontSize).X > Size.X - 16) fontSize--;
+        var center = Size / 2;
+        var baseline = center.Y + (font.GetAscent(fontSize) - font.GetDescent(fontSize)) / 2;
+        BoardArt.CenterText(this, text, new(center.X, baseline), fontSize, BoardArt.Gold);
     }
 }
 

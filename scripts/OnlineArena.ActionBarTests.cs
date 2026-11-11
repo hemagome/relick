@@ -55,7 +55,11 @@ public partial class OnlineArena
         await CheckLoadErrorChoices();
         await CheckPointsChoices();
         void Check(bool value, string message) { if (!value) throw new Exception(message); }
-        async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+        async Task Layout()
+        {
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (_root != null) PositionCardActions();
+        }
         async Task TapCard(int index)
         {
             var card = _handCards[index]; _hand!.EnsureControlVisible(card); await Layout();
@@ -85,21 +89,45 @@ public partial class OnlineArena
             Check(initialMinimum.X <= Size.X + 1 && initialMinimum.Y <= Size.Y + 1,
                 $"Barra inicial desborda {size}: mínimo {initialMinimum}, raíz {_root.Size}, mano {_hand!.GetGlobalRect()}.");
             Check(!PresentsKind(DuelMoveKind.Concede) && _arenaMenu!.GetPopup().GetItemIndex(1) >= 0, "Abandonar sigue entre las acciones de cartas.");
-            Check(_moveButtons.All(b => b.GetParent() != _moves), "Una mano sin seleccionar muestra acciones ajenas.");
+            Check(_moves.GetChildCount() == 0 && !_cardActions.Visible, "Una mano sin seleccionar muestra acciones ajenas.");
             if (seat == actor)
             {
                 var before = game.SaveSnapshot();
                 await TapCard(0);
                 var equip = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Equip && o.Move.Index == 0);
                 Check(PresentedButton(equip)?.Text == "Equipar" && _contextTitle.Text == "Hoguera" && _contextCost.Text == "1 acción", "Hoguera pierde el contexto o el coste breve.");
-                Check(_moveButtons.Count(b => b.GetParent() == _moves) == 2 && _moves.GetChildren().OfType<Button>().Count() <= 3,
-                    "La barra de Hoguera presenta más de sus dos acciones y el control de limpiar selección.");
+                Check(_cardActions.Visible && _cardActionAnchor == _handCards[0] && _moves.GetChildCount() == 0 &&
+                    _cardActions.GetChildren().OfType<CardActionButton>().Select(b => b.Text).SequenceEqual(["Equipar", "Canjear"]),
+                    "Hoguera debe mostrar Equipar y Canjear junto a la carta.");
+                var equipButton = PresentedButton(equip)!;
+                equipButton.Disabled = false;
+                GuiInputTestDriver.Click(equipButton);
                 Check(_advanceButton?.GetParent() == _turnControls && _turnControls.GetParent() != _moves, "El avance de turno se mezcla con la selección.");
+                Check(_advanceButton!.GetGlobalRect().End.Y <= Size.Y + 1,
+                    $"El avance queda fuera de vista en {size}: {_advanceButton.GetGlobalRect()}, inspector {_inspector.GetGlobalRect()}, dock {_actionDock.GetGlobalRect()}, decisiones {_decisionBar.GetGlobalRect()}, mano {_hand!.GetGlobalRect()}.");
+                Check(_contextCost.GetGlobalRect().End.Y <= Size.Y + 1, $"El coste de Hoguera queda fuera de la vista en {size}.");
                 await Capture($"context-equip-seat{seat}-{size.X}x{size.Y}");
                 await TapCard(1);
                 Check(_contextCost.Text.Contains("1 acción") && _contextCost.Text.Contains("1 descarte") &&
-                    _moveButtons.Any(b => b.GetParent() == _moves && b.Text == "Activar"), "Estrella oculta el coste antes de anunciarla.");
+                    _moveButtons.Any(b => b.GetParent() == _cardActions && b.Text == "Activar"), "Estrella oculta el coste antes de anunciarla.");
                 Check(game.SaveSnapshot() == before, "Seleccionar una acción altera las reglas antes de confirmar.");
+
+                var withThirdAction = DuelSnapshot.For(game, seat, 310);
+                withThirdAction.Options.Add(new DuelOption { Label = "Descartar Hoguera", Move = new DuelMove { Kind = DuelMoveKind.Discard, Index = 0 } });
+                PresentTestSnapshot(withThirdAction); await Layout(); await TapCard(0);
+                Check(_cardActions.GetChildren().OfType<CardActionButton>().Select(b => b.Text).SequenceEqual(["Equipar", "Canjear", "Descartar"]),
+                    "La tercera jugada no aparece junto a la misma carta.");
+                var strip = _cardActions.GetGlobalRect();
+                Check(new Rect2(GlobalPosition, Size).Grow(1).Encloses(strip) && _cardActions.GetChildren().OfType<Button>().All(b => b.Size.Y >= 48),
+                    $"Las tres acciones no caben en {size} o sus botones pierden el tamaño táctil.");
+                await Capture($"context-three-actions-seat{seat}-{size.X}x{size.Y}");
+                if (size.X == 700)
+                {
+                    await TapCard(3);
+                    Check(_cardActions.Visible && _cardActionAnchor == _handCards[3], "La barra no sigue una carta al desplazar la mano.");
+                    _hand!.ScrollVertical = 0; await Layout();
+                    Check(!_cardActions.Visible && _selected.Contains(3), "Una carta fuera de la mano visible deja botones flotando.");
+                }
 
                 game.State.Phase = Phase.Combat;
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 311)); await Layout(); await TapCard(2);
@@ -111,15 +139,23 @@ public partial class OnlineArena
                     "Atacar no pide elegir una habilidad entre los objetivos válidos.");
                 Check(_selection.GetGlobalRect().End.Y <= ((Control)_inspector.FindChild("InspectorReading", true, false)).GetGlobalRect().End.Y + 1,
                     "La instrucción de elegir una habilidad queda detrás de la descripción.");
+                var chooseAttack = (Button)_cardActions.GetNode("ChooseAttackSkill");
+                chooseAttack.Disabled = false;
+                GuiInputTestDriver.Click(chooseAttack); await Layout();
+                Check(_choosingAttackSkill && !_cardActions.Visible && _ownSkills.Count(t => t.Targetable) == 2,
+                    "Atacar no deja el tablero listo para elegir una habilidad.");
+                ClearContext(); await TapCard(2);
                 var skill = _ownSkills.Single(t => t.SkillIndex == 1); _arenaScroll?.EnsureControlVisible(skill); await Layout();
                 GuiInputTestDriver.Click(skill); await Layout();
                 var attack = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Attack && o.Move.Index == 2 && o.Move.Value == 1);
-                Check(PresentedButton(attack)?.Text == "Atacar" && skill.Chosen && _contextCost.Text == "Consume 1 Ataque", "El ataque no conserva la habilidad real elegida.");
+                Check(PresentedButton(attack) is { Text: "Atacar" } attackButton && attackButton.GetParent() == _cardActions &&
+                    skill.Chosen && _contextCost.Text == "Consume 1 Ataque", "El ataque no conserva la habilidad real elegida.");
                 await Capture($"context-attack-seat{seat}-{size.X}x{size.Y}");
                 ClearContext();
                 var bonus = (_root!.FindChild("BonusTrack0", true, false) as ExchangeTrack)!.BonusButton;
                 _arenaScroll?.EnsureControlVisible(bonus); await Layout(); GuiInputTestDriver.Click(bonus); await Layout();
-                Check(_contextTitle.Text == CardCatalog.Jessica.Name && _moveButtons.Count(b => b.GetParent() == _moves) == 1 && PresentsKind(DuelMoveKind.FieldCode),
+                Check(_contextTitle.Text == CardCatalog.Jessica.Name && _cardActionAnchor == bonus &&
+                    _moveButtons.Count(b => b.GetParent() == _cardActions) == 1 && PresentsKind(DuelMoveKind.FieldCode),
                     "Jessica no se activa desde su carta o se mezcla con otras copias.");
 
                 game.State.Phase = Phase.Actions; p.Hand.Add(CardCatalog.BlueEgg.Id); p.Equipment = CardCatalog.Pc.Id;

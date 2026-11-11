@@ -121,7 +121,7 @@ public partial class OnlineArena
                 }
                 if (_inspector.DescriptionLabel.GetCombinedMinimumSize().Y > _inspector.ReadingViewport.Size.Y + 1)
                 {
-                    var fixedControls = new Control[] { _selection, _contextTitle, _inspector.Attributes, _contextCost, _inspectorActions, _hand };
+                    var fixedControls = new Control[] { _selection, _contextTitle, _inspector.Attributes, _contextCost, _decisionBar, _hand };
                     var positions = fixedControls.Select(c => c.GetGlobalRect()).ToArray();
                     var descriptionTop = _inspector.DescriptionLabel.GlobalPosition.Y;
                     GuiInputTestDriver.ScrollDown(_inspector.ReadingViewport); await Layout();

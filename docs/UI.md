@@ -86,11 +86,11 @@ inventada para resultados antiguos sin ese dato.
 
 ## Distribución horizontal
 
-La barra contextual muestra el nombre de la carta elegida, el coste de su acción
-principal y verbos breves como Jugar, Equipar, Canjear o Atacar. Los índices de
-carta y espacio del protocolo no se usan como etiquetas de interfaz. El inspector
-tiene un fondo acrílico. Pasar el cursor sobre una carta visible abre su vista
-previa. Pulsar una carta fija la selección para jugar o consultar una zona.
+Al pulsar una carta aparecen junto a ella las acciones disponibles, con iconos y
+etiquetas breves como Jugar, Equipar, Canjear o Atacar. Si hay varias habilidades
+para atacar, Atacar permite elegir una de las que se resaltan en el tablero.
+El inspector acrílico muestra el nombre, el efecto y el coste de la carta.
+Pasar el cursor sobre una carta visible abre su vista previa.
 Un clic en el campo vacío limpia la selección del duelo y cierra la vista previa.
 El avance de etapa ocupa un control separado, Relikia tiene su propio
 menú y Abandonar está en el menú general con su confirmación habitual.

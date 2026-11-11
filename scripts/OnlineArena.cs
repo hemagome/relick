@@ -81,6 +81,8 @@ public partial class OnlineArena : Control
         _die.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
         BuildStageBanner();
+        _cardActions.AddThemeConstantOverride("separation", 4);
+        AddChild(_cardActions);
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
     }
@@ -146,6 +148,7 @@ public partial class OnlineArena : Control
         UpdateResolutionPresentation();
         if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
         UpdateEnabled(); RefreshRuntimeGuidance();
+        PositionCardActions();
         UpdateResultPresentation();
     }
 
@@ -254,7 +257,9 @@ public partial class OnlineArena : Control
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
         _ownSkills.Clear(); _ownSkills.AddRange(_root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>());
         _evolveButton = _root.FindChild("EvolveRelikario", true, false) as Button;
-        BuildMoves(); BindInspectorPreviews(); MoveChild(_diceOverlay, GetChildCount() - 1);
+        MoveChild(_cardActions, GetChildCount() - 1);
+        MoveChild(_diceOverlay, GetChildCount() - 1);
+        BuildMoves(); BindInspectorPreviews();
         UpdateResultPresentation();
         BoardBuildCount++;
     }
@@ -288,6 +293,7 @@ public partial class OnlineArena : Control
         if (IsAnimating || index < 0 || index >= SelectableCards.Count) return;
         if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == _snapshot.MySeat && o.Move.Value == (int)FieldZone.Hand))
         { SelectField(_snapshot.MySeat, FieldZone.Hand, -1); return; }
+        _choosingAttackSkill = false;
         _fieldSelection = null;
         _skillContext = _skillContext && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.DestinyDefense && o.Move.Index == _selectedSkill);
         var defense = _snapshot!.Options.Any(o => o.RequiredDiscards > 0);
@@ -304,8 +310,10 @@ public partial class OnlineArena : Control
     }
     private void BuildMoves()
     {
-        foreach (var node in new[] { (Node)_moves, _turnControls })
+        foreach (var node in new[] { (Node)_moves, _turnControls, _cardActions })
             foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); }
+        _cardActionAnchor = null;
+        _cardActions.Hide();
         _moveButtons.Clear(); _actionMenus.Clear(); _advanceButton = null;
         if (_preparing)
         {

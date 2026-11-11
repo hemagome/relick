@@ -7,7 +7,7 @@ public partial class OnlineArena
 {
     private Label _contextTitle = null!, _contextCost = null!;
     private CardInspector _inspector = null!;
-    private HBoxContainer _turnControls = null!, _inspectorActions = null!;
+    private HBoxContainer _turnControls = null!, _decisionBar = null!;
     private ScrollContainer _movesScroll = null!;
     private VBoxContainer _actionDock = null!;
     private AdvancePhaseButton? _advanceButton;
@@ -23,6 +23,7 @@ public partial class OnlineArena
     private void ResetInteraction()
     {
         _selected.Clear(); _selectedSkill = -1; _skillContext = false;
+        _choosingAttackSkill = false;
         _fieldSelection = null; _pointsTarget = null; _showReplayMemory = false;
         _inspectorPreview = null;
     }
@@ -33,7 +34,7 @@ public partial class OnlineArena
         dock.Name = "ActionDock"; dock.AddThemeConstantOverride("separation", Short ? 4 : 8); parent.AddChild(dock);
         _inspector = new CardInspector { Name = "ContextActionBar", ShortScreen = Short }; dock.AddChild(_inspector);
         _contextTitle = _inspector.TitleLabel; _contextCost = _inspector.CostLabel; _selection = _inspector.HintLabel;
-        var actions = new HBoxContainer { Name = "InspectorActions" }; _inspectorActions = actions; actions.AddThemeConstantOverride("separation", 6); dock.AddChild(actions);
+        var actions = new HBoxContainer { Name = "DecisionBar" }; _decisionBar = actions; actions.AddThemeConstantOverride("separation", 6); dock.AddChild(actions);
         var scroll = new ScrollContainer { Name = "MovesScroll", CustomMinimumSize = new(0, 50),
             SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _movesScroll = scroll; actions.AddChild(scroll);
@@ -55,17 +56,25 @@ public partial class OnlineArena
         return null;
     }
 
-    private Button AddOption(Node parent, int index, string? label = null)
+    private Button AddOption(Node parent, int index, string? label = null, bool primary = false)
     {
         var s = _snapshot!; var option = s.Options[index];
-        Button button = option.Move.Kind == DuelMoveKind.Advance ? new AdvancePhaseButton() : new Button();
+        Button button = parent == _cardActions ? new CardActionButton { Symbol = CardActionSymbol(option.Move) } :
+            option.Move.Kind == DuelMoveKind.Advance ? new AdvancePhaseButton() : new Button();
         button.Text = label ?? ArenaActionText.Label(option, s);
-        button.CustomMinimumSize = new(0, 48); button.MouseDefaultCursorShape = CursorShape.PointingHand;
         button.Pressed += () => PlayOption(index, s); parent.AddChild(button);
-        button.Name = "DuelOption" + index; button.AddThemeFontSizeOverride("font_size", Short ? 13 : 15);
-        button.AutowrapMode = TextServer.AutowrapMode.Off;
-        button.CustomMinimumSize = new(Math.Clamp(ThemeDB.FallbackFont.GetStringSize(button.Text, HorizontalAlignment.Left, -1, Short ? 13 : 15).X + 30, 64, Short ? 240 : 320), 48);
-        button.TooltipText = ArenaActionText.Cost(option, s);
+        button.Name = "DuelOption" + index;
+        if (button is CardActionButton cardAction) cardAction.Style(primary, Short);
+        else
+        {
+            var fontSize = Short ? 13 : 15;
+            button.MouseDefaultCursorShape = CursorShape.PointingHand;
+            button.AddThemeFontSizeOverride("font_size", fontSize);
+            button.CustomMinimumSize = new(Math.Clamp(ThemeDB.FallbackFont.GetStringSize(button.Text, HorizontalAlignment.Left, -1, fontSize).X + 30, 64, Short ? 240 : 320), 48);
+            if (primary) RelickVisuals.Primary(button);
+        }
+        var cost = ArenaActionText.Cost(option, s);
+        button.TooltipText = button is CardActionButton && cost.Length > 0 ? button.Text + " · " + cost : cost;
         button.SetMeta("option_index", index); button.SetMeta("discards", option.RequiredDiscards);
         button.SetMeta("golden_totem", option.Move.Kind == DuelMoveKind.GoldenTotem);
         _moveButtons.Add(button); return button;
@@ -151,7 +160,8 @@ public partial class OnlineArena
             if (_selected.Count > 1 || _skillContext) indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind));
             if (!_skillContext && indices.Any(i => IsHandAction(s.Options[i].Move.Kind)))
                 indices.RemoveAll(i => !IsHandAction(s.Options[i].Move.Kind));
-            indices.RemoveAll(i => s.Options[i].Move.Kind == DuelMoveKind.Attack && s.Options[i].Move.Value != _selectedSkill);
+            indices.RemoveAll(i => s.Options[i].Move.Kind == DuelMoveKind.Attack &&
+                (_choosingAttackSkill || s.Options[i].Move.Value != _selectedSkill));
             if (_skillContext)
                 indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && s.Options[i].Move.Index == _selectedSkill).ToList();
             else indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.DestinyDefense || s.Options[i].Move.Kind == DuelMoveKind.ProtectDestruction && s.Options[i].Move.Index >= 0);
@@ -159,13 +169,37 @@ public partial class OnlineArena
             if (s.Phase == Phase.PointsChoice)
                 indices = _pointsTarget.HasValue ? indices.Where(i => s.Options[i].Move.Target == _pointsTarget).ToList() : [];
         }
+        var chooseAttackSkill = !_choosingAttackSkill && _selectedSkill < 0 && SelectedAttacks().Any();
+        var handActions = s.Phase != Phase.ErrorResponse && !ChoosingEffectCards && !ChoosingRecycling &&
+            !_skillContext && _fieldSelection == null && _selected.Count == 1;
+        if (handActions)
+            _cardActionAnchor = _handCards.ElementAtOrDefault(_selected.Single());
+        else if (s.Phase != Phase.ErrorResponse && _fieldSelection is { } target)
+            _cardActionAnchor = FieldActionAnchor(target);
+        else if (_skillContext && indices.Any(i => s.Options[i].Move.Kind == DuelMoveKind.ProtectDestruction))
+            _cardActionAnchor = _ownSkills.FirstOrDefault(tile => tile.SkillIndex == _selectedSkill && tile.Skill != null);
+
         // A pending die has one principal action and one menu of real modifiers.
         var die = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && !s.Options[i].Move.Flag).ToArray();
+        var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
+            DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense, -1);
+        if (main < 0 && die.Length > 0) main = die[0];
         if (die.Length > 0)
         {
-            AddOption(_moves, die[0]); AddChoiceMenu(_moves, "Modificar…", indices.Except(die));
+            AddOption(_moves, die[0], primary: die[0] == main);
+            AddChoiceMenu(_moves, "Modificar…", indices.Except(die));
         }
-        else foreach (var index in indices) AddOption(_moves, index);
+        else
+        {
+            if (chooseAttackSkill && _cardActionAnchor != null) AddAttackSkillChoice();
+            foreach (var index in indices)
+            {
+                var option = s.Options[index];
+                var besideCard = _cardActionAnchor != null && (handActions ? IsHandAction(option.Move.Kind) :
+                    _fieldSelection != null || option.Move.Kind == DuelMoveKind.ProtectDestruction);
+                AddOption(besideCard ? _cardActions : _moves, index, primary: index == main);
+            }
+        }
         if (!_skillContext && _fieldSelection == null && !ChoosingEffectCards && !indices.Any(i => IsHandAction(s.Options[i].Move.Kind)))
         {
             AddChoiceMenu(_moves, s.Phase == Phase.DestructionResponse ? "Sustituir…" : "Defender…",
@@ -177,17 +211,7 @@ public partial class OnlineArena
                 var seat = player;
                 AddLocalButton(_moves, seat == s.MySeat ? "Mis PR" : "PR del rival", () => { _pointsTarget = seat; BuildMoves(); });
             }
-        var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
-            DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense, -1);
-        if (main < 0 && die.Length > 0) main = die[0];
-        if (main >= 0)
-        {
-            var primary = _moveButtons.LastOrDefault(b => (int)b.GetMeta("option_index", -1) == main);
-            if (primary != null)
-            {
-                RelickVisuals.Primary(primary);
-            }
-        }
+        PositionCardActions();
         var costs = indices.Select(i => ArenaActionText.Cost(s.Options[i], s)).Where(v => v.Length > 0).Distinct().ToArray();
         _selectionCost = main >= 0 ? (costs.Length > 1 ? ArenaActionText.Label(s.Options[main], s) + ": " : "") + ArenaActionText.Cost(s.Options[main], s)
             : costs.Length == 1 ? costs[0] : "";
@@ -310,8 +334,12 @@ public partial class OnlineArena
         _actionDock.SizeFlagsVertical = card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
         var interaction = (Control)_actionDock.GetParent().GetParent();
         interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
-        _movesScroll.Visible = _moves.GetChildCount() > 0;
-        _inspectorActions.Visible = _movesScroll.Visible || _turnControls.GetParent() == _inspectorActions && _turnControls.Visible;
+        var hasDecisions = _moves.GetChildCount() > 0;
+        var hasTurnControls = _turnControls.GetParent() == _decisionBar && _turnControls.Visible;
+        // Preserve the footer's minimum height and alignment when its only controls are on the right.
+        _movesScroll.Visible = hasDecisions || hasTurnControls;
+        _movesScroll.MouseFilter = hasDecisions ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        _decisionBar.Visible = _movesScroll.Visible;
     }
 
     private string ContextTitle()
@@ -363,11 +391,13 @@ public partial class OnlineArena
             var handOptions = s.Options.Where(o => IsHandAction(o.Move.Kind) && o.Move.Index == index).ToArray();
             if (handOptions.Length == 0) return ArenaGuidance.UnavailableCard(s, index);
             if (handOptions.Any(o => o.Move.Kind == DuelMoveKind.Attack))
-                return _selectedSkill < 0 ? "Elige una habilidad iluminada para atacar." : "Confirma el ataque con " + CardCatalog.Get(s.Players[s.MySeat].Skills[_selectedSkill]).Name + ".";
+                return _choosingAttackSkill ? "Elige una habilidad iluminada para atacar." :
+                    _selectedSkill < 0 ? "Pulsa Atacar para elegir una habilidad." :
+                    "Ataca con " + CardCatalog.Get(s.Players[s.MySeat].Skills[_selectedSkill]).Name + ".";
             return "";
         }
         if (SelectedCardId() != null)
-            return _moveButtons.Any(b => b.GetParent() == _moves) ? "" :
+            return _moveButtons.Any(b => b.GetParent() == _moves || b.GetParent() == _cardActions) ? "" :
                 _fieldSelection != null || _skillContext ? ArenaGuidance.Instruction(s) : "Esta carta no tiene una activación disponible ahora.";
         return ArenaGuidance.Instruction(s);
     }
