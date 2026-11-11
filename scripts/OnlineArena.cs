@@ -228,7 +228,7 @@ public partial class OnlineArena : Control
         }
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short, railColumns) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
-                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO", railColumns,
+                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null, railColumns,
                 useFan: !ChoosingRecycling && !ChoosingEffectCards);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, handVerticalPosition);
@@ -243,8 +243,9 @@ public partial class OnlineArena : Control
 
     private void BuildOpponentHand(VBoxContainer parent)
     {
-        var hand = _snapshot!.Players[1 - _snapshot.MySeat].Hand;
-        parent.AddChild(ArenaPresentation.Text($"MANO DEL RIVAL · {hand.Length}", 10, ArenaPresentation.Coral));
+        var opponent = _snapshot!.Players[1 - _snapshot.MySeat];
+        var hand = opponent.Hand;
+        ArenaPresentation.HandCounter(parent, opponent.HandCount, enemy: true);
         var scroll = new ScrollContainer { Name = "OpponentHandScroll", CustomMinimumSize = new(0, 90), VerticalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", 4); scroll.AddChild(row); parent.AddChild(scroll);
         for (var i = 0; i < hand.Length; i++)

@@ -202,9 +202,10 @@ public static class ArenaPresentation
     }
 
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
-        Action<int> pressed, bool preparing, bool shortScreen, string title = "TU MANO", int railColumns = 0, bool useFan = true)
+        Action<int> pressed, bool preparing, bool shortScreen, string? title = null, int railColumns = 0, bool useFan = true)
     {
-        parent.AddChild(HandHeading(title, hand.Count, railColumns));
+        if (title == null) HandCounter(parent, hand.Count, enemy: false);
+        else parent.AddChild(HandHeading(title, hand.Count, railColumns));
         var scroll = CardGallery("HandScroll", shortScreen, railColumns);
         var fanned = useFan && railColumns == 0 && hand.Count > 0;
         scroll.FollowFocus = fanned;
@@ -222,6 +223,25 @@ public static class ArenaPresentation
             cards.AddChild(Text(hint, 14, BoardArt.Muted));
         }
         scroll.AddChild(cards); parent.AddChild(scroll); return scroll;
+    }
+
+    public static void HandCounter(Node parent, int count, bool enemy)
+    {
+        var description = $"{(enemy ? "Mano rival" : "Tu mano")} · {count} {(count == 1 ? "carta" : "cartas")}";
+        var row = new HBoxContainer
+        {
+            Name = enemy ? "OpponentHandCounter" : "OwnHandCounter",
+            SizeFlagsHorizontal = enemy ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            TooltipText = description
+        };
+        row.AddThemeConstantOverride("separation", 5);
+        row.AddChild(new IconView { Icon = GameIcon.Cards, Color = enemy ? Coral : Mint, CustomMinimumSize = new(16, 16) });
+        var amount = Text(count.ToString(), 13);
+        amount.AccessibilityName = description;
+        amount.MouseFilter = Control.MouseFilterEnum.Ignore;
+        row.AddChild(amount);
+        parent.AddChild(row);
     }
 
     private static Label HandHeading(string title, int count, int railColumns)
