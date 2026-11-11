@@ -279,24 +279,20 @@ public static class ArenaPresentation
         text.Name = "DuelScoreline"; text.AutowrapMode = TextServer.AutowrapMode.WordSmart; parent.AddChild(text);
     }
 
-    public static void ActionCounters(Node parent, DuelPlayerView own, DuelPlayerView rival)
+    public static PanelContainer ActionCounters(Node parent, ActionCrystalPool own, ActionCrystalPool rival)
     {
         var panel = new PanelContainer { Name = "ActionCounters", CustomMinimumSize = new(124, 48),
-            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            TooltipText = $"Acciones restantes · {own.Name}: {own.Actions} · {rival.Name}: {rival.Actions}.\nSe actualizan al gastar, recuperar o comenzar un turno." };
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
         var frame = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame);
         frame.ContentMarginLeft = frame.ContentMarginRight = 10;
         frame.ContentMarginTop = frame.ContentMarginBottom = 4;
         panel.AddThemeStyleboxOverride("panel", frame); parent.AddChild(panel);
-        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 0); panel.AddChild(column);
-        var caption = Text("ACCIONES", 10, BoardArt.Muted);
-        caption.HorizontalAlignment = HorizontalAlignment.Center; column.AddChild(caption);
         var values = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        values.AddThemeConstantOverride("separation", 12); column.AddChild(values);
-        var mine = Text($"TÚ {own.Actions}", 14, own.Actions == 0 ? BoardArt.Muted : Mint);
-        mine.Name = "OwnActionsCounter"; values.AddChild(mine);
-        var theirs = Text($"RIVAL {rival.Actions}", 14, rival.Actions == 0 ? BoardArt.Muted : Coral);
-        theirs.Name = "RivalActionsCounter"; values.AddChild(theirs);
+        values.AddThemeConstantOverride("separation", 6); panel.AddChild(values);
+        values.AddChild(own);
+        values.AddChild(new VSeparator());
+        values.AddChild(rival);
+        return panel;
     }
 
     public static void StageIndicator(Node parent, Phase stage, string detail, bool shortScreen)

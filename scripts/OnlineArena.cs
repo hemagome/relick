@@ -25,6 +25,12 @@ public partial class OnlineArena : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill }
     ];
     private readonly LifeMeter[] _life = [new(), new()];
+    private readonly ActionCrystalPool[] _actionPools =
+    [
+        new() { Name = "OwnActionsCounter", Accent = ArenaPresentation.Mint },
+        new() { Name = "RivalActionsCounter", Accent = ArenaPresentation.Coral }
+    ];
+    private PanelContainer _actionDisplay = null!;
     private readonly DiceFace _die = new() { Name = "AnimatedDice", CustomMinimumSize = new(260, 210) };
     private CenterContainer _diceOverlay = null!;
     private Label _diceCaption = null!;
@@ -62,6 +68,8 @@ public partial class OnlineArena : Control
         Name = "OnlineArena"; SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var background = new ArenaBackground { Name = "ArenaBackdrop" }; AddChild(background);
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _actionDisplay = ArenaPresentation.ActionCounters(this, _actionPools[0], _actionPools[1]);
+        _actionDisplay.Hide();
         _diceOverlay = new CenterContainer { Name = "DiceRollOverlay", Visible = false, MouseFilter = MouseFilterEnum.Ignore };
         AddChild(_diceOverlay); _diceOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var panel = ArenaPresentation.Panel(_diceOverlay, "111f2c", new("927b54"));
@@ -121,7 +129,7 @@ public partial class OnlineArena : Control
                     _life[relative].SetHealth(p.Health, p.MaxHealth, false);
                 }
             }
-            _needsBaseline = false; Render();
+            _needsBaseline = false; Render(animate || openingFlights != null, previous);
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins);
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
@@ -139,12 +147,12 @@ public partial class OnlineArena : Control
         UpdateResultPresentation();
     }
 
-    private void Render()
+    private void Render(bool animateActions = false, DuelSnapshot? previous = null)
     {
         var handPosition = _hand?.ScrollHorizontal ?? 0;
         var handVerticalPosition = _hand?.ScrollVertical ?? 0;
         var boardPosition = _arenaScroll?.ScrollVertical ?? 0;
-        foreach (var node in _portraits.Cast<Node>().Concat(_life)) node.GetParent()?.RemoveChild(node);
+        foreach (var node in _portraits.Cast<Node>().Concat(_life).Append(_actionDisplay)) node.GetParent()?.RemoveChild(node);
         if (_root != null) { RemoveChild(_root); _root.QueueFree(); }
         _root = new VBoxContainer { Name = "DuelInterface" }; AddChild(_root);
         _root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); ArenaViewport.ApplyInsets(_root, Compact ? 10 : 24, Compact ? 8 : 16);
@@ -167,8 +175,11 @@ public partial class OnlineArena : Control
             stageDetail += $" · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "DECIDES TÚ" : "DECIDE EL RIVAL")}";
         if (Short) stageDetail += $" · TÚ {s.Players[s.MySeat].Health}/{s.Players[s.MySeat].MaxHealth} · RIVAL {s.Players[1 - s.MySeat].Health}/{s.Players[1 - s.MySeat].MaxHealth}";
         ArenaPresentation.StageIndicator(Short ? _root : header, stage, stageDetail, Short);
-        if (!_preparing && s.Phase != Phase.Preparation)
-            ArenaPresentation.ActionCounters(header, s.Players[s.MySeat], s.Players[1 - s.MySeat]);
+        var rechargeActions = animateActions && previous != null && previous.Turn != s.Turn;
+        _actionPools[0].Present(s.Players[s.MySeat].Actions, $"Tus acciones · {s.Players[s.MySeat].Name}", animateActions, rechargeActions);
+        _actionPools[1].Present(s.Players[1 - s.MySeat].Actions, $"Acciones del rival · {s.Players[1 - s.MySeat].Name}", animateActions, rechargeActions);
+        header.AddChild(_actionDisplay);
+        _actionDisplay.Visible = !_preparing && s.Phase != Phase.Preparation;
         BuildComboResponseToggle(header); BuildArenaMenu(header);
         if (Compact && !Short) ArenaPresentation.Scoreline(_root, [s.Players[s.MySeat], s.Players[1 - s.MySeat]]);
         var body = ArenaPresentation.Body(_root, Short && Size.X >= 700);

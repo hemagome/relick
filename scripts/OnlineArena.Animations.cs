@@ -217,6 +217,7 @@ public partial class OnlineArena
     }
     private void ResetAnimations()
     {
+        foreach (var pool in _actionPools) pool.Settle();
         ResetStageBanner();
         SetQueuedDestinationsOpacity(1);
         ResetOpeningInitiative();
