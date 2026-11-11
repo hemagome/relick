@@ -34,6 +34,18 @@ Comparte el ZIP completo. El jugador debe extraerlo y abrir `Relick/Relick.exe`,
 
 El preset `Windows Desktop` también está disponible en **Proyecto → Exportar**. Incluye explícitamente `network/server.cfg` y todos los recursos para conservar las imágenes cargadas dinámicamente. Las plantillas oficiales conservan su icono predeterminado; no se requiere Wine ni rcedit para generar este paquete. Antes de distribuir una versión nueva, comprueba el inicio y un duelo entre dos equipos en Windows.
 
+## Exportar un APK para Android
+
+```bash
+./export-android.sh
+```
+
+Genera `artifacts/Relick-android-arm64.apk`, firmado con una clave de depuración local, para probar en dispositivos **Android 7.0 o posterior de 64 bits (ARM64)**. Copia el APK al teléfono, ábrelo y permite instalar aplicaciones desde la aplicación que lo abra. Requiere internet para jugar PvP y usa el servidor de desarrollo de `network/server.cfg`.
+
+La exportación necesita Godot 4.7.2 .NET con sus plantillas Android .NET, **SDK de .NET 9**, OpenJDK 17 y Android SDK con `platform-tools` y `build-tools;35.0.1`. Configura `JAVA_HOME` y `ANDROID_HOME`; `RELICK_GODOT` permite indicar el ejecutable de Godot. Si se prepararon herramientas locales en `artifacts/android-toolchain/environment.sh`, el script carga ese entorno automáticamente. La configuración temporal del editor no modifica tus ajustes habituales.
+
+Android compila para `net9.0`, requerido por la plantilla APK de Godot; escritorio conserva `net8.0`. El script verifica la firma, la alineación de las bibliotecas y la presencia del juego, runtime y configuración PvP antes de entregar el APK. Los registros están en `artifacts/android/`. Conserva `artifacts/android/debug.keystore` para poder actualizar la aplicación instalada con APK posteriores. Es una compilación de prueba; falta validar el inicio y un duelo en un dispositivo Android físico.
+
 ## Alcance actual
 
 - Audio original: menú compartido, combate y clímax según el Relikario rival —incluidos los dos temas de Yuno—, efectos de robo, barajado, dado, curación y ataque, y volúmenes independientes guardados en el dispositivo.
@@ -51,7 +63,7 @@ El preset `Windows Desktop` también está disponible en **Proyecto → Exportar
 - Destreza: Yuno empieza con una ficha por partida. Puedes gastarla sin acciones ni PR para sumar +1 a un dado propio pendiente de 2, 3 o 4; no se recupera al cambiar de turno o evolucionar.
 - Evolucionar a Yuno Lv 2 recupera hasta dos vidas sin superar las ocho iniciales. En cada tirada o relanzamiento del D6 de ataque, Yuno Lv 2 suma +1 salvo si sale 1; el resultado máximo es 6. Es un efecto de su evolución: los dados de daño, otros efectos y otros Relikarios no reciben ese aumento automáticamente.
 - El premio del ataque se entrega después de resolver el daño y las decisiones pendientes del combate. Cancelar solo el daño conserva el premio; negar el ataque completo lo impide.
-- Interfaz horizontal adaptable a PC, tablet y teléfono. La exportación y validación en hardware Android/iOS siguen pendientes.
+- Interfaz horizontal adaptable a PC, tablet y teléfono. Exportación APK de prueba para Android ARM64; la validación en hardware Android y la exportación para iOS siguen pendientes.
 - Servidor autoritativo: el cliente presenta información autorizada y envía intenciones; no decide dados, daño ni legalidad del duelo.
 
 La [clasificación indicada por el usuario](docs/CARD_TAXONOMY.md) es la referencia para ampliar efectos y deckbuilding. Documenta habilidades genéricas/específicas, equipos ligeros, áreas orientables y códigos Jugada/Acción/Trampa con extradeck, distinguiendo la especificación de lo ya implementado. Aún no hay constructor de mazos ni catálogo completo.

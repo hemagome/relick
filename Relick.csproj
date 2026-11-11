@@ -1,6 +1,7 @@
 <Project Sdk="Godot.NET.Sdk/4.7.2">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition="'$(GodotTargetPlatform)' == 'android'">net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,6 +10,8 @@
     <Compile Remove="tests/**/*.cs" />
     <Compile Remove="server/**/*.cs" />
     <None Remove="tests/**" />
+    <Compile Remove="artifacts/**/*.cs" />
+    <None Remove="artifacts/**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="SpacetimeDB.ClientSDK.Godot" Version="2.14.1" />

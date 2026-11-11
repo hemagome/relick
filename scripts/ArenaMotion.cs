@@ -4,7 +4,8 @@ namespace Relick;
 
 public static class ArenaMotion
 {
-    public static void PositionCard(Control card, Rect2 source, Rect2 destination, float t, int player, float flip = 1)
+    public static void PositionCard(Control card, Rect2 source, Rect2 destination, float t, int player, float flip = 1,
+        float sourceRotation = 0, float destinationRotation = 0)
     {
         var eased = t * t * (3 - 2 * t);
         var center = source.GetCenter().Lerp(destination.GetCenter(), eased);
@@ -12,7 +13,7 @@ public static class ArenaMotion
         card.PivotOffset = card.Size / 2;
         card.Scale = source.Size.Lerp(destination.Size, eased) / card.Size * new Vector2(flip, 1);
         card.Position = center - card.Size / 2;
-        card.Rotation = Mathf.Sin(t * Mathf.Pi) * (player == 0 ? -0.12f : 0.12f);
+        card.Rotation = Mathf.Lerp(sourceRotation, destinationRotation, eased) + Mathf.Sin(t * Mathf.Pi) * (player == 0 ? -0.12f : 0.12f);
     }
 
     public static void ShuffleCard(Control card, Rect2 deck, float t, int layer)

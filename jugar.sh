@@ -19,9 +19,7 @@ if ! command -v dotnet >/dev/null || [[ -z "$(dotnet --list-sdks)" ]]; then
   echo "Necesitas el SDK de .NET 8 (el runtime no basta). Consulta README.md."
   exit 1
 fi
-if [[ -f .godot/mono/temp/obj/project.assets.json ]]; then
-  dotnet build Relick.csproj --no-restore --nologo
-else
-  dotnet build Relick.csproj --nologo
-fi
+# Android y escritorio comparten la caché de NuGet, pero usan frameworks distintos.
+# La restauración incremental comprueba el destino antes de reutilizarla.
+dotnet build Relick.csproj --nologo
 exec "$relick_godot" --path "$relick_root" "$@"

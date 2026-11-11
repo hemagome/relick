@@ -28,6 +28,20 @@ public static class BoardArt
         CardKind.Attachment => "SOBRE EL RELIKARIO", _ => "EQUIPO"
     };
     public static Color Tint(Color color, float alpha) => new(color.R, color.G, color.B, alpha);
+
+    internal static Texture2D? LoadCardArtwork(CardDefinition card)
+    {
+        var path = $"res://assets/cards/{card.Id}-clean.png";
+        return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+    }
+
+    internal static Rect2 FitArtwork(Texture2D artwork, Rect2 area)
+    {
+        var size = artwork.GetSize();
+        var extent = size * Math.Min(area.Size.X / size.X, area.Size.Y / size.Y);
+        return new Rect2(area.GetCenter() - extent / 2, extent);
+    }
+
     public static void Plate(CanvasItem c, Rect2 rect, Color fill, Color edge, int radius = 12, int border = 1)
     {
         var cut = Math.Min(Math.Min(radius, 8), Math.Min(rect.Size.X, rect.Size.Y) / 2);
@@ -378,33 +392,43 @@ public partial class ExchangeTrack : VBoxContainer
         BonusButton = new ZoneCardButton
         {
             Name = "BonusCard", Caption = "BONUS" + (BonusEffectUsed ? " · USADA" : ""), Card = Preparing ? null : BonusCard, Compact = Compact,
-            Accent = BoardArt.Gold, EmptyCaption = Preparing ? "Por colocar" : "Sin carta"
+            Accent = BoardArt.Gold
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
         row.AddChild(BonusButton);
     }
 }
 
-/// <summary>Inspectable card shared by the exchange and Bonus zones.</summary>
+/// <summary>Inspectable card in a public board zone.</summary>
 public partial class ZoneCardButton : Button
 {
     public bool Targetable { get; set; }
     public bool Chosen { get; set; }
     public bool Compact { get; set; }
+    public bool LargePreview { get; init; }
     public CardDefinition? Card { get; set; }
     public string Caption { get; set; } = "";
-    public string EmptyCaption { get; set; } = "Vacío";
     public Color Accent { get; set; }
     private Texture2D? _artwork;
+
+    internal Rect2 CardRect
+    {
+        get
+        {
+            var area = new Rect2(6, 20, Size.X - 12, Size.Y - 40);
+            return _artwork == null ? area : BoardArt.FitArtwork(_artwork, area);
+        }
+    }
+
     public override void _Ready()
     {
-        CustomMinimumSize = new(Compact ? 80 : 88, 86);
+        CustomMinimumSize = new(Compact ? 80 : 88, Compact && LargePreview ? 112 : 86);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         Disabled = Card == null;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
-        if (Card?.Kind == CardKind.Attack) _artwork = GD.Load<Texture2D>("res://assets/cards/attack-clean.png");
-        TooltipText = Card == null ? $"{Caption}: {EmptyCaption}." : $"{Caption} · {Card.Name}\n{Card.Text}\nPulsa para ampliar y consultar el efecto.";
+        if (Card != null) _artwork = BoardArt.LoadCardArtwork(Card);
+        TooltipText = Card == null ? "" : $"{Caption} · {Card.Name}\n{Card.Text}\nPulsa para ampliar y consultar el efecto.";
         Resized += QueueRedraw;
         MouseEntered += QueueRedraw;
         MouseExited += QueueRedraw;
@@ -416,39 +440,41 @@ public partial class ZoneCardButton : Button
         var edge = Card != null ? RelickVisuals.Playmat.Frame : BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f);
         BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, edge, 8);
         BoardArt.CenterText(this, Caption, new(Size.X / 2, 13), 9, Card == null ? BoardArt.Muted : Accent);
-        var thumb = new Rect2((Size.X - 28) / 2, 20, 28, 39);
-        var cardColor = BoardArt.CardColor(Card);
-        if (_artwork != null)
-        {
-            var scale = Math.Min(thumb.Size.X / _artwork.GetWidth(), thumb.Size.Y / _artwork.GetHeight());
-            var extent = _artwork.GetSize() * scale;
-            DrawTextureRect(_artwork, new Rect2(thumb.Position + (thumb.Size - extent) / 2, extent), false);
-        }
-        else
-        {
-            BoardArt.Plate(this, thumb, BoardArt.Tint(cardColor, Card != null ? 0.12f : 0.03f), Card != null ? cardColor.Darkened(0.3f) : new Color("3b4961"), 4);
-            var icon = Card != null ? BoardArt.CardIcon(Card) : Caption == "BONUS" ? GameIcon.Gift : GameIcon.Cards;
-            BoardArt.Icon(this, icon, thumb.GetCenter(), 19, Card != null ? cardColor : BoardArt.Muted);
-        }
+        if (_artwork != null) DrawTextureRect(_artwork, CardRect, false);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
-        var name = Card?.Name ?? EmptyCaption;
+        if (Card == null) return;
+        var name = Card.Name;
         var fontSize = 11;
         while (fontSize > 8 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 10) fontSize--;
         while (name.Length > 1 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 10) name = name[..^2] + "…";
-        BoardArt.CenterText(this, name, new(Size.X / 2, 76), fontSize, Card != null ? BoardArt.Ink : BoardArt.Muted);
+        BoardArt.CenterText(this, name, new(Size.X / 2, Size.Y - 10), fontSize, BoardArt.Ink);
     }
 }
 
 public partial class AttachmentStack : Button
 {
-    public int Amount { get; set; }
+    public IReadOnlyList<string> Cards { get; init; } = [];
+    private int Amount => Cards.Count;
+    private Texture2D[] _previews = [];
+    internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(Vector2.Zero, Size) : PreviewRect(_previews.Length - 1);
+
+    private Rect2 PreviewRect(int index)
+    {
+        const float offset = 16;
+        var spread = (_previews.Length - 1) * offset;
+        var area = new Rect2(6 + index * offset, 20, Size.X - 12 - spread, Size.Y - 40);
+        return BoardArt.FitArtwork(_previews[index], area);
+    }
+
     public override void _Ready()
     {
         CustomMinimumSize = new(92, 86);
         Disabled = Amount == 0;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         TooltipText = $"Sobre el Relikario: {Amount} carta(s). Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
+        _previews = Cards.TakeLast(3).Select(CardCatalog.Get).Select(BoardArt.LoadCardArtwork).OfType<Texture2D>().ToArray();
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        Resized += QueueRedraw;
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
         FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
     }
@@ -457,20 +483,17 @@ public partial class AttachmentStack : Button
         var accent = Amount == 0 ? BoardArt.Tint(BoardArt.Muted, 0.45f) : new Color("b5a2fa");
         BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, BoardArt.Tint(RelickVisuals.Playmat.Frame, Amount == 0 ? 0.45f : 1), 8);
         BoardArt.CenterText(this, "SOBRE RELIKARIO", new(Size.X / 2, 13), 8, accent);
-        for (var i = Math.Min(2, Math.Max(0, Amount - 1)); i >= 0; i--)
-        {
-            var position = new Vector2((Size.X - 25) / 2 + i * 4 - 4, 22 + i * 3);
-            BoardArt.Plate(this, new Rect2(position, new Vector2(25, 32)), RelickVisuals.Playmat.Raised, accent.Darkened(0.25f), 4);
-            if (i == 0) BoardArt.Icon(this, GameIcon.Flag, position + new Vector2(12.5f, 16), 17, accent);
-        }
+        for (var i = 0; i < _previews.Length; i++) DrawTextureRect(_previews[i], PreviewRect(i), false);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, !Disabled && IsHovered(), HasFocus());
-        BoardArt.CenterText(this, Amount == 0 ? "Vacío · ∞" : $"{Amount} carta{(Amount == 1 ? "" : "s")} · ∞", new(Size.X / 2, 76), 10, Amount == 0 ? BoardArt.Muted : BoardArt.Ink);
+        if (Amount > 0)
+            BoardArt.CenterText(this, $"{Amount} carta{(Amount == 1 ? "" : "s")} · ∞", new(Size.X / 2, 76), 10, BoardArt.Ink);
     }
 }
 
 public partial class HandCard : Button
 {
     public CardDefinition Card { get; set; } = null!;
+    internal bool InFan { get; init; }
     public float PresentationScale { get; set; } = 1;
     private Vector2 DrawSize => Size / PresentationScale;
     public bool Chosen { get; set; }
@@ -493,14 +516,22 @@ public partial class HandCard : Button
         MouseDefaultCursorShape = CursorShape.PointingHand;
         TooltipText = $"{Card.Name}\n{Card.Text}";
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
-        FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
         SetProcess(false);
-        MouseEntered += () => SetProcess(true);
-        MouseExited += () => SetProcess(true);
+        FocusEntered += UpdatePreview; FocusExited += UpdatePreview;
+        MouseEntered += UpdatePreview; MouseExited += UpdatePreview;
     }
+
+    private void UpdatePreview()
+    {
+        // Change the draw order without moving the hit area under the pointer.
+        if (InFan) ZIndex = IsHovered() ? 2 : HasFocus() ? 1 : 0;
+        SetProcess(true);
+        QueueRedraw();
+    }
+
     public override void _Process(double delta)
     {
-        var target = IsHovered() ? 1f : 0f;
+        var target = IsHovered() || InFan && HasFocus() ? 1f : 0f;
         if (Math.Abs(_hover - target) < 0.001f) { _hover = target; SetProcess(false); return; }
         _hover = Mathf.Lerp(_hover, target, Math.Min(1, (float)delta * 14));
         QueueRedraw();
@@ -510,7 +541,7 @@ public partial class HandCard : Button
         DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
         var accent = BoardArt.CardColor(Card);
         var icon = BoardArt.CardIcon(Card);
-        var y = 7 - _hover * 5;
+        var y = 7 - _hover * (InFan ? 9 : 5);
         var r = new Rect2(1, y, DrawSize.X - 2, 175);
         BoardArt.Plate(this, new Rect2(r.Position + new Vector2(0, 3), r.Size), new Color(0, 0, 0, 0.25f), Colors.Transparent, 12, 0);
         BoardArt.Plate(this, r, RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 12, Chosen ? 2 : 1);
@@ -578,22 +609,4 @@ public partial class IconView : Control
     public Color Color { get; set; } = BoardArt.Ink;
     public override void _Ready() { MouseFilter = MouseFilterEnum.Ignore; }
     public override void _Draw() => BoardArt.Icon(this, Icon, Size / 2, Math.Min(Size.X, Size.Y), Color);
-}
-
-public partial class PhaseBadge : Control
-{
-    public string Caption { get; set; } = "";
-    public GameIcon Icon { get; set; }
-    public bool Current { get; set; }
-    public bool Complete { get; set; }
-    public override void _Ready() { CustomMinimumSize = new(120, 34); MouseFilter = MouseFilterEnum.Ignore; }
-    public override void _Draw()
-    {
-        var color = Current ? RelickVisuals.State.Selected : Complete ? BoardArt.Muted : BoardArt.Tint(BoardArt.Muted, 0.6f);
-        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), Current ? RelickVisuals.Playmat.Raised : Colors.Transparent, Current ? color : Colors.Transparent, 8);
-        BoardArt.Icon(this, Icon, new(21, 17), 17, color);
-        BoardArt.Text(this, Caption, new(38, 22), 12, color);
-        if (Current) BoardArt.Text(this, "»", new(Size.X - 20, 23), 18, color);
-        else if (Complete) BoardArt.Text(this, "✓", new(Size.X - 20, 22), 12, color);
-    }
 }

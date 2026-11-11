@@ -32,7 +32,6 @@ public partial class DeckStack : Control
         else
         {
             BoardArt.Plate(this, TopRect, new Color("0d1422"), new Color("34405a"), 4);
-            BoardArt.CenterText(this, "VACÍO", new(32, 47), 9, BoardArt.Muted);
         }
         BoardArt.CenterText(this, $"MAZO · {Amount}", new(Size.X / 2, 103), 10, Accent);
     }

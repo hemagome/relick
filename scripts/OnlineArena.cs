@@ -70,6 +70,7 @@ public partial class OnlineArena : Control
         _diceCaption = ArenaPresentation.Text("", 13); _diceCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(_diceCaption);
         _die.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
+        BuildStageBanner();
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
     }
@@ -123,11 +124,13 @@ public partial class OnlineArena : Control
             _needsBaseline = false; Render();
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins);
+            QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
         if (_root == null) return;
         if (_snapshot != null) UpdateComboResponseToggle(_snapshot);
         if (_status.Text != Connection.Message) _status.Text = Connection.Message;
         UpdateFlights(delta);
+        PresentQueuedStageAnnouncement();
         _diceOverlay.Visible = _die.IsPresented;
         _diceOverlay.Modulate = new Color(1, 1, 1, _die.PresentationOpacity);
         UpdateResolutionPresentation();
@@ -156,14 +159,17 @@ public partial class OnlineArena : Control
         brandColumn.AddThemeConstantOverride("separation", 0); brandColumn.AddChild(brand); header.AddChild(brandColumn);
         _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;
         _status.Visible = !Short; brandColumn.AddChild(_status);
+        var stage = StageAppearance.Current(s);
+        var resultCaption = s.Winner == -1 ? "EMPATE" : s.Winner == s.MySeat ? "¡VICTORIA!" : "DERROTA";
+        var stageDetail = _preparing ? PreparationCaption() : s.Winner != null ? resultCaption :
+            $"TURNO {s.Turn:00} · {(s.CurrentPlayer == s.MySeat ? "TÚ" : "RIVAL")}";
+        if (!_preparing && s.Winner == null && stage != s.Phase)
+            stageDetail += $" · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "DECIDES TÚ" : "DECIDE EL RIVAL")}";
+        if (Short) stageDetail += $" · TÚ {s.Players[s.MySeat].Health}/{s.Players[s.MySeat].MaxHealth} · RIVAL {s.Players[1 - s.MySeat].Health}/{s.Players[1 - s.MySeat].MaxHealth}";
+        ArenaPresentation.StageIndicator(Short ? _root : header, stage, stageDetail, Short);
         if (!_preparing && s.Phase != Phase.Preparation)
             ArenaPresentation.ActionCounters(header, s.Players[s.MySeat], s.Players[1 - s.MySeat]);
         BuildComboResponseToggle(header); BuildArenaMenu(header);
-        var phase = s.Winner != null ? s.Winner == -1 ? "EMPATE" : s.Winner == s.MySeat ? "¡VICTORIA!" : "DERROTA" :
-            $"TURNO {s.Turn:00} · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
-        var phaseCaption = _preparing ? PreparationCaption() : s.Winner != null ? phase : $"{PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "TU DECISIÓN" : "RIVAL")}";
-        if (Short) phaseCaption += $" · TÚ {s.Players[s.MySeat].Health}/{s.Players[s.MySeat].MaxHealth} · RIVAL {s.Players[1 - s.MySeat].Health}/{s.Players[1 - s.MySeat].MaxHealth}";
-        ArenaPresentation.Phases(_root, s.Stage ?? s.Phase, phaseCaption, s.Turn, _preparing || s.CurrentPlayer == s.MySeat, Compact);
         if (Compact && !Short) ArenaPresentation.Scoreline(_root, [s.Players[s.MySeat], s.Players[1 - s.MySeat]]);
         var body = ArenaPresentation.Body(_root, Short && Size.X >= 700);
         var boardCompact = Compact || Short;
@@ -194,7 +200,7 @@ public partial class OnlineArena : Control
                 }, boardCompact, Short && Size.X < 820);
         }
         Player(0);
-        var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? phase : s.LastCombat;
+        var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? resultCaption : s.LastCombat;
         var combat = ArenaPresentation.Combat(arena, _preparing, s.Winner != null, combatMessage, relativePlayers, BuildOpponentHand,
             relative => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Bonus, -1),
             (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), boardCompact, BuildResolution);
@@ -222,7 +228,8 @@ public partial class OnlineArena : Control
         }
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short, railColumns) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
-                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO", railColumns);
+                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : "TU MANO", railColumns,
+                useFan: !ChoosingRecycling && !ChoosingEffectCards);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, handVerticalPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());

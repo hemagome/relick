@@ -5,7 +5,7 @@ namespace Relick;
 
 public partial class OnlineArena
 {
-    private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45);
+    private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45, float OriginRotation = 0);
     private readonly Queue<Flight> _flights = new();
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
     private Control? _flight;
@@ -33,7 +33,9 @@ public partial class OnlineArena
     private static Rect2 ZoneRect(Control control) => control switch
     {
         MemoryZoneButton pile => new(pile.GlobalPosition + pile.CardRect.Position, pile.CardRect.Size),
-        ZoneCardButton zone => new(zone.GlobalPosition + new Vector2((zone.Size.X - 28) / 2, 20), new(28, 39)),
+        ZoneCardButton zone => new(zone.GlobalPosition + zone.CardRect.Position, zone.CardRect.Size),
+        AttachmentStack attached => new(attached.GlobalPosition + attached.CardRect.Position, attached.CardRect.Size),
+        HandCard { InFan: true } card => new(card.GetGlobalTransform() * (card.Size / 2) - card.Size / 2, card.Size),
         _ => control.GetGlobalRect()
     };
 
@@ -61,7 +63,7 @@ public partial class OnlineArena
                 var activation = new Rect2(center.GetGlobalRect().GetCenter() - new Vector2(27, 38.5f), new(54, 77));
                 origin = RectVisible(center, activation) ? activation : null;
             }
-            result[cue] = new Flight(cue, origin, id);
+            result[cue] = new Flight(cue, origin, id, OriginRotation: node?.Rotation ?? 0);
         }
         return result;
     }
@@ -193,7 +195,8 @@ public partial class OnlineArena
                 _flightFront.Visible = reveal < 0.5f ? startsUp : endsUp;
                 _flightBack!.Visible = !_flightFront.Visible;
             }
-            ArenaMotion.PositionCard(_flight, _flightSource, _flightDestination, t, _activeFlight.Event.Player == _snapshot!.MySeat ? 0 : 1, flip);
+            ArenaMotion.PositionCard(_flight, _flightSource, _flightDestination, t, _activeFlight.Event.Player == _snapshot!.MySeat ? 0 : 1, flip,
+                _activeFlight.OriginRotation, _flightTarget?.Rotation ?? 0);
             if (t >= 1) FinishFlight();
         }
         PlayPendingPortraits();
@@ -206,12 +209,15 @@ public partial class OnlineArena
     private static bool RectVisible(Control anchor, Rect2 rect)
     {
         if (!anchor.IsVisibleInTree()) return false;
+        if (anchor is HandCard { InFan: true })
+            rect = anchor.GetGlobalTransform() * new Rect2(Vector2.Zero, anchor.Size);
         for (Node? parent = anchor; parent != null; parent = parent.GetParent())
             if (parent is Control { ClipContents: true } clip && !clip.GetGlobalRect().Encloses(rect)) return false;
         return true;
     }
     private void ResetAnimations()
     {
+        ResetStageBanner();
         SetQueuedDestinationsOpacity(1);
         ResetOpeningInitiative();
         _flights.Clear(); _pendingPortraits.Clear(); FinishFlight(); _die.Value = 0;

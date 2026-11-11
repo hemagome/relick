@@ -59,7 +59,8 @@ public static class ArenaPresentation
         }
         else
         {
-            arena = new HBoxContainer { Name = "DuelArena", SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+            // The inspector can grow below the board without resizing the player panels.
+            arena = new HBoxContainer { Name = "DuelArena", SizeFlagsVertical = Control.SizeFlags.Fill };
             root.AddChild(arena);
         }
         arena.AddThemeConstantOverride("separation", compact ? 8 : 12);
@@ -105,7 +106,8 @@ public static class ArenaPresentation
         life.SetHealth(owner.Health, owner.MaxHealth); column.AddChild(life);
         var body = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         body.AddThemeConstantOverride("separation", 6);
-        var zones = new VBoxContainer { CustomMinimumSize = new(70, 0), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+        var zones = new VBoxContainer { CustomMinimumSize = new(70, 0),
+            SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.ShrinkBegin };
         zones.AddThemeConstantOverride("separation", 6);
         zones.AddChild(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter });
         var memories = new HBoxContainer(); memories.AddThemeConstantOverride("separation", 6);
@@ -115,9 +117,10 @@ public static class ArenaPresentation
         var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true };
         corrupted.Pressed += () => actions.Memory(true); memories.AddChild(corrupted);
         if (!narrow) zones.AddChild(memories);
-        var permanent = new VBoxContainer { CustomMinimumSize = new(92, 0), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+        var permanent = new VBoxContainer { CustomMinimumSize = new(92, 0),
+            SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.Fill };
         permanent.AddThemeConstantOverride("separation", 6);
-        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Amount = owner.Attached.Length };
+        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached };
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
@@ -127,7 +130,8 @@ public static class ArenaPresentation
             cover.Pressed += actions.EquipmentCovers; permanent.AddChild(cover);
         }
         var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : owner.EquipmentStackedCopies > 0 ? $"EQUIPO ×{owner.EquipmentStackedCopies + 1}" : owner.Equipment == CardCatalog.Sniper.Id ? $"EQUIPO · {owner.EquipmentCounters}/3" : owner.EquipmentDie > 0 ? $"EQUIPO · D6: {owner.EquipmentDie}" : "EQUIPO 1/1",
-            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), EmptyCaption = "Sin equipo", Accent = new("81c8ef") };
+            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("81c8ef"),
+            Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
         portrait.SizeFlagsVertical = narrow ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ExpandFill;
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
@@ -198,23 +202,24 @@ public static class ArenaPresentation
     }
 
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
-        Action<int> pressed, bool preparing, bool shortScreen, string title = "TU MANO", int railColumns = 0)
+        Action<int> pressed, bool preparing, bool shortScreen, string title = "TU MANO", int railColumns = 0, bool useFan = true)
     {
         parent.AddChild(HandHeading(title, hand.Count, railColumns));
         var scroll = CardGallery("HandScroll", shortScreen, railColumns);
-        var cards = GalleryContents(railColumns, 10);
+        var fanned = useFan && railColumns == 0 && hand.Count > 0;
+        scroll.FollowFocus = fanned;
+        Control cards = fanned ? new HandFan() : GalleryContents(railColumns, 10);
         for (var i = 0; i < hand.Count; i++)
         {
             var slot = i;
             var card = new HandCard { Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), Mulligan = preparing,
-                PresentationScale = shortScreen ? 0.6f : 1 };
+                InFan = fanned, PresentationScale = fanned ? HandFan.CardScale : shortScreen ? 0.6f : 1 };
             card.Pressed += () => pressed(slot); cards.AddChild(card);
         }
-        if (hand.Count == 0)
+        if (hand.Count == 0 && railColumns == 0)
         {
-            var empty = Text(railColumns > 0 ? "Sin cartas" : preparing ? "Sincronizando tu mano inicial…" : "Mano vacía · robarás 3 cartas al empezar tu turno.", railColumns > 0 ? 12 : 14, BoardArt.Muted);
-            empty.TooltipText = preparing ? "Sincronizando tu mano inicial…" : "Mano vacía · robarás 3 cartas al empezar tu turno.";
-            cards.AddChild(empty);
+            var hint = preparing ? "Sincronizando tu mano inicial…" : "Robarás 3 cartas al empezar tu turno.";
+            cards.AddChild(Text(hint, 14, BoardArt.Muted));
         }
         scroll.AddChild(cards); parent.AddChild(scroll); return scroll;
     }
@@ -274,21 +279,32 @@ public static class ArenaPresentation
         theirs.Name = "RivalActionsCounter"; values.AddChild(theirs);
     }
 
-    public static void Phases(Node parent, Phase stage, string caption, int turn, bool ownTurn, bool compact)
+    public static void StageIndicator(Node parent, Phase stage, string detail, bool shortScreen)
     {
-        if (compact)
-        {
-            var label = Text(stage == Phase.Preparation ? caption : $"TURNO {turn:00} · {caption}", 12, ownTurn ? Mint : Coral);
-            label.AutowrapMode = TextServer.AutowrapMode.WordSmart; parent.AddChild(label); return;
-        }
-        var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", 8); parent.AddChild(row);
-        var pill = new PanelContainer(); pill.AddThemeStyleboxOverride("panel", Box("1b2336", ownTurn ? Mint : Coral, 8));
-        pill.AddChild(Text(stage == Phase.Preparation ? "PREPARACIÓN" : stage == Phase.Finished ? "DUELO TERMINADO" : ownTurn ? "TU TURNO" : "TURNO DEL RIVAL", 11, ownTurn ? Mint : Coral)); row.AddChild(pill);
-        if (stage != Phase.Preparation) row.AddChild(Text($"TURNO {turn:00}", 12, BoardArt.Muted));
-        var current = stage switch { Phase.Preparation or Phase.Draw => 0, Phase.Combat => 1, Phase.Actions => 2, _ => 3 };
-        var phases = new[] { (stage == Phase.Preparation ? "Preparar" : "Robo", GameIcon.Cards), ("Combate", GameIcon.Sword), ("Acciones", GameIcon.Bolt), ("Final", GameIcon.Flag) };
-        for (var i = 0; i < phases.Length; i++) row.AddChild(new PhaseBadge { Caption = phases[i].Item1, Icon = phases[i].Item2,
-            Current = i == current, Complete = i < current, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var style = StageAppearance.For(stage);
+        var panel = new PanelContainer { Name = "StageIndicator", MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+        var frame = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, BoardArt.Tint(style.Accent, 0.65f));
+        frame.ContentMarginTop = frame.ContentMarginBottom = shortScreen ? 4 : 5;
+        panel.AddThemeStyleboxOverride("panel", frame);
+        parent.AddChild(panel);
+        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(row);
+        row.AddChild(new IconView { Icon = style.Icon, Color = style.Accent, CustomMinimumSize = Vector2.One * (shortScreen ? 16 : 23),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+        BoxContainer labels = shortScreen ? new HBoxContainer() : new VBoxContainer();
+        labels.MouseFilter = Control.MouseFilterEnum.Ignore;
+        labels.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        labels.AddThemeConstantOverride("separation", shortScreen ? 9 : 0);
+        row.AddChild(labels);
+        var title = Text(style.Title, shortScreen ? 13 : 16, style.Accent);
+        title.Name = "CurrentStageTitle";
+        labels.AddChild(title);
+        var context = Text(detail, shortScreen ? 11 : 10, BoardArt.Ink);
+        context.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        if (shortScreen) context.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        labels.AddChild(context);
     }
 
     public static (VBoxContainer Board, VBoxContainer Controls) Body(VBoxContainer root, bool split)

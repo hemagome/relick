@@ -25,29 +25,52 @@ public partial class OnlineArena
             var game = PendingCodeFixture(seat, CardCatalog.Senshuni.Id);
             var player = game.State.Players[seat];
             player.Hand.Clear(); player.Hand.AddRange([CardCatalog.Magnet.Id, CardCatalog.Destiny.Id, CardCatalog.Bonfire.Id, CardCatalog.Senshuni.Id]);
+            if (!Short) player.Hand.InsertRange(3, [CardCatalog.Attack.Id, CardCatalog.Sniper.Id, CardCatalog.TimeBomb.Id]);
             player.Skills.AddRange([CardCatalog.Reverse.Id, CardCatalog.Destiny.Id]);
             player.SkillCounters[0] = 2; player.SkillCounters[1] = 1;
+            player.Exchange.Add(CardCatalog.Jessica.Id);
+            player.Bonus = CardCatalog.ExtraLife.Id;
+            player.AttachedCards.AddRange([CardCatalog.Pendant.Id, CardCatalog.TimeBomb.Id]);
             game.State.Players[1 - seat].Equipment = CardCatalog.Pc.Id;
             ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 401)); await Layout();
             var before = game.SaveSnapshot();
+            var cardSizes = _handCards.Select(card => card.Size).ToArray();
+            if (!Short)
+            {
+                var fan = _handCards[0].GetParent() as HandFan;
+                Check(fan != null && _handCards[0].Rotation < 0 && _handCards[^1].Rotation > 0 &&
+                    fan.GetCombinedMinimumSize().X < cardSizes.Sum(card => card.X),
+                    "La mano horizontal no inclina las cartas ni ahorra espacio al superponerlas.");
+            }
+            var panels = new[] { "OwnRelikarioPanel", "EnemyRelikarioPanel" }
+                .Select(name => (Control)_root!.FindChild(name, true, false)).ToArray();
+            var panelRects = panels.Select(panel => panel.GetGlobalRect()).ToArray();
+            void CheckPanelSize()
+            {
+                if (!Compact && !Short)
+                    Check(panels.Select(panel => panel.GetGlobalRect()).SequenceEqual(panelRects),
+                        "Abrir o cerrar el inspector cambia la posición o el tamaño de los cuadros de Relikario.");
+            }
             var compactHeight = _inspector.Size.Y;
             Check(!_inspector.ReadingViewport.Visible && !_inspector.TitleLabel.Visible && compactHeight < 96,
                 "Sin selección el inspector reserva espacio para una carta inexistente.");
             if (seat == 0) await Capture($"inspector-empty-{size.X}x{size.Y}");
-            foreach (var index in new[] { 0, 1, 2, 3 })
+            for (var index = 0; index < player.Hand.Count; index++)
             {
                 var card = _handCards[index]; _hand!.EnsureControlVisible(card); await Layout();
                 card.Disabled = false;
                 try { GuiInputTestDriver.Click(card); }
                 catch (Exception e) { throw new Exception($"Inspector {size}, asiento {seat}, carta {index}: {e.Message}", e); }
                 await Layout();
+                CheckPanelSize();
                 var definition = CardCatalog.Get(player.Hand[index]);
                 Check(_contextTitle.Text == definition.Name, "El inspector no sigue la carta seleccionada.");
                 Check(_inspector.Attributes.Visible == (definition.Kind == CardKind.Skill), "Se duplican valores del efecto como atributos de equipo o código.");
                 if (definition.Kind == CardKind.Skill)
                     Check(!_inspector.DescriptionLabel.Text.Contains("Daño normal:") && !_inspector.DescriptionLabel.Text.Contains("Premio:"), "El inspector repite los atributos en la descripción.");
                 else Check(_inspector.DescriptionLabel.Text == definition.Text, "El inspector pierde condiciones de la carta.");
-                Check(card.CustomMinimumSize == new Vector2(126, 184) * (Short ? 0.6f : 1), "El inspector cambia el tamaño o el arte completo de la mano.");
+                Check(card.Size == cardSizes[index], "El inspector cambia el tamaño de la carta en la mano.");
+                if (!Short) Check(card.ZIndex > 0, "La carta inspeccionada queda cubierta por las demás.");
                 Check(_inspector.FindChildren("*", "Label", true, false).OfType<Label>().All(l => l.Text is not ("Efecto" or "Seleccionada" or "Efecto visible")), "El inspector conserva etiquetas redundantes.");
                 Check(_inspector.FindChildren("*", "Label", true, false).OfType<Label>().Count(l => l.Text == "Coste") == 1, "El inspector duplica el campo de coste.");
                 if (definition.Id == CardCatalog.Senshuni.Id)
@@ -112,6 +135,7 @@ public partial class OnlineArena
                 "Consultar un equipo rival conserva atributos o contadores de otra carta.");
             Check(FieldCardId((1 - seat, FieldZone.Hand, 0)) == null, "El inspector tiene acceso a una identidad privada.");
             ClearContext(); await Layout();
+            CheckPanelSize();
             Check(!_inspector.ClassificationLabel.Visible && !_inspector.Attributes.Visible && !_inspector.DescriptionLabel.Visible && !_inspector.CounterLabel.Visible,
                 "Limpiar la selección deja datos antiguos del inspector.");
             Check(_snapshot!.Players[1 - seat].Hand.All(id => id == null) &&

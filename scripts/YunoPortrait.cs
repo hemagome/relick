@@ -96,8 +96,14 @@ public partial class YunoPortrait : Control
     public override void _Draw()
     {
         if (!_sheets.TryGetValue(Motion, out var texture)) return;
-        var halo = new Vector2(Size.X / 2, Size.Y * 0.56f);
-        var radius = Math.Min(Size.X * 0.46f, Size.Y * 0.48f);
+        const float captionSpace = 24;
+        var availableHeight = Math.Max(0, Size.Y - captionSpace);
+        var scale = Math.Min(Size.X / FrameWidth, availableHeight / FrameHeight);
+        var extent = new Vector2(FrameWidth, FrameHeight) * scale;
+        var radius = Math.Min(Size.X * 0.46f, availableHeight / 2);
+        // Keep the sprite and halo together just above the PR slots as the panel stretches.
+        var halo = new Vector2(Size.X / 2, Size.Y - Math.Max(radius, extent.Y / 2));
+        var target = new Rect2(halo - extent / 2, extent);
         for (var i = 3; i >= 1; i--) DrawCircle(halo, radius * i / 3, BoardArt.Tint(AccentColor, 0.025f));
         DrawArc(halo, radius, -Mathf.Pi * 0.9f, Mathf.Pi * 0.7f, 64, BoardArt.Tint(AccentColor, 0.16f), 1, true);
         var font = ThemeDB.FallbackFont;
@@ -116,9 +122,6 @@ public partial class YunoPortrait : Control
             DrawCircle(new Vector2(5, 9), 3, color);
             DrawString(font, new Vector2(15, 13), caption, HorizontalAlignment.Left, -1, 11, new Color("a2afbc"));
         }
-        var scale = Math.Min(Size.X / FrameWidth, Math.Max(0, Size.Y - 24) / FrameHeight);
-        var extent = new Vector2(FrameWidth, FrameHeight) * scale;
-        var target = new Rect2(new Vector2((Size.X - extent.X) / 2, Size.Y - extent.Y), extent);
         var frameWidth = texture.GetWidth() / Columns;
         var frameHeight = texture.GetHeight() / (FrameCount / Columns);
         var source = new Rect2((CurrentFrame % Columns) * frameWidth, (CurrentFrame / Columns) * frameHeight, frameWidth, frameHeight);

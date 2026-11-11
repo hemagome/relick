@@ -26,6 +26,11 @@ public partial class OnlineLobby
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
+            if (OS.GetCmdlineUserArgs().Contains("--stage-only"))
+            {
+                await online.CheckStageAnnouncements(); online.QueueFree(); await Layout();
+                GD.Print("PVP_STAGE_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--connection-only"))
             {
                 await CheckArenaConnectionNotice(online); online.Hide(); await CheckLobbyPolish();
@@ -193,6 +198,7 @@ public partial class OnlineLobby
             await online.CheckDuelResults();
             await online.CheckPreparationLayout();
             await CheckArenaConnectionNotice(online);
+            await online.CheckStageAnnouncements();
             online.Hide(); await CheckLobbyPolish(); await CheckMatchmakingAnimation();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();

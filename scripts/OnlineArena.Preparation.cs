@@ -106,9 +106,8 @@ public partial class OnlineArena
         for (var i = 0; i < _openingCards.Length; i++) if (_openingReturns.Contains(_openingCards[i].Id)) _selected.Add(i);
     }
 
-    private string PreparationCaption() => _choosingOpeningSkill ? "PREPARACIÓN · ELIGE UNA HABILIDAD" : _openingInfo?.Started == true ? "PREPARACIÓN · COMPLETADA" :
-        _openingInfo?.MyConfirmed == true ? "PREPARACIÓN · ESPERANDO AL RIVAL" :
-        _openingPending ? "PREPARACIÓN · CONFIRMANDO" : "PREPARACIÓN · ELIGE TU MANO";
+    private string PreparationCaption() => _choosingOpeningSkill ? "ELIGE UNA HABILIDAD" : _openingInfo?.Started == true ? "COMPLETADA" :
+        _openingInfo?.MyConfirmed == true ? "ESPERANDO AL RIVAL" : _openingPending ? "CONFIRMANDO" : "ELIGE TU MANO";
 
     private string PreparationMessage() => _choosingOpeningSkill ? "Elige una habilidad de tu mazo" : _openingInfo?.Started == true ? "Preparación completada" :
         _openingInfo?.MyConfirmed == true ? "Mano confirmada\nEsperando al rival…" :
@@ -146,7 +145,7 @@ public partial class OnlineArena
             var node = ZoneNode(0, CardZone.Hand, slot);
             if (node == null || !RectVisible(node, ZoneRect(node))) continue;
             flights.Add(new(new DuelVisualEvent { Kind = DuelVisualKind.Return, Player = combat.MySeat, Value = slot },
-                ZoneRect(node), _openingCards[slot].Definition, Duration: 0.28));
+                ZoneRect(node), _openingCards[slot].Definition, Duration: 0.28, OriginRotation: node.Rotation));
         }
         return flights;
     }

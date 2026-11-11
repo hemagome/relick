@@ -127,8 +127,10 @@ public partial class OnlineArena
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 312)); await Layout();
                 Check(!PresentsKind(DuelMoveKind.Destroy), "Se listan todos los objetivos de destrucción como botones.");
                 var equipment = (ZoneCardButton)_root!.FindChild("EquipmentZone0", true, false);
-                Check(equipment.Targetable, "El equipo propio válido no se ilumina.");
-                _arenaScroll?.EnsureControlVisible(equipment); await Layout(); GuiInputTestDriver.Click(equipment); await Layout();
+                Check(equipment.Targetable && equipment.CardRect.Size.Y > 39, "El equipo propio no se ilumina o no muestra su miniatura ampliada.");
+                _arenaScroll?.EnsureControlVisible(equipment); await Layout();
+                await Capture($"equipped-card-seat{seat}-{size.X}x{size.Y}");
+                GuiInputTestDriver.Click(equipment); await Layout();
                 var destroy = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == actor && o.Move.Value == (int)FieldZone.Equipment);
                 Check(PresentedButton(destroy)?.Text == "Destruir" && equipment.Chosen, "La selección del equipo apunta a otra carta.");
                 Check(game.ResolveDestruction(actor, actor, true).Success, "No termina Huevo en el fixture de objetivos.");
