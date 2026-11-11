@@ -79,7 +79,7 @@ public static class ArenaPresentation
         var header = new HBoxContainer(); column.AddChild(header);
         var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         names.AddThemeConstantOverride("separation", 0);
-        var ownerName = Text((active ? "» " : "") + (enemy ? "ADVERSARIO" : "TU RELIKARIO") + " · " + owner.Name, 9, accent);
+        var ownerName = Text(active ? $"» {owner.Name}" : owner.Name, 9, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = compact; ownerName.TooltipText = owner.Name; names.AddChild(ownerName);
         var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", compact ? 15 : 18);
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;

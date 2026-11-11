@@ -120,6 +120,7 @@ public partial class OnlineArena : Control
             var openingFlights = fromPreparation && !_needsBaseline ? CaptureMulliganOrigins(snapshot) : null;
             var animate = !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
             var origins = CaptureOrigins(snapshot, previous);
+            var lesson = animate ? CaptureSkillLesson(snapshot, previous!) : null;
             if (animate && IsAnimating) { ResetAnimations(); _die.Value = snapshot.Die; }
             _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
             if (!animate)
@@ -133,7 +134,7 @@ public partial class OnlineArena : Control
             }
             _needsBaseline = false; Render(animate || openingFlights != null, previous);
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
-            else if (animate) Animate(snapshot.Visuals, origins);
+            else if (animate) Animate(snapshot.Visuals, origins, lesson);
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
         if (_root == null) return;

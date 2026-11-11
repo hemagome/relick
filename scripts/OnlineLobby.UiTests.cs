@@ -63,6 +63,11 @@ public partial class OnlineLobby
                 await online.CheckActionCounters(); online.QueueFree(); await Layout();
                 GD.Print("PVP_ACTION_COUNTERS_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--skill-lesson-only"))
+            {
+                await online.CheckSkillLessonAnimation(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--guidance-only"))
             {
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
@@ -181,6 +186,7 @@ public partial class OnlineLobby
             await online.CheckMemoryInspection();
             await online.CheckPublicHistory();
             await online.CheckTripleAttackDraws();
+            await online.CheckSkillLessonAnimation();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();

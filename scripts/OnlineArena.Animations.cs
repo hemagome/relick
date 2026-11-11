@@ -5,7 +5,10 @@ namespace Relick;
 
 public partial class OnlineArena
 {
-    private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45, float OriginRotation = 0);
+    private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45, float OriginRotation = 0)
+    {
+        public bool IsSkillLesson => Event.Kind == DuelVisualKind.Pile && Event.Destination == CardZone.Skill;
+    }
     private readonly Queue<Flight> _flights = new();
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
     private Control? _flight;
@@ -13,6 +16,8 @@ public partial class OnlineArena
     private TextureRect? _flightBack;
     private Control? _flightTarget;
     private Flight? _activeFlight;
+    private DuelVisualEvent? _skillLessonRoll;
+    private bool _skillLessonPreview;
     private Rect2 _flightSource, _flightDestination;
     private double _flightTime;
     private int _flightLayoutFrames;
@@ -68,13 +73,56 @@ public partial class OnlineArena
         return result;
     }
 
-    private void Animate(List<DuelVisualEvent> events, Dictionary<DuelVisualEvent, Flight> origins)
+    private Flight? CaptureSkillLesson(DuelSnapshot current, DuelSnapshot previous)
     {
-        if (events.Count > 0) PlayedVisualRevisions++;
+        var actor = previous.CurrentPlayer;
+        if (previous.Phase != Phase.Combat || current.Turn != previous.Turn || current.CurrentPlayer != actor) return null;
+        var before = previous.Players[actor];
+        var after = current.Players[actor];
+        if (after.Skills.Length != before.Skills.Length + 1 || after.HandCount != before.HandCount - 1) return null;
+
+        // Learning appends a skill. The public board already identifies it and its position.
+        var skillIndex = before.Skills.Length;
+        var skill = after.Skills[skillIndex];
+        var own = actor == current.MySeat;
+        Control? source;
+        if (own)
+        {
+            bool WasRemoved(int i) => before.Hand.ElementAtOrDefault(i) == skill &&
+                before.Hand.Where((_, j) => j != i).SequenceEqual(after.Hand);
+            var index = _selected.FirstOrDefault(WasRemoved, -1);
+            if (index < 0)
+                index = Enumerable.Range(0, before.Hand.Length).FirstOrDefault(WasRemoved, -1);
+            source = ZoneNode(0, CardZone.Hand, index);
+        }
+        else
+        {
+            source = _root?.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>()
+                .FirstOrDefault(card => card.IsFaceDown && RectVisible(card, ZoneRect(card)));
+        }
+
+        var origin = source != null && RectVisible(source, ZoneRect(source)) ? ZoneRect(source) : (Rect2?)null;
+        var rotation = origin != null ? source!.Rotation : 0;
+        if (origin == null)
+        {
+            var hand = own ? _hand : _root?.FindChild("OpponentHandScroll", true, false) as Control;
+            if (hand != null)
+                origin = new Rect2(hand.GetGlobalRect().GetCenter() - new Vector2(27, 38), new(54, 76));
+        }
+        var cue = new DuelVisualEvent { Kind = DuelVisualKind.Pile, Player = actor, Value = skillIndex,
+            Source = CardZone.Hand, Destination = CardZone.Skill };
+        return new Flight(cue, origin, skill, Duration: 0.66, OriginRotation: rotation);
+    }
+
+    private void Animate(List<DuelVisualEvent> events, Dictionary<DuelVisualEvent, Flight> origins, Flight? lesson = null)
+    {
+        if (events.Count > 0 || lesson != null) PlayedVisualRevisions++;
+        if (lesson != null) _flights.Enqueue(lesson);
         foreach (var cue in events)
         {
             switch (cue.Kind)
             {
+                case DuelVisualKind.Die when lesson != null: _skillLessonRoll = cue; break;
                 case DuelVisualKind.Die: _die.QueueRoll(cue.Value, cue.Caption); break;
                 case DuelVisualKind.DieAdjustment: _die.ShowAdjustedResult(cue.Value, cue.Caption); break;
                 case DuelVisualKind.Attack: _pendingPortraits.Add((cue.Player, PortraitMotion.Attack)); break;
@@ -98,8 +146,8 @@ public partial class OnlineArena
                     break;
             }
         }
-        // The snapshot already contains all drawn cards; reveal each destination only on arrival.
-        SetQueuedDestinationsOpacity(0);
+        // The snapshot already contains these cards. Reveal each destination on arrival.
+        SetQueuedDestinationsPending(true);
         _flightLayoutFrames = 2;
         _lastDisabled = null;
         PlayPendingPortraits();
@@ -117,6 +165,25 @@ public partial class OnlineArena
         _pendingPortraits.Clear();
     }
 
+    private (Rect2 Source, Rect2 Destination) SkillLessonPath(Flight lesson, Control? target)
+    {
+        var bounds = new Rect2(Vector2.Zero, Size);
+        var slot = target?.GetGlobalRect() ?? default;
+        _skillLessonPreview = target == null || !bounds.Encloses(slot) || !RectVisible(target, slot);
+        if (_skillLessonPreview)
+        {
+            var board = _arenaScroll?.GetGlobalRect().Intersection(bounds) ?? bounds;
+            var preview = SkillTile.CardSize * 0.9f;
+            slot = new Rect2(board.GetCenter() - preview / 2, preview);
+        }
+        var source = lesson.Origin ?? new Rect2(new Vector2(Size.X / 2 - 27, Size.Y - 90), new(54, 76));
+        var halfSize = source.Size / 2;
+        source.Position = source.GetCenter().Clamp(bounds.Position + halfSize, bounds.End - halfSize) - halfSize;
+        // The flying card uses the portrait hand artwork. Rotate its footprint into the skill tile.
+        var portrait = new Vector2(slot.Size.Y, slot.Size.X);
+        return (source, new Rect2(slot.GetCenter() - portrait / 2, portrait));
+    }
+
     private void UpdateFlights(double delta)
     {
         if (_flightLayoutFrames > 0) { _flightLayoutFrames--; return; }
@@ -126,16 +193,12 @@ public partial class OnlineArena
         {
             var own = next.Event.Player == _snapshot!.MySeat;
             var relative = own ? 0 : 1;
-            var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
-            if (deck == null) return;
-            var deckRect = new Rect2(deck.GlobalPosition + deck.TopRect.Position, deck.TopRect.Size);
             var returning = next.Event.Kind == DuelVisualKind.Return;
             var kind = next.Event.Kind;
-            if (kind == DuelVisualKind.Draw) PlaySound(SoundCue.CardDraw);
-            if (kind == DuelVisualKind.Shuffle) PlaySound(SoundCue.CardShuffle);
             var target = kind switch
             {
                 DuelVisualKind.Return or DuelVisualKind.Shuffle => null,
+                DuelVisualKind.Pile when next.IsSkillLesson => ZoneNode(relative, CardZone.Skill, next.Event.Value),
                 DuelVisualKind.Pile => ZoneNode(relative, next.Event.Destination, -1),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.BonusClaim or DuelVisualKind.MemoryClaim => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, next.Event.Value),
@@ -143,18 +206,26 @@ public partial class OnlineArena
                 DuelVisualKind.HandDiscard => ZoneNode(relative, CardZone.Memory, -1),
                 _ => ZoneNode(relative, CardZone.Hand, next.Event.Value)
             };
-            var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer or DuelVisualKind.MemoryClaim or DuelVisualKind.HandDiscard;
-            var source = fromPrevious ? next.Origin : deckRect;
-            Rect2? destination = returning || kind == DuelVisualKind.Shuffle ? deckRect : target == null ? null : ZoneRect(target);
-            var bounds = new Rect2(Vector2.Zero, Size);
-            // Never draw through clipped panels/docks when a small-screen zone is offscreen.
-            if (source == null || destination == null || !bounds.Encloses(source.Value) || !bounds.Encloses(destination.Value))
-            { if (target != null) target.Modulate = Colors.White; return; }
-            if ((!fromPrevious || returning) && !RectVisible(deck, deckRect) || target != null && !RectVisible(target, destination.Value))
-            { if (target != null) target.Modulate = Colors.White; return; }
-            _flightSource = source.Value; _flightDestination = destination.Value;
+            if (next.IsSkillLesson) (_flightSource, _flightDestination) = SkillLessonPath(next, target);
+            else
+            {
+                var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
+                if (deck == null) { SetDestinationPending(target, false); return; }
+                var deckRect = new Rect2(deck.GlobalPosition + deck.TopRect.Position, deck.TopRect.Size);
+                if (kind == DuelVisualKind.Draw) PlaySound(SoundCue.CardDraw);
+                if (kind == DuelVisualKind.Shuffle) PlaySound(SoundCue.CardShuffle);
+                var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer or DuelVisualKind.MemoryClaim or DuelVisualKind.HandDiscard;
+                var source = fromPrevious ? next.Origin : deckRect;
+                Rect2? destination = returning || kind == DuelVisualKind.Shuffle ? deckRect : target == null ? null : ZoneRect(target);
+                var bounds = new Rect2(Vector2.Zero, Size);
+                // Never draw through clipped panels/docks when a small-screen zone is offscreen.
+                if (source == null || destination == null || !bounds.Encloses(source.Value) || !bounds.Encloses(destination.Value) ||
+                    (!fromPrevious || returning) && !RectVisible(deck, deckRect) || target != null && !RectVisible(target, destination.Value))
+                { SetDestinationPending(target, false); return; }
+                _flightSource = source.Value; _flightDestination = destination.Value;
+            }
             _activeFlight = next; _flightTarget = target;
-            if (target != null) target.Modulate = new(1, 1, 1, 0);
+            SetDestinationPending(target, true);
             _flight = new Control { Name = "NetworkCardFlight", Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore, ZIndex = 20 }; AddChild(_flight);
             TextureRect Back() => new() { Texture = GD.Load<Texture2D>("res://assets/cards/card-back.png"),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
@@ -184,10 +255,13 @@ public partial class OnlineArena
                 if (progress >= 1) FinishFlight();
                 return;
             }
-            var t = Math.Clamp((float)(_flightTime / _activeFlight!.Duration), 0, 1);
-            var returning = _activeFlight!.Event.Kind == DuelVisualKind.Return;
-            var reveal = Math.Clamp((t - 0.55f) / 0.3f, 0, 1);
-            var startsUp = _activeFlight.Event.Kind is not (DuelVisualKind.Draw or DuelVisualKind.BonusPlace) && _activeFlight.Event.Source != CardZone.Corrupted;
+            var lesson = _activeFlight.IsSkillLesson;
+            var relative = _activeFlight.Event.Player == _snapshot!.MySeat ? 0 : 1;
+            var t = Math.Clamp((float)(_flightTime / _activeFlight.Duration), 0, 1);
+            var returning = _activeFlight.Event.Kind == DuelVisualKind.Return;
+            var reveal = Math.Clamp((t - (lesson ? 0.28f : 0.55f)) / 0.3f, 0, 1);
+            var startsUp = _activeFlight.Event.Kind is not (DuelVisualKind.Draw or DuelVisualKind.BonusPlace) &&
+                _activeFlight.Event.Source != CardZone.Corrupted && (!lesson || relative == 0);
             var endsUp = !returning && !(_activeFlight.Event.Kind == DuelVisualKind.Pile && _activeFlight.Event.Destination == CardZone.Corrupted);
             var flip = _flightFront == null || startsUp == endsUp ? 1 : Math.Max(0.035f, Math.Abs(Mathf.Cos(reveal * Mathf.Pi)));
             if (_flightFront != null)
@@ -195,17 +269,35 @@ public partial class OnlineArena
                 _flightFront.Visible = reveal < 0.5f ? startsUp : endsUp;
                 _flightBack!.Visible = !_flightFront.Visible;
             }
-            ArenaMotion.PositionCard(_flight, _flightSource, _flightDestination, t, _activeFlight.Event.Player == _snapshot!.MySeat ? 0 : 1, flip,
-                _activeFlight.OriginRotation, _flightTarget?.Rotation ?? 0);
-            if (t >= 1) FinishFlight();
+            ArenaMotion.PositionCard(_flight, _flightSource, _flightDestination, t, relative, flip,
+                _activeFlight.OriginRotation, lesson ? Mathf.Pi / 2 : _flightTarget?.Rotation ?? 0);
+            var fade = _skillLessonPreview ? Math.Clamp((float)(_flightTime - _activeFlight.Duration - 0.24) / 0.2f, 0, 1) : t;
+            if (_skillLessonPreview) _flight.Modulate = new Color(1, 1, 1, 1 - fade);
+            if (fade >= 1)
+            {
+                FinishFlight();
+                if (lesson && _skillLessonRoll is { } roll)
+                {
+                    _skillLessonRoll = null;
+                    _die.QueueRoll(roll.Value, roll.Caption);
+                }
+            }
         }
         PlayPendingPortraits();
     }
     private void FinishFlight()
     {
-        if (GodotObject.IsInstanceValid(_flightTarget)) _flightTarget!.Modulate = Colors.White;
+        if (GodotObject.IsInstanceValid(_flightTarget)) SetDestinationPending(_flightTarget, false);
         _shuffleBacks.Clear(); _flight?.QueueFree(); _flight = null; _flightFront = null; _flightBack = null; _flightTarget = null; _activeFlight = null;
+        _skillLessonPreview = false;
     }
+
+    private static void SetDestinationPending(Control? target, bool pending)
+    {
+        if (target is SkillTile skill) skill.SetLessonPending(pending);
+        else if (target != null) target.Modulate = new(1, 1, 1, pending ? 0 : 1);
+    }
+
     private static bool RectVisible(Control anchor, Rect2 rect)
     {
         if (!anchor.IsVisibleInTree()) return false;
@@ -219,8 +311,9 @@ public partial class OnlineArena
     {
         foreach (var pool in _actionPools) pool.Settle();
         ResetStageBanner();
-        SetQueuedDestinationsOpacity(1);
+        SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
+        _skillLessonRoll = null;
         _flights.Clear(); _pendingPortraits.Clear(); FinishFlight(); _die.Value = 0;
         foreach (var portrait in _portraits) portrait.ReturnToRest();
     }

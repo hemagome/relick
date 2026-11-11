@@ -308,8 +308,16 @@ public partial class SkillTile : Button
     public bool Targetable { get; set; }
     public int Counters { get; set; }
     public bool HasSkillArtwork => _skillArt != null;
+    internal bool AwaitingLesson { get; private set; }
     private Texture2D? _skillArt;
     public Color Accent { get; set; }
+
+    internal void SetLessonPending(bool pending)
+    {
+        AwaitingLesson = pending;
+        QueueRedraw();
+    }
+
     public override void _Ready()
     {
         CustomMinimumSize = CardSize * PresentationScale;
@@ -326,10 +334,11 @@ public partial class SkillTile : Button
     {
         var size = Size / PresentationScale;
         DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
-        var edge = Skill == null ? BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f) : RelickVisuals.Playmat.Frame;
+        var edge = AwaitingLesson ? BoardArt.Tint(Accent, 0.65f) :
+            Skill == null ? BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f) : RelickVisuals.Playmat.Frame;
         var fill = RelickVisuals.Playmat.Surface;
-        BoardArt.Plate(this, new Rect2(0, 0, size.X, size.Y), fill, edge, 9, Chosen ? 2 : 1);
-        if (Skill == null)
+        BoardArt.Plate(this, new Rect2(0, 0, size.X, size.Y), fill, edge, 9, Chosen || AwaitingLesson ? 2 : 1);
+        if (Skill == null || AwaitingLesson)
         {
             BoardArt.Icon(this, GameIcon.Bolt, size / 2, 24, BoardArt.Tint(BoardArt.Muted, 0.25f), PresentationScale);
             BoardArt.Text(this, $"{GameEngine.SkillSlotCosts[Slot]} PR", new(12, size.Y - 12), 12, BoardArt.Muted);

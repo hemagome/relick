@@ -169,16 +169,21 @@ public partial class OnlineArena
         HideOpeningDestinations(); _flightLayoutFrames = 2; _lastDisabled = null;
     }
 
-    private void HideOpeningDestinations() => SetQueuedDestinationsOpacity(0);
+    private void HideOpeningDestinations() => SetQueuedDestinationsPending(true);
 
-    private void SetQueuedDestinationsOpacity(float alpha)
+    private void SetQueuedDestinationsPending(bool pending)
     {
         foreach (var flight in _openingTurnDraw is { } draw ? _flights.Append(draw) : _flights)
         {
             var relative = flight.Event.Player == _snapshot!.MySeat ? 0 : 1;
-            var target = flight.Event.Kind == DuelVisualKind.Draw ? ZoneNode(relative, CardZone.Hand, flight.Event.Value) :
-                flight.Event.Kind == DuelVisualKind.BonusPlace ? ZoneNode(relative, CardZone.Bonus, -1) : null;
-            if (target != null) target.Modulate = new(1, 1, 1, alpha);
+            var target = flight.Event.Kind switch
+            {
+                DuelVisualKind.Draw => ZoneNode(relative, CardZone.Hand, flight.Event.Value),
+                DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
+                DuelVisualKind.Pile when flight.IsSkillLesson => ZoneNode(relative, CardZone.Skill, flight.Event.Value),
+                _ => null
+            };
+            SetDestinationPending(target, pending);
         }
     }
 }
