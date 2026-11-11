@@ -86,10 +86,7 @@ public static class ArenaPresentation
         names.AddChild(name); header.AddChild(names);
         var stats = narrow ? new HBoxContainer() : header;
         if (narrow) column.AddChild(stats);
-        var dexterity = Text($"DEST {owner.Dexterity}", compact ? 11 : 12, accent);
-        dexterity.Name = $"Dexterity{index}";
-        dexterity.TooltipText = "Destreza: gasta una ficha para sumar +1 a uno de tus dados. No se puede usar con 1 ni para alcanzar 6.";
-        stats.AddChild(dexterity);
+        stats.AddChild(new DexterityBadge { Name = $"Dexterity{index}", Amount = owner.Dexterity, Accent = accent });
         if (owner.StarEffects > 0)
         {
             var star = Text($"★ ×{1 << owner.StarEffects}", compact ? 11 : 12, BoardArt.Gold);

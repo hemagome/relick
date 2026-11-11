@@ -682,7 +682,7 @@ public partial class OnlineArena
                 if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
                     throw new Exception($"Destreza desborda {size}: {minimum}.");
                 foreach (var relative in new[] { 0, 1 })
-                    if ((_root.FindChild($"Dexterity{relative}", true, false) as Label)?.Text != "DEST 1")
+                    if ((_root.FindChild($"Dexterity{relative}", true, false) as DexterityBadge)?.Amount != 1)
                         throw new Exception("Falta el contador público de destreza.");
                 if (PresentsKind(DuelMoveKind.Dexterity) != (seat == actor))
                     throw new Exception("La opción de destreza no corresponde al dueño del dado.");
@@ -693,7 +693,7 @@ public partial class OnlineArena
             {
                 ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 61)); Animate(cues, []);
                 var relative = actor == seat ? 0 : 1;
-                if ((_root!.FindChild($"Dexterity{relative}", true, false) as Label)?.Text != "DEST 0" ||
+                if ((_root!.FindChild($"Dexterity{relative}", true, false) as DexterityBadge)?.Amount != 0 ||
                     _die.IsRolling || _die.DisplayedValue != 4 || !_die.RollCaption.Contains("Destreza"))
                     throw new Exception("Gastar destreza no actualiza la ficha y el dado sin relanzarlo.");
             }

@@ -148,6 +148,38 @@ public partial class ArenaBackground : Control
     }
 }
 
+public partial class DexterityBadge : Control
+{
+    public int Amount { get; init; }
+    public Color Accent { get; init; }
+    public override void _Ready()
+    {
+        CustomMinimumSize = new(32, 32);
+        SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        MouseFilter = MouseFilterEnum.Pass;
+        AccessibilityName = $"Destreza · {Amount}";
+        TooltipText = $"Destreza · {Amount}\nGasta una ficha para sumar +1 a uno de tus dados. No se puede usar con 1 ni para alcanzar 6.";
+        Resized += QueueRedraw;
+    }
+
+    public override void _Draw()
+    {
+        var center = Size / 2;
+        var radius = Math.Min(Size.X, Size.Y) / 2 - 2;
+        var points = Enumerable.Range(0, 7)
+            .Select(index => center + Vector2.FromAngle(-Mathf.Pi / 2 + index * Mathf.Tau / 7) * radius).ToArray();
+        var edge = Amount > 0 ? Accent : BoardArt.Tint(BoardArt.Muted, 0.55f);
+        DrawColoredPolygon(points, BoardArt.Tint(Accent, Amount > 0 ? 0.14f : 0.035f));
+        DrawPolyline([.. points, points[0]], edge, 2, true);
+        var value = Amount.ToString();
+        var font = ThemeDB.FallbackFont;
+        var fontSize = 17;
+        while (fontSize > 9 && font.GetStringSize(value, fontSize: fontSize).X > radius * 1.4f) fontSize--;
+        var baseline = center.Y + (font.GetAscent(fontSize) - font.GetDescent(fontSize)) / 2;
+        BoardArt.CenterText(this, value, new(center.X, baseline), fontSize, Amount > 0 ? BoardArt.Ink : BoardArt.Muted);
+    }
+}
+
 public partial class ResourceBadge : Control
 {
     public int Amount { get; set; }
