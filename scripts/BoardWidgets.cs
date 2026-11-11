@@ -461,6 +461,15 @@ public partial class ZoneCardButton : Button
     public string Caption { get; set; } = "";
     public Color Accent { get; set; }
     private Texture2D? _artwork;
+    private string? _previousEquipmentCaption;
+    internal bool AwaitingEquipment { get; private set; }
+
+    internal void SetEquipmentPending(bool pending, string? previousCaption)
+    {
+        AwaitingEquipment = pending;
+        _previousEquipmentCaption = pending ? previousCaption : null;
+        QueueRedraw();
+    }
 
     internal Rect2 CardRect
     {
@@ -488,12 +497,15 @@ public partial class ZoneCardButton : Button
     }
     public override void _Draw()
     {
-        var edge = Card != null ? RelickVisuals.Playmat.Frame : BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f);
-        BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, edge, 8);
-        BoardArt.CenterText(this, Caption, new(Size.X / 2, 13), 9, Card == null ? BoardArt.Muted : Accent);
-        if (_artwork != null) DrawTextureRect(_artwork, CardRect, false);
+        var edge = AwaitingEquipment ? BoardArt.Tint(Accent, 0.65f) :
+            Card != null ? RelickVisuals.Playmat.Frame : BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f);
+        BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, edge, 8, AwaitingEquipment ? 2 : 1);
+        var caption = AwaitingEquipment ? _previousEquipmentCaption ?? "EQUIPO" : Caption;
+        BoardArt.CenterText(this, caption, new(Size.X / 2, 13), 9, Card == null ? BoardArt.Muted : Accent);
+        if (_artwork != null && (!AwaitingEquipment || _previousEquipmentCaption != null))
+            DrawTextureRect(_artwork, CardRect, false);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
-        if (Card == null) return;
+        if (Card == null || AwaitingEquipment && _previousEquipmentCaption == null) return;
         var name = Card.Name;
         var fontSize = 11;
         while (fontSize > 8 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 10) fontSize--;

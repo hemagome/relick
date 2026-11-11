@@ -68,6 +68,11 @@ public partial class OnlineLobby
                 await online.CheckSkillLessonAnimation(); online.QueueFree(); await Layout();
                 QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--equipment-animation-only"))
+            {
+                await online.CheckEquipmentAnimation(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--guidance-only"))
             {
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
@@ -187,6 +192,7 @@ public partial class OnlineLobby
             await online.CheckPublicHistory();
             await online.CheckTripleAttackDraws();
             await online.CheckSkillLessonAnimation();
+            await online.CheckEquipmentAnimation();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();

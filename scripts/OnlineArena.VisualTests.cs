@@ -48,6 +48,8 @@ public partial class OnlineArena
                         for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     }
                     var current = DuelSnapshot.For(game, seat, (ulong)(270 + step)); current.Visuals = cues;
+                    if (previous != null && CaptureEquipmentInstall(current, previous) != null)
+                        throw new Exception("Tótem de Oro duplica el vuelo de un equipo que ya tiene su propia animación.");
                     var origins = CaptureOrigins(current, previous); PresentTestSnapshot(current);
                     for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     var relative = seat == actor ? 0 : 1;

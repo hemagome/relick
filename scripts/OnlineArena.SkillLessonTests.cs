@@ -64,8 +64,8 @@ public partial class OnlineArena
             UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.1);
             Check(_activeFlight == lesson && _flightTarget == tile && _flightFront?.Card.Id == skill.Id &&
                 _flightFront.Visible == (seat == actor) && !_die.IsBusy, "El vuelo empieza con una carta incorrecta o después del dado.");
-            usedPreview |= _skillLessonPreview;
-            if (size.X == 1440) Check(!_skillLessonPreview, "El vuelo de escritorio no aterriza en la ranura.");
+            usedPreview |= _placementPreview;
+            if (size.X == 1440) Check(!_placementPreview, "El vuelo de escritorio no aterriza en la ranura.");
             var scroll = _arenaScroll?.ScrollVertical;
             UpdateFlights(0.29);
             Check(_flightFront!.Visible && _flight!.Rotation > 0.5f && tile.AwaitingLesson &&
