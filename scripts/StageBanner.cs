@@ -22,6 +22,7 @@ internal readonly record struct StageAppearance(string Title, GameIcon Icon, Col
 
 internal readonly record struct StageAnnouncement(Phase Stage, int Turn, bool OwnTurn, bool Repeated)
 {
+    internal Color Accent => OwnTurn ? RelickVisuals.State.Own : RelickVisuals.State.Rival;
     internal string Detail => Repeated ? $"ETAPA REPETIDA  /  {(OwnTurn ? "TÚ" : "RIVAL")}" : $"TURNO {Turn:00}  /  {(OwnTurn ? "TÚ" : "RIVAL")}";
 }
 
@@ -68,6 +69,7 @@ public partial class StageBanner : Control
     {
         if (Current is not { } announcement) return;
         var style = StageAppearance.For(announcement.Stage);
+        var accent = announcement.Accent;
         var enter = ReducedMotion ? 1 : Mathf.SmoothStep(0, 1, Math.Min(1, (float)_elapsed / 0.18f));
         var exit = ReducedMotion ? 0 : Mathf.SmoothStep(0, 1, Math.Clamp(((float)_elapsed - 0.69f) / 0.26f, 0, 1));
         var opacity = enter * (1 - exit);
@@ -81,18 +83,19 @@ public partial class StageBanner : Control
         var bevel = height * 0.24f;
         Vector2[] frame = [new(left, center.Y), new(left + bevel, top), new(right - bevel, top),
             new(right, center.Y), new(right - bevel, bottom), new(left + bevel, bottom)];
-        DrawColoredPolygon(frame, BoardArt.Tint(RelickVisuals.Playmat.Background, 0.96f * opacity));
-        DrawPolyline([.. frame, frame[0]], BoardArt.Tint(style.Accent, 0.75f * opacity), 2, true);
+        var fill = RelickVisuals.Playmat.Background.Lerp(accent, 0.16f);
+        DrawColoredPolygon(frame, BoardArt.Tint(fill, 0.96f * opacity));
+        DrawPolyline([.. frame, frame[0]], BoardArt.Tint(accent, 0.85f * opacity), 2, true);
         var rail = Math.Min(112, Size.X * 0.09f) * enter;
-        DrawLine(new(left - rail, center.Y), frame[0], BoardArt.Tint(style.Accent, opacity * 0.5f), 2, true);
-        DrawLine(frame[3], new(right + rail, center.Y), BoardArt.Tint(style.Accent, opacity * 0.5f), 2, true);
+        DrawLine(new(left - rail, center.Y), frame[0], BoardArt.Tint(accent, opacity * 0.6f), 2, true);
+        DrawLine(frame[3], new(right + rail, center.Y), BoardArt.Tint(accent, opacity * 0.6f), 2, true);
 
         var icon = height * 0.31f;
         var fontSize = (int)(height * 0.40f);
         var titleWidth = ThemeDB.FallbackFont.GetStringSize(style.Title, fontSize: fontSize).X;
         var titleStart = center.X - (titleWidth + icon + 14) / 2;
-        BoardArt.CenterText(this, announcement.Detail, new(center.X, top + height * 0.28f), (int)(height * 0.13f), BoardArt.Tint(style.Accent, opacity));
-        BoardArt.Icon(this, style.Icon, new(titleStart + icon / 2, center.Y + height * 0.10f), icon, BoardArt.Tint(style.Accent, opacity));
+        BoardArt.CenterText(this, announcement.Detail, new(center.X, top + height * 0.28f), (int)(height * 0.13f), BoardArt.Tint(accent, opacity));
+        BoardArt.Icon(this, style.Icon, new(titleStart + icon / 2, center.Y + height * 0.10f), icon, BoardArt.Tint(accent, opacity));
         BoardArt.Text(this, style.Title, new(titleStart + icon + 14, center.Y + height * 0.26f), fontSize, BoardArt.Tint(BoardArt.Ink, opacity));
     }
 }

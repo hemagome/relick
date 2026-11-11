@@ -15,10 +15,10 @@ public partial class OnlineArena
 
         var game = PendingCodeFixture(0, CardCatalog.Bonfire.Id);
         var revision = 1000UL;
-        DuelSnapshot Snapshot(Phase phase)
+        DuelSnapshot Snapshot(Phase phase, int seat = 0)
         {
             game.State.Phase = phase;
-            return DuelSnapshot.For(game, 0, revision++);
+            return DuelSnapshot.For(game, seat, revision++);
         }
 
         var sizes = new[] { new Vector2I(1440, 1024), new(1024, 768), new(1280, 480), new(700, 390) };
@@ -28,15 +28,19 @@ public partial class OnlineArena
         var originalCanvas = GetWindow().ContentScaleSize;
         var originalMotion = _stageBanner.ReducedMotion;
         _stageBanner.ReducedMotion = false;
+        foreach (var seat in new[] { 0, 1 })
         foreach (var size in sizes)
         {
+            var ownTurn = seat == game.State.CurrentPlayer;
+            var accent = ownTurn ? RelickVisuals.State.Own : RelickVisuals.State.Rival;
+            var owner = ownTurn ? "own" : "rival";
             GetWindow().Size = size;
             GetWindow().ContentScaleSize = size;
             await Layout();
-            var previous = Snapshot(Phase.Preparation);
+            var previous = Snapshot(Phase.Preparation, seat);
             foreach (var (stage, title) in stages)
             {
-                var snapshot = Snapshot(stage);
+                var snapshot = Snapshot(stage, seat);
                 PresentTestSnapshot(snapshot);
                 await Layout();
                 var indicator = (Control)_root!.FindChild("StageIndicator", true, false);
@@ -47,15 +51,17 @@ public partial class OnlineArena
                 PresentQueuedStageAnnouncement();
                 Check(_stageBanner.Current?.Stage == stage && _stageBanner.Visible && !IsAnimating,
                     $"El anuncio de {title} no aparece o bloquea la partida.");
+                Check(_stageBanner.Current is { } announcement && announcement.OwnTurn == ownTurn && announcement.Accent == accent,
+                    $"El anuncio de {title} usa el color incorrecto para el asiento {seat}.");
                 _stageBanner.SetProcess(false);
                 _stageBanner._Process(0.32);
                 if (capture != null && DisplayServer.GetName() != "headless" && size.X is 1440 or 700)
                 {
                     DirAccess.MakeDirRecursiveAbsolute(capture);
                     await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
-                    GetViewport().GetTexture().GetImage().SavePng($"{capture}/stage-{stage.ToString().ToLowerInvariant()}-{size.X}x{size.Y}.png");
+                    GetViewport().GetTexture().GetImage().SavePng($"{capture}/stage-{stage.ToString().ToLowerInvariant()}-{owner}-{size.X}x{size.Y}.png");
                 }
-                if (stage == Phase.Actions)
+                if (stage == Phase.Actions && ownTurn)
                 {
                     var card = _handCards[0];
                     _hand!.EnsureControlVisible(card);
@@ -101,6 +107,6 @@ public partial class OnlineArena
         GetWindow().Size = originalSize;
         GetWindow().ContentScaleSize = originalCanvas;
         await Layout();
-        GD.Print("PVP_STAGE_PASS · cuatro etapas, clic durante el aviso, respuestas, reconexión, dados y repetición.");
+        GD.Print("PVP_STAGE_PASS · cuatro etapas, colores para ambos asientos, clic durante el aviso, respuestas, reconexión, dados y repetición.");
     }
 }
