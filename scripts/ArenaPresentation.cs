@@ -68,7 +68,8 @@ public static class ArenaPresentation
     }
 
     public static void Player(Node arena, DuelPlayerView owner, int index, bool enemy, bool active,
-        int selectedSkill, YunoPortrait portrait, LifeMeter life, ArenaPlayerActions actions, bool compact, bool narrow = false)
+        int selectedSkill, YunoPortrait portrait, LifeMeter life, ActionCrystalPool crystals, ArenaPlayerActions actions,
+        bool compact, bool narrow = false)
     {
         var accent = enemy ? Coral : Mint;
         var panel = Panel(arena, RelickVisuals.Playmat.Surface.ToHtml(), RelickVisuals.Playmat.Frame);
@@ -100,7 +101,14 @@ public static class ArenaPresentation
             var evolve = Button(stats, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
             evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
         }
-        life.SetHealth(owner.Health, owner.MaxHealth); column.AddChild(life);
+        var meters = new HBoxContainer();
+        meters.AddThemeConstantOverride("separation", 10);
+        life.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        life.SetHealth(owner.Health, owner.MaxHealth);
+        crystals.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        meters.AddChild(life);
+        meters.AddChild(crystals);
+        column.AddChild(meters);
         var body = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         body.AddThemeConstantOverride("separation", 6);
         var zones = new VBoxContainer { CustomMinimumSize = new(70, 0),
@@ -274,22 +282,6 @@ public static class ArenaPresentation
     {
         var text = Text($"TÚ {players[0].Health}/{players[0].MaxHealth} · {players[0].Pr} PR     RIVAL {players[1].Health}/{players[1].MaxHealth} · {players[1].Pr} PR", 12, BoardArt.Muted);
         text.Name = "DuelScoreline"; text.AutowrapMode = TextServer.AutowrapMode.WordSmart; parent.AddChild(text);
-    }
-
-    public static PanelContainer ActionCounters(Node parent, ActionCrystalPool own, ActionCrystalPool rival)
-    {
-        var panel = new PanelContainer { Name = "ActionCounters", CustomMinimumSize = new(124, 48),
-            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
-        var frame = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame);
-        frame.ContentMarginLeft = frame.ContentMarginRight = 10;
-        frame.ContentMarginTop = frame.ContentMarginBottom = 4;
-        panel.AddThemeStyleboxOverride("panel", frame); parent.AddChild(panel);
-        var values = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        values.AddThemeConstantOverride("separation", 6); panel.AddChild(values);
-        values.AddChild(own);
-        values.AddChild(new VSeparator());
-        values.AddChild(rival);
-        return panel;
     }
 
     public static void StageIndicator(Node parent, Phase stage, string detail, bool shortScreen)

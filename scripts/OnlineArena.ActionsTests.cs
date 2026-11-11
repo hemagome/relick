@@ -45,9 +45,8 @@ public partial class OnlineArena
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, revision++), animateActions: animate);
                 foreach (var pool in _actionPools) pool.SetProcess(false);
                 await Layout();
-                var panel = (Control)_root!.FindChild("ActionCounters", true, false);
-                var mine = (ActionCrystalPool)panel.FindChild("OwnActionsCounter", true, false);
-                var theirs = (ActionCrystalPool)panel.FindChild("RivalActionsCounter", true, false);
+                var mine = _actionPools[0];
+                var theirs = _actionPools[1];
                 Check(mine.Amount == (seat == actor ? activeActions : respondingActions) &&
                     theirs.Amount == (seat == actor ? respondingActions : activeActions),
                     "Las acciones siguen al dueño del turno o a quien responde, en vez de al jugador indicado.");
@@ -56,16 +55,28 @@ public partial class OnlineArena
                     "El gasto, devolución o recarga se anima para otro jugador.");
                 Render();
                 await Layout();
-                Check(ReferenceEquals(_actionPools[0], mine) && mine.Change == (seat == actor ? actorChange : responderChange) &&
+                Check(mine.Change == (seat == actor ? actorChange : responderChange) &&
                     theirs.Change == (seat == actor ? responderChange : actorChange),
-                    "Reconstruir el tablero reinicia o sustituye la animación de los cristales.");
-                Check(RectVisible(panel, panel.GetGlobalRect()) && new Rect2(Vector2.Zero, Size).Encloses(panel.GetGlobalRect()),
-                    "El contador permanente queda oculto o fuera de pantalla.");
+                    "Reconstruir el tablero reinicia la animación de los cristales.");
+                foreach (var (pool, panelName) in new[] { (mine, "OwnRelikarioPanel"), (theirs, "EnemyRelikarioPanel") })
+                {
+                    var panel = (Control)_root!.FindChild(panelName, true, false);
+                    Check(panel.IsAncestorOf(pool) && panel.GetGlobalRect().Encloses(pool.GetGlobalRect()) && pool.IsVisibleInTree(),
+                        $"Los cristales no están dentro de su relikario ({panelName}) en {size}.");
+                    if (!animate)
+                    {
+                        _arenaScroll?.EnsureControlVisible(pool);
+                        await Layout();
+                        Check(RectVisible(pool, pool.GetGlobalRect()) && new Rect2(Vector2.Zero, Size).Encloses(pool.GetGlobalRect()),
+                            $"Los cristales de {panelName} no quedan a la vista al llegar a su relikario en {size}.");
+                    }
+                }
+                if (!animate && _arenaScroll != null)
+                {
+                    _arenaScroll.ScrollVertical = 0;
+                    await Layout();
+                }
                 CheckPendingCodeBounds();
-                var position = panel.GlobalPosition;
-                if (_arenaScroll != null) { _arenaScroll.ScrollVertical = 100000; await Layout(); }
-                Check(panel.GlobalPosition == position && RectVisible(panel, panel.GetGlobalRect()), "Desplazar el tablero oculta el contador.");
-                if (_arenaScroll != null) _arenaScroll.ScrollVertical = 0;
                 if (actorChange != ActionCrystalChange.None || responderChange != ActionCrystalChange.None)
                 {
                     foreach (var pool in _actionPools) pool._Process(0.25);
@@ -116,9 +127,9 @@ public partial class OnlineArena
             ownPool._Process(1);
             var preparation = DuelSnapshot.For(recovered, seat, revision); preparation.Phase = Phase.Preparation;
             PresentTestSnapshot(preparation); await Layout();
-            Check(!_actionDisplay.Visible, "La preparación muestra un presupuesto que aún no se puede usar.");
+            Check(_actionPools.All(pool => !pool.IsVisibleInTree()), "La preparación muestra un presupuesto que aún no se puede usar.");
         }
         for (var index = 0; index < _actionPools.Length; index++) _actionPools[index].ReducedMotion = originalMotion[index];
-        GD.Print("PVP_ACTION_COUNTERS_PASS · cristales, gasto, Relikia, devolución por Error, recarga de ambos jugadores, selección sin gasto, cabecera fija, recuperación y preparación; cinco tamaños y ambos jugadores/asientos.");
+        GD.Print("PVP_ACTION_COUNTERS_PASS · cristales por relikario, gasto, Relikia, devolución por Error, recarga, selección sin gasto, recuperación y preparación; cinco tamaños y ambos jugadores/asientos.");
     }
 }
