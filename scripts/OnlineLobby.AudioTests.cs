@@ -7,6 +7,18 @@ public partial class OnlineLobby
     private async Task CheckAudioControls()
     {
         void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+        void CheckAppearance(Button mute, HSlider slider, bool silent)
+        {
+            var speaker = mute.GetNode<IconView>("SpeakerIcon");
+            var fill = ((StyleBoxFlat)slider.GetThemeStylebox("grabber_area")).BgColor;
+            var hoverFill = ((StyleBoxFlat)slider.GetThemeStylebox("grabber_area_highlight")).BgColor;
+            Check(mute.Text.Length == 0 && speaker.Icon == (silent ? GameIcon.SpeakerMuted : GameIcon.Speaker),
+                "El icono de parlante no refleja el estado del canal.");
+            Check(speaker.Size.X > 0 && speaker.GetGlobalRect().GetCenter().DistanceTo(mute.GetGlobalRect().GetCenter()) < 1,
+                "El icono de parlante queda descentrado.");
+            Check(slider.Editable && fill == hoverFill && (silent ? Math.Abs(fill.R - fill.B) < 0.05f : fill == BoardArt.Gold),
+                "La barra de volumen no conserva su color de estado o deja de ser ajustable.");
+        }
         async Task Frames() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
         async Task Capture(string suffix = "")
         {
@@ -45,11 +57,13 @@ public partial class OnlineLobby
                 var dialog = preferences.GetNode<AudioSettingsDialog>("AudioSettings");
                 var music = dialog.FindChild("MusicVolume", true, false) as HSlider;
                 var effects = dialog.FindChild("EffectsVolume", true, false) as HSlider;
-                var musicMute = dialog.FindChild("MusicMute", true, false) as CheckButton;
-                var effectsMute = dialog.FindChild("EffectsMute", true, false) as CheckButton;
+                var musicMute = dialog.FindChild("MusicMute", true, false) as Button;
+                var effectsMute = dialog.FindChild("EffectsMute", true, false) as Button;
                 Check(music != null && effects != null && music.IsVisibleInTree() && effects.IsVisibleInTree(), "No aparecen los dos controles de volumen.");
                 Check(musicMute != null && effectsMute != null && musicMute.IsVisibleInTree() && effectsMute.IsVisibleInTree(),
                     "Faltan los interruptores de silencio.");
+                CheckAppearance(musicMute!, music!, preferences.MusicVolume == 0);
+                CheckAppearance(effectsMute!, effects!, false);
                 GuiInputTestDriver.Click(music!); await Frames();
                 Check(music!.Value is > 45 and < 55 && Math.Abs(preferences.MusicVolume - music.Value / 100) < 0.001,
                     "El deslizador no recibe la interacción real.");
@@ -61,14 +75,18 @@ public partial class OnlineLobby
                 GuiInputTestDriver.Click(musicMute!); await Frames();
                 Check(preferences.MusicMuted && AudioServer.IsBusMute(musicBus) && !AudioServer.IsBusMute(effectsBus) && music.Value == 35,
                     "Silenciar música altera el volumen o los efectos.");
+                CheckAppearance(musicMute!, music, true);
+                CheckAppearance(effectsMute!, effects, false);
                 await Capture("-muted");
                 GuiInputTestDriver.Click(effectsMute!); await Frames();
                 Check(preferences.EffectsMuted && AudioServer.IsBusMute(effectsBus) && effects.Value == 20,
                     "Silenciar efectos pierde su volumen.");
+                CheckAppearance(effectsMute!, effects, true);
                 GuiInputTestDriver.Click(musicMute!); await Frames();
                 Check(!preferences.MusicMuted && !AudioServer.IsBusMute(musicBus) && AudioServer.IsBusMute(effectsBus) &&
                     Math.Abs(AudioServer.GetBusVolumeLinear(musicBus) - 0.35) < 0.001,
                     "Reactivar música no restaura su nivel independientemente de los efectos.");
+                CheckAppearance(musicMute!, music, false);
                 GuiInputTestDriver.Click(effectsMute!); await Frames();
                 Check(!preferences.EffectsMuted && !AudioServer.IsBusMute(effectsBus) &&
                     Math.Abs(AudioServer.GetBusVolumeLinear(effectsBus) - 0.20) < 0.001,
@@ -93,10 +111,12 @@ public partial class OnlineLobby
                 "Reabrir la aplicación pierde los silencios guardados.");
             preferences.OpenControls(); await Frames();
             var restored = preferences.GetNode<AudioSettingsDialog>("AudioSettings");
-            var restoredMusicMute = (CheckButton)restored.FindChild("MusicMute", true, false);
-            var restoredEffectsMute = (CheckButton)restored.FindChild("EffectsMute", true, false);
+            var restoredMusicMute = (Button)restored.FindChild("MusicMute", true, false);
+            var restoredEffectsMute = (Button)restored.FindChild("EffectsMute", true, false);
             Check(restoredMusicMute.ButtonPressed && restoredEffectsMute.ButtonPressed,
                 "Reabrir el diálogo pierde el estado de sus interruptores.");
+            CheckAppearance(restoredMusicMute, (HSlider)restored.FindChild("MusicVolume", true, false), true);
+            CheckAppearance(restoredEffectsMute, (HSlider)restored.FindChild("EffectsVolume", true, false), true);
             GuiInputTestDriver.Click(restoredMusicMute); GuiInputTestDriver.Click(restoredEffectsMute); await Frames();
             Check(!AudioServer.IsBusMute(musicBus) && !AudioServer.IsBusMute(effectsBus) &&
                 Math.Abs(preferences.MusicVolume - 0.35) < 0.001 && Math.Abs(preferences.EffectsVolume - 0.20) < 0.001,
