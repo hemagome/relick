@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Relick.Core;
 
-public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse, MemoryRecoveryChoice, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, TotemChoice, GoldenTotemChoice, GoldenTotemResolving }
+public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse, MemoryRecoveryChoice, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, TotemChoice, GoldenTotemChoice, GoldenTotemResolving, TrapCraftChoice, ZahiraTarget }
 
 public sealed class PlayerState
 {
@@ -24,6 +24,14 @@ public sealed class PlayerState
     public int EquipmentStackedCopies { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? EquipmentCovers { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int SuperMagnetCopies { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ZahiraAvailable { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SuperAttackAvailable { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public FieldTarget? ZahiraHost { get; internal set; }
     // Consumed at the owner's next turn start, even if Reverse replaces the destruction.
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool EquipmentExpiresAtTurnStart { get; internal set; }
@@ -182,7 +190,17 @@ public sealed class GameState
     public PendingTotemDamage? PendingTotemDamage { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingGoldenTotem? PendingGoldenTotem { get; internal set; }
-    public int DecisionPlayer => Phase == Phase.TotemChoice ? PendingTotemDamage!.Target : Phase == Phase.EffectDamageChoice ? 1 - PendingEffectDamage!.Actor : Phase is Phase.TurnBuffDiscard or Phase.TurnBuffResolving ? PendingTurnBuff!.Actor : Phase == Phase.DestructionResponse ? PendingDestruction!.Target.Owner : Phase == Phase.SniperChoice ? PendingSniper!.Actor : Phase == Phase.MindResetChoice ? PendingMindReset!.Actor : Phase == Phase.ErrorResponse ? ErrorResponder : Phase == Phase.CodeResponse ? 1 - PendingCode!.Actor : Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? PendingDieRoll!.Player : Phase == Phase.DefenseChoice ? 1 - CurrentPlayer
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<int>? PendingTrapCrafts { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<TrapCraft>? TrapCraftQueue { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ZahiraPlacement? PendingZahiraPlacement { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ZahiraRolledThisFinal { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Phase? TrapCraftResumePhase { get; internal set; }
+    public int DecisionPlayer => Phase == Phase.TrapCraftChoice ? TrapCraftQueue![0].Actor : Phase == Phase.ZahiraTarget ? PendingZahiraPlacement!.Actor : Phase == Phase.TotemChoice ? PendingTotemDamage!.Target : Phase == Phase.EffectDamageChoice ? 1 - PendingEffectDamage!.Actor : Phase is Phase.TurnBuffDiscard or Phase.TurnBuffResolving ? PendingTurnBuff!.Actor : Phase == Phase.DestructionResponse ? PendingDestruction!.Target.Owner : Phase == Phase.SniperChoice ? PendingSniper!.Actor : Phase == Phase.MindResetChoice ? PendingMindReset!.Actor : Phase == Phase.ErrorResponse ? ErrorResponder : Phase == Phase.CodeResponse ? 1 - PendingCode!.Actor : Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? PendingDieRoll!.Player : Phase == Phase.DefenseChoice ? 1 - CurrentPlayer
         : Phase == Phase.Discard ? DiscardPlayer ?? CurrentPlayer : CurrentPlayer;
     [JsonInclude]
     public int? Winner { get; internal set; } // -1 = draw, null = still playing
@@ -199,9 +217,11 @@ public sealed class GameState
 public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? SkillSlot = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? NormalDamage = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? CriticalDamage = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? CriticalDamage = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, bool YunoStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 
@@ -215,7 +235,8 @@ public sealed record PendingAttack(int Attacker, string SkillId, int Damage, boo
     // Older saves have already paid the reward; missing flags retain that behavior on recovery.
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool RewardPending = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool DamageResolved = false,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool NormalFromMiss = false);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool NormalFromMiss = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false);
 
 public readonly record struct CommandResult(bool Success, string Message)
 {

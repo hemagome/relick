@@ -13,6 +13,150 @@ public partial class OnlineArena
         _snapshot = snapshot; ResetInteraction(); Render(animateActions, previous);
     }
 
+    internal async Task CheckSuperAttackLayout()
+    {
+        if (BoardArt.LoadCardArtwork(CardCatalog.SuperAttack) == null)
+            throw new Exception("Falta el arte de Súper Ataque.");
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], IncludeSuperAttack = true,
+            Hands = [[CardCatalog.Attack.Id, CardCatalog.Attack.Id], []],
+            Decks = [CardCatalog.TrainingDeck(), CardCatalog.TrainingDeck()],
+            Bonuses = [CardCatalog.Senshuni.Id, CardCatalog.Pendant.Id]
+        }, new SeededRandom(27));
+        game.State.Phase = Phase.Actions;
+        game.State.Turn = 2;
+        if (!game.Exchange(0, 0).Success || !game.Exchange(0, 0).Success)
+            throw new Exception("No se prepara el canje de Súper Ataque.");
+        async Task Layout()
+        {
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 397));
+        await Layout();
+        if (_contextCost.Text != "Canje de dos Ataques" || !_moveButtons.Any(button => button.Text == "Crear Súper Ataque"))
+            throw new Exception("Falta la creación de Súper Ataque en la interfaz.");
+        if (!game.ResolveTrapCraft(0, true).Success) throw new Exception("No se añade Súper Ataque a la mano.");
+        game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
+        game.State.Phase = Phase.Combat;
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        {
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size;
+            PresentTestSnapshot(DuelSnapshot.For(game, 0, 398));
+            await Layout();
+            var hand = _handCards.Single(card => card.Card.Id == CardCatalog.SuperAttack.Id);
+            SelectCard(_handCards.IndexOf(hand));
+            await Layout();
+            if (!hand.HasAttackArtwork || _inspector.ClassificationLabel.Text != "Código Trampa · Ataque" ||
+                _contextCost.Text != "Consume Súper Ataque" || !PresentsKind(DuelMoveKind.Attack) || PresentsKind(DuelMoveKind.PlayCode))
+                throw new Exception("Súper Ataque no muestra su arte y su opción de ataque.");
+        }
+        GD.Print("PVP_SUPER_ATTACK_PASS · receta, arte y ataque desde la mano.");
+    }
+
+    internal async Task CheckZahiraLayout()
+    {
+        if (BoardArt.LoadCardArtwork(CardCatalog.ZahiraFlair) == null)
+            throw new Exception("Falta el arte de Zahira Flair.");
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], StartingSeat = 0, IncludeZahiraFlair = true,
+            Hands = [[CardCatalog.Jessica.Id, CardCatalog.Senshuni.Id], []],
+            Decks = [CardCatalog.TrainingDeck(), CardCatalog.TrainingDeck()],
+            Bonuses = [CardCatalog.Attack.Id, CardCatalog.Pendant.Id]
+        }, new SeededRandom(12));
+        game.State.Phase = Phase.Actions;
+        if (!game.Exchange(0, 0).Success || !game.Exchange(0, 0).Success)
+            throw new Exception("No se prepara el canje de Zahira Flair.");
+        async Task Layout(int seat)
+        {
+            PresentTestSnapshot(DuelSnapshot.For(game, seat, 391));
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        await Layout(0);
+        if (_contextCost.Text != "Canje de dos Personajes" || !_moveButtons.Any(button => button.Text == "Crear Zahira Flair"))
+            throw new Exception("Falta la creación de Zahira Flair en la interfaz.");
+        if (!game.ResolveTrapCraft(0, true).Success) throw new Exception("Falta la selección de destino.");
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        {
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size;
+            await Layout(1);
+            if (PresentsKind(DuelMoveKind.ZahiraTarget) || !_selection.Text.Contains("rival"))
+                throw new Exception("El rival puede elegir el destino de Zahira Flair.");
+            await Layout(0);
+            var target = _moveButtons.Single(button => PresentedOption(button)?.Move is
+                { Kind: DuelMoveKind.ZahiraTarget, Target: 1, Value: (int)FieldZone.Relikario });
+            _movesScroll.EnsureControlVisible(target);
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            target.Disabled = false;
+            GuiInputTestDriver.Click(target);
+        }
+        if (!game.ResolveZahiraTarget(0, 1, FieldZone.Relikario, -1).Success)
+            throw new Exception("No se coloca Zahira Flair.");
+        foreach (var seat in new[] { 0, 1 })
+        {
+            await Layout(seat);
+            var trap = _root!.FindChild(seat == 0 ? "Zahira0" : "Zahira1", true, false) as Button;
+            if (trap?.Icon == null || !trap.Text.Contains("Beto"))
+                throw new Exception("Falta el arte o el objetivo público de Zahira Flair.");
+        }
+        GD.Print("PVP_ZAHIRA_PASS · receta, selección privada, arte y objetivo público.");
+    }
+
+    internal async Task CheckSuperMagnetLayout()
+    {
+        const string artPath = "res://assets/cards/super-magnet-clean.png";
+        if (!ResourceLoader.Exists(artPath) || GD.Load<Texture2D>(artPath) == null)
+            throw new Exception("Falta el arte limpio de Súper Imán.");
+
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], StartingSeat = 1, Bonuses = [CardCatalog.Attack.Id, CardCatalog.Attack.Id],
+            Hands = [[CardCatalog.TimeBomb.Id], [CardCatalog.Pendant.Id, CardCatalog.Attack.Id]],
+            Decks = [CardCatalog.TrainingDeck(), CardCatalog.TrainingDeck()], SuperMagnetCopies = [1, 1]
+        }, new SeededRandom(31));
+        game.State.Phase = Phase.Actions;
+        if (!game.Exchange(1, 0).Success || !game.Exchange(1, 0).Success)
+            throw new Exception("No se prepara el canje de Súper Imán.");
+
+        async Task Present(int seat)
+        {
+            PresentTestSnapshot(DuelSnapshot.For(game, seat, 380));
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        {
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size;
+            await Present(0);
+            if (PresentsKind(DuelMoveKind.TrapCraft) || !_selection.Text.Contains("rival"))
+                throw new Exception("La creación se muestra como jugada del rival.");
+            await Present(1);
+            var choices = _moveButtons.Where(button => PresentedOption(button)?.Move.Kind == DuelMoveKind.TrapCraft).ToArray();
+            if (!choices.Select(button => button.Text).SequenceEqual(["Crear Súper Imán", "Pasar sin crear"]) ||
+                _contextTitle.Text != CardCatalog.SuperMagnet.Name || _contextCost.Text != "Canje de un Equipo y otra carta" ||
+                !_inspector.ClassificationLabel.Text.Contains("Código Trampa"))
+                throw new Exception("Falta la elección o la receta de Súper Imán.");
+            choices[0].Disabled = false;
+            GuiInputTestDriver.Click(choices[0]);
+        }
+
+        if (!game.ResolveTrapCraft(1, true).Success) throw new Exception("No se coloca Súper Imán.");
+        game.State.CurrentPlayer = 0;
+        if (!game.PlayCode(0, 0).Success || !game.ResolveDestruction(0, 1, FieldZone.Bonus).Success)
+            throw new Exception("No se prueba la sustitución de Bomba de Tiempo.");
+        foreach (var seat in new[] { 0, 1 })
+        {
+            await Present(seat);
+            var equipment = (ZoneCardButton)ZoneNode(seat == 1 ? 0 : 1, CardZone.Equipment, -1)!;
+            if (equipment.Card?.Id != CardCatalog.SuperMagnet.Id || equipment.Caption != "TRAMPA · 1/3")
+                throw new Exception("El equipo no muestra públicamente el contador de Súper Imán.");
+            SelectEquipment(1);
+            if (_inspector.CounterLabel.Text != "Contadores: 1/3")
+                throw new Exception("El inspector omite los contadores de Súper Imán.");
+        }
+        GD.Print("PVP_SUPER_MAGNET_PASS · decisión privada, receta, arte y contadores públicos.");
+    }
+
     internal async Task CheckGoldenTotemLayout()
     {
         if (GD.Load<Texture2D>("res://assets/cards/golden-totem-clean.png") == null)

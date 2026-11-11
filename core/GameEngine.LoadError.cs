@@ -57,8 +57,7 @@ public sealed partial class GameEngine
         if (root.Canceled && root.FinishSniperExchange) CompleteExchange(State.Players[root.Actor]);
         if (State.Phase == Phase.TurnBuffResolving && State.PendingTurnBuff is { Completed: true }) CompleteActivationIfFinished();
         if (State.Phase == Phase.ReloadResolving && State.PendingReload != null) CompleteActivationIfFinished();
-        CompleteAttackIfReady();
-        CompleteEndTurnIfReady();
+        CompletePendingPlay();
     }
     private void RefundActivation(int actor, int actions, int pr)
     {
@@ -78,7 +77,6 @@ public sealed partial class GameEngine
             CompleteTurnBuff(); return;
         }
         if (State.Phase is Phase.Draw or Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished) _activeActivation = null;
-        CompleteAttackIfReady();
-        CompleteEndTurnIfReady();
+        CompletePendingPlay();
     }
 }

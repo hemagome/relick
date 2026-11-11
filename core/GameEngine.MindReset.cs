@@ -97,7 +97,9 @@ public sealed partial class GameEngine
         }
         if (pending.Memories.Count != 2 || !InHand(target, handIndex) || CardCatalog.Get(target.Hand[handIndex]).Kind == CardKind.Skill)
             return CommandResult.Fail("Elige una no-habilidad de la mano objetivo después de seleccionar dos cartas de memoria.");
-        var affected = pending.Memories.Select(m => m.Owner).Append(pending.Target).Distinct().Order().ToArray();
+        var returnsHandCard = CardCatalog.Get(target.Hand[handIndex]).CodeType != CodeType.Trap;
+        var affected = pending.Memories.Select(m => m.Owner);
+        if (returnsHandCard) affected = affected.Append(pending.Target);
         // All validation precedes mutation. Remove descending indices to retain copy identity.
         foreach (var group in pending.Memories.GroupBy(m => m.Owner))
         {
@@ -114,10 +116,11 @@ public sealed partial class GameEngine
                         !frame.ReplayCorrupted && CardCatalog.Get(frame.CardId).RecoverMemory) frame.MemoryIndex = -1;
             }
         }
-        CardReturnedToDeck?.Invoke(pending.Target, handIndex, target.Hand[handIndex]);
-        target.Deck.Add(target.Hand[handIndex]); target.RemoveHandCard(handIndex);
-        foreach (var owner in affected) { Shuffle(State.Players[owner].Deck); CardsReturnedToDeck?.Invoke(owner); }
-        Log($"{State.Players[actor].Name} devuelve dos cartas de memoria y una de la mano de {target.Name} a sus mazos, los baraja y ese jugador roba una carta.");
+        ReturnHandCardToDeck(pending.Target, handIndex);
+        foreach (var owner in affected.Distinct().Order()) { Shuffle(State.Players[owner].Deck); CardsReturnedToDeck?.Invoke(owner); }
+        Log(returnsHandCard
+            ? $"{State.Players[actor].Name} devuelve dos cartas de memoria y una de la mano de {target.Name} a sus mazos, los baraja y ese jugador roba una carta."
+            : $"{State.Players[actor].Name} devuelve dos cartas de memoria, baraja sus mazos y retira la trampa de la mano de {target.Name}, que roba una carta.");
         var resume = new EngineContinuation { Kind = ContinuationKind.ResumeMindReset, Phase = pending.ResumePhase,
             Attack = State.PendingAttackRoll, Die = State.PendingDieRoll, SavedDieEffect = _pendingDieEffect };
         FinishMindReset();

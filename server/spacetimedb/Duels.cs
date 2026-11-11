@@ -42,7 +42,10 @@ public static partial class Module
             Names = players.Select(p => p.Name).ToArray(), StartingSeat = opening.StartingSeat,
             Hands = players.Select(p => cards.Where(c => c.Owner == p.Player && c.InHand).OrderBy(c => c.Position).Select(c => c.Definition).ToList()).ToArray(),
             Decks = players.Select(p => cards.Where(c => c.Owner == p.Player && !c.InHand && c.Id != bonuses[p.Seat]).OrderBy(c => c.Position).Select(c => c.Definition).ToList()).ToArray(),
-            Bonuses = bonuses.Select(id => (string?)cards.Single(c => c.Id == id).Definition).ToArray()
+            Bonuses = bonuses.Select(id => (string?)cards.Single(c => c.Id == id).Definition).ToArray(),
+            SuperMagnetCopies = [GameEngine.TrainingSuperMagnetCopies, GameEngine.TrainingSuperMagnetCopies],
+            IncludeZahiraFlair = true,
+            IncludeSuperAttack = true
         };
     }
 

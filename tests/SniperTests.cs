@@ -65,7 +65,8 @@ static class SniperTests
             Check(g.ResolveSniper(1, false).Success && g.State.Phase == Phase.SniperChoice && p.Exchange.Count == 2);
             rng.EnqueueDie(2); Check(g.ResolveSniper(1, true).Success && g.State.Phase == Phase.RecycleChoice);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
-            Check(g.ResolveRecycling(1, [0, 1]).Success && g.State.Phase == Phase.Combat && g.State.PendingSniper == null);
+            Check(g.ResolveRecycling(1, [0, 1]).Success && g.State.Phase == Phase.TrapCraftChoice && g.State.DecisionPlayer == 1);
+            Check(g.ResolveTrapCraft(1, false).Success && g.State.Phase == Phase.Combat && g.State.PendingSniper == null);
         }),
         ("Sniper: Error puede negar el equipo gratuito sin cobrar acciones", () =>
         {

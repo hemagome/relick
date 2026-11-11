@@ -1,5 +1,79 @@
 # Cartas
 
+## Súper Ataque
+
+`super-attack-clean.png` restaura con `image_gen` la imagen aportada, a
+1054 × 1492. La edición retira la marca diagonal y conserva el identificador
+NS-27/150 y el copyright impresos. El arte reconstruido puede presentar
+pequeñas diferencias.
+
+Cada jugador tiene una copia en el mazo de trampas de los duelos nuevos de
+desarrollo. Después de canjear dos Ataques, puede crear Súper Ataque y añadirlo
+a su mano. Se juega durante el combate como carta de Ataque, sin gastar una
+acción. Su bono se aplica al D6 de ataque y a sus relanzamientos. Sube el
+resultado en hasta 2, con tope de 5, y conserva un 6 que ya salió. Un ataque
+que inflige daño suma 2 antes de aplicar las defensas. La carta queda fuera
+del juego al usarse o cuando se enviaría a memoria o al mazo.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Precisely restore this supplied Spanish Relick trading card scan for the game. Remove only the large repeated semitransparent diagonal RELICK watermark across the card and reconstruct the illustration and circuit frame directly beneath it. Keep the full original portrait card and all edges, red and black circuitry, gray gems, blue and cyan burst, tilted Attack card illustration and white pixel fist, existing design, proportions and print colors. Preserve the printed title, text, expansion number and bottom copyright. Exact printed text: “SÚPER ATAQUE”, “CÓDIGO TRAMPA”, “LUGAR: MANO”, “ATAQUE + ATAQUE”, “ESTA CARTA SE CONSIDERA UN ATAQUE Y NO CUESTA ACCIÓN. AL ATACAR CON ESTA CARTA: • SUMA +2 AL D6 DE ATAQUE (MÁX. 5). • SUMA +2 AL DAÑO DE ESE ATAQUE.” Bottom “NS-27/150” and “©2018FG”. Output as a crisp flat portrait scan, uncropped.
+
+</details>
+
+## Zahira Flair
+
+`zahira-flair-clean.png` restaura el PNG aportado con `image_gen` a 1054 × 1492.
+La edición retira la marca diagonal y conserva el identificador, los créditos y
+el copyright impresos. El arte reconstruido puede presentar pequeñas diferencias.
+
+Los duelos nuevos de desarrollo incluyen una copia por jugador en el mazo de
+trampas. Tras canjear dos Personajes, el jugador puede crear Zahira sobre una
+carta propia o rival en el campo. Al cubrirla, suspende sus efectos y conserva
+sus atributos impresos. La trampa sigue a su carta entre zonas del campo y
+sale del juego si la carta pasa a la mano, al mazo o a la memoria.
+
+La tirada se resuelve al cerrar la etapa final del adversario, después de los
+descartes pendientes. Admite los modificadores de dado del dueño de Zahira.
+Si se repite la etapa final, se vuelve a resolver su tirada al cerrarla.
+Súper Imán puede sustituir la colocación de Zahira sobre una carta rival o
+la destrucción de la carta cubierta.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Restore this exact Spanish Relick card. Remove only the repeated translucent diagonal watermark across the whole card, reconstructing the underlying drawing and red circuit border precisely. Keep the entire original flat portrait card, its original proportions, character, pose, typography, colors, corner gems, frame, exact Spanish printed text, expansion number NS-11/150, illustrator credits and copyright ©2018FG. Title ZAHIRA FLAIR; CÓDIGO TRAMPA; LUGAR: ENCIMA DE UNA CARTA EN EL CAMPO; PERSONAJE + PERSONAJE. Rules verbatim: SI ESTA CARTA ESTÁ ENCIMA DE UNA CARTA: ESA CARTA PIERDE SUS EFECTOS. EL DUEÑO DE ESTA CARTA LANZA 1D6 EN LA FASE FINAL DE SU ADVERSARIO: 1-2: DESTRUYE ESTA CARTA. 3-4: COLÓCALA ENCIMA DE OTRA CARTA EN EL CAMPO. 5-6: SI ESTÁ ENCIMA DE UN RELIKARIO: PIERDE -2 VIDAS. OTRA CARTA: DESTRUYE ESA CARTA. Preserve the bottom attribution. No crop or redesign.
+
+</details>
+
+## Súper Imán
+
+`super-magnet-clean.png` es una restauración de la imagen aportada con
+`image_gen`, a 1054 × 1492. La reconstrucción quitó la marca diagonal y conservó
+los créditos y el copyright impresos. El dibujo reconstruido puede presentar
+pequeñas diferencias frente al original.
+
+Cada jugador dispone de una copia en el mazo de Códigos Trampa de los duelos
+nuevos de desarrollo. Tras un canje de Equipo y otra carta, puede crear Súper
+Imán directamente en su zona de equipos. La creación se ofrece después de
+reponer el Bonus y resolver los efectos pendientes. Usa las reglas de
+sustitución del equipo normal. Al salir del campo, la trampa queda fuera del
+juego.
+
+La sustitución automática protege las cartas del tablero frente a efectos
+rivales, incluidos Huevo Azul Explosivo, Bomba de Tiempo y el robo del Bonus por
+Magnet Shuffle. El daño al Relikario y las cartas en mano quedan fuera de esa
+protección. El tercer contador provoca la destrucción de Súper Imán y admite
+la protección habitual de Reverse Shuffle. [Reglamento oficial, §§ 4.4–4.8 y 5.3](https://sites.google.com/view/relickjuegodecartas/reglas/nuevo-manual-de-juego#h.byyxqj2ib44c_l).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Precision restoration of the supplied Spanish Relick card scan for use as the original card asset in the videogame. Remove only the repeated semi-transparent diagonal watermark overlay ("RELICK") across the front, reconstructing the colors, illustrated edges, lighting, and details directly underneath. Preserve the original image from edge to edge, portrait ratio 697:987, exact framing and border, circuit pattern, gems, outlined magnet and creatures, typography, accent marks, text positioning, and the printed illustrator credits, card number, and ©2018FG at the bottom. Keep the full artwork and full bottom rules panel uncropped. Keep the exact printed text and the source typography, especially “SÚPER IMÁN”, “CÓDIGO TRAMPA”, “LUGAR: ZONA EQUIPOS”, “EQUIPO + CUALQUIER CARTA”, and the rules as printed. Match the original ink colors and letters throughout. No redesign, no added marks or text, do not remove the printed attribution. Output the cleaned trading card as a crisp flat image.
+
+</details>
+
 ## Tótem de Oro
 
 `golden-totem-clean.png` restaura el PNG aportado en Downloads mediante la

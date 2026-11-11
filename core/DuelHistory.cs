@@ -52,7 +52,7 @@ public sealed partial class GameEngine
                 DiePurpose.ExtraLife => CardCatalog.ExtraLife.Id, DiePurpose.PointsChange => CardCatalog.PointsIncrease.Id,
                 DiePurpose.Dodge => CardCatalog.Dodge.Id, DiePurpose.PcStore => CardCatalog.Pc.Id,
                 DiePurpose.SkillLearning => CardCatalog.Reverse.Id, DiePurpose.FieldCombat => CardCatalog.Jessica.Id,
-                DiePurpose.QuickLoad => CardCatalog.QuickLoad.Id, _ => null
+                DiePurpose.QuickLoad => CardCatalog.QuickLoad.Id, DiePurpose.Zahira => CardCatalog.ZahiraFlair.Id, _ => null
             };
         }
         return new DuelResolutionView { Actor = actor, DecisionPlayer = state.DecisionPlayer, CardId = card ?? "",
@@ -69,7 +69,7 @@ internal sealed class PublicDuelObservation : IDisposable
     private readonly DuelMove _move;
     private readonly int _actor, _turn;
     private readonly DuelResolutionView? _beforeResolution;
-    private readonly (int Health, int Pr, int Actions, string? Equipment, int Copies)[] _before;
+    private readonly (int Health, int Pr, int Actions, string? Equipment, int Copies, FieldTarget? ZahiraHost)[] _before;
     private readonly List<string> _outcomes = [];
     private string _card = "";
     private int _sourceActor;
@@ -79,7 +79,7 @@ internal sealed class PublicDuelObservation : IDisposable
     {
         _game = game; _actor = actor; _move = move; _turn = game.State.Turn;
         _beforeResolution = game.PublicResolution();
-        _before = game.State.Players.Select(p => (p.Health, p.Relikia, p.ActionsLeft, p.Equipment, p.EquipmentStackedCopies)).ToArray();
+        _before = game.State.Players.Select(p => (p.Health, p.Relikia, p.ActionsLeft, p.Equipment, p.EquipmentStackedCopies, p.ZahiraHost)).ToArray();
         var source = PublicSource(game, actor, move);
         _card = source ?? _beforeResolution?.CardId ?? "";
         _sourceActor = source != null ? actor : _beforeResolution?.Actor ?? actor;
@@ -88,6 +88,7 @@ internal sealed class PublicDuelObservation : IDisposable
         game.HealingReceived += Heal; game.CardDrawn += Draw; game.HandDiscarded += Discard;
         game.CardMovedToPile += Pile; game.HandTransferred += Transfer;
         game.BonusClaimed += Bonus; game.MemoryCardClaimed += Memory;
+        game.SuperMagnetCharged += TrapCharged;
     }
     private string Player(int player) => player is 0 or 1 ? _game.State.Players[player].Name : "Jugador";
     private static string Card(string id) => CardCatalog.All.TryGetValue(id, out var c) ? c.Name : "Carta";
@@ -101,11 +102,14 @@ internal sealed class PublicDuelObservation : IDisposable
     private void Transfer(int owner, int recipient, int count) => _outcomes.Add($"{Player(owner)} entrega {count} carta(s) a {Player(recipient)}.");
     private void Bonus(int owner, int recipient, int slot, string id) => _outcomes.Add($"{Player(recipient)} obtiene {Card(id)} del Bonus de {Player(owner)}.");
     private void Memory(int owner, int recipient, int index, int slot) => _outcomes.Add($"{Player(recipient)} recibe una carta de la memoria de {Player(owner)}.");
+    private void TrapCharged(int owner, int count) => _outcomes.Add($"Súper Imán de {Player(owner)} sustituye el efecto rival y recibe un contador ({count}/{CardCatalog.SuperMagnetCounterLimit}).");
     private void Pile(PileMovement move)
     {
         // Hidden hand/deck moves and face-down corruption never contribute identities.
         if (move.Destination == CardZone.Memory && move.Source is CardZone.Equipment or CardZone.EquipmentCover or CardZone.Skill or CardZone.Bonus or CardZone.Exchange or CardZone.Attached or CardZone.Activation)
             _outcomes.Add($"{Card(move.CardId)} de {Player(move.Owner)} va a memoria.");
+        if (move.Destination == CardZone.OutOfGame && move.Source != CardZone.Hand)
+            _outcomes.Add($"{Card(move.CardId)} de {Player(move.Owner)} queda fuera del juego.");
     }
     public void Complete()
     {
@@ -140,6 +144,8 @@ internal sealed class PublicDuelObservation : IDisposable
             if (_draws[i] > 0) _outcomes.Add($"{Player(i)} roba {_draws[i]} carta(s).");
             if (p.Equipment != null && (p.Equipment != old.Equipment || p.EquipmentStackedCopies > old.Copies))
                 _outcomes.Add($"{Player(i)} equipa {Card(p.Equipment)}.");
+            if (_move.Kind == DuelMoveKind.ZahiraTarget && p.ZahiraHost is { } host && host != old.ZahiraHost)
+                _outcomes.Add($"Zahira Flair de {Player(i)} cubre {_game.FieldCardName(host)} de {Player(host.Owner)}.");
         }
         if (state.Winner != null) _outcomes.Add(state.Winner == -1 ? "El duelo termina en empate." : $"{Player(state.Winner.Value)} gana el duelo.");
         var history = _game.PublicHistory ??= new();
@@ -152,6 +158,7 @@ internal sealed class PublicDuelObservation : IDisposable
         _game.DieRolled -= Die; _game.DieAdjusted -= Adjusted; _game.DamageReceived -= Damage;
         _game.HealingReceived -= Heal; _game.CardDrawn -= Draw; _game.HandDiscarded -= Discard; _game.CardMovedToPile -= Pile;
         _game.HandTransferred -= Transfer; _game.BonusClaimed -= Bonus; _game.MemoryCardClaimed -= Memory;
+        _game.SuperMagnetCharged -= TrapCharged;
     }
     private static string? PublicSource(GameEngine g, int actor, DuelMove m)
     {
@@ -167,6 +174,8 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.FieldCode => m.Value == (int)FieldZone.Bonus ? p.Bonus : p.Exchange.ElementAtOrDefault(m.Index),
             DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse when m.Flag => CardCatalog.CardboardBox.Id,
             DuelMoveKind.Pc => CardCatalog.Pc.Id, DuelMoveKind.Pendant => CardCatalog.Pendant.Id,
+            DuelMoveKind.TrapCraft when m.Flag => g.State.TrapCraftQueue?.FirstOrDefault()?.CardId,
+            DuelMoveKind.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
             _ => null
         };
     }
@@ -177,7 +186,10 @@ internal sealed class PublicDuelObservation : IDisposable
         string Target() => m.Target is 0 or 1 ? g.State.Players[m.Target].Name : "el objetivo";
         return m.Kind switch
         {
-            DuelMoveKind.PlayCode => $"{name} activa {card}.", DuelMoveKind.Attack => $"{name} ataca con {card}.",
+            DuelMoveKind.PlayCode => $"{name} activa {card}.",
+            DuelMoveKind.Attack when actor is 0 or 1 && g.State.Players[actor].Hand.ElementAtOrDefault(m.Index) == CardCatalog.SuperAttack.Id
+                => $"{name} usa Súper Ataque con {card}.",
+            DuelMoveKind.Attack => $"{name} ataca con {card}.",
             DuelMoveKind.Learn => $"{name} enseña {card}.", DuelMoveKind.Equip => $"{name} juega {card} como equipo.",
             DuelMoveKind.Exchange => $"{name} coloca {card} en canje.", DuelMoveKind.FieldCode => $"{name} activa {card} desde {(m.Value == (int)FieldZone.Bonus ? "Bonus" : "canje")}.",
             DuelMoveKind.PassError => $"{name} deja resolver la cadena.",
@@ -190,7 +202,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => $"{name} descarta una carta.",
             DuelMoveKind.Points => $"{name} {(m.Flag ? "aumenta" : "reduce")} los PR de {Target()}.",
             DuelMoveKind.Destroy => $"{name} elige destruir una carta de {Target()} ({(FieldZone)m.Value switch { FieldZone.Hand => "mano al azar", FieldZone.Bonus => "Bonus", FieldZone.Equipment => "equipo", _ => "campo" }}).",
-            DuelMoveKind.Magnet => $"{name} toma una carta {(m.Flag ? "del Bonus rival" : "de la mano rival")} por Magnet Shuffle.",
+            DuelMoveKind.Magnet => $"{name} elige tomar una carta {(m.Flag ? "del Bonus rival" : "de la mano rival")} por Magnet Shuffle.",
             DuelMoveKind.SkipMagnet => $"{name} decide no tomar una carta por Magnet Shuffle.",
             DuelMoveKind.Placement => $"{name} coloca una carta {(m.Value == (int)CardDestination.Exchange ? "en canje" : "al fondo del mazo")}.",
             DuelMoveKind.Relikia => $"{name} activa Relikia: {RelikiaEffects.All.FirstOrDefault(e => e.Id == (RelikiaEffect)m.Value)?.Name ?? "efecto"}.",
@@ -204,6 +216,8 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.Sniper => $"{name} coloca Mira de Sniper {(m.Flag ? "como equipo" : "en canje")}.",
             DuelMoveKind.Totem => m.Flag ? $"{name} usa un Tótem para cancelar el daño." : $"{name} recibe el daño sin usar un Tótem.",
             DuelMoveKind.GoldenTotem => $"{name} coloca Tótem de Oro con {m.Discards.Length} Tótem(s) de Salvación.",
+            DuelMoveKind.TrapCraft => m.Flag ? $"{name} elige crear {card}." : $"{name} pasa sin crear un Código Trampa.",
+            DuelMoveKind.ZahiraTarget => $"{name} elige dónde colocar Zahira Flair.",
             DuelMoveKind.Evolve => $"{name} evoluciona su Relikario.", DuelMoveKind.Advance => $"{name} avanza de fase.",
             DuelMoveKind.Concede => $"{name} abandona el duelo.", DuelMoveKind.ComboResponses => "Continúa la resolución de la jugada.",
             DuelMoveKind.Reward => $"{name} elige el efecto adicional de Relikia.", _ => $"{name} resuelve una decisión."

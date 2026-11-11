@@ -22,6 +22,8 @@ public sealed class DuelPlayerView
     public int[] Counters { get; set; } = [];
     public int EquipmentCounters { get; set; }
     public int EquipmentDie { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public FieldTarget? ZahiraHost { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int EquipmentStackedCopies { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -51,6 +53,8 @@ public sealed class DuelSnapshot
     public int Turn { get; set; }
     public Phase Phase { get; set; }
     public Phase? Stage { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? TrapCardId { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int DiscardsRemaining { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -83,6 +87,8 @@ public sealed class DuelSnapshot
     {
         var s = game.State;
         var stagePhase = s.Phase == Phase.DestructionResponse ? s.PendingDestruction!.ResumePhase : s.Phase;
+        if (s.Phase == Phase.TrapCraftChoice) stagePhase = s.TrapCraftResumePhase!.Value;
+        if (s.Phase == Phase.ZahiraTarget) stagePhase = s.PendingZahiraPlacement!.ResumePhase;
         if (s.Phase == Phase.ErrorResponse && game.IsFieldCodeActivation) stagePhase = Phase.Combat;
         if (s.PendingTurnBuff != null) stagePhase = s.PendingTurnBuff.ResumePhase;
         if (s.PendingReload != null && !s.IsOver) stagePhase = Phase.Actions;
@@ -91,6 +97,7 @@ public sealed class DuelSnapshot
         return new DuelSnapshot
         {
             AutoPassCombos = seat >= 0 && s.Players[seat].AutoPassCombos,
+            TrapCardId = s.Phase == Phase.TrapCraftChoice ? s.TrapCraftQueue![0].CardId : null,
             Revision = revision, MySeat = seat, CurrentPlayer = s.CurrentPlayer, DecisionPlayer = s.DecisionPlayer,
             DiscardsRemaining = s.DiscardsRemaining,
             ExtraDrawStages = s.ExtraDrawStages, ExtraCombatStages = s.ExtraCombatStages,
@@ -116,6 +123,7 @@ public sealed class DuelSnapshot
                     (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == seat && s.PendingMindReset.Target == index) ? id : null).ToArray(),
                 Skills = p.Skills.ToArray(), SkillPositions = Enumerable.Range(0, p.Skills.Count).Select(p.SkillPosition).ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
                 BonusEffectUsed = p.BonusEffectUsed, ExchangeEffectsUsed = p.ExchangeEffectsUsed?.ToArray(),
+                ZahiraHost = p.ZahiraHost,
                 Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, EquipmentStackedCopies = p.EquipmentStackedCopies, EquipmentCovers = p.EquipmentCovers?.ToArray(), StarEffects = p.StarEffects, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
                 Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
             }).ToArray()

@@ -37,7 +37,9 @@ public sealed partial class GameEngine
         var state = new GameState { Phase = Phase.Combat, Turn = 1, CurrentPlayer = opening.StartingSeat };
         for (var seat = 0; seat < 2; seat++)
         {
-            var player = new PlayerState { Name = opening.Names[seat], Bonus = opening.Bonuses[seat] };
+            var player = new PlayerState { Name = opening.Names[seat], Bonus = opening.Bonuses[seat],
+                SuperMagnetCopies = Math.Clamp(opening.SuperMagnetCopies?.ElementAtOrDefault(seat) ?? 0, 0, 2),
+                ZahiraAvailable = opening.IncludeZahiraFlair, SuperAttackAvailable = opening.IncludeSuperAttack };
             if (player.Bonus is { } bonus && CardCatalog.Get(bonus).FieldCombatDie) player.BonusPlacedTurn = 1;
             player.Hand.AddRange(opening.Hands[seat]);
             player.Deck.AddRange(opening.Decks[seat]);
@@ -58,7 +60,13 @@ public sealed partial class GameEngine
     public GameEngine(IGameRandom random)
     {
         _random = random;
-        foreach (var player in State.Players) player.Deck.AddRange(CardCatalog.TrainingDeck());
+        foreach (var player in State.Players)
+        {
+            player.Deck.AddRange(CardCatalog.TrainingDeck());
+            player.SuperMagnetCopies = TrainingSuperMagnetCopies;
+            player.ZahiraAvailable = true;
+            player.SuperAttackAvailable = true;
+        }
         Log("Preparación: ambos relikarios empiezan con 8 vidas.");
         Log("Elige una habilidad de tu mazo para formar tu mano inicial.");
     }
@@ -95,7 +103,7 @@ public sealed partial class GameEngine
     /// <summary>Read-only query for plays other than advancing; never consumes cards or randomness.</summary>
     public bool HasAvailablePlay(int actor)
     {
-        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice) return actor == State.DecisionPlayer;
+        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice or Phase.TrapCraftChoice or Phase.ZahiraTarget) return actor == State.DecisionPlayer;
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
         if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice or Phase.MemoryRecoveryChoice)
@@ -157,26 +165,29 @@ public sealed partial class GameEngine
     }
 
     public bool CanAttack(int actor) => AttackUnavailableReason(actor) == null &&
-        State.Active.Skills.Count > 0 && State.Active.Hand.Contains(CardCatalog.Attack.Id);
+        State.Active.Skills.Count > 0 && State.Active.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack);
 
     public CommandResult Attack(int actor, int handIndex, int skillIndex)
     {
         var error = AttackUnavailableReason(actor);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Active;
-        if (!InHand(p, handIndex) || p.Hand[handIndex] != CardCatalog.Attack.Id)
+        if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Attack)
             return CommandResult.Fail("Selecciona una carta de ataque.");
         if (skillIndex < 0 || skillIndex >= p.Skills.Count)
             return CommandResult.Fail("Primero enseña y selecciona una habilidad.");
         var skill = CardCatalog.Get(p.Skills[skillIndex]);
+        var suppressed = EffectsSuppressed(actor, FieldZone.Skill, skillIndex);
+        var superAttack = p.Hand[handIndex] == CardCatalog.SuperAttack.Id;
         SendHandToMemory(p, handIndex);
         State.AttackedThisTurn = true;
-        var die = RollAttack(out var levelModified);
+        var die = RollAttack(out var modified, superAttack: superAttack);
         State.LastAttackDie = die;
-        State.PendingAttackRoll = new(actor, skill.Id, die, Modified: levelModified,
-            SkillSlot: skill.DamagePerReroll > 0 ? skillIndex : null,
-            NormalDamage: skill.DamagePerReroll > 0 ? skill.NormalDamageAt(p.CountersOnSkill(skillIndex)) : null,
-            CriticalDamage: skill.DamagePerReroll > 0 ? skill.CriticalDamageAt(p.CountersOnSkill(skillIndex)) : null);
+        State.PendingAttackRoll = new(actor, skill.Id, die, Modified: modified,
+            SkillSlot: skill.DamagePerReroll > 0 && !suppressed ? skillIndex : null,
+            NormalDamage: skill.DamagePerReroll > 0 && !suppressed ? skill.NormalDamageAt(p.CountersOnSkill(skillIndex)) : null,
+            CriticalDamage: skill.DamagePerReroll > 0 && !suppressed ? skill.CriticalDamageAt(p.CountersOnSkill(skillIndex)) : null,
+            EffectsSuppressed: suppressed, SuperAttack: superAttack);
         State.Phase = Phase.AttackRerollChoice;
         State.LastCombat = $"{p.Name} · Dado de ataque {die} · Decide si relanza con Yuno";
         ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
@@ -308,20 +319,22 @@ public sealed partial class GameEngine
 
     private void CompleteExchange(PlayerState p, EngineContinuation? completed = null)
     {
-        if (State.PendingSniper?.Actor == Array.IndexOf(State.Players, p)) { Continue(completed); return; }
+        var actor = Array.IndexOf(State.Players, p);
+        if (State.PendingSniper?.Actor == actor) { Continue(completed); return; }
         if (p.Exchange.Count >= 2 && p.Bonus != null)
         {
+            QueueTrapCraft(actor);
             for (var slot = 0; slot < 2; slot++)
             {
                 ForgetFieldCodeSource(p, FieldZone.Exchange, slot);
-                NotifyPileMove(p, p.Exchange[slot], CardZone.Exchange, slot);
+                SendToMemory(p, p.Exchange[slot], CardZone.Exchange, slot);
             }
-            p.Memory.AddRange(p.Exchange.Take(2));
+            ChangeZahiraHosts(actor, FieldZone.Exchange, 0, 2);
             p.Exchange.RemoveRange(0, 2);
             ShiftExchangeEffects(p, 0, 2);
             TakeBonus(p, p);
             Log($"{p.Name} completa el canje y obtiene su bonus.");
-            RefillBonus(p, new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = Array.IndexOf(State.Players, p), Next = completed });
+            RefillBonus(p, new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = actor, Next = completed });
         }
         else Continue(completed);
     }
@@ -396,8 +409,11 @@ public sealed partial class GameEngine
         if (State.Active.EquipmentExpiresAtTurnStart)
         {
             State.Active.EquipmentExpiresAtTurnStart = false;
-            DestroyEquipment(State.Active, new EngineContinuation { Kind = ContinuationKind.TurnStartDraw, Actor = State.CurrentPlayer });
-            return;
+            if (ActiveEquipment(State.CurrentPlayer) != null)
+            {
+                DestroyEquipment(State.Active, new EngineContinuation { Kind = ContinuationKind.TurnStartDraw, Actor = State.CurrentPlayer });
+                return;
+            }
         }
         DrawAtTurnStart();
     }
@@ -414,9 +430,16 @@ public sealed partial class GameEngine
     {
         CompleteActivationIfFinished();
         State.Phase = Phase.Final;
+        State.ZahiraRolledThisFinal = false;
         if (State.Active.Hand.Count > MaxHandSize)
             Log($"{State.Active.Name} debe descartar hasta tener {MaxHandSize} cartas en la mano.");
         CompleteEndTurnIfReady();
+    }
+
+    private void CompletePendingPlay()
+    {
+        CompleteAttackIfReady();
+        if (!TryPresentTrapCraft()) CompleteEndTurnIfReady();
     }
 
     private void CompleteEndTurnIfReady()
@@ -424,7 +447,13 @@ public sealed partial class GameEngine
         // Discard triggers, responses and their draws finish before checking the limit again.
         if (State.Phase != Phase.Final || State.RepeatedFinalAwaitingAdvance || _activeActivation != null || State.PendingSniper != null || State.PendingTurnBuff != null ||
             State.Active.Hand.Count > MaxHandSize) return;
-        if (ConsumeRepeatedStage(Phase.Final)) return;
+        if (TryRollZahiraAtFinal()) return;
+        if (ConsumeRepeatedStage(Phase.Final))
+        {
+            State.ZahiraRolledThisFinal = false;
+            return;
+        }
+        State.ZahiraRolledThisFinal = false;
         foreach (var player in State.Players) player.StarEffects = 0;
         State.CurrentPlayer = 1 - State.CurrentPlayer;
         BeginTurn();
@@ -447,7 +476,7 @@ public sealed partial class GameEngine
             State.LastCombat += " · Estrella del Fontanero: 0 daño recibido";
             Continue(completed); return;
         }
-        var protection = p.Equipment == null ? null : CardCatalog.Get(p.Equipment);
+        var protection = ActiveEquipment(target);
         if (protection != null && (protection.PreventDamage || protection.DamageReduction > 0))
         {
             var reduced = protection.PreventDamage ? 0 : Math.Max(0, amount - protection.DamageReduction);
@@ -456,10 +485,10 @@ public sealed partial class GameEngine
             amount = reduced;
             if (amount == 0) { Continue(completed); return; }
         }
-        if (p.Equipment is { } equipment && CardCatalog.Get(equipment).DamageCounterLimit > 0)
+        if (protection is { DamageCounterLimit: > 0 })
         {
             p.EquipmentCounters++;
-            if (p.EquipmentCounters >= CardCatalog.Get(equipment).DamageCounterLimit)
+            if (p.EquipmentCounters >= protection.DamageCounterLimit)
             {
                 DestroyEquipment(p, new EngineContinuation { Kind = ContinuationKind.ApplyDamage, Actor = target, Count = amount, Value = attackDie, Next = completed });
                 return;
@@ -562,12 +591,12 @@ public sealed partial class GameEngine
 
     private static bool InHand(PlayerState p, int index) => index >= 0 && index < p.Hand.Count;
     public string CurrentDieCaption { get; private set; } = "";
-    private int RollAttack(out bool levelModified, string caption = "", bool convertSix = false)
+    private int RollAttack(out bool modified, string caption = "", bool convertSix = false, bool superAttack = false)
     {
         var die = Roll(caption, convertSix);
-        var bonus = State.Active.Relikario.AttackDieBonusExceptOne;
-        levelModified = bonus > 0 && die is >= 2 and < 6;
-        if (levelModified)
+        var bonus = EffectsSuppressed(State.CurrentPlayer, FieldZone.Relikario) ? 0 : State.Active.Relikario.AttackDieBonusExceptOne;
+        modified = bonus > 0 && die is >= 2 and < 6;
+        if (modified)
         {
             var previous = die;
             die = Math.Min(6, die + bonus);
@@ -575,6 +604,16 @@ public sealed partial class GameEngine
             CurrentDieCaption = $"{State.Active.Relikario.Name} Lv {State.Active.Level} · +{bonus} al ataque";
             DieAdjusted?.Invoke(die);
             Log($"{State.Active.Name} suma +{bonus} por {State.Active.Relikario.Name} Lv {State.Active.Level} al dado de ataque: {previous} → {die}.");
+        }
+        if (superAttack && die < 5)
+        {
+            var previous = die;
+            die = Math.Min(5, die + 2);
+            modified = true;
+            State.LastDie = die;
+            CurrentDieCaption = $"Súper Ataque · +{die - previous}";
+            DieAdjusted?.Invoke(die);
+            Log($"{State.Active.Name} modifica el dado con Súper Ataque: {previous} → {die}.");
         }
         return die;
     }

@@ -2,7 +2,7 @@ namespace Relick.Core;
 public sealed partial class GameEngine
 {
     public bool CanUsePc(int actor) => actor >= 0 && actor < State.Players.Length && actor == State.DecisionPlayer &&
-        State.Players[actor].Equipment == CardCatalog.Pc.Id && State.Players[actor].EquipmentDie is >= 1 and <= 6 && OwnDiePending(actor);
+        ActiveEquipment(actor)?.Id == CardCatalog.Pc.Id && State.Players[actor].EquipmentDie is >= 1 and <= 6 && OwnDiePending(actor);
 
     public CommandResult UsePc(int actor)
     {

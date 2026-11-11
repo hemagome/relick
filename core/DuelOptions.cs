@@ -21,6 +21,28 @@ public static class DuelOptions
         {
             switch (s.Phase)
             {
+                case Phase.TrapCraftChoice:
+                    var trap = s.TrapCraftQueue![0].CardId;
+                    Add(DuelMoveKind.TrapCraft, $"Crear {Card(trap)}", flag: true);
+                    Add(DuelMoveKind.TrapCraft, "Pasar sin crear");
+                    break;
+                case Phase.ZahiraTarget:
+                    foreach (var host in game.ZahiraTargets(actor))
+                    {
+                        var position = host.Zone switch
+                        {
+                            FieldZone.Equipment when s.Players[host.Owner].EquipmentStackedCopies > 0 => $" · equipo {host.Index + 1}",
+                            FieldZone.EquipmentCover => $" · cobertura {host.Index + 1}",
+                            FieldZone.Skill => $" · habilidad {s.Players[host.Owner].SkillPosition(host.Index) + 1}",
+                            FieldZone.Exchange => $" · canje {host.Index + 1}",
+                            FieldZone.Attached => $" · anexo {host.Index + 1}",
+                            FieldZone.Bonus => " · Bonus",
+                            _ => ""
+                        };
+                        Add(DuelMoveKind.ZahiraTarget, $"{game.FieldCardName(host)} · {s.Players[host.Owner].Name}{position}",
+                            host.Index, (int)host.Zone, host.Owner);
+                    }
+                    break;
                 case Phase.GoldenTotemChoice:
                     var maxTotems = Math.Min(2, p.Hand.Count(id => id == CardCatalog.Totem.Id));
                     for (var count = p.Equipment == null ? 1 : 0; count <= maxTotems; count++)
@@ -163,7 +185,7 @@ public static class DuelOptions
                     break;
                 case Phase.CodeResponse:
                     Add(DuelMoveKind.CodeResponse, "Dejar resolver el código");
-                    if (p.Equipment == CardCatalog.CardboardBox.Id) Add(DuelMoveKind.CodeResponse, "Cancelar con Caja de Cartón", flag: true);
+                    if (p.Equipment == CardCatalog.CardboardBox.Id && !game.EffectsSuppressed(actor, FieldZone.Equipment)) Add(DuelMoveKind.CodeResponse, "Cancelar con Caja de Cartón", flag: true);
                     break;
                 case Phase.ErrorResponse:
                     Add(DuelMoveKind.PassError, "No responder con Error de Carga");
@@ -186,6 +208,7 @@ public static class DuelOptions
                                 FieldZone.Hand => own ? "Tu mano al azar" : "Mano rival al azar",
                                 FieldZone.Equipment => own ? "Tu equipo" : "Equipo rival",
                                 FieldZone.EquipmentCover => $"{(own ? "Tu" : "Rival")} Tótem de Oro · copia {t.Index + 1}",
+                                FieldZone.Zahira => $"{(own ? "Tu" : "Rival")} Zahira Flair",
                                 _ => own ? "Tu Bonus" : "Bonus rival"
                             };
                             Add(DuelMoveKind.Destroy, place, t.Index, (int)t.Zone, t.Owner);

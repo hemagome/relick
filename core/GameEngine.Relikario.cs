@@ -21,7 +21,7 @@ public sealed partial class GameEngine
         p.AttackRerollUsedThisTurn = true;
         OnOwnDieRerolled(actor);
         pending = State.PendingAttackRoll!;
-        var rolled = RollAttack(out _, $"Yuno Lv {p.Level} · Relanzamiento", p.Relikario.ConvertRerolledSix);
+        var rolled = RollAttack(out _, $"Yuno Lv {p.Level} · Relanzamiento", p.Relikario.ConvertRerolledSix, pending.SuperAttack);
         var die = rolled == 6 && p.Relikario.ConvertRerolledSix ? 5 : rolled;
         var count = pending.Rerolls + 1;
         Log($"{p.Name} activa Yuno Lv {p.Level}: relanza {pending.Die} y obtiene {rolled}." +
@@ -50,26 +50,29 @@ public sealed partial class GameEngine
         State.Phase = Phase.Combat;
         var p = State.Players[pending.Attacker];
         var skill = CardCatalog.Get(pending.SkillId);
+        var attackDamageBonus = pending.SuperAttack ? CardCatalog.SuperAttack.DamageBonus : 0;
         if (pending.NormalDamage is int normal && pending.CriticalDamage is int critical)
             skill = skill with { NormalDamage = normal, CriticalDamage = critical };
         if (skill.Id == CardCatalog.Magnet.Id && (die is 4 or 5 || die < 4 && HasStackedTotem(pending.Attacker)))
-            RollWithRelikario(p, DiePurpose.MagnetDamage, new DieEffect { Purpose = DiePurpose.MagnetDamage, Actor = pending.Attacker, SkillId = skill.Id, AttackDie = die, Rerolled = rerolled });
-        else ResolveAttackResult(pending.Attacker, skill, die, skill.NormalDamage, rerolled);
+            RollWithRelikario(p, DiePurpose.MagnetDamage, new DieEffect { Purpose = DiePurpose.MagnetDamage, Actor = pending.Attacker,
+                SkillId = skill.Id, AttackDie = die, Rerolled = rerolled, AttackDamageBonus = attackDamageBonus });
+        else ResolveAttackResult(pending.Attacker, skill, die, skill.NormalDamage, rerolled, pending.EffectsSuppressed, attackDamageBonus);
     }
 
-    private void ResolveAttackResult(int actor, CardDefinition skill, int die, int normal, bool rerolled)
+    private void ResolveAttackResult(int actor, CardDefinition skill, int die, int normal, bool rerolled, bool effectsSuppressed = false, int attackDamageBonus = 0)
     {
         var p = State.Players[actor];
         var converted = die < 4 && HasStackedTotem(actor);
         var damage = DamageFor(converted ? 5 : die, normal, skill.CriticalDamage);
-        if (die >= 4 || converted) damage = DamageWithEquipmentBonus(actor, damage);
+        if (die >= 4 || converted) damage = DamageWithEquipmentBonus(actor, damage + attackDamageBonus);
         var outcome = converted ? "Normal por Tótem de Salvación" : die < 4 ? "Fallido" : die == 4 ? "Reducido" : die == 5 ? "Normal" : "Crítico";
         State.LastCombat = $"{p.Name} · {outcome} · {damage} de daño" +
+            (attackDamageBonus > 0 ? " · Súper Ataque" : "") +
             (rerolled ? $" · Dado final: {die}" : "");
         Log($"{p.Name} usa {skill.Name} contra {State.Players[1 - actor].Name}: dado {die}, {outcome.ToLowerInvariant()}, {damage} de daño.");
         if (die >= 4 || converted) AttackPerformed?.Invoke(actor);
         if (die < 4 && !converted) return;
-        State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true, NormalFromMiss: converted);
+        State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true, NormalFromMiss: converted, EffectsSuppressed: effectsSuppressed);
         if (CanDefend(1 - actor, die == 6)) State.Phase = Phase.DefenseChoice;
         else ResolveAttackDamage(false);
     }

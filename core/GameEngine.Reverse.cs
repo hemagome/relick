@@ -8,7 +8,7 @@ public sealed partial class GameEngine
         for (var slot = 0; slot < p.Skills.Count; slot++)
         {
             var skill = CardCatalog.Get(p.Skills[slot]);
-            if (skill.DamagePerReroll <= 0) continue;
+            if (skill.DamagePerReroll <= 0 || EffectsSuppressed(actor, FieldZone.Skill, slot)) continue;
             var counters = p.CountersOnSkill(slot) + 1;
             p.SkillCounters[slot] = counters;
             if (State.PendingAttackRoll is { } attack && attack.Attacker == actor && attack.SkillSlot == slot)
@@ -36,6 +36,7 @@ public sealed partial class GameEngine
     {
         var p = State.Players[owner]; var id = p.Skills[slot];
         var positions = Enumerable.Range(0, p.Skills.Count).Where(index => index != slot).Select(p.SkillPosition).ToArray();
+        ChangeZahiraHosts(owner, FieldZone.Skill, slot);
         p.Skills.RemoveAt(slot);
         p.SkillPositions = positions.Where((position, index) => position != index).Any()
             ? positions.Select((position, index) => (position, index)).ToDictionary(c => c.index, c => c.position) : null;

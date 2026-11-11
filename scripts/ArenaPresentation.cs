@@ -10,6 +10,8 @@ public sealed class ArenaPlayerActions
     public Action Attached { get; init; } = () => { };
     public Action Equipment { get; init; } = () => { };
     public Action EquipmentCovers { get; init; } = () => { };
+    public Action Zahira { get; init; } = () => { };
+    public string? ZahiraCaption { get; init; }
     public Action<int> Skill { get; init; } = _ => { };
     public Action<int> InspectSkill { get; init; } = _ => { };
     public Action Evolve { get; init; } = () => { };
@@ -134,13 +136,31 @@ public static class ArenaPresentation
                 TooltipText = "Tótem de Oro: se destruye en lugar de un Tótem de Salvación equipado." };
             cover.Pressed += actions.EquipmentCovers; permanent.AddChild(cover);
         }
-        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : owner.EquipmentStackedCopies > 0 ? $"EQUIPO ×{owner.EquipmentStackedCopies + 1}" : owner.Equipment == CardCatalog.Sniper.Id ? $"EQUIPO · {owner.EquipmentCounters}/3" : owner.EquipmentDie > 0 ? $"EQUIPO · D6: {owner.EquipmentDie}" : "EQUIPO 1/1",
+        var equipmentCaption = owner.Equipment switch
+        {
+            null => "EQUIPO 0/1",
+            _ when owner.EquipmentStackedCopies > 0 => $"EQUIPO ×{owner.EquipmentStackedCopies + 1}",
+            _ when owner.Equipment == CardCatalog.SuperMagnet.Id => $"TRAMPA · {owner.EquipmentCounters}/{CardCatalog.SuperMagnetCounterLimit}",
+            _ when owner.Equipment == CardCatalog.Sniper.Id => $"EQUIPO · {owner.EquipmentCounters}/3",
+            _ when owner.EquipmentDie > 0 => $"EQUIPO · D6: {owner.EquipmentDie}",
+            _ => "EQUIPO 1/1"
+        };
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = equipmentCaption,
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("81c8ef"),
             Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
         portrait.SizeFlagsVertical = narrow ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ExpandFill;
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
         if (narrow) column.AddChild(memories);
+        if (actions.ZahiraCaption is { } zahiraCaption)
+        {
+            var zahira = Button(column, zahiraCaption, actions.Zahira);
+            zahira.Name = $"Zahira{index}";
+            zahira.ClipText = true;
+            zahira.TooltipText = zahiraCaption;
+            zahira.Icon = BoardArt.LoadCardArtwork(CardCatalog.ZahiraFlair);
+            zahira.AddThemeConstantOverride("icon_max_width", 24);
+        }
         var skills = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         skills.AddThemeConstantOverride("h_separation", 6); skills.AddThemeConstantOverride("v_separation", 6);
         foreach (var slot in new[] { 2, 3, 0, 1 })

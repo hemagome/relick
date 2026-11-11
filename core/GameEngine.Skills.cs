@@ -10,12 +10,12 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         if (p.Hand.Count < DefenseDiscardCost) return Array.Empty<int>();
         return Enumerable.Range(0, p.Skills.Count)
-            .Where(i => p.Skills[i] == CardCatalog.Destiny.Id && p.CountersOnSkill(i) < 2);
+            .Where(i => p.Skills[i] == CardCatalog.Destiny.Id && p.CountersOnSkill(i) < 2 && !EffectsSuppressed(actor, FieldZone.Skill, i));
     }
 
     private bool CanDefend(int actor, bool critical) =>
         HasTurnBuffInHand(actor) ||
-        ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => CardCatalog.Get(id).DodgeAttack && State.Players[actor].ActionsLeft >= CardCatalog.Get(id).ActionCost) || State.Players[actor].Equipment == CardCatalog.CardboardBox.Id ||
+        ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => CardCatalog.Get(id).DodgeAttack && State.Players[actor].ActionsLeft >= CardCatalog.Get(id).ActionCost) || ActiveEquipment(actor)?.Id == CardCatalog.CardboardBox.Id ||
         (State.Players[actor].Hand.Count >= (critical ? 4 : 3) && AvailableDefenses(actor).Any());
 
     public CommandResult PassDefense(int actor)
@@ -70,10 +70,10 @@ public sealed partial class GameEngine
         State.PendingAttack = attack with { DamageResolved = true };
         if (State.IsOver) { State.PendingAttack = null; return; }
         // Canceling damage does not undo the critical result or its skill effect.
-        if (!State.IsOver && attack.Critical && attack.SkillId == CardCatalog.Magnet.Id &&
+        if (!State.IsOver && attack.Critical && !attack.EffectsSuppressed && attack.SkillId == CardCatalog.Magnet.Id &&
             (State.Players[1 - attack.Attacker].Hand.Count > 0 || State.Players[1 - attack.Attacker].Bonus != null))
             State.Phase = Phase.MagnetChoice;
-        if (!deferCompletion) CompleteAttackIfReady();
+        if (!deferCompletion) CompletePendingPlay();
     }
 
     private void CompleteAttackIfReady()
@@ -93,7 +93,7 @@ public sealed partial class GameEngine
         if (error != null) return CommandResult.Fail(error);
         State.Phase = Phase.Combat;
         Log($"{State.Active.Name} decide no tomar carta por Magnet Shuffle.");
-        CompleteAttackIfReady();
+        CompletePendingPlay();
         return CommandResult.Ok();
     }
 
@@ -105,16 +105,18 @@ public sealed partial class GameEngine
         if (fromBonus ? rival.Bonus == null : !InHand(rival, handIndex))
             return CommandResult.Fail("Elige una carta de la mano del rival o de su Bonus.");
         var id = fromBonus ? rival.Bonus! : rival.Hand[handIndex];
+        State.Phase = Phase.Combat;
+        if (fromBonus && TryReplaceOpponentFieldEffect(actor, new(1 - actor, FieldZone.Bonus, -1, id)))
+            return CommandResult.Ok();
         if (fromBonus) TakeBonus(rival, State.Active);
         else
         {
             rival.RemoveHandCard(handIndex);
             State.Active.Hand.Add(id);
         }
-        State.Phase = Phase.Combat;
         Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
         if (fromBonus) RefillBonus(rival);
-        CompleteAttackIfReady();
+        CompletePendingPlay();
         return CommandResult.Ok();
     }
 }

@@ -10,13 +10,19 @@ public sealed class DuelOpening
     public List<string>[] Decks { get; set; } = [];
     public string?[] Bonuses { get; set; } = [];
     public int StartingSeat { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? SuperMagnetCopies { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IncludeZahiraFlair { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IncludeSuperAttack { get; set; }
 }
 
 public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -82,6 +88,8 @@ public sealed class DuelMove
         DuelMoveKind.EffectDamage => game.ResolveEffectDamage(actor),
         DuelMoveKind.Totem => game.ResolveTotem(actor, Flag),
         DuelMoveKind.GoldenTotem => game.ResolveGoldenTotem(actor, Discards),
+        DuelMoveKind.TrapCraft => game.ResolveTrapCraft(actor, Flag),
+        DuelMoveKind.ZahiraTarget => game.ResolveZahiraTarget(actor, Target, (FieldZone)Value, Index),
         DuelMoveKind.ComboResponses => game.SetComboResponses(actor, Flag),
         _ => CommandResult.Fail("Jugada desconocida.")
     };

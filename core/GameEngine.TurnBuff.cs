@@ -110,6 +110,6 @@ public sealed partial class GameEngine
         State.PendingAttackRoll = pending.AttackRoll; State.PendingDieRoll = pending.DieRoll; _pendingDieEffect = pending.DieEffect;
         State.PendingCode = pending.Code; State.PendingPoints = pending.Points; State.DestroyActor = pending.DestroyActor;
         State.PendingMindReset = pending.MindReset; State.PendingRelikia = pending.Relikia; State.CorruptionsRemaining = pending.Corruptions;
-        CompleteAttackIfReady(); CompleteEndTurnIfReady();
+        CompletePendingPlay();
     }
 }

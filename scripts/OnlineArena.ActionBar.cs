@@ -149,6 +149,10 @@ public partial class OnlineArena
         // Responses must remain visible even with no hand card (or another card) selected.
         if (s.Phase == Phase.ErrorResponse)
             indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
+        else if (s.Phase == Phase.TrapCraftChoice)
+            indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.TrapCraft).ToList();
+        else if (s.Phase == Phase.ZahiraTarget)
+            indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.ZahiraTarget).ToList();
         else if (ChoosingEffectCards)
             indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i])).ToList();
         else if (_fieldSelection is { } field)
@@ -170,11 +174,12 @@ public partial class OnlineArena
                 indices = _pointsTarget.HasValue ? indices.Where(i => s.Options[i].Move.Target == _pointsTarget).ToList() : [];
         }
         var chooseAttackSkill = !_choosingAttackSkill && _selectedSkill < 0 && SelectedAttacks().Any();
-        var handActions = s.Phase != Phase.ErrorResponse && !ChoosingEffectCards && !ChoosingRecycling &&
+        var cardAnchoring = s.Phase is not (Phase.ErrorResponse or Phase.TrapCraftChoice or Phase.ZahiraTarget);
+        var handActions = cardAnchoring && !ChoosingEffectCards && !ChoosingRecycling &&
             !_skillContext && _fieldSelection == null && _selected.Count == 1;
         if (handActions)
             _cardActionAnchor = _handCards.ElementAtOrDefault(_selected.Single());
-        else if (s.Phase != Phase.ErrorResponse && _fieldSelection is { } target)
+        else if (cardAnchoring && _fieldSelection is { } target)
             _cardActionAnchor = FieldActionAnchor(target);
         else if (_skillContext && indices.Any(i => s.Options[i].Move.Kind == DuelMoveKind.ProtectDestruction))
             _cardActionAnchor = _ownSkills.FirstOrDefault(tile => tile.SkillIndex == _selectedSkill && tile.Skill != null);
@@ -182,7 +187,8 @@ public partial class OnlineArena
         // A pending die has one principal action and one menu of real modifiers.
         var die = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && !s.Options[i].Move.Flag).ToArray();
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
-            DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense, -1);
+            DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
+            s.Options[i].Move.Kind == DuelMoveKind.TrapCraft && s.Options[i].Move.Flag, -1);
         if (main < 0 && die.Length > 0) main = die[0];
         if (die.Length > 0)
         {
@@ -307,6 +313,8 @@ public partial class OnlineArena
             {
                 Phase.ErrorResponse => CardCatalog.LoadError.Id,
                 Phase.GoldenTotemChoice => CardCatalog.GoldenTotem.Id,
+                Phase.TrapCraftChoice => s.TrapCardId,
+                Phase.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
                 Phase.TurnBuffDiscard => s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id,
                 _ => null
             } : null;
@@ -320,10 +328,12 @@ public partial class OnlineArena
         int? counters = null;
         if (_fieldSelection is { Zone: FieldZone.Skill } field)
             counters = s.Players[field.Owner].Counters.ElementAtOrDefault(field.Index);
+        else if (activation == null && _fieldSelection is { Zone: FieldZone.Equipment } equipment && card?.Id == CardCatalog.SuperMagnet.Id)
+            counters = s.Players[equipment.Owner].EquipmentCounters;
         else if (_skillContext && _selectedSkill >= 0)
             counters = s.Players[s.MySeat].Counters.ElementAtOrDefault(_selectedSkill);
         var title = _preparing ? card?.Name ?? (_choosingOpeningSkill ? "Elige una habilidad" : "Mano inicial") : ContextTitle();
-        var cost = _preparing ? "" : _selectionCost;
+        var cost = _preparing ? "" : s.Phase == Phase.TrapCraftChoice && activation != null ? ArenaActionText.CardCost(card!) : _selectionCost;
         if (activation == null && _inspectorPreview is { } preview && (preview.Card != card || preview.Counters != counters))
         {
             card = preview.Card; title = card.Name; counters = preview.Counters;
@@ -347,6 +357,8 @@ public partial class OnlineArena
         var s = _snapshot!;
         if (s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name;
         if (s.Phase == Phase.GoldenTotemChoice && s.DecisionPlayer == s.MySeat) return "Tótem de Oro";
+        if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget && InspectorActivationId() is { } trap)
+            return CardCatalog.Get(trap).Name;
         if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.LoadError.Name;
         var id = SelectedCardId(); if (id != null) return CardCatalog.Get(id).Name;
         if (s.Winner != null) return "Duelo terminado";
@@ -370,6 +382,7 @@ public partial class OnlineArena
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return "Anula la activación o deja que se resuelva.";
+        if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return ArenaGuidance.Instruction(s);
         if (ChoosingRecycling) return $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas elegidas. " + (_selected.Count == s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards ? "Confirma para reciclar." : "Elige las cartas que faltan.");
         if (s.Phase == Phase.GoldenTotemChoice && myTurn) return $"Elige hasta dos Tótems · {_selected.Count}/2 seleccionados.";
         if (s.Phase == Phase.TurnBuffDiscard && myTurn) return $"Descarta {s.ActivationDiscardsRemaining} carta(s) para completar la activación · " + (_selected.Count == 1 ? CardCatalog.Get(SelectableCards[_selected.Single()]!).Name : "elige una carta");

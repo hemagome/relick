@@ -9,10 +9,10 @@ public sealed partial class GameEngine
     {
         if (ValidateTurn(actor, Phase.Combat) != null || _activeActivation != null) yield break;
         var p = State.Players[actor];
-        if (p.Bonus is { } bonus && CardCatalog.Get(bonus).FieldCombatDie && !p.BonusEffectUsed)
+        if (p.Bonus is { } bonus && CardCatalog.Get(bonus).FieldCombatDie && !p.BonusEffectUsed && !EffectsSuppressed(actor, FieldZone.Bonus))
             yield return new(actor, FieldZone.Bonus, -1, bonus);
         for (var index = 0; index < p.Exchange.Count; index++)
-            if (CardCatalog.Get(p.Exchange[index]).FieldCombatDie && !(p.ExchangeEffectsUsed?.Contains(index) ?? false))
+            if (CardCatalog.Get(p.Exchange[index]).FieldCombatDie && !(p.ExchangeEffectsUsed?.Contains(index) ?? false) && !EffectsSuppressed(actor, FieldZone.Exchange, index))
                 yield return new(actor, FieldZone.Exchange, index, p.Exchange[index]);
     }
 

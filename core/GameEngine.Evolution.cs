@@ -27,7 +27,10 @@ public sealed partial class GameEngine
         p.Relikia -= next.EvolutionCost;
         p.Relikario = next;
         var previousHealth = p.Health;
-        p.Health = Math.Min(p.MaxHealth, p.Health + next.EvolutionHealing);
+        if (!EffectsSuppressed(actor, FieldZone.Relikario)) p.Health = Math.Min(p.MaxHealth, p.Health + next.EvolutionHealing);
+        for (var owner = 0; owner < State.Players.Length; owner++)
+            if (State.Players[owner].ZahiraHost is { Zone: FieldZone.Relikario } host && host.Owner == actor)
+                State.Players[owner].ZahiraHost = host with { CardId = next.Id };
         // Evolution does not refresh an ability already used during this turn.
         Log($"{p.Name} evoluciona a {p.Relikario.Name} Lv {p.Level}: paga {next.EvolutionCost} PR, recupera {p.Health - previousHealth} vida(s), hasta el máximo de {p.MaxHealth} de su nivel 1.");
         return CommandResult.Ok();
@@ -45,11 +48,13 @@ public sealed partial class GameEngine
 
     private void RollWithRelikario(PlayerState p, DiePurpose purpose, DieEffect effect)
     {
-        var die = Roll(purpose == DiePurpose.QuickLoad ? "Carga Rápida · Robo o descarte" : purpose == DiePurpose.FieldCombat ? "Jessica Lee · Efecto de canje/Bonus" : purpose == DiePurpose.SkillLearning ? "Reverse Shuffle · Aprendizaje" : purpose == DiePurpose.PcStore ? "PC 8BITS · Valor guardado" : purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
-        if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(Array.IndexOf(State.Players, p)) || (p.Relikario.CanRerollAnyDie && !p.AttackRerollUsedThisTurn && die != 1) || p.Equipment == CardCatalog.Pendant.Id || HasRerollCombo(Array.IndexOf(State.Players, p)) || (p.Equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
+        var actor = Array.IndexOf(State.Players, p);
+        var equipment = ActiveEquipment(actor)?.Id;
+        var die = Roll(purpose == DiePurpose.Zahira ? "Zahira Flair · Etapa final" : purpose == DiePurpose.QuickLoad ? "Carga Rápida · Robo o descarte" : purpose == DiePurpose.FieldCombat ? "Jessica Lee · Efecto de canje/Bonus" : purpose == DiePurpose.SkillLearning ? "Reverse Shuffle · Aprendizaje" : purpose == DiePurpose.PcStore ? "PC 8BITS · Valor guardado" : purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
+        if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
         {
             _pendingDieEffect = effect;
-            State.PendingDieRoll = new(Array.IndexOf(State.Players, p), purpose, die, State.Phase);
+            State.PendingDieRoll = new(actor, purpose, die, State.Phase);
             State.Phase = Phase.DieRerollChoice;
         }
         else

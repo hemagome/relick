@@ -4,7 +4,7 @@ public sealed partial class GameEngine
 {
     public bool CanCancelAttackWithBox(int actor) => actor >= 0 && actor < State.Players.Length &&
         State.Phase == Phase.DefenseChoice && State.DecisionPlayer == actor && State.PendingAttack?.Damage > 0 &&
-        State.Players[actor].Equipment == CardCatalog.CardboardBox.Id;
+        ActiveEquipment(actor)?.Id == CardCatalog.CardboardBox.Id;
 
     public CommandResult CancelAttackWithBox(int actor)
     {
@@ -25,7 +25,7 @@ public sealed partial class GameEngine
 
     private void ActivateCodeAfterErrors(int actor, CardDefinition card, bool fromMemory, int memoryIndex)
     {
-        if (card.CodeType == CodeType.Object && State.Players[1 - actor].Equipment == CardCatalog.CardboardBox.Id)
+        if (card.CodeType == CodeType.Object && ActiveEquipment(1 - actor)?.Id == CardCatalog.CardboardBox.Id)
         {
             State.PendingCode = new(actor, card.Id, fromMemory, memoryIndex, State.Phase);
             State.Phase = Phase.CodeResponse;
@@ -44,7 +44,7 @@ public sealed partial class GameEngine
             return CommandResult.Fail("No te corresponde responder a este código.");
         var pending = State.PendingCode;
         var card = CardCatalog.Get(pending.CardId);
-        if (cancel && (State.Players[actor].Equipment != CardCatalog.CardboardBox.Id || card.Kind != CardKind.Code || card.CodeType != CodeType.Object))
+        if (cancel && (ActiveEquipment(actor)?.Id != CardCatalog.CardboardBox.Id || card.Kind != CardKind.Code || card.CodeType != CodeType.Object))
             return CommandResult.Fail("Caja de Cartón solo puede cancelar códigos de tipo objeto.");
         State.Phase = pending.ResumePhase;
         if (cancel)

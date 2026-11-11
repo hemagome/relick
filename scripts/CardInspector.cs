@@ -13,8 +13,11 @@ internal static class CardInspectorText
             CardKind.Skill => card.Id == CardCatalog.Magnet.Id || card.Id == CardCatalog.Destiny.Id ? "Habilidad · Yuno" : "Habilidad",
             CardKind.Code => card.CodeType switch
             {
-                CodeType.Character => "Código Personaje", CodeType.Object => "Código Objeto", CodeType.Play => "Código Jugada", _ => "Código"
+                CodeType.Character => "Código Personaje", CodeType.Object => "Código Objeto", CodeType.Play => "Código Jugada",
+                CodeType.Trap when card.Id == CardCatalog.SuperMagnet.Id => "Código Trampa · Equipo",
+                CodeType.Trap => "Código Trampa", _ => "Código"
             },
+            CardKind.Attack when card.CodeType == CodeType.Trap => "Código Trampa · Ataque",
             CardKind.Equipment => "Equipo", CardKind.Attack => "Ataque", _ => BoardArt.CardType(card)
         };
         return card.IsCombo ? type + " · COMBO" : type;
@@ -122,7 +125,13 @@ public partial class CardInspector : PanelContainer
             _attributeValues[1].Text = card.CriticalDamageAt(counters ?? 0).ToString();
             _attributeValues[2].Text = card.Reward + " PR";
         }
-        CounterLabel.Text = counters.HasValue && card?.Id == CardCatalog.Destiny.Id ? $"Contadores: {counters}/2" : "";
+        var counterLimit = card?.Id switch
+        {
+            var id when id == CardCatalog.Destiny.Id => 2,
+            var id when id == CardCatalog.SuperMagnet.Id => CardCatalog.SuperMagnetCounterLimit,
+            _ => 0
+        };
+        CounterLabel.Text = counters.HasValue && counterLimit > 0 ? $"Contadores: {counters}/{counterLimit}" : "";
         CounterLabel.Visible = CounterLabel.Text.Length > 0;
         CostLabel.Text = cost; _cost.Visible = cost.Length > 0;
         SetHint(hint);

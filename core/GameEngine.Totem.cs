@@ -11,13 +11,21 @@ public sealed class PendingTotemDamage
 
 public sealed partial class GameEngine
 {
-    private bool HasStackedTotem(int actor) => State.Players[actor].Equipment == CardCatalog.Totem.Id &&
-        State.Players[actor].EquipmentStackedCopies > 0;
+    private IEnumerable<int> ActiveTotems(int actor)
+    {
+        var p = State.Players[actor];
+        return p.Equipment == CardCatalog.Totem.Id
+            ? Enumerable.Range(0, p.EquipmentStackedCopies + 1).Where(index => !EffectsSuppressed(actor, FieldZone.Equipment, index))
+            : [];
+    }
+
+    private bool HasStackedTotem(int actor) => ActiveTotems(actor).Count() > 1;
 
     private bool TryTotemDamage(int target, int amount, int attackDie, EngineContinuation? completed)
     {
         var p = State.Players[target];
-        if (p.Equipment != CardCatalog.Totem.Id) return false;
+        var active = ActiveTotems(target).ToArray();
+        if (active.Length == 0) return false;
         if (amount >= p.Health)
         {
             State.PendingTotemDamage = new()
@@ -26,9 +34,9 @@ public sealed partial class GameEngine
             State.LastCombat += $" · {p.Name}: puedes destruir un Tótem de Salvación para cancelar {amount} de daño.";
             return true;
         }
-        if (!HasStackedTotem(target)) return false;
+        if (active.Length < 2) return false;
         DestroyEquipment(p, new EngineContinuation
-            { Kind = ContinuationKind.ApplyDamage, Actor = target, Count = amount, Value = attackDie, Next = completed });
+            { Kind = ContinuationKind.ApplyDamage, Actor = target, Count = amount, Value = attackDie, Next = completed }, active[^1]);
         return true;
     }
 
@@ -43,13 +51,13 @@ public sealed partial class GameEngine
         {
             State.LastCombat += " · Daño cancelado por Tótem de Salvación";
             Log($"{p.Name} cancela {pending.Amount} de daño destruyendo un Tótem de Salvación.");
-            DestroyEquipment(p, pending.Completed);
+            DestroyEquipment(p, pending.Completed, ActiveTotems(actor).Last());
         }
         else
         {
             var damage = new EngineContinuation { Kind = ContinuationKind.ApplyDamage, Actor = actor,
                 Count = pending.Amount, Value = pending.AttackDie, Next = pending.Completed };
-            if (HasStackedTotem(actor)) DestroyEquipment(p, damage);
+            if (HasStackedTotem(actor)) DestroyEquipment(p, damage, ActiveTotems(actor).Last());
             else Continue(damage);
         }
         CompleteActivationIfFinished();

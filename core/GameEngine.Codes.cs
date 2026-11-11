@@ -1,5 +1,5 @@
 namespace Relick.Core;
-public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover }
+public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover, Relikario, Zahira }
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
@@ -14,6 +14,8 @@ public sealed partial class GameEngine
             if (p.Equipment != null) yield return new(owner, FieldZone.Equipment, -1, p.Equipment);
             for (var i = 0; i < (p.EquipmentCovers?.Count ?? 0); i++)
                 yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
+            if (ZahiraRootZone(owner) is FieldZone.Equipment or FieldZone.EquipmentCover or FieldZone.Bonus)
+                yield return new(owner, FieldZone.Zahira, -1, CardCatalog.ZahiraFlair.Id);
             if (p.Bonus != null) yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
             if (p.Hand.Count > (owner == excludedOwner && excludedHand >= 0 ? 1 : 0))
                 yield return new(owner, FieldZone.Hand, -1, "");
@@ -40,10 +42,12 @@ public sealed partial class GameEngine
             for (var i = 0; i < p.Exchange.Count; i++)
                 if (CardCatalog.Get(p.Exchange[i]).Kind != CardKind.Skill)
                     yield return new(owner, FieldZone.Exchange, i, p.Exchange[i]);
+            if (p.ZahiraHost != null) yield return new(owner, FieldZone.Zahira, -1, CardCatalog.ZahiraFlair.Id);
         }
     }
     private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0, int excludedHand = -1)
     {
+        if (card.CodeType == CodeType.Trap) return "Este Código Trampa se crea mediante un canje.";
         if (State.PendingTotemDamage != null) return "Decide primero si cancelas el daño con Tótem de Salvación.";
         if (State.PendingGoldenTotem != null && !card.CancelActivation) return "Completa la colocación de Tótem de Oro.";
         if (card.DeployTotems && excludedHand < 0) return "Tótem de Oro no puede activarse con Relikia.";
@@ -87,6 +91,7 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Code) return "Elige un código.";
         var card = CardCatalog.Get(p.Hand[handIndex]);
+        if (State.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return "Completa la decisión del Código Trampa antes de jugar.";
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
             State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)))
             return "Activa las respuestas COMBO para responder con esta carta.";
@@ -112,7 +117,8 @@ public sealed partial class GameEngine
             id = p.Hand[index];
         }
         var chosen = target with { Index = index, CardId = id };
-        RequestDestruction(chosen, new EngineContinuation { Kind = ContinuationKind.FinishCodeDestruction, Actor = actor, Target = chosen, Text = codeName });
+        var completed = new EngineContinuation { Kind = ContinuationKind.FinishCodeDestruction, Actor = actor, Target = chosen, Text = codeName };
+        if (!TryReplaceOpponentFieldEffect(actor, chosen, completed)) RequestDestruction(chosen, completed);
         return CommandResult.Ok();
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
@@ -142,7 +148,7 @@ public sealed partial class GameEngine
                 Attack = attack, Die = effect, SavedDieEffect = continuation });
             return;
         }
-        var die = attack != null ? RollAttack(out _, "Re-lanza · COMBO") : Roll("Re-lanza · COMBO");
+        var die = attack != null ? RollAttack(out _, "Re-lanza · COMBO", superAttack: attack.SuperAttack) : Roll("Re-lanza · COMBO");
         if (attack != null) attack = attack with { Die = die, Modified = true, WasRerolled = true };
         if (effect != null) effect = effect with { Die = die, Modified = true, WasRerolled = true };
         State.PendingAttackRoll = null; State.PendingDieRoll = null; _pendingDieEffect = null;

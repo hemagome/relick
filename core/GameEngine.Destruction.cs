@@ -12,16 +12,20 @@ public sealed partial class GameEngine
     public IEnumerable<int> DestructionProtectors(int actor)
     {
         if (State.Phase != Phase.DestructionResponse || State.PendingDestruction?.Target.Owner != actor) return [];
-        var target = State.PendingDestruction.Target; var p = State.Players[actor];
-        return Enumerable.Range(0, p.Skills.Count).Where(slot => CardCatalog.Get(p.Skills[slot]).ProtectOwnCard &&
-            !(target.Zone == FieldZone.Skill && target.Index == slot));
+        return EligibleDestructionProtectors(State.PendingDestruction.Target);
     }
+
+    private IEnumerable<int> EligibleDestructionProtectors(FieldTarget target) =>
+        Enumerable.Range(0, State.Players[target.Owner].Skills.Count).Where(slot =>
+            CardCatalog.Get(State.Players[target.Owner].Skills[slot]).ProtectOwnCard &&
+            !EffectsSuppressed(target.Owner, FieldZone.Skill, slot) && !(target.Zone == FieldZone.Skill && target.Index == slot));
 
     private void RequestDestruction(FieldTarget target, EngineContinuation? completed = null)
     {
         if (State.IsOver) return;
         var p = State.Players[target.Owner];
-        var cover = p.EquipmentCovers?.LastIndexOf(CardCatalog.GoldenTotem.Id) ?? -1;
+        var cover = Enumerable.Range(0, p.EquipmentCovers?.Count ?? 0).LastOrDefault(index =>
+            p.EquipmentCovers![index] == CardCatalog.GoldenTotem.Id && !EffectsSuppressed(target.Owner, FieldZone.EquipmentCover, index), -1);
         if (target.Zone == FieldZone.Equipment && target.CardId == CardCatalog.Totem.Id &&
             cover >= 0)
         {
@@ -29,8 +33,7 @@ public sealed partial class GameEngine
                 new EngineContinuation { Kind = ContinuationKind.GoldenTotemReplacement, Actor = target.Owner, Next = completed });
             return;
         }
-        if (p.Skills.Select((id, slot) => (id, slot)).Any(c => CardCatalog.Get(c.id).ProtectOwnCard &&
-            !(target.Zone == FieldZone.Skill && target.Index == c.slot)))
+        if (EligibleDestructionProtectors(target).Any())
         {
             State.PendingDestruction = new() { Target = target, ResumePhase = State.Phase, Completed = completed };
             State.Phase = Phase.DestructionResponse;
@@ -68,30 +71,34 @@ public sealed partial class GameEngine
         var p = State.Players[target.Owner];
         switch (target.Zone)
         {
-            case FieldZone.Equipment: DestroyEquipmentNow(p); return;
+            case FieldZone.Equipment: DestroyEquipmentNow(p, target.Index); return;
+            case FieldZone.Zahira: RemoveZahira(target.Owner); return;
             case FieldZone.EquipmentCover:
+                ChangeZahiraHosts(target.Owner, target.Zone, target.Index);
                 p.EquipmentCovers!.RemoveAt(target.Index);
                 if (p.EquipmentCovers.Count == 0) p.EquipmentCovers = null;
                 break;
             case FieldZone.Hand: SendHandToMemory(p, target.Index); return;
             case FieldZone.Skill: RemoveLearnedSkill(target.Owner, target.Index); return;
-            case FieldZone.Attached: p.AttachedCards.RemoveAt(target.Index); break;
+            case FieldZone.Attached:
+                ChangeZahiraHosts(target.Owner, target.Zone, target.Index); p.AttachedCards.RemoveAt(target.Index); break;
             case FieldZone.Exchange:
+                ChangeZahiraHosts(target.Owner, target.Zone, target.Index);
                 ForgetFieldCodeSource(p, FieldZone.Exchange, target.Index); p.Exchange.RemoveAt(target.Index);
                 ShiftExchangeEffects(p, target.Index, 1); break;
-            case FieldZone.Bonus: ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = null; break;
+            case FieldZone.Bonus:
+                ChangeZahiraHosts(target.Owner, target.Zone, -1); ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = null; break;
         }
-        NotifyPileMove(p, target.CardId, target.Zone switch
+        SendToMemory(p, target.CardId, target.Zone switch
         {
             FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, FieldZone.EquipmentCover => CardZone.EquipmentCover, _ => CardZone.Attached
         }, target.Index);
-        p.Memory.Add(target.CardId);
     }
 
-    private void DestroyEquipment(PlayerState p, EngineContinuation? completed = null)
+    private void DestroyEquipment(PlayerState p, EngineContinuation? completed = null, int index = -1)
     {
         if (p.Equipment == null) { Continue(completed); return; }
-        RequestDestruction(new(Array.IndexOf(State.Players, p), FieldZone.Equipment, -1, p.Equipment), completed);
+        RequestDestruction(new(Array.IndexOf(State.Players, p), FieldZone.Equipment, index, p.Equipment), completed);
     }
 
     private void DestroyAttackOneEquipment(int owner, EngineContinuation? completed)
@@ -100,7 +107,7 @@ public sealed partial class GameEngine
         var p = State.Players[owner];
         var next = owner + 1 < State.Players.Length
             ? new EngineContinuation { Kind = ContinuationKind.AttackOneEquipment, Actor = owner + 1, Next = completed } : completed;
-        if (p.Equipment is { } id && CardCatalog.Get(id).DestroyOnAttackOne) DestroyEquipment(p, next);
+        if (ActiveEquipment(owner)?.DestroyOnAttackOne == true) DestroyEquipment(p, next);
         else Continue(next);
     }
 
@@ -116,7 +123,8 @@ public sealed partial class GameEngine
         var card = target.Zone == FieldZone.Hand ? "una carta de la mano" : CardCatalog.Get(target.CardId).Name;
         Log(next.Prevented ? $"{next.Text}: la carta original queda protegida por una sustitución." :
             $"{State.Players[next.Actor].Name} destruye {card} de {State.Players[target.Owner].Name} con {next.Text}.");
-        State.DestroyActor = null; State.Phase = Phase.Actions; CompleteActivationIfFinished();
+        State.DestroyActor = null; State.Phase = Phase.Actions;
         if (!next.Prevented && target.Zone == FieldZone.Bonus) RefillBonus(State.Players[target.Owner]);
+        CompleteActivationIfFinished();
     }
 }

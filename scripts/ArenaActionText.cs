@@ -48,6 +48,7 @@ internal static class ArenaActionText
         DuelMoveKind.Sniper => option.Move.Flag ? "Equipar" : "Canjear",
         DuelMoveKind.Totem => option.Move.Flag ? "Cancelar daño" : "Recibir daño",
         DuelMoveKind.GoldenTotem => "Colocar",
+        DuelMoveKind.TrapCraft => option.Label,
         DuelMoveKind.Relikia => option.Move.Value == (int)RelikiaEffect.ReplayCode ? "Activar" : RelikiaEffects.Get((RelikiaEffect)option.Move.Value).Name,
         DuelMoveKind.Evolve => "Evolucionar",
         DuelMoveKind.Concede => "Abandonar duelo",
@@ -59,6 +60,9 @@ internal static class ArenaActionText
 
     public static string CardCost(CardDefinition card) => card.Kind switch
     {
+        CardKind.Attack when card.Id == CardCatalog.SuperAttack.Id => "Canje de dos Ataques",
+        CardKind.Code when card.Id == CardCatalog.SuperMagnet.Id => "Canje de un Equipo y otra carta",
+        CardKind.Code when card.Id == CardCatalog.ZahiraFlair.Id => "Canje de dos Personajes",
         CardKind.Code => Resources(card.ActionCost, card.PrCost, card.DiscardCost),
         CardKind.Equipment => "1 acción", CardKind.Attack => "Consume 1 Ataque",
         CardKind.Skill => "Según el espacio de habilidad elegido", _ => ""
@@ -82,7 +86,8 @@ internal static class ArenaActionText
                 return Resources(effect.Actions, effect.Cost + (effect.Id == RelikiaEffect.ReplayCode ? CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]).PrCost : 0),
                     effect.Id == RelikiaEffect.ReplayCode ? CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]).DiscardCost : 0);
             case DuelMoveKind.FieldCode: case DuelMoveKind.Sniper: return "Sin coste adicional";
-            case DuelMoveKind.Attack: return "Consume 1 Ataque";
+            case DuelMoveKind.Attack: return HandCard(option, s)?.Id == CardCatalog.SuperAttack.Id
+                ? "Consume Súper Ataque" : "Consume 1 Ataque";
             case DuelMoveKind.Dexterity: return "Consume 1 ficha";
             case DuelMoveKind.Pc: case DuelMoveKind.Pendant: case DuelMoveKind.BoxDefense: return "Destruye el equipo";
             case DuelMoveKind.CodeResponse when m.Flag: return "Destruye Caja de Cartón";

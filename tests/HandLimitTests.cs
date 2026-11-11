@@ -72,6 +72,7 @@ static class HandLimitTests
                     g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
                     Check(g.ResolveRecycling(0, [0, 1]).Success);
                 }
+                Check(g.State.Phase == Phase.TrapCraftChoice && g.ResolveTrapCraft(0, false).Success);
                 Check(g.State.Phase == Phase.Final && p.ActionsLeft == 0);
                 Check(g.Discard(0, p.Hand.IndexOf("senshuni")).Success && p.Hand.Count == 7 && g.State.CurrentPlayer == 1);
             }

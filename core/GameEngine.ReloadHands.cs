@@ -18,14 +18,16 @@ public sealed partial class GameEngine
         // Freeze both hands before any discard trigger can draw, equip or complete a canje.
         foreach (var owner in new[] { actor, 1 - actor })
         {
-            var p = State.Players[owner]; var cards = p.Hand.ToArray(); var start = p.Memory.Count;
+            var p = State.Players[owner];
+            var cards = p.Hand.Where(id => CardCatalog.Get(id).CodeType != CodeType.Trap).ToArray();
+            var start = p.Memory.Count;
             for (var i = 0; i < cards.Length; i++)
             {
                 if (CardCatalog.Get(cards[i]).EquipOnDiscard) pending.SniperIndices[owner].Add(start + i);
             }
-            if (cards.Length > 0) HandDiscarded?.Invoke(owner, cards.Length);
+            if (p.Hand.Count > 0) HandDiscarded?.Invoke(owner, p.Hand.Count);
+            Log($"{p.Name} descarta su mano de {p.Hand.Count} carta(s) por Cartucho de Re-carga.");
             p.Hand.Clear(); p.HideHandCards(); p.Memory.AddRange(cards);
-            Log($"{p.Name} descarta su mano de {cards.Length} carta(s) por Cartucho de Re-carga.");
         }
         State.Phase = Phase.ReloadResolving;
         ContinueReloadHands();
@@ -61,6 +63,7 @@ public sealed partial class GameEngine
                 State.PendingReload = null; State.Phase = Phase.Actions; _activeActivation = frame.Parent;
                 State.LastCombat = "Cartucho de Re-carga · Ambos jugadores han robado 4 cartas.";
                 Log(State.LastCombat);
+                CompletePendingPlay();
             }
         }
     }

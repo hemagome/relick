@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -22,6 +22,8 @@ public sealed class DieEffect
     public DiePurpose Purpose { get; set; }
     public int Actor { get; set; }
     public int AttackDie { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int AttackDamageBonus { get; set; }
     public string SkillId { get; set; } = "";
     public bool Rerolled { get; set; }
     public EngineContinuation? Next { get; set; }
@@ -54,7 +56,7 @@ public sealed partial class GameEngine
     private void Continue(EngineContinuation? next)
     {
         if (State.IsOver) return;
-        if (next == null) { CompleteAttackIfReady(); CompleteEndTurnIfReady(); return; }
+        if (next == null) { CompletePendingPlay(); return; }
         var p = State.Players[next.Actor];
         switch (next.Kind)
         {
@@ -69,6 +71,9 @@ public sealed partial class GameEngine
             case ContinuationKind.BoxCode: FinishBoxCode(next.Actor); break;
             case ContinuationKind.EquipInstall: FinishEquipmentInstall(); break;
             case ContinuationKind.ReplaceEquipment: ReplaceEquipment(next); break;
+            case ContinuationKind.PlaceSuperMagnet: FinishSuperMagnetPlacement(next.Actor); break;
+            case ContinuationKind.PlaceZahira: FinishZahiraPlacement(next); break;
+            case ContinuationKind.FinishZahiraDestruction: FinishZahiraDestruction(next); break;
             case ContinuationKind.GoldenTotemPlacement: ContinueGoldenTotemPlacement(next); break;
             case ContinuationKind.GoldenTotemReplacement:
                 if (next.Next != null) next.Next.Prevented = true;
@@ -99,8 +104,7 @@ public sealed partial class GameEngine
             case ContinuationKind.ResumeMindReset:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
                 if (State.Phase == Phase.MemoryRecoveryChoice && _activeActivation is { } recovery) BeginMemoryRecovery(recovery.Actor);
-                CompleteAttackIfReady();
-                CompleteEndTurnIfReady();
+                CompletePendingPlay();
                 break;
             case ContinuationKind.ResumeCombo:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
@@ -116,6 +120,7 @@ public sealed partial class GameEngine
         switch (effect.Purpose)
         {
             case DiePurpose.QuickLoad: ResolveQuickLoadDie(effect.Actor, die); break;
+            case DiePurpose.Zahira: ResolveZahiraDie(effect.Actor, die); break;
             case DiePurpose.FieldCombat: ResolveFieldCombatDie(effect, die); break;
             case DiePurpose.SkillLearning:
                 Log($"{p.Name} resuelve el aprendizaje de Reverse Shuffle: D6 = {die}, roba {(die + 1) / 2} carta(s).");
@@ -144,7 +149,7 @@ public sealed partial class GameEngine
                 break;
             case DiePurpose.MagnetDamage:
                 Log($"{p.Name} lanza D6 por el daño normal de Magnet Shuffle: {die}.");
-                ResolveAttackResult(effect.Actor, CardCatalog.Get(effect.SkillId), effect.AttackDie, die, effect.Rerolled); break;
+                ResolveAttackResult(effect.Actor, CardCatalog.Get(effect.SkillId), effect.AttackDie, die, effect.Rerolled, attackDamageBonus: effect.AttackDamageBonus); break;
             case DiePurpose.PointsChange:
                 var points = die switch { 1 => 300, 2 => 400, 3 or 4 => 500, 5 => 1000, _ => 1500 };
                 State.PendingPoints = new(effect.Actor, die, points); State.Phase = Phase.PointsChoice;

@@ -1,7 +1,7 @@
 namespace Relick.Core;
 
-// Legacy MVP subtypes. Target taxonomy and unresolved card mappings: docs/CARD_TAXONOMY.md.
-public enum CodeType { None, Character, Object, Play }
+// Subtypes referenced by the official rules and by effects such as Caja de Cartón.
+public enum CodeType { None, Character, Object, Play, Trap }
 
 public enum CardKind { Attack, Skill, Code, Attachment, Equipment }
 
@@ -22,6 +22,16 @@ public sealed record CardDefinition(
 
 public static class CardCatalog
 {
+    public static readonly CardDefinition SuperAttack = new("super-attack", "Súper Ataque", CardKind.Attack,
+        "Canjea dos Ataques para crearlo en tu mano. Se considera un Ataque y no cuesta acción. Al atacar con esta carta, suma +2 al D6 de ataque (máximo 5) y +2 al daño del ataque.",
+        CodeType: CodeType.Trap, ActionCost: 0, DamageBonus: 2);
+    public static readonly CardDefinition ZahiraFlair = new("zahira-flair", "Zahira Flair", CardKind.Code,
+        "Canjea dos Personajes. Colócala encima de una carta en el campo, que pierde sus efectos. En la etapa final del adversario, su dueño lanza 1D6. 1–2: destruye Zahira Flair. 3–4: muévela encima de otra carta del campo. 5–6: el Relikario debajo pierde 2 vidas, o se destruye la otra carta que esté debajo.",
+        CodeType: CodeType.Trap, ActionCost: 0);
+    public static readonly CardDefinition SuperMagnet = new("super-magnet", "Súper Imán", CardKind.Code,
+        "Canjea un Equipo y cualquier otra carta para crearlo en la zona de equipos. Se considera un equipo. Cuando un efecto rival vaya a afectar una o más de tus cartas en el campo, sustituye ese efecto por colocar 1 contador sobre Súper Imán. Con 3 o más contadores, destruye esta carta. Si sale del campo, queda fuera del juego.",
+        CodeType: CodeType.Trap, ActionCost: 0);
+    public const int SuperMagnetCounterLimit = 3;
     public static readonly CardDefinition GoldenTotem = new("golden-totem", "Tótem de Oro", CardKind.Code,
         "Muestra hasta 2 Tótems de Salvación de tu mano y colócalos en la zona de equipos. Coloca esta carta encima de tu equipo. Necesita al menos un equipo debajo. Si un Tótem de Salvación equipado fuera a ser destruido, destruye esta carta en su lugar. No puede activarse con Relikia.",
         CodeType: CodeType.Character, DeployTotems: true);
@@ -107,7 +117,7 @@ public static class CardCatalog
         "COMBO. Antes de que un código ejecute su efecto o un equipo se equipe: cancela su activación y envíalo a memoria. La activación anulada recupera sus costes.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Reverse, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem }.ToDictionary(c => c.Id);
+        new[] { Attack, Magnet, Destiny, Reverse, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 

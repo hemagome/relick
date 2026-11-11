@@ -14,7 +14,8 @@ public static class BoardArt
     public static Color CardColor(CardDefinition? card) => card?.Kind switch
     {
         CardKind.Attack => new("ef7890"), CardKind.Skill => new("5ed6b3"),
-        CardKind.Attachment => new("b5a2fa"), CardKind.Equipment => new("81c8ef"), _ => Gold
+        CardKind.Attachment => new("b5a2fa"), CardKind.Equipment => new("81c8ef"),
+        CardKind.Code when card.CodeType == CodeType.Trap => new("ef7890"), _ => Gold
     };
     public static GameIcon CardIcon(CardDefinition? card) => card?.Kind switch
     {
@@ -24,7 +25,13 @@ public static class BoardArt
     };
     public static string CardType(CardDefinition card) => card.Kind switch
     {
-        CardKind.Attack => "ATAQUE", CardKind.Skill => "HABILIDAD", CardKind.Code => card.CodeType == CodeType.Play ? "CÓDIGO · JUGADA" : card.CodeType == CodeType.Object ? "CÓDIGO · OBJETO" : card.CodeType == CodeType.Character ? "CÓDIGO · PERSONAJE" : "CÓDIGO",
+        CardKind.Attack when card.CodeType == CodeType.Trap => "CÓDIGO TRAMPA · ATAQUE",
+        CardKind.Attack => "ATAQUE", CardKind.Skill => "HABILIDAD",
+        CardKind.Code => card.CodeType switch
+        {
+            CodeType.Play => "CÓDIGO · JUGADA", CodeType.Object => "CÓDIGO · OBJETO",
+            CodeType.Character => "CÓDIGO · PERSONAJE", CodeType.Trap => "CÓDIGO TRAMPA", _ => "CÓDIGO"
+        },
         CardKind.Attachment => "SOBRE EL RELIKARIO", _ => "EQUIPO"
     };
     public static Color Tint(Color color, float alpha) => new(color.R, color.G, color.B, alpha);
@@ -580,8 +587,8 @@ public partial class HandCard : Button
     public override void _Ready()
     {
         if (Card.Kind == CardKind.Attack)
-            _artwork = GD.Load<Texture2D>("res://assets/cards/attack-clean.png")
-                ?? throw new InvalidOperationException("No se pudo cargar la ilustración de ataque.");
+            _artwork = BoardArt.LoadCardArtwork(Card) ?? BoardArt.LoadCardArtwork(CardCatalog.Attack)
+                ?? throw new InvalidOperationException($"No se pudo cargar la ilustración de {Card.Name}.");
         if (Card.Kind is CardKind.Equipment or CardKind.Code) _artwork = GD.Load<Texture2D>($"res://assets/cards/{Card.Id}-clean.png");
         if (Card.Kind == CardKind.Skill) _artwork = SkillArtwork.Load(Card);
         CustomMinimumSize = new Vector2(126, 184) * PresentationScale;

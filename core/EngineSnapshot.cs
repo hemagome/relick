@@ -56,6 +56,11 @@ public sealed partial class GameEngine
     {
         var saved = JsonSerializer.Deserialize(json, EngineJson.Default.EngineSnapshot) ?? throw new InvalidOperationException("Estado de partida vacío.");
         if (saved.FormatVersion != 1 || saved.State.Players.Length != 2) throw new InvalidOperationException("Formato de estado no compatible.");
+        if (saved.State.PendingTrapCrafts is { } oldCrafts)
+        {
+            saved.State.TrapCraftQueue ??= oldCrafts.Select(actor => new TrapCraft(actor, CardCatalog.SuperMagnet.Id)).ToList();
+            saved.State.PendingTrapCrafts = null;
+        }
         // Earlier saves stored Yuno Lv 2 with ten maximum lives. Restore its corrected cap.
         foreach (var player in saved.State.Players)
             if (player.Relikario.Id == RelikarioCatalog.YunoLv2.Id)

@@ -8,6 +8,9 @@ static class SimulationDriver
         var s = game.State;
         if (s.IsOver || s.DecisionPlayer != actor) return CommandResult.Fail("El rival no puede jugar ahora.");
         var p = s.Players[actor];
+        if (s.Phase == Phase.TrapCraftChoice) return game.ResolveTrapCraft(actor, true);
+        if (s.Phase == Phase.ZahiraTarget)
+            return DuelOptions.For(game, actor).First(o => o.Move.Kind == DuelMoveKind.ZahiraTarget).Move.Apply(game, actor);
         if (s.Phase == Phase.GoldenTotemChoice)
             return game.ResolveGoldenTotem(actor, p.Hand.Select((id, index) => (id, index)).Where(c => c.id == CardCatalog.Totem.Id).Take(2).Select(c => c.index));
         if (s.Phase == Phase.TotemChoice) return game.ResolveTotem(actor, true);
@@ -94,7 +97,7 @@ static class SimulationDriver
                 var learn = p.Hand.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Skill);
                 if (learn >= 0 && p.Relikia >= game.SkillCost(p)) return game.Learn(actor, learn);
             }
-            var attack = p.Hand.IndexOf(CardCatalog.Attack.Id);
+            var attack = p.Hand.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Attack);
             if (game.CanAttack(actor))
             {
                 var best = Enumerable.Range(0, p.Skills.Count)

@@ -4,8 +4,7 @@ public enum PendantEffect { Reroll, AddOne, AddTwo }
 
 public sealed partial class GameEngine
 {
-    private int DamageWithEquipmentBonus(int actor, int damage) => damage +
-        (State.Players[actor].Equipment is { } id ? CardCatalog.Get(id).DamageBonus : 0);
+    private int DamageWithEquipmentBonus(int actor, int damage) => damage + (ActiveEquipment(actor)?.DamageBonus ?? 0);
     public CommandResult Equip(int actor, int handIndex)
     {
         var error = ValidateAction(actor);
@@ -51,20 +50,23 @@ public sealed partial class GameEngine
         CompleteActivationIfFinished();
     }
 
-    private void DestroyEquipmentNow(PlayerState p)
+    private void DestroyEquipmentNow(PlayerState p, int index)
     {
         if (p.Equipment == null) return;
         var id = p.Equipment;
-        NotifyPileMove(p, id, CardZone.Equipment);
+        var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
+        ChangeZahiraHosts(Array.IndexOf(State.Players, p), FieldZone.Equipment, index < 0 ? p.EquipmentStackedCopies : index);
+        NotifyPileMove(p, id, CardZone.Equipment, destination: trap ? CardZone.OutOfGame : CardZone.Memory);
         if (p.EquipmentStackedCopies > 0)
         {
             p.EquipmentStackedCopies--; p.Memory.Add(id);
             Log($"{p.Name} destruye una copia de {CardCatalog.Get(id).Name}: quedan {p.EquipmentStackedCopies + 1} equipadas.");
             return;
         }
-        p.Equipment = null; p.EquipmentDie = 0; p.EquipmentCounters = 0; p.Memory.Add(id);
+        p.Equipment = null; p.EquipmentDie = 0; p.EquipmentCounters = 0;
         p.EquipmentExpiresAtTurnStart = false;
-        Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: va a su memoria.");
+        if (!trap) p.Memory.Add(id);
+        Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: {(trap ? "queda fuera del juego" : "va a su memoria")}.");
     }
 
     private void ReplaceEquipment(EngineContinuation next)
@@ -78,6 +80,7 @@ public sealed partial class GameEngine
     public bool CanUseYunoOnPendingDie(int actor)
     {
         if (actor < 0 || actor >= State.Players.Length || actor != State.DecisionPlayer) return false;
+        if (EffectsSuppressed(actor, FieldZone.Relikario)) return false;
         var p = State.Players[actor];
         if (State.Phase == Phase.AttackRerollChoice && State.PendingAttackRoll is { } attack)
             return p.Relikario.CanRerollAttack && attack.Die != 1 && !attack.YunoStopped && attack.Rerolls < p.Relikario.MaxRerolls &&
@@ -89,14 +92,14 @@ public sealed partial class GameEngine
     }
 
     private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || CanUseYunoOnPendingDie(State.CurrentPlayer) ||
-        State.Players[State.CurrentPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
+        ActiveEquipment(State.CurrentPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
     private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || CanUseYunoOnPendingDie(State.DecisionPlayer) ||
-        State.Players[State.DecisionPlayer].Equipment == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer);
+        ActiveEquipment(State.DecisionPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)
     {
         if (!Enum.IsDefined(effect) || actor < 0 || actor >= State.Players.Length || actor != State.DecisionPlayer ||
-            State.Players[actor].Equipment != CardCatalog.Pendant.Id) return false;
+            ActiveEquipment(actor)?.Id != CardCatalog.Pendant.Id) return false;
         var attack = State.Phase == Phase.AttackRerollChoice;
         if (!attack && State.Phase != Phase.DieRerollChoice) return false;
         var die = attack ? State.PendingAttackRoll!.Die : State.PendingDieRoll!.Die;
@@ -120,7 +123,7 @@ public sealed partial class GameEngine
         if (effect == PendantEffect.Reroll) OnOwnDieRerolled(actor);
         var die = attack ? State.PendingAttackRoll!.Die : State.PendingDieRoll!.Die;
         die = effect switch { PendantEffect.AddOne => die + 1, PendantEffect.AddTwo => die + 2,
-            _ => attack ? RollAttack(out _, "Colgante · Relanzamiento") : Roll("Colgante · Relanzamiento") };
+            _ => attack ? RollAttack(out _, "Colgante · Relanzamiento", superAttack: State.PendingAttackRoll!.SuperAttack) : Roll("Colgante · Relanzamiento") };
         Log($"{p.Name} usa Colgante de la Suerte ({effect}): el dado queda en {die}.");
         if (attack)
         {

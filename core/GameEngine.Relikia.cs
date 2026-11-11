@@ -67,6 +67,7 @@ public sealed partial class GameEngine
             case RelikiaEffect.ChangeBonus:
                 var bonus = p.Bonus!;
                 var bonusPlacedTurn = p.BonusPlacedTurn;
+                ChangeZahiraHosts(actor, FieldZone.Bonus, -1, movedTo: new(actor, FieldZone.Exchange, p.Exchange.Count, bonus));
                 ForgetFieldCodeSource(p, FieldZone.Bonus);
                 p.Bonus = null;
                 PlaceInExchange(p, bonus, new EngineContinuation { Kind = ContinuationKind.RefillBonus, Actor = actor }, fieldPlacedTurn: bonusPlacedTurn);
@@ -94,15 +95,22 @@ public sealed partial class GameEngine
         if (!InHand(p, handIndex) || !Enum.IsDefined(destination)) return CommandResult.Fail("Elige una carta y su destino.");
         if (destination == CardDestination.Exchange && p.Bonus == null) return CommandResult.Fail("No hay Bonus disponible para canjear.");
         var id = p.Hand[handIndex];
-        if (destination == CardDestination.DeckBottom) CardReturnedToDeck?.Invoke(actor, handIndex, id);
-        p.RemoveHandCard(handIndex);
         EndRelikiaChoice();
-        if (destination == CardDestination.Exchange) PlaceInExchange(p, id);
+        if (destination == CardDestination.Exchange)
+        {
+            p.RemoveHandCard(handIndex);
+            PlaceInExchange(p, id);
+        }
         else
         {
-            p.Deck.Add(id);
-            CardsReturnedToDeck?.Invoke(actor);
-            Log($"{p.Name} envía {CardCatalog.Get(id).Name} al fondo del mazo por Relikia.");
+            var card = CardCatalog.Get(id);
+            ReturnHandCardToDeck(actor, handIndex);
+            if (card.CodeType != CodeType.Trap)
+            {
+                CardsReturnedToDeck?.Invoke(actor);
+                Log($"{p.Name} envía {card.Name} al fondo del mazo por Relikia.");
+            }
+            else Log($"{card.Name} de {p.Name} queda fuera del juego por Relikia.");
         }
         return CommandResult.Ok();
     }
@@ -147,6 +155,7 @@ public sealed partial class GameEngine
     private void TakeBonus(PlayerState source, PlayerState recipient)
     {
         var id = source.Bonus!;
+        ChangeZahiraHosts(Array.IndexOf(State.Players, source), FieldZone.Bonus, -1);
         ForgetFieldCodeSource(source, FieldZone.Bonus);
         source.Bonus = null;
         recipient.Hand.Add(id);

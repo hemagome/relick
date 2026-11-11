@@ -558,7 +558,7 @@ var tests = new (string Name, Action Run)[]
     {
         var first = Run(180); var second = Run(180); Eq(first, second);
     })
-}.Concat(DuelOutcomeTests.Cases).Concat(DuelHistoryTests.Cases).Concat(OpeningTurnTests.Cases).Concat(ComboResponseTests.Cases).Concat(GoldenTotemTests.Cases).Concat(TotemTests.Cases).Concat(TimeBenderTests.Cases).Concat(ReloadCartridgeTests.Cases).Concat(QuickLoadTests.Cases).Concat(JessicaTests.Cases).Concat(PlumberStarTests.Cases).Concat(FloppyDiskTests.Cases).Concat(BonfireTests.Cases).Concat(ReverseTests.Cases).Concat(AttackRewardTests.Cases).Concat(DexterityTests.Cases).Concat(HandLimitTests.Cases).Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
+}.Concat(DuelOutcomeTests.Cases).Concat(DuelHistoryTests.Cases).Concat(OpeningTurnTests.Cases).Concat(ComboResponseTests.Cases).Concat(SuperAttackTests.Cases).Concat(ZahiraFlairTests.Cases).Concat(SuperMagnetTests.Cases).Concat(GoldenTotemTests.Cases).Concat(TotemTests.Cases).Concat(TimeBenderTests.Cases).Concat(ReloadCartridgeTests.Cases).Concat(QuickLoadTests.Cases).Concat(JessicaTests.Cases).Concat(PlumberStarTests.Cases).Concat(FloppyDiskTests.Cases).Concat(BonfireTests.Cases).Concat(ReverseTests.Cases).Concat(AttackRewardTests.Cases).Concat(DexterityTests.Cases).Concat(HandLimitTests.Cases).Concat(ReplayQueryTests.Cases).Concat(InitialSkillTests.Cases).Concat(SnapshotTests.Cases).Concat(DuelTests.Cases).Concat(SkillTests.Cases).Concat(YunoTests.Cases).Concat(EvolutionTests.Cases).Concat(EquipmentTests.Cases).Concat(DiamondHelmetTests.Cases).Concat(TimeBombTests.Cases).Concat(KonamyCodeTests.Cases).Concat(MindSwapTests.Cases).Concat(AgilityTests.Cases).Concat(MindResetTests.Cases).Concat(DodgeTests.Cases).Concat(PcTests.Cases).Concat(SniperTests.Cases).Concat(TripleAttackTests.Cases).Concat(RecyclingTests.Cases).Concat(SenshuniTests.Cases).Concat(CardboardBoxTests.Cases).Concat(ExtraLifeTests.Cases).Concat(PointsTests.Cases).Concat(EggComboTests.Cases).Concat(LoadErrorTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var (name, run) in tests)
@@ -577,8 +577,9 @@ static void Eq<T>(T actual, T expected)
 {
     if (!Equals(actual, expected)) throw new Exception($"Esperado {expected}, recibido {actual}");
 }
-static int Count(PlayerState p) => p.Deck.Count + p.Hand.Count + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count +
-    p.Exchange.Count + p.AttachedCards.Count + (p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1) + (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1);
+static int Count(PlayerState p) => p.Deck.Count + p.Hand.Count(id => CardCatalog.Get(id).CodeType != CodeType.Trap) + p.Memory.Count + p.CorruptedMemory.Count + p.Skills.Count +
+    p.Exchange.Count(id => CardCatalog.Get(id).CodeType != CodeType.Trap) + p.AttachedCards.Count + (p.Equipment is { } id && CardCatalog.Get(id).CodeType != CodeType.Trap ? p.EquipmentStackedCopies + 1 : 0) +
+    (p.EquipmentCovers?.Count ?? 0) + (p.Bonus == null ? 0 : 1);
 static string Fingerprint(GameEngine g) => System.Text.Json.JsonSerializer.Serialize(g.State);
 static CommandResult AttackKeepingRoll(GameEngine game, int actor, int hand, int skill)
 {

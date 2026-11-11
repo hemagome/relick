@@ -202,6 +202,9 @@ public partial class OnlineArena : Control
             crystals.Present(player.Actions, $"{actionsLabel} · {player.Name}", animateActions, rechargeActions);
             crystals.Visible = !_preparing && s.Phase != Phase.Preparation;
             _portraits[relative].SetHealth(player.Health);
+            var zahiraCaption = player.ZahiraHost is { } host
+                ? $"Zahira Flair sobre {(host.Zone == FieldZone.Relikario ? RelikarioCatalog.Yuno.Name : CardCatalog.Get(host.CardId).Name)} · {s.Players[host.Owner].Name}"
+                : null;
             ArenaPresentation.Player(arena, player, relative, relative == 1, !_preparing && s.CurrentPlayer == seat && s.Winner == null,
                 _selectedSkill, _portraits[relative], _life[relative], crystals, new ArenaPlayerActions
                 {
@@ -209,6 +212,8 @@ public partial class OnlineArena : Control
                     Attached = () => SelectFieldPile(seat, FieldZone.Attached),
                     Equipment = () => SelectEquipment(seat),
                     EquipmentCovers = () => SelectFieldPile(seat, FieldZone.EquipmentCover),
+                    Zahira = () => SelectField(seat, FieldZone.Zahira, -1),
+                    ZahiraCaption = zahiraCaption,
                     Skill = slot =>
                     {
                         if (slot >= player.Skills.Length) return;
@@ -407,6 +412,8 @@ public partial class OnlineArena : Control
     {
         Phase.Preparation => "PREPARACIÓN", Phase.Draw => "ROBO", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
+        Phase.TrapCraftChoice => "CÓDIGO TRAMPA",
+        Phase.ZahiraTarget => "ZAHIRA FLAIR",
         Phase.CodeResponse or Phase.ErrorResponse or Phase.EffectDamageChoice => "RESPUESTA", Phase.GoldenTotemChoice or Phase.GoldenTotemResolving => "TÓTEM DE ORO", Phase.TotemChoice => "TÓTEM DE SALVACIÓN", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MemoryRecoveryChoice => "DISQUETE", Phase.TurnBuffDiscard => "DESCARTAR COSTE", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", _ => "RESOLVER EFECTO"
     };
 }

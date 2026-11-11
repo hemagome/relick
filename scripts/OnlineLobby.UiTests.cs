@@ -108,6 +108,21 @@ public partial class OnlineLobby
                 await online.CheckGoldenTotemLayout(); online.QueueFree(); await Layout();
                 GD.Print("PVP_GOLDEN_TOTEM_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--super-magnet-only"))
+            {
+                await online.CheckSuperMagnetLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--zahira-only"))
+            {
+                await online.CheckZahiraLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--super-attack-only"))
+            {
+                await online.CheckSuperAttackLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--totem-only"))
             {
                 await online.CheckTotemLayout(); online.QueueFree(); await Layout();
@@ -205,6 +220,9 @@ public partial class OnlineLobby
             await online.CheckTimeBenderLayout();
             await online.CheckTotemLayout();
             await online.CheckGoldenTotemLayout();
+            await online.CheckSuperMagnetLayout();
+            await online.CheckZahiraLayout();
+            await online.CheckSuperAttackLayout();
             await online.CheckMindResetLayout();
             await online.CheckMindSwapLayout();
             await online.CheckRecyclingLayout();
