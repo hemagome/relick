@@ -350,7 +350,7 @@ public partial class OnlineArena
             var target = kind switch
             {
                 DuelVisualKind.Return or DuelVisualKind.Shuffle => null,
-                DuelVisualKind.Pile => ZoneNode(relative, next.Event.Destination, next.IsPlacement ? next.Event.Value : -1),
+                DuelVisualKind.Pile => ZoneNode(next.Event.ToRivalMemory ? 1 - relative : relative, next.Event.Destination, next.IsPlacement ? next.Event.Value : -1),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.BonusClaim or DuelVisualKind.MemoryClaim => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, next.Event.Value),
                 DuelVisualKind.HandTransfer => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, 0),

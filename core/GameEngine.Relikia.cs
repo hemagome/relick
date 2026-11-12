@@ -98,16 +98,16 @@ public sealed partial class GameEngine
         EndRelikiaChoice();
         if (destination == CardDestination.Exchange)
         {
-            p.RemoveHandCard(handIndex);
+            MoveHandCardToField(p, handIndex);
             PlaceInExchange(p, id);
         }
         else
         {
             var card = CardCatalog.Get(id);
-            ReturnHandCardToDeck(actor, handIndex);
-            if (card.CodeType != CodeType.Trap)
+            var deckOwner = ReturnHandCardToDeck(actor, handIndex);
+            if (deckOwner >= 0)
             {
-                CardsReturnedToDeck?.Invoke(actor);
+                CardsReturnedToDeck?.Invoke(deckOwner);
                 Log($"{p.Name} envía {card.Name} al fondo del mazo por Relikia.");
             }
             else Log($"{card.Name} de {p.Name} queda fuera del juego por Relikia.");
@@ -158,7 +158,9 @@ public sealed partial class GameEngine
         ChangeZahiraHosts(Array.IndexOf(State.Players, source), FieldZone.Bonus, -1);
         ForgetFieldCodeSource(source, FieldZone.Bonus);
         source.Bonus = null;
+        var owner = source.ReleaseForeignFieldCard(id) ? 1 - Seat(source) : Seat(source);
         recipient.Hand.Add(id);
+        if (owner != Seat(recipient)) recipient.MarkForeignHandCard(recipient.Hand.Count - 1);
         BonusClaimed?.Invoke(Array.IndexOf(State.Players, source), Array.IndexOf(State.Players, recipient), recipient.Hand.Count - 1, id);
     }
 

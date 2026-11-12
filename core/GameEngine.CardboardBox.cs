@@ -14,11 +14,11 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex)
+    private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex, int? memoryOwner = null)
     {
         var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : card.ActionCost,
             card.PrCost + (fromMemory ? 400 : 0), State.Phase)
-        { Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex };
+        { Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex, MemoryOwner = memoryOwner == actor ? null : memoryOwner };
         if (card.DiscardForTurnBuff || card.RepeatStage) { BeginTurnBuff(frame); return; }
         BeginActivation(frame);
     }
@@ -72,7 +72,7 @@ public sealed partial class GameEngine
             FinishTurnBuff(star); return;
         }
         _activeActivation = null;
-        Log($"{State.Players[actor].Name} usa Caja de Cartón: cancela {card.Name}, que queda en la memoria de {State.Players[pending.Actor].Name}.");
+        Log($"{State.Players[actor].Name} usa Caja de Cartón: cancela {card.Name}, que queda en la memoria de su dueño.");
         CompleteActivationIfFinished();
     }
 }

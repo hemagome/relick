@@ -35,12 +35,12 @@ public sealed partial class GameEngine
         if (!AvailableDefenses(actor).Contains(skillSlot) || indices.Length != DefenseDiscardCost ||
             indices.Distinct().Count() != indices.Length || indices.Any(i => !InHand(p, i)))
             return CommandResult.Fail($"Elige una copia disponible de Destiny y exactamente {DefenseDiscardCost} cartas para descartar.");
-        var sniperIndices = new List<int>();
+        var sniperIndices = new List<MemorySelection>();
         foreach (var index in indices.OrderDescending())
         {
             var sniper = CardCatalog.Get(p.Hand[index]).EquipOnDiscard;
-            SendHandToMemory(p, index);
-            if (sniper) sniperIndices.Add(p.Memory.Count - 1);
+            var discarded = SendHandToMemory(p, index);
+            if (sniper && discarded != null) sniperIndices.Add(discarded);
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
         Log($"{p.Name} activa Relick Destiny Shuffle (espacio {p.SkillPosition(skillSlot) + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");
@@ -111,8 +111,10 @@ public sealed partial class GameEngine
         if (fromBonus) TakeBonus(rival, State.Active);
         else
         {
-            rival.RemoveHandCard(handIndex);
+            // A copy the rival had borrowed simply comes home.
+            var returning = rival.RemoveHandCard(handIndex);
             State.Active.Hand.Add(id);
+            if (!returning) State.Active.MarkForeignHandCard(State.Active.Hand.Count - 1);
         }
         Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
         if (fromBonus) RefillBonus(rival);

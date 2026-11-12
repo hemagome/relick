@@ -12,6 +12,10 @@ public sealed partial class GameEngine
         // The code and any countereffects have already left the hands. Revelations
         // travel with those exact copies, not with the slots on their old owner.
         (p.Hand, rival.Hand) = (rival.Hand, p.Hand);
+        // Ownership stays with each copy: what was the rival's own is now borrowed, and vice versa.
+        var borrowed = p.ForeignHandSlots ?? []; var rivalBorrowed = rival.ForeignHandSlots ?? [];
+        p.ForeignHandSlots = Enumerable.Range(0, p.Hand.Count).Except(rivalBorrowed).ToArray();
+        rival.ForeignHandSlots = Enumerable.Range(0, rival.Hand.Count).Except(borrowed).ToArray();
         var revealed = p.RevealedHandSlots;
         p.RevealedHandSlots = rival.RevealedHandSlots;
         rival.RevealedHandSlots = revealed;

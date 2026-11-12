@@ -142,7 +142,7 @@ public sealed partial class GameEngine
         var position = p.NextSkillPosition();
         if (p.Relikia < cost) return CommandResult.Fail($"Necesitas {cost} PR para enseñar otra habilidad.");
         p.Relikia -= cost;
-        p.RemoveHandCard(handIndex);
+        MoveHandCardToField(p, handIndex);
         p.Skills.Add(id);
         if (p.SkillPositions != null || position != p.Skills.Count - 1)
         {
@@ -211,11 +211,11 @@ public sealed partial class GameEngine
         if (card.ResetMind) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
-        SendHandToMemory(p, handIndex);
+        var played = SendHandToMemory(p, handIndex);
         p.ActionsLeft -= card.ActionCost;
         p.Relikia -= card.PrCost;
         Log($"{p.Name} juega {card.Name}.");
-        ActivateCode(actor, card, false, p.Memory.Count - 1);
+        ActivateCode(actor, card, false, played?.Index ?? -1, played?.Owner);
         return CommandResult.Ok();
     }
 
@@ -298,8 +298,7 @@ public sealed partial class GameEngine
         var p = State.Active;
         if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
         if (p.Bonus == null) return CommandResult.Fail("No hay una carta de Bonus disponible.");
-        var id = p.Hand[handIndex];
-        p.RemoveHandCard(handIndex);
+        var id = MoveHandCardToField(p, handIndex);
         State.ActionsLeft--;
         PlaceInExchange(p, id);
         return CommandResult.Ok();
@@ -375,7 +374,7 @@ public sealed partial class GameEngine
             return CommandResult.Fail("No tienes descartes pendientes.");
         if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
         var id = p.Hand[handIndex];
-        SendHandToMemory(p, handIndex);
+        var discarded = SendHandToMemory(p, handIndex);
         Log($"{p.Name} descarta {CardCatalog.Get(id).Name}.");
         if (!handLimit)
         {
@@ -387,7 +386,7 @@ public sealed partial class GameEngine
                 State.DiscardPlayer = null;
             }
         }
-        if (CardCatalog.Get(id).EquipOnDiscard) BeginSniperChoices(actor, [p.Memory.Count - 1]);
+        if (CardCatalog.Get(id).EquipOnDiscard && discarded != null) BeginSniperChoices(actor, [discarded]);
         CompleteActivationIfFinished();
         return CommandResult.Ok();
     }

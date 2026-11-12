@@ -107,7 +107,8 @@ internal sealed class PublicDuelObservation : IDisposable
     {
         // Hidden hand/deck moves and face-down corruption never contribute identities.
         if (move.Destination == CardZone.Memory && move.Source is CardZone.Equipment or CardZone.EquipmentCover or CardZone.Skill or CardZone.Bonus or CardZone.Exchange or CardZone.Attached or CardZone.Activation)
-            _outcomes.Add($"{Card(move.CardId)} de {Player(move.Owner)} va a memoria.");
+            _outcomes.Add(move.ToRivalMemory ? $"{Card(move.CardId)} de {Player(move.Owner)} va a la memoria de {Player(move.MemoryOwner)}, su dueño."
+                : $"{Card(move.CardId)} de {Player(move.Owner)} va a memoria.");
         if (move.Destination == CardZone.OutOfGame && move.Source != CardZone.Hand)
             _outcomes.Add($"{Card(move.CardId)} de {Player(move.Owner)} queda fuera del juego.");
     }

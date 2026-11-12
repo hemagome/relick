@@ -5,6 +5,9 @@ public sealed class PendingReload
     public int Actor { get; set; }
     public int Stage { get; set; }
     public List<int>[] SniperIndices { get; set; } = [[], []];
+    // Memory seat of each entry above; null means the discarding player's own memory.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<int>[]? SniperOwners { get; set; }
 }
 
 public sealed partial class GameEngine
@@ -16,19 +19,22 @@ public sealed partial class GameEngine
         _activeActivation!.CanInterrupt = false;
         var pending = new PendingReload { Actor = actor }; State.PendingReload = pending;
         // Freeze both hands before any discard trigger can draw, equip or complete a canje.
+        var sniperOwners = new List<int>[] { [], [] };
         foreach (var owner in new[] { actor, 1 - actor })
         {
             var p = State.Players[owner];
-            var cards = p.Hand.Where(id => CardCatalog.Get(id).CodeType != CodeType.Trap).ToArray();
-            var start = p.Memory.Count;
-            for (var i = 0; i < cards.Length; i++)
-            {
-                if (CardCatalog.Get(cards[i]).EquipOnDiscard) pending.SniperIndices[owner].Add(start + i);
-            }
             if (p.Hand.Count > 0) HandDiscarded?.Invoke(owner, p.Hand.Count);
             Log($"{p.Name} descarta su mano de {p.Hand.Count} carta(s) por Cartucho de Re-carga.");
-            p.Hand.Clear(); p.HideHandCards(); p.Memory.AddRange(cards);
+            for (var i = 0; i < p.Hand.Count; i++)
+            {
+                // One face-down packet is announced above; borrowed copies still reach their owner's memory.
+                var landed = SendToMemory(p, p.Hand[i], CardZone.Hand, i, notify: false);
+                if (landed == null || !CardCatalog.Get(p.Hand[i]).EquipOnDiscard) continue;
+                pending.SniperIndices[owner].Add(landed.Index); sniperOwners[owner].Add(landed.Owner);
+            }
+            p.Hand.Clear(); p.HideHandCards(); p.ForeignHandSlots = null;
         }
+        if (Enumerable.Range(0, 2).Any(owner => sniperOwners[owner].Any(seat => seat != owner))) pending.SniperOwners = sniperOwners;
         State.Phase = Phase.ReloadResolving;
         ContinueReloadHands();
     }
@@ -48,7 +54,8 @@ public sealed partial class GameEngine
             {
                 if (pending.SniperIndices[owner].Count > 0)
                 {
-                    BeginSniperChoices(owner, pending.SniperIndices[owner]);
+                    BeginSniperChoices(owner, pending.SniperIndices[owner].Select((index, entry) =>
+                        new MemorySelection(pending.SniperOwners?[owner][entry] ?? owner, index)));
                     return;
                 }
             }

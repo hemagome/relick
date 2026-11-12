@@ -1,6 +1,7 @@
 namespace Relick.Core;
 
-public sealed record ActivationDiscard(string CardId, int MemoryIndex);
+public sealed record ActivationDiscard(string CardId, int MemoryIndex,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] int? MemoryOwner = null);
 
 public sealed class PendingTurnBuff
 {
@@ -64,10 +65,10 @@ public sealed partial class GameEngine
             _activeActivation is not { Kind: ActivationKind.TurnBuff } frame || !InHand(State.Players[actor], handIndex))
             return CommandResult.Fail("Elige una carta de tu mano para pagar la activación pendiente.");
         var p = State.Players[actor]; var pending = State.PendingTurnBuff;
-        var discarded = new ActivationDiscard(p.Hand[handIndex], p.Memory.Count);
+        var paid = p.Hand[handIndex]; var landed = SendHandToMemory(p, handIndex);
+        var discarded = new ActivationDiscard(paid, landed?.Index ?? -1, landed == null || landed.Owner == actor ? null : landed.Owner);
         pending.PaidDiscards ??= []; pending.PaidDiscards.Add(discarded);
         if (pending.DiscardIndex < 0) { pending.DiscardId = discarded.CardId; pending.DiscardIndex = discarded.MemoryIndex; }
-        SendHandToMemory(p, handIndex);
         Log($"{p.Name} descarta {CardCatalog.Get(discarded.CardId).Name} para activar {CardCatalog.Get(frame.CardId).Name}.");
         if (pending.DiscardsPaid < pending.RequiredDiscards)
         {
@@ -95,8 +96,10 @@ public sealed partial class GameEngine
         State.PendingCode = null; State.PendingDestruction = null;
         pending.Completed = true;
         var discards = pending.PaidDiscards ?? [new ActivationDiscard(pending.DiscardId, pending.DiscardIndex)];
-        BeginSniperChoices(pending.Actor, discards.Where(card => CardCatalog.Get(card.CardId).EquipOnDiscard)
-            .Select(card => card.MemoryIndex - (frame.ReplayCorrupted && frame.MemoryIndex < card.MemoryIndex ? 1 : 0)));
+        BeginSniperChoices(pending.Actor, discards.Where(card => CardCatalog.Get(card.CardId).EquipOnDiscard && card.MemoryIndex >= 0)
+            .Select(card => (card.MemoryOwner ?? pending.Actor) is var seat && seat == frame.Actor
+                ? new MemorySelection(seat, card.MemoryIndex - (frame.ReplayCorrupted && frame.MemoryIndex < card.MemoryIndex ? 1 : 0))
+                : new MemorySelection(seat, card.MemoryIndex)));
         CompleteActivationIfFinished();
     }
 

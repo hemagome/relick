@@ -99,7 +99,8 @@ public sealed partial class GameEngine
             return CommandResult.Fail("Elige una no-habilidad de la mano objetivo después de seleccionar dos cartas de memoria.");
         var returnsHandCard = CardCatalog.Get(target.Hand[handIndex]).CodeType != CodeType.Trap;
         var affected = pending.Memories.Select(m => m.Owner);
-        if (returnsHandCard) affected = affected.Append(pending.Target);
+        // "Al mazo de su respectivo dueño": a borrowed hand card returns to the rival's deck.
+        if (returnsHandCard) affected = affected.Append(target.IsForeignHandCard(handIndex) ? 1 - pending.Target : pending.Target);
         // All validation precedes mutation. Remove descending indices to retain copy identity.
         foreach (var group in pending.Memories.GroupBy(m => m.Owner))
         {
@@ -111,8 +112,8 @@ public sealed partial class GameEngine
                     State.PendingCode = code with { MemoryIndex = code.MemoryIndex - 1 };
                 // Suspended code activations keep their source indices aligned.
                 for (var frame = _activeActivation?.Parent; frame != null; frame = frame.Parent)
-                    if (frame.Actor == group.Key && frame.MemoryIndex > selection.Index) frame.MemoryIndex--;
-                    else if (frame.Actor == group.Key && frame.MemoryIndex == selection.Index &&
+                    if (frame.MemorySeat == group.Key && frame.MemoryIndex > selection.Index) frame.MemoryIndex--;
+                    else if (frame.MemorySeat == group.Key && frame.MemoryIndex == selection.Index &&
                         !frame.ReplayCorrupted && CardCatalog.Get(frame.CardId).RecoverMemory) frame.MemoryIndex = -1;
             }
         }
