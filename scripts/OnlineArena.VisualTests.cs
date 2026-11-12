@@ -148,7 +148,7 @@ public partial class OnlineArena
         {
             await Present(seat);
             var equipment = (ZoneCardButton)ZoneNode(seat == 1 ? 0 : 1, CardZone.Equipment, -1)!;
-            if (equipment.Card?.Id != CardCatalog.SuperMagnet.Id || equipment.Caption != "TRAMPA · 1/3")
+            if (equipment.Card?.Id != CardCatalog.SuperMagnet.Id || equipment.StatusText != "1/3")
                 throw new Exception("El equipo no muestra públicamente el contador de Súper Imán.");
             SelectEquipment(1);
             if (_inspector.CounterLabel.Text != "Contadores: 1/3")
@@ -198,7 +198,8 @@ public partial class OnlineArena
                     for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     var relative = seat == actor ? 0 : 1;
                     var cover = _root!.FindChild($"EquipmentCoverZone{relative}", true, false) as ZoneCardButton;
-                    if ((cover != null) != (step is 2 or 3) || cover != null && cover.Caption != "ORO ×1")
+                    if ((cover != null) != (step is 2 or 3) || cover != null &&
+                        (cover.Card?.Id != CardCatalog.GoldenTotem.Id || cover.CardRect.Size.Y < cover.Size.Y - 9))
                         throw new Exception("Tótem de Oro no muestra su cobertura pública independiente.");
                     if (step == 0 && seat == actor)
                     {
@@ -280,8 +281,8 @@ public partial class OnlineArena
                     for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     var relative = seat == owner ? 0 : 1;
                     var equipment = _root!.FindChild($"EquipmentZone{relative}", true, false) as ZoneCardButton;
-                    var caption = step < 2 ? "EQUIPO ×3" : step == 2 ? "EQUIPO ×2" : "EQUIPO 1/1";
-                    if (equipment?.Caption != caption || snapshot.Stage != Phase.Combat || snapshot.Players[owner].Health != (step == 3 ? 5 : 3))
+                    var status = step < 2 ? "×3" : step == 2 ? "×2" : "";
+                    if (equipment?.StatusText != status || snapshot.Stage != Phase.Combat || snapshot.Players[owner].Health != (step == 3 ? 5 : 3))
                         throw new Exception("Tótem pierde la pila, etapa o vida al reconstruir el tablero.");
                     if (step == 1)
                     {

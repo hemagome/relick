@@ -30,9 +30,22 @@ public partial class OnlineArena
             player.SkillCounters[0] = 2; player.SkillCounters[1] = 1;
             player.Exchange.Add(CardCatalog.Jessica.Id);
             player.Bonus = CardCatalog.ExtraLife.Id;
-            player.AttachedCards.AddRange([CardCatalog.Pendant.Id, CardCatalog.TimeBomb.Id]);
-            game.State.Players[1 - seat].Equipment = CardCatalog.Pc.Id;
+            player.AttachedCards.AddRange([CardCatalog.Pendant.Id, CardCatalog.Sniper.Id, CardCatalog.TimeBomb.Id]);
+            var rival = game.State.Players[1 - seat];
+            rival.Equipment = CardCatalog.Pc.Id; rival.EquipmentDie = 4;
             ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 401)); await Layout();
+            var attached = (AttachmentStack)ZoneNode(0, CardZone.Attached, -1)!;
+            var equipment = (ZoneCardButton)ZoneNode(1, CardZone.Equipment, -1)!;
+            var emptyEquipment = (ZoneCardButton)ZoneNode(0, CardZone.Equipment, -1)!;
+            var emptyAttached = (AttachmentStack)ZoneNode(1, CardZone.Attached, -1)!;
+            Check(attached.CardRect.Size.Y >= attached.Size.Y - 9 && attached.CardRect.End.X <= attached.Size.X &&
+                attached.AccessibilityName.EndsWith("3 cartas"), "La pila sobre el Relikario pierde el tamaño o el recuento.");
+            var equipmentArea = new Rect2(new Vector2(4, 4), equipment.Size - new Vector2(8, 8));
+            Check(equipment.CardRect.IsEqualApprox(BoardArt.FitArtwork(BoardArt.LoadCardArtwork(CardCatalog.Pc)!, equipmentArea)) &&
+                equipment.StatusText == "D6: 4",
+                "El equipo pierde espacio o su dado guardado.");
+            Check(emptyEquipment.Disabled && emptyEquipment.Caption == "EQUIPO 0/1" && emptyAttached.Disabled,
+                "Una zona vacía permite consultar una carta inexistente.");
             var before = game.SaveSnapshot();
             var cardSizes = _handCards.Select(card => card.Size).ToArray();
             if (!Short)

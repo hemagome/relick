@@ -6,7 +6,7 @@ namespace Relick;
 public partial class OnlineArena
 {
     private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45,
-        float OriginRotation = 0, bool IsPlacement = false, string? PreviousEquipmentCaption = null)
+        float OriginRotation = 0, bool IsPlacement = false, string? PreviousEquipmentStatus = null)
     {
         public bool IsSkillLesson => IsPlacement && Event.Destination == CardZone.Skill;
         public bool IsExchangePlacement => IsPlacement && Event.Destination == CardZone.Exchange;
@@ -158,9 +158,9 @@ public partial class OnlineArena
                 continue;
 
             var relative = actor == current.MySeat ? 0 : 1;
-            var previousCaption = stacked ? (ZoneNode(relative, CardZone.Equipment, -1) as ZoneCardButton)?.Caption : null;
+            var previousStatus = stacked ? (ZoneNode(relative, CardZone.Equipment, -1) as ZoneCardButton)?.StatusText : null;
             if (previous.Phase == Phase.Actions && actor == previous.CurrentPlayer && before.HandCount == after.HandCount + 1)
-                return CaptureHandPlacement(current, previous, actor, id, CardZone.Equipment, previousCaption: previousCaption);
+                return CaptureHandPlacement(current, previous, actor, id, CardZone.Equipment, previousEquipmentStatus: previousStatus);
 
             var fromMemory = previous.Phase == Phase.SniperChoice && id == CardCatalog.Sniper.Id;
             var source = fromMemory ? ZoneNode(relative, CardZone.Memory, -1) :
@@ -168,7 +168,7 @@ public partial class OnlineArena
             Rect2? origin = source == null ? null : fromMemory ? ZoneRect(source) : PreviewRect(source.GetGlobalRect().GetCenter());
             var cue = new DuelVisualEvent { Kind = DuelVisualKind.Pile, Player = actor,
                 Source = fromMemory ? CardZone.Memory : CardZone.Activation, Destination = CardZone.Equipment };
-            return new Flight(cue, origin, id, Duration: 0.60, IsPlacement: true, PreviousEquipmentCaption: previousCaption);
+            return new Flight(cue, origin, id, Duration: 0.60, IsPlacement: true, PreviousEquipmentStatus: previousStatus);
         }
         return null;
     }
@@ -182,7 +182,7 @@ public partial class OnlineArena
     }
 
     private Flight CaptureHandPlacement(DuelSnapshot current, DuelSnapshot previous, int actor, string? id,
-        CardZone destination, int slot = -1, string? previousCaption = null)
+        CardZone destination, int slot = -1, string? previousEquipmentStatus = null)
     {
         var before = previous.Players[actor];
         var after = current.Players[actor];
@@ -218,7 +218,7 @@ public partial class OnlineArena
             Source = CardZone.Hand, Destination = destination };
         var duration = destination switch { CardZone.Skill => 0.66, CardZone.Exchange => 0.55, _ => 0.60 };
         return new Flight(cue, origin, id, Duration: duration,
-            OriginRotation: rotation, IsPlacement: true, PreviousEquipmentCaption: previousCaption);
+            OriginRotation: rotation, IsPlacement: true, PreviousEquipmentStatus: previousEquipmentStatus);
     }
 
     private void Animate(List<DuelVisualEvent> events, Dictionary<DuelVisualEvent, Flight> origins, Flight? placement = null)
@@ -437,7 +437,7 @@ public partial class OnlineArena
         else if (flight.IsExchangePlacement && target is ZoneCardButton exchange)
             exchange.SetExchangePending(pending);
         else if (flight.IsPlacement && target is ZoneCardButton equipment)
-            equipment.SetEquipmentPending(pending, flight.PreviousEquipmentCaption);
+            equipment.SetEquipmentPending(pending, flight.PreviousEquipmentStatus);
         else if (target != null) target.Modulate = new(1, 1, 1, pending ? 0 : 1);
     }
 

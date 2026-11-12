@@ -114,7 +114,7 @@ public partial class OnlineArena
         Check(stack.Equip(0, 2).Success, "No se apila el Tótem de Salvación.");
         var afterStack = DuelSnapshot.For(stack, 0, 851);
         var stackInstall = CaptureEquipmentInstall(afterStack, beforeStack);
-        Check(stackInstall?.PreviousEquipmentCaption == "EQUIPO 1/1", "Apilar oculta el equipo anterior antes de que llegue la copia.");
+        Check(stackInstall?.PreviousEquipmentStatus == "", "Apilar oculta el equipo anterior antes de que llegue la copia.");
 
         var sniper = Fixture(0, CardCatalog.Sniper.Id);
         sniper.State.Phase = Phase.Discard;

@@ -131,21 +131,20 @@ public static class ArenaPresentation
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
-            var cover = new ZoneCardButton { Name = $"EquipmentCoverZone{index}", Caption = $"ORO ×{covers.Length}",
-                Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold,
-                TooltipText = "Tótem de Oro: se destruye en lugar de un Tótem de Salvación equipado." };
+            var cover = new ZoneCardButton { Name = $"EquipmentCoverZone{index}", Caption = "ORO",
+                Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold, StatusText = covers.Length > 1 ? $"×{covers.Length}" : "" };
             cover.Pressed += actions.EquipmentCovers; permanent.AddChild(cover);
         }
-        var equipmentCaption = owner.Equipment switch
+        var equipmentStatus = owner.Equipment switch
         {
-            null => "EQUIPO 0/1",
-            _ when owner.EquipmentStackedCopies > 0 => $"EQUIPO ×{owner.EquipmentStackedCopies + 1}",
-            _ when owner.Equipment == CardCatalog.SuperMagnet.Id => $"TRAMPA · {owner.EquipmentCounters}/{CardCatalog.SuperMagnetCounterLimit}",
-            _ when owner.Equipment == CardCatalog.Sniper.Id => $"EQUIPO · {owner.EquipmentCounters}/3",
-            _ when owner.EquipmentDie > 0 => $"EQUIPO · D6: {owner.EquipmentDie}",
-            _ => "EQUIPO 1/1"
+            null => "",
+            _ when owner.EquipmentStackedCopies > 0 => $"×{owner.EquipmentStackedCopies + 1}",
+            _ when owner.Equipment == CardCatalog.SuperMagnet.Id => $"{owner.EquipmentCounters}/{CardCatalog.SuperMagnetCounterLimit}",
+            _ when owner.Equipment == CardCatalog.Sniper.Id => $"{owner.EquipmentCounters}/3",
+            _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
+            _ => ""
         };
-        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = equipmentCaption,
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : "EQUIPO", StatusText = equipmentStatus,
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("81c8ef"),
             Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);

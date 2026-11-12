@@ -66,6 +66,16 @@ public static class BoardArt
         var width = ThemeDB.FallbackFont.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
         Text(c, text, pos - new Vector2(width / 2, 0), size, color);
     }
+
+    internal static void CardBadge(CanvasItem canvas, Vector2 size, string text)
+    {
+        const int fontSize = 9;
+        var width = Mathf.Ceil(ThemeDB.FallbackFont.GetStringSize(text, fontSize: fontSize).X) + 12;
+        var badge = new Rect2(size.X - width - 4, size.Y - 22, width, 18);
+        Plate(canvas, badge, RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 4);
+        CenterText(canvas, text, new(badge.GetCenter().X, badge.Position.Y + 12), fontSize, Ink);
+    }
+
     public static void Icon(CanvasItem c, GameIcon icon, Vector2 center, float size, Color color, float canvasScale = 1)
     {
         c.DrawSetTransform(center * canvasScale, 0, Vector2.One * (size / 32 * canvasScale));
@@ -468,7 +478,7 @@ public partial class ExchangeTrack : VBoxContainer
     }
 }
 
-public enum ZoneCardLayout { Labeled, Portrait, Landscape }
+public enum ZoneCardLayout { Portrait, Landscape }
 
 /// <summary>Inspectable card in a public board zone.</summary>
 public partial class ZoneCardButton : Button
@@ -481,20 +491,21 @@ public partial class ZoneCardButton : Button
     public bool EffectUsed { get; init; }
     public CardDefinition? Card { get; set; }
     public string Caption { get; set; } = "";
+    public string StatusText { get; init; } = "";
     public Color Accent { get; set; }
     private Texture2D? _artwork;
     private Texture2D? _exchangePreview;
     private Texture2D? Artwork => _exchangePreview ?? _artwork;
-    private bool ShowOccupiedLabels => Layout == ZoneCardLayout.Labeled;
-    private string? _previousEquipmentCaption;
+    private string CardStatus => EffectUsed ? "USADA" : StatusText;
+    private string? _previousEquipmentStatus;
     internal bool AwaitingEquipment { get; private set; }
     internal bool AwaitingExchange { get; private set; }
     internal bool HasExchangePreview => _exchangePreview != null;
 
-    internal void SetEquipmentPending(bool pending, string? previousCaption)
+    internal void SetEquipmentPending(bool pending, string? previousStatus)
     {
         AwaitingEquipment = pending;
-        _previousEquipmentCaption = pending ? previousCaption : null;
+        _previousEquipmentStatus = pending ? previousStatus : null;
         QueueRedraw();
     }
 
@@ -515,7 +526,7 @@ public partial class ZoneCardButton : Button
 
     internal Rect2 ArtworkRect(Texture2D? artwork)
     {
-        var area = ShowOccupiedLabels ? new Rect2(6, 20, Size.X - 12, Size.Y - 40) : new Rect2(4, 4, Size.X - 8, Size.Y - 8);
+        var area = new Rect2(4, 4, Size.X - 8, Size.Y - 8);
         if (artwork == null) return area;
         if (ArtworkRotation(artwork) == 0) return BoardArt.FitArtwork(artwork, area);
         var unrotated = BoardArt.FitArtwork(artwork, new Rect2(0, 0, area.Size.Y, area.Size.X));
@@ -540,8 +551,8 @@ public partial class ZoneCardButton : Button
         if (Card != null) _artwork = BoardArt.LoadCardArtwork(Card);
         if (Card != null)
         {
-            var description = $"{Caption} · {Card.Name}" + (EffectUsed ? " · USADA" : "");
-            if (!ShowOccupiedLabels) AccessibilityName = description;
+            var description = $"{Caption} · {Card.Name}" + (CardStatus.Length > 0 ? $" · {CardStatus}" : "");
+            AccessibilityName = description;
             TooltipText = $"{description}\n{Card.Text}\nPulsa para ampliar y consultar el efecto.";
         }
         Resized += QueueRedraw;
@@ -555,13 +566,13 @@ public partial class ZoneCardButton : Button
         var edge = AwaitingEquipment ? BoardArt.Tint(Accent, 0.65f) :
             Card != null ? RelickVisuals.Playmat.Frame : BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f);
         BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, edge, 8, AwaitingEquipment ? 2 : 1);
-        var showCaptions = ShowOccupiedLabels || AwaitingExchange || Card == null && !HasExchangePreview;
-        if (showCaptions)
+        var showCard = !AwaitingExchange && (!AwaitingEquipment || _previousEquipmentStatus != null) && (Card != null || HasExchangePreview);
+        if (!showCard)
         {
-            var caption = AwaitingEquipment ? _previousEquipmentCaption ?? "EQUIPO" : Caption;
-            BoardArt.CenterText(this, caption, new(Size.X / 2, 13), 9, Card == null || AwaitingExchange ? BoardArt.Muted : Accent);
+            var caption = AwaitingEquipment ? "EQUIPO" : Caption;
+            BoardArt.CenterText(this, caption, new(Size.X / 2, 13), 9, AwaitingEquipment ? Accent : BoardArt.Muted);
         }
-        if (Artwork is { } artwork && !AwaitingExchange && (!AwaitingEquipment || _previousEquipmentCaption != null))
+        else if (Artwork is { } artwork)
         {
             var rect = CardRect;
             var rotation = ArtworkRotation(artwork);
@@ -574,21 +585,11 @@ public partial class ZoneCardButton : Button
             }
             else DrawTextureRect(artwork, rect, false);
         }
-        else if (!showCaptions && Card != null)
+        else if (Card != null)
             BoardArt.Icon(this, BoardArt.CardIcon(Card), Size / 2, 32, Accent);
-        if (!showCaptions && EffectUsed)
-        {
-            var badge = new Rect2(Size.X - 48, Size.Y - 22, 44, 18);
-            BoardArt.Plate(this, badge, RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 4);
-            BoardArt.CenterText(this, "USADA", new(badge.GetCenter().X, badge.Position.Y + 12), 9, BoardArt.Ink);
-        }
+        var status = AwaitingEquipment ? _previousEquipmentStatus : CardStatus;
+        if (showCard && status is { Length: > 0 }) BoardArt.CardBadge(this, Size, status);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
-        if (!ShowOccupiedLabels || Card == null || AwaitingEquipment && _previousEquipmentCaption == null) return;
-        var name = Card.Name;
-        var fontSize = 11;
-        while (fontSize > 8 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 10) fontSize--;
-        while (name.Length > 1 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > Size.X - 10) name = name[..^2] + "…";
-        BoardArt.CenterText(this, name, new(Size.X / 2, Size.Y - 10), fontSize, BoardArt.Ink);
     }
 }
 
@@ -601,9 +602,9 @@ public partial class AttachmentStack : Button
 
     private Rect2 PreviewRect(int index)
     {
-        const float offset = 16;
+        const float offset = 14;
         var spread = (_previews.Length - 1) * offset;
-        var area = new Rect2(6 + index * offset, 20, Size.X - 12 - spread, Size.Y - 40);
+        var area = new Rect2(4 + index * offset, 4, Size.X - 8 - spread, Size.Y - 8);
         return BoardArt.FitArtwork(_previews[index], area);
     }
 
@@ -612,7 +613,8 @@ public partial class AttachmentStack : Button
         CustomMinimumSize = new(92, 86);
         Disabled = Amount == 0;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
-        TooltipText = $"Sobre el Relikario: {Amount} carta(s). Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
+        AccessibilityName = $"Sobre el Relikario: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
+        TooltipText = $"{AccessibilityName}. Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
         _previews = Cards.TakeLast(3).Select(CardCatalog.Get).Select(BoardArt.LoadCardArtwork).OfType<Texture2D>().ToArray();
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         Resized += QueueRedraw;
@@ -621,13 +623,14 @@ public partial class AttachmentStack : Button
     }
     public override void _Draw()
     {
-        var accent = Amount == 0 ? BoardArt.Tint(BoardArt.Muted, 0.45f) : new Color("b5a2fa");
         BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, BoardArt.Tint(RelickVisuals.Playmat.Frame, Amount == 0 ? 0.45f : 1), 8);
-        BoardArt.CenterText(this, "SOBRE RELIKARIO", new(Size.X / 2, 13), 8, accent);
+        if (Amount == 0)
+            BoardArt.CenterText(this, "SOBRE RELIKARIO", new(Size.X / 2, 13), 8, BoardArt.Tint(BoardArt.Muted, 0.45f));
+        else if (_previews.Length == 0)
+            BoardArt.Icon(this, GameIcon.Cards, Size / 2, 32, BoardArt.Muted);
         for (var i = 0; i < _previews.Length; i++) DrawTextureRect(_previews[i], PreviewRect(i), false);
+        if (Amount > 1) BoardArt.CardBadge(this, Size, $"×{Amount}");
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, !Disabled && IsHovered(), HasFocus());
-        if (Amount > 0)
-            BoardArt.CenterText(this, $"{Amount} carta{(Amount == 1 ? "" : "s")} · ∞", new(Size.X / 2, 76), 10, BoardArt.Ink);
     }
 }
 
