@@ -102,11 +102,13 @@ public partial class OnlineArena
         var attack = available.Length > 0;
         if (!attack) _choosingAttackSkill = false;
         if (attack && !available.Contains(_selectedSkill)) _selectedSkill = available.Length == 1 ? available[0] : -1;
+        _pulsingTargets.Clear();
         foreach (var tile in _ownSkills)
         {
             tile.Targetable = tile.Skill != null && (available.Contains(tile.SkillIndex) || s.Options.Any(o =>
                 o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && o.Move.Index >= 0 && o.Move.Index == tile.SkillIndex));
             tile.Chosen = tile.Skill != null && tile.SkillIndex == _selectedSkill && (attack || _skillContext);
+            if (tile.Targetable) _pulsingTargets.Add(tile);
             tile.QueueRedraw();
         }
         for (var relative = 0; relative < 2; relative++)
@@ -117,6 +119,7 @@ public partial class OnlineArena
                 if (node == null) return;
                 node.Targetable = s.Options.Any(o => MatchesField(o.Move, (owner, zone, index)));
                 node.Chosen = _fieldSelection == (owner, zone, index); node.QueueRedraw();
+                if (node.Targetable) _pulsingTargets.Add(node);
             }
             Mark(_root!.FindChild("EquipmentZone" + relative, true, false) as ZoneCardButton, FieldZone.Equipment, -1);
             var covers = s.Players[owner].EquipmentCovers;
@@ -132,6 +135,7 @@ public partial class OnlineArena
             var index = int.Parse(card.Name.ToString()[16..]);
             card.Targetable = s.Options.Any(o => MatchesField(o.Move, (1 - s.MySeat, FieldZone.Hand, index)));
             card.Chosen = _fieldSelection is { } field && field.Owner != s.MySeat && field.Zone == FieldZone.Hand && (field.Index < 0 || field.Index == index);
+            if (card.Targetable) _pulsingTargets.Add(card);
             card.QueueRedraw();
         }
     }

@@ -6,6 +6,8 @@ public static class ArenaViewport
 {
     public static bool Compact(Control control) => control.Size.X < 1100;
     public static bool Short(Control control) => control.Size.Y < 600;
+    /// <summary>Room for the full board: both fields, the hand and the reading rail without scrolling.</summary>
+    public static bool Desktop(Control control) => control.Size.X >= 1400 && control.Size.Y >= 980;
 
     // One landscape canvas, including when a desktop window is resized taller than wide.
     public static Vector2I LandscapeSize(Vector2I size) => new(
@@ -28,9 +30,10 @@ public static class ArenaViewport
         }
         if (DisplayServer.GetName() == "headless") return;
         if (size.X <= 0 || size.Y <= 0) return;
+        // Desktop keeps a 1024-high canvas and widens it to the window, so wide monitors show no bands.
         var logical = mobile || size.X < 1100
             ? LandscapeSize(new((int)(size.X / density), (int)(size.Y / density)))
-            : new Vector2I(1440, 1024);
+            : new Vector2I(Math.Clamp((int)Math.Round(1024.0 * size.X / size.Y), 1440, 2280), 1024);
         if (window.ContentScaleSize != logical) window.ContentScaleSize = logical;
     }
 

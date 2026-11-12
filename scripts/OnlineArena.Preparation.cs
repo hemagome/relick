@@ -131,6 +131,7 @@ public partial class OnlineArena
             if (CanChooseOpening && !IsAnimating) Connection.Confirm(_openingReturns);
         });
         PreparationConfirmButton.Name = "ConfirmOpeningHand";
+        RelickVisuals.Primary(PreparationConfirmButton);
         PreparationConfirmButton.SetMeta("discards", 0); _moveButtons.Add(PreparationConfirmButton);
         if (Compact)
         {

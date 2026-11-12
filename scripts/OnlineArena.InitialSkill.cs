@@ -57,6 +57,7 @@ public partial class OnlineArena
             if (CanChooseInitialSkill && _initialSkillCandidate != null) Connection.ChooseInitialSkill(_initialSkillCandidate);
         });
         InitialSkillConfirmButton.Name = "ConfirmInitialSkill";
+        RelickVisuals.Primary(InitialSkillConfirmButton);
         InitialSkillConfirmButton.SetMeta("discards", 0); _moveButtons.Add(InitialSkillConfirmButton);
         if (Compact) InitialSkillConfirmButton.CustomMinimumSize = new(Short ? 280 : 0, 48);
         _lastDisabled = null; UpdateEnabled();

@@ -5,6 +5,10 @@ namespace Relick;
 public partial class HandFan : Control
 {
     internal const float CardScale = 0.88f;
+    /// <summary>Clear band above the cards so a raised card stays inside the hand's clip.</summary>
+    internal float Headroom { get; init; } = 4;
+    internal float MaximumAngle { get; init; } = 8;
+    internal bool Spread { get; init; }
 
     public override void _Ready()
     {
@@ -22,23 +26,31 @@ public partial class HandFan : Control
         var face = cards[0].CustomMinimumSize;
         var pivot = face / 2;
         var step = face.X * 0.55f;
+        // The minimum footprint keeps the tight overlap; a wide board lets the cards breathe.
+        var spread = Spread && cards.Length > 1
+            ? Math.Clamp((Size.X - face.X - 40) / (cards.Length - 1), step, face.X * 0.8f) : step;
         var halfCount = (cards.Length - 1) / 2f;
-        var maxAngle = Mathf.DegToRad(Math.Min(8f, halfCount * 7));
+        var maxAngle = Mathf.DegToRad(Math.Min(MaximumAngle, halfCount * 7));
         var poses = new Transform2D[cards.Length];
-        var bounds = new Rect2();
-        for (var i = 0; i < cards.Length; i++)
+        Rect2 Pose(float spacing)
         {
-            var side = (i - halfCount) / Math.Max(0.5f, halfCount);
-            var center = new Vector2(i * step, 8 * side * side);
-            var pose = new Transform2D(side * maxAngle, center);
-            poses[i] = pose;
-            var rect = pose * new Rect2(-pivot, face);
-            bounds = i == 0 ? rect : bounds.Merge(rect);
+            var bounds = new Rect2();
+            for (var i = 0; i < cards.Length; i++)
+            {
+                var side = (i - halfCount) / Math.Max(0.5f, halfCount);
+                var center = new Vector2(i * spacing, 8 * side * side);
+                var pose = new Transform2D(side * maxAngle, center);
+                poses[i] = pose;
+                var rect = pose * new Rect2(-pivot, face);
+                bounds = i == 0 ? rect : bounds.Merge(rect);
+            }
+            return bounds;
         }
 
-        CustomMinimumSize = bounds.Size.Ceil() + new Vector2(12, 6);
+        CustomMinimumSize = Pose(step).Size.Ceil() + new Vector2(12, 2 + Headroom);
+        var bounds = Pose(spread);
         var offset = new Vector2(Math.Max(Size.X, CustomMinimumSize.X) / 2 - bounds.GetCenter().X,
-            4 - bounds.Position.Y);
+            Headroom - bounds.Position.Y);
         for (var i = 0; i < cards.Length; i++)
         {
             var card = cards[i];

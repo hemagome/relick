@@ -46,7 +46,9 @@ public partial class OpponentHandCard : Button
         {
             var scale = Math.Min(Size.X / _back.GetWidth(), Size.Y / _back.GetHeight());
             var extent = _back.GetSize() * scale;
-            DrawTextureRect(_back, new Rect2((Size - extent) / 2, extent), false);
+            var rect = new Rect2((Size - extent) / 2, extent);
+            RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
+            DrawTextureRect(_back, rect, false);
         }
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, IsHovered(), HasFocus());
     }

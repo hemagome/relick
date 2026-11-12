@@ -104,7 +104,7 @@ public partial class OnlineArena
                 var equipButton = PresentedButton(equip)!;
                 equipButton.Disabled = false;
                 GuiInputTestDriver.Click(equipButton);
-                Check(advance.GetParent().Name == "ArenaHeader" && _advanceButton == advance && advance.GetGlobalRect() == advanceRect &&
+                Check(advance.GetParent().Name.ToString() is "ArenaHeader" or "TurnDock" && _advanceButton == advance && advance.GetGlobalRect() == advanceRect &&
                     new Rect2(GlobalPosition, Size).Grow(1).Encloses(advanceRect),
                     $"El avance cambia de posición o queda fuera de vista en {size}: {advance.GetGlobalRect()}.");
                 Check(_contextCost.GetGlobalRect().End.Y <= Size.Y + 1, $"El coste de Hoguera queda fuera de la vista en {size}.");
@@ -215,7 +215,18 @@ public partial class OnlineArena
         var minimum = _root!.GetCombinedMinimumSize();
         if (!(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1 && _hand!.GetGlobalRect().End.Y <= Size.Y + 1 &&
             _root.GetGlobalRect().End.Y <= Size.Y + 1 && (_advanceButton == null || _advanceButton.GetGlobalRect().End.Y <= Size.Y + 1)))
-            throw new Exception($"La decisión de código desborda la arena: mínimo {minimum}, raíz {_root.Size}.");
+        {
+            var trace = new System.Text.StringBuilder();
+            void Walk(Control node, int depth)
+            {
+                var m = node.GetCombinedMinimumSize();
+                if (depth > 7 || m.X < 500 && m.Y < 330) return;
+                trace.Append($" | {new string('>', depth)}{node.Name}:{node.GetClass()} {m}");
+                foreach (var child in node.GetChildren().OfType<Control>()) Walk(child, depth + 1);
+            }
+            Walk(_root, 0);
+            throw new Exception($"La decisión de código desborda la arena: mínimo {minimum}, raíz {_root.Size}.{trace}");
+        }
     }
 
     private async Task CheckLoadErrorChoices()

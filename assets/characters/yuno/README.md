@@ -32,11 +32,11 @@ impactos normales y críticos. El normal hace retroceder a Yuno y protegerse el 
 lo desequilibra y lo dobla de dolor, con un destello mayor y una recuperación más lenta.
 `hit.png` conserva íntegra la animación anterior para daño reducido. Sus prompts nuevos están en
 [hit-normal-prompts.txt](hit-normal-prompts.txt) y [hit-critical-prompts.txt](hit-critical-prompts.txt);
-los intermedios y las vistas previas, en `artifacts/yuno-impacts/`. El juego utiliza los siete atlas PNG.
+los intermedios y las vistas previas, en `artifacts/yuno-impacts/`. El juego utiliza seis atlas PNG y la imagen de reposo.
 
 | Archivo | Rejilla | Cuadro | Cuadros | Duración en el MVP | Repetición |
 | --- | --- | --- | --- | --- | --- |
-| idle.png | 8 × 8 | 608 × 504 | 64 | 2 s | Sí |
+| idle-rest.png | imagen fija | 640 × 536 (608 × 504 + 16 de margen) | 1 | continuo | Sí; movido por sombreador |
 | attack.png | 8 × 7 | 608 × 504 | 56 | 1.2 s | No; vuelve a reposo |
 | hit.png (reducido) | 8 × 8 | 608 × 504 | 64 | 0.9 s | No; vuelve a reposo |
 | exhausted-idle.png | 8 × 2 | 608 × 504 | 16 | 2.8 s | Sí; solo a cero vidas |
@@ -44,8 +44,19 @@ los intermedios y las vistas previas, en `artifacts/yuno-impacts/`. El juego uti
 | hit-normal.png | 8 × 2 | 608 × 504 | 16 | 0.9 s | No; vuelve a reposo |
 | hit-critical.png | 8 × 2 | 608 × 504 | 16 | 1.2 s | No; vuelve a reposo |
 
-Orden: izquierda a derecha, arriba abajo. Las tres hojas procedentes de Ludo.ai se exportaron a 3 s.
-El MVP las reproduce aceleradas: reposo 1.5×, ataque 2.5× y daño aproximadamente 3.33×.
+El reposo ya no es una hoja de fotogramas. `idle-rest.png` es el primer cuadro de la antigua hoja de
+Ludo.ai —boca cerrada, mirada al frente— con 16 píxeles transparentes de margen, y
+`scripts/yuno_idle.gdshader` lo mueve en función del tiempo: el pecho sube y se ensancha al respirar,
+la cabeza lo sigue con un pequeño retraso, las puntas del pelo y el faldón del abrigo se mecen, la
+guardia flota y las celdas del guantelete laten. Al ser continuo se dibuja a la frecuencia de la
+pantalla (60, 120 Hz o más) y no tiene primer ni último cuadro que unir; la boca y los ojos no cambian.
+Los periodos de cada movimiento no son múltiplos entre sí, de modo que el conjunto no repite un
+ciclo reconocible. Cada jugador usa un desfase distinto y el movimiento reducido baja la amplitud.
+La hoja anterior de 64 cuadros (2 s, 32 cuadros por segundo, con la boca abriéndose y saltos entre
+bloques reconstruidos) sigue en el historial de Git y su original en `output/yuno-ludo/`.
+
+Orden de las hojas: izquierda a derecha, arriba abajo. Las hojas de ataque y daño reducido procedentes
+de Ludo.ai se exportaron a 3 s. El MVP las reproduce aceleradas: ataque 2.5× y daño aproximadamente 3.33×.
 Cada clip mantiene su velocidad (cuadros / duración en el MVP), independientemente
 de que el juego se dibuje a 60 o 120 fps.
 Yuno representa visualmente a ambos jugadores. El rival usa las mismas hojas, invertidas
@@ -62,7 +73,7 @@ ataque confirmado por el motor, conservado durante la defensa; no se deduce del 
 perdidas ni del dado adicional de daño de Magnet. Un seis convertido en cinco usa daño normal.
 El daño sin tirada de ataque tiene valor 0 y conserva la reacción genérica anterior.
 
-Las opciones de importación limitan las texturas a 2432 píxeles de ancho: Godot genera
-hojas a media resolución, con cuadros de 304 × 252 y la misma cuadrícula. Los PNG
+Las opciones de importación limitan las hojas a 2432 píxeles de ancho (320 la imagen de reposo): Godot genera
+texturas a media resolución, con cuadros de 304 × 252 y la misma cuadrícula. Los PNG
 fuente conservan las dimensiones de las exportaciones. El componente calcula las regiones desde el tamaño importado
 y conserva el lienzo lógico de 608 × 504. Véase [interfaz y optimizaciones](../../../docs/UI.md).

@@ -8,14 +8,14 @@ public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange,
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
 {
-    public static readonly Color Ink = new("f1f2f8");
-    public static readonly Color Muted = new("92a0bd");
-    public static readonly Color Gold = new("f4c57a");
+    public static readonly Color Ink = new("f2f4fb");
+    public static readonly Color Muted = new("8f9dbd");
+    public static readonly Color Gold = new("ffc86b");
     public static Color CardColor(CardDefinition? card) => card?.Kind switch
     {
-        CardKind.Attack => new("ef7890"), CardKind.Skill => new("5ed6b3"),
-        CardKind.Attachment => new("b5a2fa"), CardKind.Equipment => new("81c8ef"),
-        CardKind.Code when card.CodeType == CodeType.Trap => new("ef7890"), _ => Gold
+        CardKind.Attack => new("ff6f8e"), CardKind.Skill => new("4fe3b8"),
+        CardKind.Attachment => new("b5a2fa"), CardKind.Equipment => new("7cc8ff"),
+        CardKind.Code when card.CodeType == CodeType.Trap => new("ff6f8e"), _ => Gold
     };
     public static GameIcon CardIcon(CardDefinition? card) => card?.Kind switch
     {
@@ -49,14 +49,57 @@ public static class BoardArt
         return new Rect2(area.GetCenter() - extent / 2, extent);
     }
 
-    public static void Plate(CanvasItem c, Rect2 rect, Color fill, Color edge, int radius = 12, int border = 1)
+    private static Vector2[] Octagon(Rect2 rect, int radius)
     {
         var cut = Math.Min(Math.Min(radius, 8), Math.Min(rect.Size.X, rect.Size.Y) / 2);
         var x = rect.Position.X; var y = rect.Position.Y; var r = rect.End.X; var b = rect.End.Y;
-        var points = new Vector2[] { new(x + cut, y), new(r - cut, y), new(r, y + cut), new(r, b - cut),
-            new(r - cut, b), new(x + cut, b), new(x, b - cut), new(x, y + cut) };
-        if (fill.A > 0) c.DrawColoredPolygon(points, fill);
-        if (border > 0 && edge.A > 0) c.DrawPolyline(points.Append(points[0]).ToArray(), edge, border, true);
+        return [new(x + cut, y), new(r - cut, y), new(r, y + cut), new(r, b - cut),
+            new(r - cut, b), new(x + cut, b), new(x, b - cut), new(x, y + cut)];
+    }
+
+    public static void Plate(CanvasItem c, Rect2 rect, Color fill, Color edge, int radius = 12, int border = 1)
+    {
+        if (rect.Size.X <= 0 || rect.Size.Y <= 0) return;
+        var points = Octagon(rect, radius);
+        if (fill.A > 0)
+        {
+            // Lit from above: every plate carries the same quiet gradient as the docks.
+            var top = fill.Lightened(0.07f); var bottom = fill.Darkened(0.16f);
+            top.A = bottom.A = fill.A;
+            c.DrawPolygon(points, [top, top, top, bottom, bottom, bottom, bottom, top]);
+        }
+        if (border > 0 && edge.A > 0) c.DrawPolyline([.. points, points[0]], edge, border, true);
+    }
+
+    public static void Outline(CanvasItem c, Rect2 rect, Color edge, int radius = 12, int border = 1)
+    {
+        var points = Octagon(rect, radius);
+        c.DrawPolyline([.. points, points[0]], edge, border, true);
+    }
+
+    /// <summary>Recessed socket for an empty zone: darker than the mat, with corner ticks instead of a full frame.</summary>
+    public static void Socket(CanvasItem c, Rect2 rect, Color accent, float strength = 1)
+    {
+        var points = Octagon(rect, 8);
+        var top = new Color(0, 0, 0, 0.34f * strength); var bottom = new Color(0, 0, 0, 0.16f * strength);
+        c.DrawPolygon(points, [top, top, top, bottom, bottom, bottom, bottom, top]);
+        c.DrawPolyline([.. points, points[0]], Tint(accent, 0.16f * strength), 1, true);
+        var tick = Math.Min(14, Math.Min(rect.Size.X, rect.Size.Y) / 4);
+        var color = Tint(accent, 0.55f * strength);
+        foreach (var (corner, dx, dy) in new[] { (rect.Position, 1, 1), (new Vector2(rect.End.X, rect.Position.Y), -1, 1),
+            (rect.End, -1, -1), (new Vector2(rect.Position.X, rect.End.Y), 1, -1) })
+        {
+            var p = corner + new Vector2(dx * 4, dy * 4);
+            c.DrawPolyline([p + new Vector2(0, dy * tick), p + new Vector2(0, dy * 4), p + new Vector2(dx * 4, 0), p + new Vector2(dx * tick, 0)], color, 1.5f, true);
+        }
+    }
+
+    public static void Title(CanvasItem c, string text, Vector2 pos, int size, Color color, bool centered = false)
+    {
+        var font = RelickVisuals.Display;
+        if (centered) pos.X -= font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X / 2;
+        c.DrawString(font, pos + new Vector2(0, 1.5f), text, HorizontalAlignment.Left, -1, size, new Color(0, 0, 0, 0.45f * color.A));
+        c.DrawString(font, pos, text, HorizontalAlignment.Left, -1, size, color);
     }
 
     public static void Text(CanvasItem c, string text, Vector2 pos, int size, Color color, float width = -1)
@@ -72,8 +115,9 @@ public static class BoardArt
         const int fontSize = 9;
         var width = Mathf.Ceil(ThemeDB.FallbackFont.GetStringSize(text, fontSize: fontSize).X) + 12;
         var badge = new Rect2(size.X - width - 4, size.Y - 22, width, 18);
-        Plate(canvas, badge, RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 4);
-        CenterText(canvas, text, new(badge.GetCenter().X, badge.Position.Y + 12), fontSize, Ink);
+        RelickVisuals.Shadow(canvas, badge, new Color(0, 0, 0, 0.5f), 4, 3);
+        Plate(canvas, badge, new Color("0b1020"), Tint(Gold, 0.8f), 4);
+        CenterText(canvas, text, new(badge.GetCenter().X, badge.Position.Y + 12), fontSize, Gold);
     }
 
     public static void Icon(CanvasItem c, GameIcon icon, Vector2 center, float size, Color color, float canvasScale = 1)
@@ -154,24 +198,47 @@ public static class BoardArt
 
 public partial class ArenaBackground : Control
 {
-    public override void _Ready() { MouseFilter = MouseFilterEnum.Ignore; Resized += QueueRedraw; }
+    private ShaderMaterial? _material;
+    private ColorRect? _mat;
+    private float _seam = -1, _boardRight = 1, _active;
+
+    public override void _Ready()
+    {
+        MouseFilter = MouseFilterEnum.Ignore;
+        _material = new ShaderMaterial { Shader = GD.Load<Shader>("res://scripts/arena_playmat.gdshader") };
+        _mat = new ColorRect { Name = "PlaymatSurface", Material = _material, MouseFilter = MouseFilterEnum.Ignore, Color = RelickVisuals.Playmat.Background };
+        AddChild(_mat); _mat.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        Resized += Apply;
+        Apply();
+    }
+
+    /// <summary>Places the glowing divider between both fields; a negative seam draws a neutral mat.</summary>
+    internal void Present(float seam, float boardRight, int activeSide)
+    {
+        if (Mathf.IsEqualApprox(seam, _seam) && Mathf.IsEqualApprox(boardRight, _boardRight) && Mathf.IsEqualApprox(activeSide, _active)) return;
+        _seam = seam; _boardRight = boardRight; _active = activeSide;
+        Apply();
+    }
+
+    private void Apply()
+    {
+        if (_material == null) return;
+        var mat = RelickVisuals.Playmat;
+        _material.SetShaderParameter("size", Size);
+        _material.SetShaderParameter("seam", _seam);
+        _material.SetShaderParameter("board_right", _boardRight);
+        _material.SetShaderParameter("active_side", _active);
+        _material.SetShaderParameter("base_color", mat.Background);
+        _material.SetShaderParameter("trace_color", mat.Trace);
+        _material.SetShaderParameter("own_color", RelickVisuals.State.Own);
+        _material.SetShaderParameter("rival_color", RelickVisuals.State.Rival);
+        QueueRedraw();
+    }
+
     public override void _Draw()
     {
         var mat = RelickVisuals.Playmat;
-        DrawRect(new Rect2(Vector2.Zero, Size), mat.Background);
         if (mat.Artwork != null) DrawTextureRect(mat.Artwork, new Rect2(Vector2.Zero, Size), false);
-        // Low-contrast traces frame the play area without competing with card art.
-        for (var i = 0; i < 7; i++)
-        {
-            var x = 18 + i * 25f;
-            var y = 80 + i * 42f;
-            var color = BoardArt.Tint(mat.Trace, 0.065f);
-            var points = new Vector2[] { new(0, y), new(x, y), new(x + 26, y + 26), new(x + 26, Size.Y) };
-            DrawPolyline(points, color, 1, true);
-            DrawCircle(new(x, y), 2, color);
-            DrawPolyline(points.Select(p => new Vector2(Size.X - p.X, Size.Y - p.Y)).ToArray(), color, 1, true);
-        }
-
     }
 }
 
@@ -196,7 +263,9 @@ public partial class DexterityBadge : Control
         var points = Enumerable.Range(0, 7)
             .Select(index => center + Vector2.FromAngle(-Mathf.Pi / 2 + index * Mathf.Tau / 7) * radius).ToArray();
         var edge = Amount > 0 ? Accent : BoardArt.Tint(BoardArt.Muted, 0.55f);
-        DrawColoredPolygon(points, BoardArt.Tint(Accent, Amount > 0 ? 0.14f : 0.035f));
+        if (Amount > 0) RelickVisuals.Shadow(this, new Rect2(center - Vector2.One * radius * 0.7f, Vector2.One * radius * 1.4f), BoardArt.Tint(Accent, 0.35f), 6, (int)radius);
+        DrawColoredPolygon(points, new Color("0b1020"));
+        DrawColoredPolygon(points, BoardArt.Tint(Accent, Amount > 0 ? 0.22f : 0.05f));
         DrawPolyline([.. points, points[0]], edge, 2, true);
         var value = Amount.ToString();
         var font = ThemeDB.FallbackFont;
@@ -219,14 +288,17 @@ public partial class ResourceBadge : Control
 
     public override void _Draw()
     {
-        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 8);
+        var rect = new Rect2(Vector2.Zero, Size);
+        RelickVisuals.Shadow(this, rect.Grow(-3), BoardArt.Tint(BoardArt.Gold, Amount > 0 ? 0.22f : 0.06f), 6);
+        BoardArt.Plate(this, rect, new Color("191a26"), BoardArt.Tint(BoardArt.Gold, Amount > 0 ? 0.85f : 0.4f), 8);
+        BoardArt.Icon(this, GameIcon.Gem, new(15, Size.Y / 2), 13, BoardArt.Gold);
         var text = $"{Amount} PR";
-        var font = ThemeDB.FallbackFont;
+        var font = RelickVisuals.Strong;
         var fontSize = 18;
-        while (fontSize > 9 && font.GetStringSize(text, fontSize: fontSize).X > Size.X - 16) fontSize--;
-        var center = Size / 2;
-        var baseline = center.Y + (font.GetAscent(fontSize) - font.GetDescent(fontSize)) / 2;
-        BoardArt.CenterText(this, text, new(center.X, baseline), fontSize, BoardArt.Gold);
+        while (fontSize > 9 && font.GetStringSize(text, fontSize: fontSize).X > Size.X - 34) fontSize--;
+        var width = font.GetStringSize(text, fontSize: fontSize).X;
+        var baseline = Size.Y / 2 + (font.GetAscent(fontSize) - font.GetDescent(fontSize)) / 2;
+        DrawString(font, new((Size.X + 22 - width) / 2, baseline), text, HorizontalAlignment.Left, -1, fontSize, BoardArt.Gold);
     }
 }
 
@@ -243,7 +315,7 @@ public partial class LifeMeter : Control
     private double _elapsed;
     private double _duration;
 
-    public static Color ColorForRatio(float ratio) => ratio > 0.5f ? new("58d69a") : ratio > 0.2f ? new("f1c75b") : RelickVisuals.State.Danger;
+    public static Color ColorForRatio(float ratio) => ratio > 0.5f ? new("4fe39a") : ratio > 0.2f ? new("ffc857") : RelickVisuals.State.Danger;
 
     public void SetHealth(int health, int maximum, bool animate = true)
     {
@@ -285,25 +357,43 @@ public partial class LifeMeter : Control
     public override void _Draw()
     {
         var color = FillColor;
+        var danger = Health > 0 && Health * 5 <= Maximum;
+        RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(color, danger ? 0.55f : 0.32f), 9, 9);
         BoardArt.Icon(this, GameIcon.Heart, new(17, 23), 23, color);
         var value = Health.ToString();
         var max = $"/ {Maximum}";
         var fontSize = 32;
+        var strong = RelickVisuals.Strong;
         float Width(string text, int size) => ThemeDB.FallbackFont.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
-        while (fontSize > 12 && Width(value, fontSize) + Width(max, Math.Max(10, fontSize / 2)) + 6 > Size.X * 0.43f - 36) fontSize--;
-        BoardArt.Text(this, value, new(36, 34), fontSize, BoardArt.Ink);
-        var maxStart = 36 + Width(value, fontSize) + 6;
+        float StrongWidth(string text, int size) => strong.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
+        while (fontSize > 12 && StrongWidth(value, fontSize) + Width(max, Math.Max(10, fontSize / 2)) + 6 > Size.X * 0.43f - 36) fontSize--;
+        DrawString(strong, new(36, 34), value, HorizontalAlignment.Left, -1, fontSize, BoardArt.Ink);
+        var maxStart = 36 + StrongWidth(value, fontSize) + 6;
         BoardArt.Text(this, max, new(maxStart, 33), Math.Max(10, fontSize / 2), BoardArt.Muted);
         var start = Math.Max(112, maxStart + Width(max, Math.Max(10, fontSize / 2)) + 14);
         BoardArt.Text(this, Health == 0 ? "GOLPE FINAL" : "VIDAS", new(start, 15), 9, color);
         var track = new Rect2(start, 22, Math.Max(1, Size.X - start), 16);
-        BoardArt.Plate(this, track, new Color("0b1220"), new Color("536079"), 8);
-        var fill = new Rect2(track.Position + new Vector2(3, 3), new Vector2(Math.Max(0, track.Size.X - 6) * DisplayedRatio, 10));
+        BoardArt.Plate(this, track, new Color("060911"), new Color("3d4a6b"), 8);
+        var inner = new Rect2(track.Position + new Vector2(3, 3), new Vector2(Math.Max(0, track.Size.X - 6), 10));
+        // The lost stretch lingers in white while the bar drains: damage reads at a glance.
+        if (IsAnimating && _fromRatio > DisplayedRatio)
+            DrawRect(new Rect2(inner.Position.X + inner.Size.X * DisplayedRatio, inner.Position.Y, inner.Size.X * (_fromRatio - DisplayedRatio), inner.Size.Y),
+                BoardArt.Tint(BoardArt.Ink, 0.85f));
+        var fill = new Rect2(inner.Position, new Vector2(inner.Size.X * DisplayedRatio, inner.Size.Y));
         if (fill.Size.X > 0)
         {
-            BoardArt.Plate(this, fill, color, Colors.Transparent, (int)Math.Min(5, fill.Size.X / 2), 0);
-            if (fill.Size.X > 10) DrawLine(fill.Position + new Vector2(5, 2), fill.Position + new Vector2(fill.Size.X - 5, 2), color.Lightened(0.3f), 1, true);
+            RelickVisuals.Shadow(this, fill, BoardArt.Tint(color, 0.35f), 5, 3);
+            var top = color.Lightened(0.28f); var bottom = color.Darkened(0.22f);
+            DrawPolygon([fill.Position, new(fill.End.X, fill.Position.Y), fill.End, new(fill.Position.X, fill.End.Y)], [top, top, bottom, bottom]);
+            if (fill.Size.X > 10) DrawLine(fill.Position + new Vector2(2, 2), fill.Position + new Vector2(fill.Size.X - 2, 2), BoardArt.Tint(Colors.White, 0.45f), 1, true);
         }
+        // One notch per life keeps the continuous bar countable.
+        if (Maximum is > 1 and <= 16)
+            for (var i = 1; i < Maximum; i++)
+            {
+                var x = inner.Position.X + inner.Size.X * i / Maximum;
+                DrawLine(new(x, inner.Position.Y - 1), new(x, inner.End.Y + 1), new Color("060911"), 2);
+            }
     }
 }
 
@@ -361,20 +451,24 @@ public partial class SkillTile : Button
     {
         var size = Size / PresentationScale;
         DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
-        var edge = AwaitingLesson ? BoardArt.Tint(Accent, 0.65f) :
-            Skill == null ? BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f) : RelickVisuals.Playmat.Frame;
-        var fill = RelickVisuals.Playmat.Surface;
-        BoardArt.Plate(this, new Rect2(0, 0, size.X, size.Y), fill, edge, 9, Chosen || AwaitingLesson ? 2 : 1);
+        var bounds = new Rect2(0, 0, size.X, size.Y);
         if (Skill == null || AwaitingLesson)
         {
-            BoardArt.Icon(this, GameIcon.Bolt, size / 2, 24, BoardArt.Tint(BoardArt.Muted, 0.25f), PresentationScale);
-            BoardArt.Text(this, $"{GameEngine.SkillSlotCosts[Slot]} PR", new(12, size.Y - 12), 12, BoardArt.Muted);
+            BoardArt.Socket(this, bounds, Accent, AwaitingLesson ? 1.6f : 1);
+            BoardArt.Icon(this, GameIcon.Bolt, size / 2 - new Vector2(0, 6), 26, BoardArt.Tint(AwaitingLesson ? Accent : BoardArt.Muted, AwaitingLesson ? 0.55f : 0.22f), PresentationScale);
+            var cost = $"{GameEngine.SkillSlotCosts[Slot]} PR";
+            var chip = new Rect2(8, size.Y - 28, ThemeDB.FallbackFont.GetStringSize(cost, fontSize: 12).X + 30, 20);
+            BoardArt.Plate(this, chip, new Color(0, 0, 0, 0.35f), BoardArt.Tint(BoardArt.Gold, 0.35f), 4);
+            BoardArt.Icon(this, GameIcon.Gem, new(chip.Position.X + 11, chip.GetCenter().Y), 10, BoardArt.Tint(BoardArt.Gold, 0.75f), PresentationScale);
+            BoardArt.Text(this, cost, new(chip.Position.X + 21, size.Y - 13), 12, BoardArt.Tint(BoardArt.Gold, 0.9f));
         }
         else if (_skillArt != null)
         {
             var fit = Math.Min((size.X - 4) / _skillArt.GetWidth(), (size.Y - 4) / _skillArt.GetHeight());
             var artSize = _skillArt.GetSize() * fit;
-            DrawTextureRect(_skillArt, new Rect2((size - artSize) / 2, artSize), false);
+            var art = new Rect2((size - artSize) / 2, artSize);
+            RelickVisuals.Shadow(this, new Rect2(art.Position + new Vector2(0, 3), art.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 9);
+            DrawTextureRect(_skillArt, art, false);
 
             if (Skill.Id == CardCatalog.Destiny.Id)
             {
@@ -389,6 +483,7 @@ public partial class SkillTile : Button
         }
         else
         {
+            BoardArt.Plate(this, bounds, RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 9);
             DrawLine(new(14, 2), new(size.X - 14, 2), Accent, 3, true);
             BoardArt.Text(this, "HABILIDAD", new(12, 20), 9, Accent);
             BoardArt.CenterText(this, Skill.Name, new(size.X / 2, 47), 19, BoardArt.Ink);
@@ -441,17 +536,22 @@ public partial class ExchangeTrack : VBoxContainer
     public Color Accent { get; set; }
     public ZoneCardButton BonusButton { get; private set; } = null!;
     public ZoneCardButton[] ExchangeButtons { get; private set; } = null!;
+    /// <summary>Board rows give the track a fixed footprint instead of the centre column's width.</summary>
+    public float TrackWidth { get; init; }
+    /// <summary>The rival's lane reads from the outside in: Bonus first, toward their field's edge.</summary>
+    public bool Mirrored { get; init; }
     public event Action? BonusInspected;
     public event Action<int>? ExchangeInspected;
     public override void _Ready()
     {
-        CustomMinimumSize = new(Compact ? 252 : 280, 0);
+        CustomMinimumSize = new(TrackWidth > 0 ? TrackWidth : Compact ? 252 : 280, 0);
         AddThemeConstantOverride("separation", 4);
-        var label = new Label { Text = $"{OwnerCaption}  ·  {Filled}/2 EN CANJE", MouseFilter = MouseFilterEnum.Ignore };
+        var label = new Label { Text = $"{OwnerCaption}  ·  {Filled}/2 EN CANJE", MouseFilter = MouseFilterEnum.Ignore,
+            HorizontalAlignment = Mirrored ? HorizontalAlignment.Right : HorizontalAlignment.Left };
         label.AddThemeFontSizeOverride("font_size", 9);
         label.AddThemeColorOverride("font_color", Accent);
         AddChild(label);
-        var row = new HBoxContainer();
+        var row = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         row.AddThemeConstantOverride("separation", 6);
         AddChild(row);
         ExchangeButtons = new ZoneCardButton[2];
@@ -462,6 +562,7 @@ public partial class ExchangeTrack : VBoxContainer
             {
                 Name = $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent, Compact = Compact,
                 Layout = ZoneCardLayout.Landscape, EffectUsed = ExchangeEffectsUsed.Contains(slot), SizeFlagsStretchRatio = 1.25f,
+                CustomMinimumSize = new(0, TrackWidth > 0 ? 86 : 0),
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null
             };
             button.Pressed += () => ExchangeInspected?.Invoke(index);
@@ -475,6 +576,7 @@ public partial class ExchangeTrack : VBoxContainer
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
         row.AddChild(BonusButton);
+        if (Mirrored) row.MoveChild(BonusButton, 0);
     }
 }
 
@@ -487,6 +589,8 @@ public partial class ZoneCardButton : Button
     public bool Chosen { get; set; }
     public bool Compact { get; set; }
     public bool LargePreview { get; init; }
+    /// <summary>Fixed column width for board rows; zero keeps the legacy expanding slot.</summary>
+    public float SlotWidth { get; init; }
     public ZoneCardLayout Layout { get; init; }
     public bool EffectUsed { get; init; }
     public CardDefinition? Card { get; set; }
@@ -543,8 +647,8 @@ public partial class ZoneCardButton : Button
 
     public override void _Ready()
     {
-        CustomMinimumSize = new(Compact ? 80 : 88, Compact && LargePreview ? 112 : 86);
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        CustomMinimumSize = new(SlotWidth > 0 ? SlotWidth : Compact ? 80 : 88, Math.Max(CustomMinimumSize.Y, Compact && LargePreview ? 112 : 86));
+        SizeFlagsHorizontal = SlotWidth > 0 ? SizeFlags.Fill : SizeFlags.ExpandFill;
         Disabled = Card == null;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
@@ -563,19 +667,22 @@ public partial class ZoneCardButton : Button
     }
     public override void _Draw()
     {
-        var edge = AwaitingEquipment ? BoardArt.Tint(Accent, 0.65f) :
-            Card != null ? RelickVisuals.Playmat.Frame : BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.45f);
-        BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, edge, 8, AwaitingEquipment ? 2 : 1);
+        var bounds = new Rect2(0, 0, Size.X, Size.Y);
         var showCard = !AwaitingExchange && (!AwaitingEquipment || _previousEquipmentStatus != null) && (Card != null || HasExchangePreview);
+        BoardArt.Socket(this, bounds, Accent, AwaitingEquipment ? 1.6f : showCard ? 0.55f : 1);
         if (!showCard)
         {
             var caption = AwaitingEquipment ? "EQUIPO" : Caption;
-            BoardArt.CenterText(this, caption, new(Size.X / 2, 13), 9, AwaitingEquipment ? Accent : BoardArt.Muted);
+            BoardArt.CenterText(this, caption, new(Size.X / 2, 15), 9, BoardArt.Tint(AwaitingEquipment ? Accent : BoardArt.Muted, AwaitingEquipment ? 1 : 0.8f));
+            if (Size.Y > 60)
+                BoardArt.Icon(this, Caption.StartsWith("BONUS") ? GameIcon.Gift : Caption.StartsWith("CANJE") ? GameIcon.Exchange :
+                    Caption.StartsWith("ORO") ? GameIcon.Gem : GameIcon.Shield, Size / 2 + new Vector2(0, 5), 20, BoardArt.Tint(Accent, 0.16f));
         }
         else if (Artwork is { } artwork)
         {
             var rect = CardRect;
             var rotation = ArtworkRotation(artwork);
+            RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 7);
             if (rotation != 0)
             {
                 var origin = rotation > 0 ? new Vector2(rect.End.X, rect.Position.Y) : new Vector2(rect.Position.X, rect.End.Y);
@@ -596,6 +703,8 @@ public partial class ZoneCardButton : Button
 public partial class AttachmentStack : Button
 {
     public IReadOnlyList<string> Cards { get; init; } = [];
+    /// <summary>Board rows widen the slot so the fanned copies keep the row's full height.</summary>
+    public float SlotWidth { get; init; }
     private int Amount => Cards.Count;
     private Texture2D[] _previews = [];
     internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(Vector2.Zero, Size) : PreviewRect(_previews.Length - 1);
@@ -610,7 +719,7 @@ public partial class AttachmentStack : Button
 
     public override void _Ready()
     {
-        CustomMinimumSize = new(92, 86);
+        CustomMinimumSize = new(SlotWidth > 0 ? SlotWidth : 92, 86);
         Disabled = Amount == 0;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         AccessibilityName = $"Sobre el Relikario: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
@@ -623,12 +732,21 @@ public partial class AttachmentStack : Button
     }
     public override void _Draw()
     {
-        BoardArt.Plate(this, new Rect2(0, 0, Size.X, Size.Y), RelickVisuals.Playmat.Surface, BoardArt.Tint(RelickVisuals.Playmat.Frame, Amount == 0 ? 0.45f : 1), 8);
+        var accent = new Color("b5a2fa");
+        BoardArt.Socket(this, new Rect2(0, 0, Size.X, Size.Y), accent, Amount == 0 ? 1 : 0.55f);
         if (Amount == 0)
-            BoardArt.CenterText(this, "SOBRE RELIKARIO", new(Size.X / 2, 13), 8, BoardArt.Tint(BoardArt.Muted, 0.45f));
+        {
+            BoardArt.CenterText(this, "SOBRE RELIKARIO", new(Size.X / 2, 15), 8, BoardArt.Tint(BoardArt.Muted, 0.8f));
+            if (Size.Y > 60) BoardArt.Icon(this, GameIcon.Flag, Size / 2 + new Vector2(0, 5), 20, BoardArt.Tint(accent, 0.16f));
+        }
         else if (_previews.Length == 0)
             BoardArt.Icon(this, GameIcon.Cards, Size / 2, 32, BoardArt.Muted);
-        for (var i = 0; i < _previews.Length; i++) DrawTextureRect(_previews[i], PreviewRect(i), false);
+        for (var i = 0; i < _previews.Length; i++)
+        {
+            var rect = PreviewRect(i);
+            RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
+            DrawTextureRect(_previews[i], rect, false);
+        }
         if (Amount > 1) BoardArt.CardBadge(this, Size, $"×{Amount}");
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, !Disabled && IsHovered(), HasFocus());
     }
@@ -638,6 +756,8 @@ public partial class HandCard : Button
 {
     public CardDefinition Card { get; set; } = null!;
     internal bool InFan { get; init; }
+    /// <summary>How far a fanned card rises under the pointer. Larger lifts also magnify the card.</summary>
+    internal float Lift { get; init; } = 9;
     public float PresentationScale { get; set; } = 1;
     private Vector2 DrawSize => Size / PresentationScale;
     public bool Chosen { get; set; }
@@ -682,21 +802,25 @@ public partial class HandCard : Button
     }
     public override void _Draw()
     {
-        DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
         var accent = BoardArt.CardColor(Card);
         var icon = BoardArt.CardIcon(Card);
-        var y = 7 - _hover * (InFan ? 9 : 5);
+        var y = 7 - _hover * (InFan ? Lift : 5);
         var r = new Rect2(1, y, DrawSize.X - 2, 175);
-        BoardArt.Plate(this, new Rect2(r.Position + new Vector2(0, 3), r.Size), new Color(0, 0, 0, 0.25f), Colors.Transparent, 12, 0);
-        BoardArt.Plate(this, r, RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 12, Chosen ? 2 : 1);
+        // A raised card grows from its lower edge, so neighbours keep their place in the fan.
+        var zoom = InFan && Lift > 9 && _artwork != null ? 1 + 0.08f * _hover : 1;
+        var scale = PresentationScale * zoom;
+        var origin = new Vector2(DrawSize.X / 2, r.End.Y) * PresentationScale * (1 - zoom);
+        DrawSetTransform(origin, 0, Vector2.One * scale);
+        RelickVisuals.Shadow(this, new Rect2(r.Position + new Vector2(0, 4 + 5 * _hover), r.Size).Grow(-3), new Color(0, 0, 0, 0.5f), (int)(9 + 7 * _hover), 8);
         if (_artwork != null)
         {
+            if (_hover > 0.01f && !Chosen) RelickVisuals.Shadow(this, r.Grow(-2), BoardArt.Tint(accent, 0.45f * _hover), 12, 8);
             if (Card.Kind == CardKind.Skill)
             {
                 // Rotate landscape skills into the portrait footprint of the hand.
-                DrawSetTransform(new Vector2(r.Position.X, r.End.Y) * PresentationScale, -Mathf.Pi / 2, Vector2.One * PresentationScale);
+                DrawSetTransform(origin + new Vector2(r.Position.X, r.End.Y) * scale, -Mathf.Pi / 2, Vector2.One * scale);
                 DrawTextureRect(_artwork, new Rect2(0, 0, r.Size.Y, r.Size.X), false);
-                DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
+                DrawSetTransform(origin, 0, Vector2.One * scale);
 
                 DrawSelection(y, accent);
                 return;
@@ -709,6 +833,7 @@ public partial class HandCard : Button
             DrawSelection(y, accent);
             return;
         }
+        BoardArt.Plate(this, r, RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 12, Chosen ? 2 : 1);
         DrawLine(new Vector2(15, y + 1), new Vector2(DrawSize.X - 15, y + 1), accent, 3, true);
         BoardArt.Text(this, Card.Kind == CardKind.Attachment ? "SOBRE RELIKARIO" : BoardArt.CardType(Card), new(12, y + 21), 9, accent);
         for (var i = 3; i >= 1; i--) DrawCircle(new Vector2(DrawSize.X / 2, y + 70), i * 12, BoardArt.Tint(accent, 0.035f));

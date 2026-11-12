@@ -139,7 +139,7 @@ public partial class OnlineArena
         _turnControls.Visible = relikia.Length > 0;
     }
 
-    private void BuildAdvanceControl(HBoxContainer header)
+    private void BuildAdvanceControl(Node header)
     {
         var s = _snapshot!;
         _advanceButton = null;
@@ -350,10 +350,14 @@ public partial class OnlineArena
             cost = _preparing ? "" : ArenaActionText.CardCost(card);
         }
         _inspector.Present(card, title, cost, _selection.Text, counters);
+        _showcase?.Present(card);
         _contextCost.TooltipText = cost;
         _actionDock.SizeFlagsVertical = card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
-        var interaction = (Control)_actionDock.GetParent().GetParent();
-        interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        if (_showcase == null)
+        {
+            var interaction = (Control)_actionDock.GetParent().GetParent();
+            interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        }
         var hasDecisions = _moves.GetChildCount() > 0;
         var hasTurnControls = _turnControls.GetParent() == _decisionBar && _turnControls.Visible;
         // Keep Relikia aligned to the right when it is the only control in the row.
