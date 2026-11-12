@@ -9,7 +9,6 @@ public partial class OpponentHandCard : Button
     public CardDefinition? PublicCard { get; init; }
     public Vector2 FaceSize { get; init; } = new(54, 76.4f);
     public bool IsFaceDown => PublicCard == null;
-    public bool HasBackArtwork => _back != null;
     public bool Targetable { get; set; }
     public bool Chosen { get; set; }
     private Texture2D? _back;

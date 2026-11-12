@@ -36,7 +36,6 @@ public partial class DiceFace : Control
     public bool IsPresented => IsRolling || _resultRemaining > 0;
     public float PresentationOpacity => IsRolling ? 1 : (float)Math.Clamp(_resultRemaining / 0.2, 0, 1);
     internal float HeightAboveTable { get; private set; }
-    internal float LowestPointHeight => _cube.Position.Y - SupportHeight(_cube.Quaternion);
     public bool Is3DReady => _viewport != null && _cube != null;
     public int Value
     {
@@ -77,7 +76,6 @@ public partial class DiceFace : Control
         UpdatePose();
     }
     public int DisplayedValue => _value == 0 ? 0 : TopFaceValue;
-    internal float ResultUpAlignment => _value == 0 ? 0 : (_cube.Quaternion * FaceNormals[_value]).Dot(Vector3.Up);
 
     public override void _Ready()
     {
@@ -330,7 +328,6 @@ public partial class DiceFace : Control
         return 0;
     }
 
-    internal Image Capture3DFrame() => _viewport.GetTexture().GetImage();
 
     public override void _Draw()
     {

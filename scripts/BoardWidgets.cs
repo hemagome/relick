@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -176,6 +176,16 @@ public static class BoardArt
                 c.DrawArc(new(-1, 0), 7, -Mathf.Pi / 4, Mathf.Pi / 4, 12, color, 2.5f, true);
                 c.DrawArc(new(-1, 0), 13, -Mathf.Pi / 4, Mathf.Pi / 4, 16, color, 2.5f, true);
                 break;
+            case GameIcon.Gear:
+                // Settings cog: a ring with eight teeth, hollow at the hub.
+                c.DrawArc(Vector2.Zero, 7.5f, 0, Mathf.Tau, 40, color, 5.5f, true);
+                for (var tooth = 0; tooth < 8; tooth++)
+                {
+                    var angle = tooth * Mathf.Tau / 8;
+                    Shape(Vector2.FromAngle(angle - 0.24f) * 9.5f, Vector2.FromAngle(angle - 0.15f) * 14,
+                        Vector2.FromAngle(angle + 0.15f) * 14, Vector2.FromAngle(angle + 0.24f) * 9.5f);
+                }
+                break;
             case GameIcon.SpeakerMuted:
                 Stroke(new(-5, -6), new(-1, -10), new(-1, -5));
                 Stroke(new(-1, 6), new(-1, 10), new(-7, 4), new(-12, 4), new(-12, -4), new(-9, -4));
@@ -183,16 +193,6 @@ public static class BoardArt
                 break;
         }
         c.DrawSetTransform(Vector2.Zero, 0, Vector2.One * canvasScale);
-    }
-    public static void Die(CanvasItem c, Vector2 center, int face, float size, Color color)
-    {
-        var s = size / 2;
-        Plate(c, new Rect2(center - Vector2.One * s, Vector2.One * size), Tint(color, 0.08f), Tint(color, 0.5f), 4);
-        void Pip(float x, float y) => c.DrawCircle(center + new Vector2(x, y) * size * 0.23f, size * 0.055f, color);
-        if (face % 2 == 1) Pip(0, 0);
-        if (face >= 2) { Pip(-1, -1); Pip(1, 1); }
-        if (face >= 4) { Pip(-1, 1); Pip(1, -1); }
-        if (face == 6) { Pip(-1, 0); Pip(1, 0); }
     }
 }
 
@@ -397,22 +397,6 @@ public partial class LifeMeter : Control
     }
 }
 
-public partial class ZoneTile : Control
-{
-    public string Caption { get; set; } = "";
-    public GameIcon Icon { get; set; }
-    public int Amount { get; set; }
-    public Color Accent { get; set; }
-    public override void _Ready() { CustomMinimumSize = new(70, 46); MouseFilter = MouseFilterEnum.Pass; TooltipText = $"{Caption}: {Amount} cartas"; }
-    public override void _Draw()
-    {
-        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 8);
-        BoardArt.Icon(this, Icon, new(16, 19), 18, Accent);
-        BoardArt.Text(this, Amount.ToString(), new(32, 25), 21, BoardArt.Ink);
-        BoardArt.CenterText(this, Caption, new(Size.X / 2, 39), 8, BoardArt.Muted);
-    }
-}
-
 public partial class SkillTile : Button
 {
     // The hand card canvas is 126 × 184; rotating it gives this exact footprint.
@@ -499,29 +483,6 @@ public partial class SkillTile : Button
 }
 
 
-public partial class DiceOutcomeStrip : Control
-{
-    public int Result { get; set; }
-    public override void _Ready()
-    {
-        CustomMinimumSize = new(252, 42);
-        MouseFilter = MouseFilterEnum.Pass;
-        TooltipText = "D6: 1–3 fallo · 4 mitad del daño · 5 normal · 6 crítico.";
-    }
-    public override void _Draw()
-    {
-        var width = Size.X / 6;
-        for (var i = 1; i <= 6; i++)
-        {
-            var color = i < 4 ? BoardArt.Muted : i == 4 ? BoardArt.Gold : i == 5 ? new Color("5ed6b3") : new Color("b5a2fa");
-            var center = new Vector2(width * (i - 0.5f), 15);
-            if (Result == i) BoardArt.Plate(this, new Rect2(width * (i - 1) + 1, 0, width - 2, 41), BoardArt.Tint(color, 0.14f), BoardArt.Tint(color, 0.6f), 6);
-            BoardArt.Die(this, center, i, 21, color);
-            BoardArt.CenterText(this, i < 4 ? "Fallo" : i == 4 ? "Mitad" : i == 5 ? "Normal" : "Crítico", new(center.X, 38), 8, color);
-        }
-    }
-}
-
 public partial class ExchangeTrack : VBoxContainer
 {
     public bool Compact { get; set; }
@@ -529,7 +490,6 @@ public partial class ExchangeTrack : VBoxContainer
     public IReadOnlyList<CardDefinition> ExchangeCards { get; set; } = Array.Empty<CardDefinition>();
     public int Filled => ExchangeCards.Count;
     public CardDefinition? BonusCard { get; set; }
-    public bool BonusAvailable => BonusCard != null;
     public bool Preparing { get; set; }
     public bool BonusEffectUsed { get; set; }
     public IReadOnlyCollection<int> ExchangeEffectsUsed { get; set; } = Array.Empty<int>();
@@ -765,8 +725,6 @@ public partial class HandCard : Button
     private float _hover;
     private Texture2D? _artwork;
     public bool HasSkillArtwork => Card.Kind == CardKind.Skill && _artwork != null;
-    public bool HasCodeArtwork => Card.Kind == CardKind.Code && _artwork != null;
-    public bool HasEquipmentArtwork => Card.Kind == CardKind.Equipment && _artwork != null;
     public bool HasAttackArtwork => Card.Kind == CardKind.Attack && _artwork != null;
     public override void _Ready()
     {
@@ -844,22 +802,6 @@ public partial class HandCard : Button
         var fontSize = name.Length > 11 ? 14 : 17;
         while (fontSize > 11 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > DrawSize.X - 18) fontSize--;
         BoardArt.CenterText(this, name, new(DrawSize.X / 2, y + 122), fontSize, BoardArt.Ink);
-        DrawLine(new(12, y + 134), new(DrawSize.X - 12, y + 134), new Color("34405a"), 1);
-        if (Card.Kind == CardKind.Skill)
-        {
-            BoardArt.Icon(this, GameIcon.Sword, new(16, y + 152), 13, accent, PresentationScale);
-            BoardArt.Text(this, (Card.Id == CardCatalog.Magnet.Id ? "1D6" : Card.NormalDamage.ToString()), new(26, y + 157), 14, BoardArt.Ink);
-            BoardArt.Text(this, $"{Card.CriticalDamage} crítico", new(44, y + 156), 9, BoardArt.Gold);
-            BoardArt.Icon(this, GameIcon.Gem, new(89, y + 152), 10, BoardArt.Gold, PresentationScale);
-            BoardArt.Text(this, $"{Card.Reward}", new(98, y + 156), 10, BoardArt.Gold);
-        }
-        else if (Card.Kind == CardKind.Code)
-        {
-            BoardArt.Icon(this, Card.Heal > 0 ? GameIcon.Heart : GameIcon.Cards, new(18, y + 152), 15, accent, PresentationScale);
-            BoardArt.Text(this, "+2", new(30, y + 157), 16, BoardArt.Ink);
-            BoardArt.Text(this, "1 acción", new(DrawSize.X - 56, y + 156), 10, BoardArt.Muted);
-        }
-        else BoardArt.CenterText(this, Card.Kind == CardKind.Attack ? "Usa una habilidad" : "Carta de ejemplo", new(DrawSize.X / 2, y + 156), 11, BoardArt.Muted);
         DrawSelection(y, accent);
     }
 
@@ -878,4 +820,19 @@ public partial class IconView : Control
     public Color Color { get; set; } = BoardArt.Ink;
     public override void _Ready() { MouseFilter = MouseFilterEnum.Ignore; }
     public override void _Draw() => BoardArt.Icon(this, Icon, Size / 2, Math.Min(Size.X, Size.Y), Color);
+}
+
+/// <summary>Menu trigger shown as a symbol; its name stays available to tooltips and screen readers.</summary>
+public partial class IconMenuButton : MenuButton
+{
+    public GameIcon Symbol { get; init; } = GameIcon.Gear;
+
+    public override void _Ready()
+    {
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+    }
+
+    public override void _Draw() => BoardArt.Icon(this, Symbol, Size / 2, Math.Min(26, Math.Min(Size.X, Size.Y) - 18),
+        Disabled ? BoardArt.Muted : IsHovered() ? Colors.White : BoardArt.Ink);
 }

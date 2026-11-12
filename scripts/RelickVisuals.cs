@@ -26,7 +26,7 @@ public static class RelickVisuals
 
     private static Font? _display, _strong;
     private static readonly Dictionary<(Color, Color, Color, Color, int, int), ImageTexture> FrameTextures = new();
-    private static readonly Dictionary<(Color, int, int), StyleBoxFlat> Shadows = new();
+    private static readonly StyleBoxFlat ShadowBox = new() { BgColor = Colors.Transparent, DrawCenter = false };
 
     /// <summary>Slanted, heavy capitals for titles: echoes the forward lean of the Relick logotype.</summary>
     public static Font Display => _display ??= new FontVariation
@@ -122,17 +122,11 @@ public static class RelickVisuals
     /// <summary>Soft drop shadow or coloured halo behind a custom-drawn card.</summary>
     public static void Shadow(CanvasItem canvas, Rect2 rect, Color color, int size = 8, int radius = 6)
     {
-        var key = (color, size, radius);
-        if (!Shadows.TryGetValue(key, out var box))
-        {
-            if (Shadows.Count > 96) Shadows.Clear();
-            box = new StyleBoxFlat
-            {
-                BgColor = Colors.Transparent, DrawCenter = false, ShadowColor = color, ShadowSize = size,
-                CornerRadiusTopLeft = radius, CornerRadiusTopRight = radius, CornerRadiusBottomLeft = radius, CornerRadiusBottomRight = radius
-            };
-            Shadows[key] = box;
-        }
+        // Drawing is immediate, so one box serves every caller, including per-frame animated colours.
+        var box = ShadowBox;
+        if (box.ShadowColor != color) box.ShadowColor = color;
+        if (box.ShadowSize != size) box.ShadowSize = size;
+        if (box.CornerRadiusTopLeft != radius) box.SetCornerRadiusAll(radius);
         box.Draw(canvas.GetCanvasItem(), rect);
     }
 

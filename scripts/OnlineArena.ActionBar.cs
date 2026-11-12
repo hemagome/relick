@@ -148,7 +148,7 @@ public partial class OnlineArena
         if (advance < 0) return;
         _advanceButton = (AdvancePhaseButton)AddOption(header, advance);
         _advanceButton.Name = "AdvanceStage";
-        _advanceButton.TooltipText = ArenaGuidance.SuggestAdvance(s)
+        _advanceButton.TooltipText = AdvanceSuggested(s)
             ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.";
     }
 
@@ -440,8 +440,22 @@ public partial class OnlineArena
         _inspector.SetHint(text);
     }
 
+    private DuelSnapshot? _advanceSuggestionSource;
+    private bool _advanceSuggested;
+
+    // Asked every frame: the answer only changes with the snapshot.
+    private bool AdvanceSuggested(DuelSnapshot snapshot)
+    {
+        if (!ReferenceEquals(_advanceSuggestionSource, snapshot))
+        {
+            _advanceSuggestionSource = snapshot;
+            _advanceSuggested = ArenaGuidance.SuggestAdvance(snapshot);
+        }
+        return _advanceSuggested;
+    }
+
     private void RefreshAdvanceInvitation(bool blocked)
-        => _advanceButton?.SetInvitation(!blocked && !_preparing && _snapshot != null && ArenaGuidance.SuggestAdvance(_snapshot));
+        => _advanceButton?.SetInvitation(!blocked && !_preparing && _snapshot != null && AdvanceSuggested(_snapshot));
 
 
     private string ChoiceOrigin(DuelOption option) => option.Move.Kind switch

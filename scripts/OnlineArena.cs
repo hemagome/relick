@@ -57,6 +57,10 @@ public partial class OnlineArena : Control
     private CardShowcase? _showcase;
     private Control? _combatCenter, _readerRail;
     private readonly List<Control> _pulsingTargets = [];
+    // Board nodes looked up once per build; selections refresh them without walking the tree.
+    private readonly ZoneCardButton?[] _equipmentZones = new ZoneCardButton?[2], _coverZones = new ZoneCardButton?[2];
+    private readonly ExchangeTrack?[] _exchangeTracks = new ExchangeTrack?[2];
+    private readonly List<OpponentHandCard> _opponentCards = [];
     private bool ChoosingRecycling => _snapshot is { Phase: Phase.RecycleChoice } s && s.DecisionPlayer == s.MySeat;
     private bool ChoosingDeckSearch => _snapshot is { Phase: Phase.DeckSearchChoice } s && s.DecisionPlayer == s.MySeat;
     private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat;
@@ -370,6 +374,13 @@ public partial class OnlineArena : Control
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
         _ownSkills.Clear(); _ownSkills.AddRange(_root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>());
         _evolveButton = _root.FindChild("EvolveRelikario", true, false) as Button;
+        for (var relative = 0; relative < 2; relative++)
+        {
+            _equipmentZones[relative] = _root.FindChild("EquipmentZone" + relative, true, false) as ZoneCardButton;
+            _coverZones[relative] = _root.FindChild("EquipmentCoverZone" + relative, true, false) as ZoneCardButton;
+            _exchangeTracks[relative] = _root.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack;
+        }
+        _opponentCards.Clear(); _opponentCards.AddRange(_root.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>());
         MoveChild(_cardActions, GetChildCount() - 1);
         MoveChild(_diceOverlay, GetChildCount() - 1);
         BuildMoves(); BindInspectorPreviews();
@@ -474,7 +485,6 @@ public partial class OnlineArena : Control
             var popup = _arenaMenu.GetPopup(); var abandon = popup.GetItemIndex(1);
             if (abandon >= 0) popup.SetItemDisabled(abandon, disabled);
         }
-        RefreshAdvanceInvitation(disabled);
         if (_evolveButton is Button evolve)
             evolve.Disabled = disabled || !_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve);
         if (_choosingOpeningSkill && InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled |= _initialSkillCandidate == null;

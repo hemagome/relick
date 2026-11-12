@@ -10,7 +10,8 @@ public partial class OnlineArena
     private void BuildArenaMenu(Node header)
     {
         var s = _snapshot!;
-        _arenaMenu = new MenuButton { Name = "ArenaMenu", Text = "Menú", CustomMinimumSize = new(70, 48) };
+        _arenaMenu = new IconMenuButton { Name = "ArenaMenu", CustomMinimumSize = new(52, 48),
+            TooltipText = "Menú", AccessibilityName = "Menú" };
         header.AddChild(_arenaMenu); var popup = _arenaMenu.GetPopup(); ArenaViewport.TouchMenu(popup);
         if (!_preparing) popup.AddItem("Historial de jugadas", 3);
         if (s.Options.Any(o => o.Move.Kind == DuelMoveKind.Concede)) popup.AddItem("Abandonar duelo", 1);
@@ -121,16 +122,16 @@ public partial class OnlineArena
                 node.Chosen = _fieldSelection == (owner, zone, index); node.QueueRedraw();
                 if (node.Targetable) _pulsingTargets.Add(node);
             }
-            Mark(_root!.FindChild("EquipmentZone" + relative, true, false) as ZoneCardButton, FieldZone.Equipment, -1);
+            Mark(_equipmentZones[relative], FieldZone.Equipment, -1);
             var covers = s.Players[owner].EquipmentCovers;
-            Mark(_root.FindChild("EquipmentCoverZone" + relative, true, false) as ZoneCardButton, FieldZone.EquipmentCover, (covers?.Length ?? 0) - 1);
-            if (_root.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track)
+            Mark(_coverZones[relative], FieldZone.EquipmentCover, (covers?.Length ?? 0) - 1);
+            if (_exchangeTracks[relative] is { } track)
             {
                 Mark(track.BonusButton, FieldZone.Bonus, -1);
                 for (var i = 0; i < track.ExchangeButtons.Length; i++) Mark(track.ExchangeButtons[i], FieldZone.Exchange, i);
             }
         }
-        foreach (var card in _root!.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>())
+        foreach (var card in _opponentCards)
         {
             var index = int.Parse(card.Name.ToString()[16..]);
             card.Targetable = s.Options.Any(o => MatchesField(o.Move, (1 - s.MySeat, FieldZone.Hand, index)));

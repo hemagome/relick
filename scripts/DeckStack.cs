@@ -7,7 +7,6 @@ public partial class DeckStack : Control
 {
     public int Amount { get; set; }
     public Color Accent { get; set; }
-    public bool HasBackArtwork => _back != null;
     private Texture2D? _back;
     public override void _Ready()
     {

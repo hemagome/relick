@@ -32,9 +32,6 @@ public static class ArenaPresentation
         return label;
     }
 
-    public static StyleBoxFlat Box(string background, Color border, int radius = 12)
-        => RelickVisuals.Frame(new Color(background), border, Math.Min(radius, 8));
-
     public static Button Button(Node parent, string text, Action action, bool disabled = false)
     {
         var button = new Button { Text = text, Disabled = disabled, CustomMinimumSize = new(0, 48), MouseDefaultCursorShape = Control.CursorShape.PointingHand };
