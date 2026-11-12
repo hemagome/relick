@@ -802,6 +802,8 @@ public partial class OnlineArena
                     if (_handCards.Count(c => c.OriginalOwner?.Seat == actor) != 2 || _handCards.Count(c => c.OriginalOwner?.Seat == 1 - actor) != 2 ||
                         _handCards.Single(c => c.Card.Id == CardCatalog.Bonfire.Id).OriginalOwner?.Seat != 1 - actor)
                         throw new Exception("Las cartas de memoria no muestran a su dueño original.");
+                    if (_handCards.Any(c => c.ShowOwnerBadge))
+                        throw new Exception("Los bloques de memoria repiten el distintivo de rival.");
                     var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == 1);
                     SelectCard(index); var option = _deckSearchOptions[index];
                     // Fixed, wrapping headers settle through Godot's deferred container layout.

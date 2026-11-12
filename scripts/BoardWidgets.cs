@@ -776,6 +776,8 @@ public partial class HandCard : Button
     public bool Mulligan { get; set; }
     public CardOwner? OriginalOwner { get; set; }
     public int? ViewerSeat { get; set; }
+    /// <summary>False when the surrounding section already names the owner.</summary>
+    public bool ShowOwnerBadge { get; set; } = true;
     private float _hover;
     private Texture2D? _artwork;
     public bool HasSkillArtwork => Card.Kind == CardKind.Skill && _artwork != null;
@@ -865,8 +867,8 @@ public partial class HandCard : Button
         DrawOwner(y);
     }
 
-    // A sleeve edge marks every card whose owner is known; the rival's cards also carry a
-    // readable badge before selection, not only in the inspector after tapping.
+    // A sleeve edge marks every card whose owner is known; outside a labelled memory block,
+    // the rival's cards also carry a readable badge before selection.
     private void DrawOwner(float y)
     {
         if (OriginalOwner is not { } owner) return;
@@ -875,7 +877,7 @@ public partial class HandCard : Button
         var left = 3f; var right = DrawSize.X - 3;
         DrawLine(new Vector2(left, y + 8), new Vector2(left, y + 167), color, foreign ? 4 : 3, true);
         DrawLine(new Vector2(left + 4, y + 2), new Vector2(right - 4, y + 2), color, foreign ? 3 : 2, true);
-        if (!foreign) return;
+        if (!foreign || !ShowOwnerBadge) return;
         var badge = new Rect2(8, y + 154, 48, 16);
         BoardArt.Plate(this, badge, new Color("0b1020"), color, 4, 1);
         BoardArt.CenterText(this, "RIVAL", new(badge.GetCenter().X, badge.Position.Y + 12), 8, color);

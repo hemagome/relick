@@ -502,7 +502,7 @@ public static class ArenaPresentation
                 var card = new HandCard
                 {
                     Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), InFan = false, Lift = 9,
-                    OriginalOwner = section.Owner, ViewerSeat = viewerSeat >= 0 ? viewerSeat : null,
+                    OriginalOwner = section.Owner, ViewerSeat = viewerSeat >= 0 ? viewerSeat : null, ShowOwnerBadge = false,
                     PresentationScale = shortScreen ? 0.6f : railColumns > 0 ? 0.9f : DesktopHandScale
                 };
                 card.Pressed += () => pressed(slot); cards.AddChild(card);
