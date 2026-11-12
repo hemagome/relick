@@ -80,6 +80,7 @@ public partial class ImpactLayer : Control
     private Color _flashColor;
     internal bool ReducedMotion { get; set; }
     internal int ActiveCount => _numbers.Count + _rings.Count + _beams.Count + (_flash < FlashSeconds ? 1 : 0);
+    internal Vector2? LastNumberAt => _numbers.Count == 0 ? null : _numbers[^1].At;
 
     public override void _Ready()
     {

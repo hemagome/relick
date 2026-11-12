@@ -1262,7 +1262,21 @@ public partial class OnlineArena
         PlayPendingPortraits();
         if (IsAnimating || _die.TopFaceValue != 3 || _portraits[0].Motion != PortraitMotion.Attack || _portraits[1].Motion != PortraitMotion.Hit)
             throw new Exception("No termina la secuencia visual o se pierde un efecto.");
-        GD.Print("SHARED_ARENA_VISUALS_PASS · dados repetidos, robo, devolución oculta, barajado, Bonus, memoria, ataque y daño.");
+        foreach (var victim in new[] { 0, 1 })
+        {
+            ResetAnimations(); PresentTestSnapshot(snapshot);
+            // A new revision animates before the rebuilt board has been laid out.
+            Animate([new() { Kind = DuelVisualKind.Hit, Player = victim, Value = 2, AttackDie = 5 }], []);
+            for (var i = 0; i < 4; i++)
+            {
+                UpdateFlights(0);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+            var portrait = _portraits[victim == snapshot.MySeat ? 0 : 1];
+            if (_impacts.LastNumberAt is not { } at || !portrait.GetGlobalRect().Grow(2).HasPoint(at))
+                throw new Exception($"El número de daño queda fuera del relikario: {_impacts.LastNumberAt}, retrato {portrait.GetGlobalRect()}.");
+        }
+        GD.Print("SHARED_ARENA_VISUALS_PASS · dados repetidos, robo, devolución oculta, barajado, Bonus, memoria, ataque, daño y números sobre el relikario.");
     }
 
     internal async Task CheckHealingPortraits(GameEngine game)

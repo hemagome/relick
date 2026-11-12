@@ -17,6 +17,8 @@ public partial class OnlineArena
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
     // Cosmetic only: the amounts come from the same authorized cues that move the portraits.
     private readonly List<(int Player, int Amount, bool Critical)> _pendingImpacts = [];
+    // Attack streaks need the rebuilt board laid out before they can read portrait rectangles.
+    private readonly List<(int Attacker, int Defender)> _pendingBeams = [];
     private Control? _flight;
     private HandCard? _flightFront;
     private TextureRect? _flightBack;
@@ -283,21 +285,25 @@ public partial class OnlineArena
     private void PlayPendingPortraits()
     {
         if (_die.IsBusy || _flight != null || _flights.Count > 0 || _openingInitiative != null || _snapshot == null) return;
+        // A revision rebuilds the board just before animating it. Portrait clips and sounds can start
+        // immediately, but any effect placed from a rectangle waits for the containers to sort.
+        var layoutReady = _flightLayoutFrames == 0;
         foreach (var (player, motion) in _pendingPortraits)
         {
-            _portraits[player == _snapshot.MySeat ? 0 : 1].Play(motion);
+            var relative = player == _snapshot.MySeat ? 0 : 1;
+            _portraits[relative].Play(motion);
             if (motion == PortraitMotion.Attack)
             {
                 PlaySound(SoundCue.Attack);
-                var attacker = _portraits[player == _snapshot.MySeat ? 0 : 1];
-                var defender = _portraits[player == _snapshot.MySeat ? 1 : 0];
-                if (attacker.IsVisibleInTree() && defender.IsVisibleInTree())
-                    _impacts.Beam(attacker.GetGlobalRect().GetCenter(), defender.GetGlobalRect().GetCenter(),
-                        player == _snapshot.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral);
+                if (layoutReady) ShowBeam(relative, 1 - relative);
+                else _pendingBeams.Add((relative, 1 - relative));
             }
             if (motion == PortraitMotion.Heal) PlaySound(SoundCue.Heal);
         }
         _pendingPortraits.Clear();
+        if (!layoutReady) return;
+        foreach (var (attacker, defender) in _pendingBeams) ShowBeam(attacker, defender);
+        _pendingBeams.Clear();
         foreach (var (player, amount, critical) in _pendingImpacts)
         {
             var portrait = _portraits[player == _snapshot.MySeat ? 0 : 1];
@@ -308,6 +314,15 @@ public partial class OnlineArena
             if (amount < 0) _impacts.Flash(critical ? BoardArt.Gold : RelickVisuals.State.Danger);
         }
         _pendingImpacts.Clear();
+    }
+
+    private void ShowBeam(int attackerRelative, int defenderRelative)
+    {
+        var attacker = _portraits[attackerRelative];
+        var defender = _portraits[defenderRelative];
+        if (!attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
+        _impacts.Beam(attacker.GetGlobalRect().GetCenter(), defender.GetGlobalRect().GetCenter(),
+            attackerRelative == 0 ? ArenaPresentation.Mint : ArenaPresentation.Coral);
     }
 
     private (Rect2 Source, Rect2 Destination) PlacementPath(Flight placement, Control? target)
@@ -487,7 +502,7 @@ public partial class OnlineArena
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
         _placementDice.Clear();
-        _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); FinishFlight(); _die.Value = 0;
+        _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); _pendingBeams.Clear(); FinishFlight(); _die.Value = 0;
         _impacts.Clear();
         foreach (var portrait in _portraits) portrait.ReturnToRest();
     }
