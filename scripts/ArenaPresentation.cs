@@ -32,9 +32,6 @@ public static class ArenaPresentation
         return label;
     }
 
-    public static StyleBoxFlat Box(string background, Color border, int radius = 12)
-        => RelickVisuals.Frame(new Color(background), border, Math.Min(radius, 8));
-
     public static Button Button(Node parent, string text, Action action, bool disabled = false)
     {
         var button = new Button { Text = text, Disabled = disabled, CustomMinimumSize = new(0, 48), MouseDefaultCursorShape = Control.CursorShape.PointingHand };
@@ -44,8 +41,199 @@ public static class ArenaPresentation
     public static PanelContainer Panel(Node parent, string background, Color border)
     {
         var panel = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        panel.AddThemeStyleboxOverride("panel", Box(background, border, 16));
+        var fill = new Color(background);
+        panel.AddThemeStyleboxOverride("panel", RelickVisuals.Glass(BoardArt.Tint(fill.Lightened(0.06f), 0.90f), BoardArt.Tint(fill.Darkened(0.2f), 0.90f),
+            border, 10, 8, new Color(0, 0, 0, 0.4f)));
         parent.AddChild(panel); return panel;
+    }
+
+    private static Label Heading(string text, int size, Color color)
+    {
+        var label = Text(text, size, color);
+        label.AddThemeFontOverride("font", RelickVisuals.Display);
+        return label;
+    }
+
+    /// <summary>
+    /// One duelist's half of the desktop board. The hero stands at the outer corner, skills face the
+    /// divider and the piles sit behind them; the rival's half is the same field turned around.
+    /// </summary>
+    public static PanelContainer Side(Node parent, DuelPlayerView owner, int index, bool enemy, bool active, bool preparing,
+        int selectedSkill, YunoPortrait portrait, LifeMeter life, ActionCrystalPool crystals, ArenaPlayerActions actions)
+    {
+        var accent = enemy ? Coral : Mint;
+        var panel = new PanelContainer { Name = enemy ? "EnemyRelikarioPanel" : "OwnRelikarioPanel",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        panel.AddThemeStyleboxOverride("panel", RelickVisuals.Field(accent, active));
+        parent.AddChild(panel);
+        var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", 12); panel.AddChild(row);
+        var hero = new VBoxContainer { Name = $"Hero{index}", CustomMinimumSize = new(220, 0) };
+        hero.AddThemeConstantOverride("separation", 6);
+        var rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        rows.AddThemeConstantOverride("separation", 10);
+        if (enemy) { row.AddChild(rows); row.AddChild(hero); } else { row.AddChild(hero); row.AddChild(rows); }
+
+        var header = new HBoxContainer { CustomMinimumSize = new(0, 48) }; header.AddThemeConstantOverride("separation", 6); hero.AddChild(header);
+        var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        names.AddThemeConstantOverride("separation", -2);
+        var ownerName = Heading(active ? $"» {owner.Name}" : owner.Name, 16, accent);
+        ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; names.AddChild(ownerName);
+        var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", 13, BoardArt.Muted);
+        name.ClipText = true; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · Vida máxima: {owner.MaxHealth}";
+        names.AddChild(name); header.AddChild(names);
+        if (!enemy)
+        {
+            var evolve = Button(header, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
+            evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
+            evolve.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        }
+        portrait.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        portrait.CustomMinimumSize = new(0, 128);
+        hero.AddChild(portrait);
+        life.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        life.SetHealth(owner.Health, owner.MaxHealth);
+        hero.AddChild(life);
+        var stats = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center }; stats.AddThemeConstantOverride("separation", 10); hero.AddChild(stats);
+        stats.AddChild(new DexterityBadge { Name = $"Dexterity{index}", Amount = owner.Dexterity, Accent = accent });
+        if (owner.StarEffects > 0)
+        {
+            var star = Text($"★ ×{1 << owner.StarEffects}", 12, BoardArt.Gold);
+            star.Name = $"StarEffects{index}";
+            star.TooltipText = "Estrella del Fontanero: no recibe daño y multiplica su daño hasta el final de este turno.";
+            stats.AddChild(star);
+        }
+        stats.AddChild(new ResourceBadge { Amount = owner.Pr, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+        crystals.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        stats.AddChild(crystals);
+        if (actions.ZahiraCaption is { } zahiraCaption)
+        {
+            var zahira = Button(hero, zahiraCaption, actions.Zahira);
+            zahira.Name = $"Zahira{index}"; zahira.ClipText = true; zahira.TooltipText = zahiraCaption;
+            zahira.Icon = BoardArt.LoadCardArtwork(CardCatalog.ZahiraFlair);
+            zahira.AddThemeConstantOverride("icon_max_width", 24);
+            zahira.AddThemeFontSizeOverride("font_size", 12);
+        }
+
+        var back = new HBoxContainer { Name = $"BackRow{index}", CustomMinimumSize = new(0, 130) }; back.AddThemeConstantOverride("separation", 6);
+        var equipmentStatus = owner.Equipment switch
+        {
+            null => "",
+            _ when owner.EquipmentStackedCopies > 0 => $"×{owner.EquipmentStackedCopies + 1}",
+            _ when owner.Equipment == CardCatalog.SuperMagnet.Id => $"{owner.EquipmentCounters}/{CardCatalog.SuperMagnetCounterLimit}",
+            _ when owner.Equipment == CardCatalog.Sniper.Id => $"{owner.EquipmentCounters}/3",
+            _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
+            _ => ""
+        };
+        var zoneItems = new List<Control>();
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : "EQUIPO", StatusText = equipmentStatus,
+            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("7cc8ff"), LargePreview = true, SlotWidth = 104 };
+        equipment.Pressed += actions.Equipment; zoneItems.Add(equipment);
+        if (owner.EquipmentCovers is { Length: > 0 } covers)
+        {
+            var cover = new ZoneCardButton { Name = $"EquipmentCoverZone{index}", Caption = "ORO", SlotWidth = 104,
+                Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold, StatusText = covers.Length > 1 ? $"×{covers.Length}" : "" };
+            cover.Pressed += actions.EquipmentCovers; zoneItems.Add(cover);
+        }
+        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached,
+            SlotWidth = 104 + 14 * Math.Clamp(owner.Attached.Length - 1, 0, 2) };
+        attached.Pressed += actions.Attached; zoneItems.Add(attached);
+        zoneItems.Add(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Length, Accent = accent,
+            CustomMinimumSize = new(92, 0), TopCard = owner.Memory.Length == 0 ? null : CardCatalog.Get(owner.Memory[^1]) };
+        memory.Pressed += () => actions.Memory(false); zoneItems.Add(memory);
+        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true, CustomMinimumSize = new(92, 0) };
+        corrupted.Pressed += () => actions.Memory(true); zoneItems.Add(corrupted);
+        zoneItems.Add(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, CustomMinimumSize = new(98, 0) });
+        if (enemy) zoneItems.Reverse();
+        foreach (var item in zoneItems) back.AddChild(item);
+
+        var front = new HBoxContainer { Name = $"SkillRow{index}", Alignment = BoxContainer.AlignmentMode.Center };
+        front.AddThemeConstantOverride("separation", 6);
+        foreach (var slot in enemy ? new[] { 3, 2, 1, 0 } : new[] { 0, 1, 2, 3 })
+        {
+            var learnedIndex = owner.SkillIndexAtPosition(slot);
+            var learned = learnedIndex >= 0;
+            var skill = new SkillTile { Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[learnedIndex]) : null,
+                Slot = slot, SkillIndex = learnedIndex, Counters = learnedIndex >= 0 && learnedIndex < owner.Counters.Length ? owner.Counters[learnedIndex] : 0,
+                Chosen = !enemy && learned && selectedSkill == learnedIndex, Accent = accent, Disabled = enemy && !learned };
+            skill.Pressed += () => { if (learned) actions.Skill(learnedIndex); };
+            skill.GuiInput += input =>
+            {
+                if (learned && input is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }) actions.InspectSkill(learnedIndex);
+            };
+            front.AddChild(skill);
+        }
+        if (enemy) { rows.AddChild(back); rows.AddChild(front); } else { rows.AddChild(front); rows.AddChild(back); }
+        return panel;
+    }
+
+    /// <summary>
+    /// The lane over the divider: each duelist's exchange and Bonus at their end, and between them
+    /// what is resolving, its public result and the history.
+    /// </summary>
+    public static PanelContainer CenterBand(Node parent, bool preparing, bool over, string message, DuelPlayerView[] players,
+        Action<int> bonusPressed, Action<int, int> exchangePressed, Action<VBoxContainer, Label, Label> resolution)
+    {
+        var panel = new PanelContainer { Name = "CombatCenter", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var style = RelickVisuals.Glass(new Color(0.03f, 0.04f, 0.08f, 0.50f), new Color(0.03f, 0.04f, 0.08f, 0.50f),
+            BoardArt.Tint(RelickVisuals.Playmat.Trace, 0.45f), 12, 6, new Color(0, 0, 0, 0.35f));
+        style.ContentMarginTop = style.ContentMarginBottom = 5; style.ContentMarginLeft = style.ContentMarginRight = 12;
+        panel.AddThemeStyleboxOverride("panel", style);
+        parent.AddChild(panel);
+        var band = new HBoxContainer(); band.AddThemeConstantOverride("separation", 14); panel.AddChild(band);
+        ExchangeTrack Track(int index) 
+        {
+            var owner = players[index];
+            var track = new ExchangeTrack { Name = $"BonusTrack{index}", OwnerCaption = index == 0 ? "TÚ" : "RIVAL", TrackWidth = 280,
+                ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing,
+                BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
+                BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = index == 0 ? Mint : Coral, Mirrored = index == 1 };
+            track.BonusInspected += () => bonusPressed(index); track.ExchangeInspected += slot => exchangePressed(index, slot);
+            return track;
+        }
+        band.AddChild(Track(0));
+        // The shared resolution builder stacks its labels; the lane lays them side by side so its
+        // height stays fixed while responses and results come and go.
+        var column = new VBoxContainer();
+        var title = Heading(over ? "RESULTADO DEL DUELO" : "RESOLUCIÓN DE COMBATE", 12, BoardArt.Gold);
+        title.Visible = !preparing; column.AddChild(title);
+        var status = Text(message, 14); status.Name = "CombatMessage";
+        status.AutowrapMode = TextServer.AutowrapMode.WordSmart; status.HorizontalAlignment = HorizontalAlignment.Center;
+        status.Visible = message.Length > 0; column.AddChild(status);
+        resolution(column, title, status);
+        var info = new VBoxContainer { CustomMinimumSize = new(232, 0), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsStretchRatio = 0.8f, Alignment = BoxContainer.AlignmentMode.Center };
+        info.AddThemeConstantOverride("separation", 1); band.AddChild(info);
+        foreach (var node in column.GetChildren().ToArray())
+        {
+            column.RemoveChild(node);
+            if (node is HBoxContainer headerRow)
+            {
+                info.AddChild(headerRow);
+            }
+            else if (node == status)
+            {
+                status.CustomMinimumSize = new(176, 0); status.VerticalAlignment = VerticalAlignment.Center;
+                status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; status.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+                band.AddChild(status);
+            }
+            else if (node is Label label)
+            {
+                label.HorizontalAlignment = HorizontalAlignment.Left;
+                if (label.Name == "ResolutionSource")
+                {
+                    label.AddThemeFontSizeOverride("font_size", 15); label.MaxLinesVisible = 1;
+                    label.AutowrapMode = TextServer.AutowrapMode.Off; label.ClipText = true;
+                }
+                info.AddChild(label);
+            }
+            else info.AddChild(node);
+        }
+        column.QueueFree();
+        title.HorizontalAlignment = HorizontalAlignment.Left;
+        band.AddChild(Track(1));
+        return panel;
     }
 
     public static BoxContainer Arena(VBoxContainer root, bool compact)
@@ -75,6 +263,7 @@ public static class ArenaPresentation
     {
         var accent = enemy ? Coral : Mint;
         var panel = Panel(arena, RelickVisuals.Playmat.Surface.ToHtml(), RelickVisuals.Playmat.Frame);
+        panel.AddThemeStyleboxOverride("panel", RelickVisuals.Field(accent, active));
         panel.Name = enemy ? "EnemyRelikarioPanel" : "OwnRelikarioPanel";
         panel.CustomMinimumSize = new(compact ? 0 : 320, 0);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 6); panel.AddChild(column);
@@ -149,6 +338,7 @@ public static class ArenaPresentation
             Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
         portrait.SizeFlagsVertical = narrow ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ExpandFill;
+        portrait.CustomMinimumSize = new(0, portrait.PortraitHeight);
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
         if (narrow) column.AddChild(memories);
         if (actions.ZahiraCaption is { } zahiraCaption)
@@ -226,19 +416,31 @@ public static class ArenaPresentation
     }
 
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
-        Action<int> pressed, bool preparing, bool shortScreen, string? title = null, int railColumns = 0, bool useFan = true)
+        Action<int> pressed, bool preparing, bool shortScreen, string? title = null, int railColumns = 0, bool useFan = true,
+        bool desktop = false)
     {
+        Control? balance = null;
+        if (desktop && title == null)
+        {
+            // On the board the count sits beside the fan, leaving its full height to the cards.
+            var row = new HBoxContainer { Name = "HandRow", SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+            row.AddThemeConstantOverride("separation", 8); parent.AddChild(row);
+            parent = row;
+            balance = new Control { CustomMinimumSize = new(44, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
+        }
         if (title == null) HandCounter(parent, hand.Count, enemy: false);
         else parent.AddChild(HandHeading(title, hand.Count, railColumns));
         var scroll = CardGallery("HandScroll", shortScreen, railColumns);
         var fanned = useFan && railColumns == 0 && hand.Count > 0;
         scroll.FollowFocus = fanned;
-        Control cards = fanned ? new HandFan() : GalleryContents(railColumns, 10);
+        var raised = desktop && fanned;
+        Control cards = fanned ? new HandFan { Headroom = raised ? DesktopHandLift + 6 : 4, MaximumAngle = raised ? 5 : 8, Spread = raised } : GalleryContents(railColumns, 10);
         for (var i = 0; i < hand.Count; i++)
         {
             var slot = i;
             var card = new HandCard { Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), Mulligan = preparing,
-                InFan = fanned, PresentationScale = fanned ? HandFan.CardScale : shortScreen ? 0.6f : 1 };
+                InFan = fanned, Lift = raised ? DesktopHandLift : 9,
+                PresentationScale = fanned ? raised ? DesktopHandScale : HandFan.CardScale : shortScreen ? 0.6f : desktop ? DesktopHandScale : 1 };
             card.Pressed += () => pressed(slot); cards.AddChild(card);
         }
         if (hand.Count == 0 && railColumns == 0)
@@ -246,8 +448,13 @@ public static class ArenaPresentation
             var hint = preparing ? "Sincronizando tu mano inicial…" : "Robarás 3 cartas al empezar tu turno.";
             cards.AddChild(Text(hint, 14, BoardArt.Muted));
         }
-        scroll.AddChild(cards); parent.AddChild(scroll); return scroll;
+        scroll.AddChild(cards); parent.AddChild(scroll);
+        if (balance != null) parent.AddChild(balance);
+        return scroll;
     }
+
+    internal const float DesktopHandScale = 0.94f;
+    internal const float DesktopHandLift = 20;
 
     public static void HandCounter(Node parent, int count, bool enemy)
     {
@@ -255,7 +462,8 @@ public static class ArenaPresentation
         var row = new HBoxContainer
         {
             Name = enemy ? "OpponentHandCounter" : "OwnHandCounter",
-            SizeFlagsHorizontal = enemy ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ShrinkCenter,
+            SizeFlagsHorizontal = enemy || parent is HBoxContainer ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = parent is HBoxContainer ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.Fill,
             MouseFilter = Control.MouseFilterEnum.Pass,
             TooltipText = description
         };
@@ -303,12 +511,13 @@ public static class ArenaPresentation
         text.Name = "DuelScoreline"; text.AutowrapMode = TextServer.AutowrapMode.WordSmart; parent.AddChild(text);
     }
 
-    public static void StageIndicator(Node parent, Phase stage, string detail, bool shortScreen)
+    public static void StageIndicator(Node parent, Phase stage, string detail, bool shortScreen, bool wrap = false)
     {
         var style = StageAppearance.For(stage);
         var panel = new PanelContainer { Name = "StageIndicator", MouseFilter = Control.MouseFilterEnum.Ignore,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
-        var frame = RelickVisuals.Frame(RelickVisuals.Playmat.Raised, BoardArt.Tint(style.Accent, 0.65f));
+        var frame = RelickVisuals.Glass(RelickVisuals.Playmat.Raised.Lerp(style.Accent, 0.16f), RelickVisuals.Playmat.Surface,
+            BoardArt.Tint(style.Accent, 0.75f), 8, 6, BoardArt.Tint(style.Accent, 0.22f));
         frame.ContentMarginTop = frame.ContentMarginBottom = shortScreen ? 4 : 5;
         panel.AddThemeStyleboxOverride("panel", frame);
         parent.AddChild(panel);
@@ -323,11 +532,13 @@ public static class ArenaPresentation
         labels.AddThemeConstantOverride("separation", shortScreen ? 9 : 0);
         row.AddChild(labels);
         var title = Text(style.Title, shortScreen ? 13 : 16, style.Accent);
+        title.AddThemeFontOverride("font", RelickVisuals.Display);
         title.Name = "CurrentStageTitle";
         labels.AddChild(title);
         var context = Text(detail, shortScreen ? 11 : 10, BoardArt.Ink);
         context.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        if (shortScreen) context.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        if (shortScreen || wrap) context.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        if (wrap) { title.AddThemeFontSizeOverride("font_size", 20); context.AddThemeFontSizeOverride("font_size", 12); context.AddThemeColorOverride("font_color", BoardArt.Muted); }
         labels.AddChild(context);
     }
 

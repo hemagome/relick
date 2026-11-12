@@ -39,7 +39,8 @@ public partial class AdvancePhaseButton : Button
             return frame;
         }
 
-        var normal = Frame(surface.Raised.Lerp(accent, 0.24f), accent);
+        AddThemeFontOverride("font", RelickVisuals.Strong);
+        var normal = Frame(surface.Raised.Lerp(accent, 0.30f), accent);
         normal.ShadowColor = BoardArt.Tint(accent, 0.24f);
         normal.ShadowSize = 4;
         normal.ShadowOffset = new(0, 2);
@@ -69,6 +70,8 @@ public partial class AdvancePhaseButton : Button
     {
         var accent = Disabled ? BoardArt.Muted : _destination.Accent;
         var centerY = Size.Y / 2;
+        // The invitation breathes around the whole control; its hit area never moves.
+        if (Inviting) RelickVisuals.Shadow(this, new Rect2(Vector2.Zero, Size).Grow(-2), BoardArt.Tint(accent, 0.15f + 0.45f * PulseOpacity), 12, 6);
         BoardArt.Icon(this, _destination.Icon, new(20, centerY), 19, accent);
         var right = Size.X - 15;
         DrawPolyline([new(right - 3, centerY - 5), new(right + 2, centerY), new(right - 3, centerY + 5)], accent, 2, true);

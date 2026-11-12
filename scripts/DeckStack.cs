@@ -7,32 +7,49 @@ public partial class DeckStack : Control
 {
     public int Amount { get; set; }
     public Color Accent { get; set; }
-    public bool HasBackArtwork => _back != null;
     private Texture2D? _back;
     public override void _Ready()
     {
-        CustomMinimumSize = new(70, 116);
+        CustomMinimumSize = new(Math.Max(70, CustomMinimumSize.X), 116);
         MouseFilter = MouseFilterEnum.Pass;
         TooltipText = $"Mazo: {Amount} cartas restantes";
         _back = GD.Load<Texture2D>("res://assets/cards/card-back.png");
+        Resized += QueueRedraw;
     }
 
-    public Rect2 TopRect => new(new Vector2(5, 5), new Vector2(54, 77));
+    // Legacy docks keep the 70×116 footprint; board rows stretch the pile to their height.
+    public Rect2 TopRect
+    {
+        get
+        {
+            if (Size.Y <= 118) return new(new Vector2(5, 5), new Vector2(54, 77));
+            var height = Math.Min(Size.Y - 34, (Size.X - 14) * 77 / 54);
+            var extent = new Vector2(height * 54 / 77, height);
+            return new Rect2(new Vector2((Size.X - extent.X) / 2 - 2, 6 + (Size.Y - 34 - height) / 2), extent);
+        }
+    }
 
     public override void _Draw()
     {
-        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), RelickVisuals.Playmat.Surface, BoardArt.Tint(RelickVisuals.Playmat.Frame, Amount == 0 ? 0.45f : 1), 8);
+        BoardArt.Socket(this, new Rect2(Vector2.Zero, Size), Accent, Amount == 0 ? 1 : 0.55f);
+        var top = TopRect;
         if (Amount > 0 && _back != null)
         {
-            for (var layer = Math.Min(4, Amount - 1); layer > 0; layer--)
-                BoardArt.Plate(this, new Rect2(TopRect.Position + new Vector2(layer * 1.6f, layer * 1.6f), TopRect.Size),
-                    new Color("26334b"), new Color("73809c"), 3);
-            DrawTextureRect(_back, TopRect, false);
+            var layers = Math.Min(5, Math.Max(1, Amount / 6));
+            RelickVisuals.Shadow(this, new Rect2(top.Position + new Vector2(layers * 1.5f, layers * 1.5f + 2), top.Size).Grow(-2), new Color(0, 0, 0, 0.6f), 8);
+            for (var layer = layers; layer > 0; layer--)
+                BoardArt.Plate(this, new Rect2(top.Position + new Vector2(layer * 1.5f, layer * 1.5f), top.Size),
+                    new Color("1d2740"), new Color("5f6f96"), 3);
+            DrawTextureRect(_back, top, false);
         }
         else
         {
-            BoardArt.Plate(this, TopRect, new Color("0d1422"), new Color("34405a"), 4);
+            BoardArt.Icon(this, GameIcon.Cards, top.GetCenter(), 20, BoardArt.Tint(Accent, 0.16f));
         }
-        BoardArt.CenterText(this, $"MAZO · {Amount}", new(Size.X / 2, 103), 10, Accent);
+        var caption = $"MAZO · {Amount}";
+        var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 10).X + 14;
+        var chip = new Rect2((Size.X - width) / 2, Size.Y - 22, width, 17);
+        BoardArt.Plate(this, chip, new Color(0, 0, 0, 0.45f), BoardArt.Tint(Accent, 0.4f), 4);
+        BoardArt.CenterText(this, caption, new(Size.X / 2, Size.Y - 10), 10, Accent);
     }
 }

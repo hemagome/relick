@@ -18,7 +18,7 @@ public partial class OnlineArena
             GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory, name + ".png"));
         }
         var scrollingCases = 0;
-        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(1280, 480), new(844, 390), new(700, 390) })
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1820, 1024), new(1024, 768), new(1280, 480), new(844, 390), new(700, 390) })
         foreach (var seat in new[] { 0, 1 })
         {
             GetWindow().Size = size; GetWindow().ContentScaleSize = size; await Layout();
@@ -39,7 +39,7 @@ public partial class OnlineArena
             var emptyEquipment = (ZoneCardButton)ZoneNode(0, CardZone.Equipment, -1)!;
             var emptyAttached = (AttachmentStack)ZoneNode(1, CardZone.Attached, -1)!;
             Check(attached.CardRect.Size.Y >= attached.Size.Y - 9 && attached.CardRect.End.X <= attached.Size.X &&
-                attached.AccessibilityName.EndsWith("3 cartas"), "La pila sobre el Relikario pierde el tamaño o el recuento.");
+                attached.AccessibilityName.EndsWith("3 cartas"), $"La pila sobre el Relikario pierde el tamaño o el recuento: {attached.CardRect} en {attached.Size} ({size}).");
             var equipmentArea = new Rect2(new Vector2(4, 4), equipment.Size - new Vector2(8, 8));
             Check(equipment.CardRect.IsEqualApprox(BoardArt.FitArtwork(BoardArt.LoadCardArtwork(CardCatalog.Pc)!, equipmentArea)) &&
                 equipment.StatusText == "D6: 4",

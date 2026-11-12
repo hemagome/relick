@@ -15,6 +15,8 @@ public partial class OnlineArena
     }
     private readonly Queue<Flight> _flights = new();
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
+    // Cosmetic only: the amounts come from the same authorized cues that move the portraits.
+    private readonly List<(int Player, int Amount, bool Critical)> _pendingImpacts = [];
     private Control? _flight;
     private HandCard? _flightFront;
     private TextureRect? _flightBack;
@@ -242,12 +244,15 @@ public partial class OnlineArena
                     break;
                 case DuelVisualKind.Attack: _pendingPortraits.Add((cue.Player, PortraitMotion.Attack)); break;
                 case DuelVisualKind.Hit:
+                    if (cue.Value > 0) _pendingImpacts.Add((cue.Player, -cue.Value, cue.AttackDie == 6 && !cue.NormalFromMiss));
                     _pendingPortraits.Add((cue.Player, cue.NormalFromMiss ? PortraitMotion.HitNormal : cue.AttackDie switch
                     {
                         5 => PortraitMotion.HitNormal, 6 => PortraitMotion.HitCritical, _ => PortraitMotion.Hit
                     }));
                     break;
-                case DuelVisualKind.Heal when cue.Value > 0: _pendingPortraits.Add((cue.Player, PortraitMotion.Heal)); break;
+                case DuelVisualKind.Heal when cue.Value > 0:
+                    _pendingImpacts.Add((cue.Player, cue.Value, false));
+                    _pendingPortraits.Add((cue.Player, PortraitMotion.Heal)); break;
                 case DuelVisualKind.Draw:
                 case DuelVisualKind.Shuffle: _flights.Enqueue(new(cue)); break;
                 case DuelVisualKind.BonusPlace: _flights.Enqueue(new(cue, Face: _snapshot!.Players[cue.Player].Bonus)); break;
@@ -281,10 +286,28 @@ public partial class OnlineArena
         foreach (var (player, motion) in _pendingPortraits)
         {
             _portraits[player == _snapshot.MySeat ? 0 : 1].Play(motion);
-            if (motion == PortraitMotion.Attack) PlaySound(SoundCue.Attack);
+            if (motion == PortraitMotion.Attack)
+            {
+                PlaySound(SoundCue.Attack);
+                var attacker = _portraits[player == _snapshot.MySeat ? 0 : 1];
+                var defender = _portraits[player == _snapshot.MySeat ? 1 : 0];
+                if (attacker.IsVisibleInTree() && defender.IsVisibleInTree())
+                    _impacts.Beam(attacker.GetGlobalRect().GetCenter(), defender.GetGlobalRect().GetCenter(),
+                        player == _snapshot.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral);
+            }
             if (motion == PortraitMotion.Heal) PlaySound(SoundCue.Heal);
         }
         _pendingPortraits.Clear();
+        foreach (var (player, amount, critical) in _pendingImpacts)
+        {
+            var portrait = _portraits[player == _snapshot.MySeat ? 0 : 1];
+            if (!portrait.IsVisibleInTree()) continue;
+            var rect = portrait.GetGlobalRect();
+            _impacts.Number(new Vector2(rect.GetCenter().X, rect.Position.Y + rect.Size.Y * 0.62f), amount > 0 ? $"+{amount}" : amount.ToString(),
+                amount > 0 ? new Color("5dffa8") : critical ? BoardArt.Gold : RelickVisuals.State.Danger, critical);
+            if (amount < 0) _impacts.Flash(critical ? BoardArt.Gold : RelickVisuals.State.Danger);
+        }
+        _pendingImpacts.Clear();
     }
 
     private (Rect2 Source, Rect2 Destination) PlacementPath(Flight placement, Control? target)
@@ -387,7 +410,7 @@ public partial class OnlineArena
             {
                 var progress = Math.Clamp((float)(_flightTime / 0.72), 0, 1);
                 for (var i = 0; i < _shuffleBacks.Count; i++) ArenaMotion.ShuffleCard(_shuffleBacks[i], _flightSource, progress, i);
-                if (progress >= 1) FinishFlight();
+                if (progress >= 1) FinishFlight(landed: true);
                 return;
             }
             var placement = _activeFlight.IsPlacement;
@@ -411,15 +434,22 @@ public partial class OnlineArena
             if (_placementPreview) _flight.Modulate = new Color(1, 1, 1, 1 - fade);
             if (fade >= 1)
             {
-                FinishFlight();
+                FinishFlight(landed: true);
                 if (placement)
                     while (_placementDice.TryDequeue(out var cue)) PresentDieCue(cue);
             }
         }
         PlayPendingPortraits();
     }
-    private void FinishFlight()
+    private void FinishFlight(bool landed = false)
     {
+        if (landed && _activeFlight is { } arrived && !_placementPreview && arrived.Event.Kind != DuelVisualKind.Shuffle)
+        {
+            // A short flash marks where the card came to rest.
+            var own = arrived.Event.Player == _snapshot?.MySeat;
+            var color = arrived.IsPlacement ? BoardArt.Gold : own ? ArenaPresentation.Mint : ArenaPresentation.Coral;
+            _impacts.Ring(arrived.TurnsSideways ? PortraitFootprint(_flightDestination) : _flightDestination, color);
+        }
         if (_activeFlight != null && GodotObject.IsInstanceValid(_flightTarget))
         {
             SetDestinationPending(_activeFlight, _flightTarget, false);
@@ -457,7 +487,8 @@ public partial class OnlineArena
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
         _placementDice.Clear();
-        _flights.Clear(); _pendingPortraits.Clear(); FinishFlight(); _die.Value = 0;
+        _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); FinishFlight(); _die.Value = 0;
+        _impacts.Clear();
         foreach (var portrait in _portraits) portrait.ReturnToRest();
     }
 }

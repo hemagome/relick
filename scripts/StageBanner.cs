@@ -83,19 +83,35 @@ public partial class StageBanner : Control
         var bevel = height * 0.24f;
         Vector2[] frame = [new(left, center.Y), new(left + bevel, top), new(right - bevel, top),
             new(right, center.Y), new(right - bevel, bottom), new(left + bevel, bottom)];
-        var fill = RelickVisuals.Playmat.Background.Lerp(accent, 0.16f);
+        // A dimmed sweep across the board isolates the announcement, then streaks carry it forward.
+        DrawRect(new Rect2(0, top - height * 0.55f, Size.X, height * 2.1f), new Color(0, 0, 0, 0.34f * opacity));
+        if (!ReducedMotion)
+        {
+            for (var streak = 0; streak < 9; streak++)
+            {
+                var lane = top - height * 0.35f + streak * height * 1.7f / 8;
+                var speed = 0.75f + 0.5f * ((streak * 37) % 10) / 10f;
+                var x = Mathf.PosMod(Size.X * (0.15f + streak * 0.21f) + (float)_elapsed * Size.X * speed, Size.X * 1.3f) - Size.X * 0.15f;
+                var length = 70 + (streak * 53) % 120;
+                DrawLine(new(x, lane), new(x + length, lane), BoardArt.Tint(accent, 0.38f * opacity), streak % 3 == 0 ? 3 : 1.5f, true);
+            }
+        }
+        var fill = RelickVisuals.Playmat.Background.Lerp(accent, 0.20f);
+        RelickVisuals.Shadow(this, new Rect2(left + bevel, top + 4, width - bevel * 2, height - 8), BoardArt.Tint(accent, 0.40f * opacity), 26, 4);
         DrawColoredPolygon(frame, BoardArt.Tint(fill, 0.96f * opacity));
-        DrawPolyline([.. frame, frame[0]], BoardArt.Tint(accent, 0.85f * opacity), 2, true);
+        var sheen = BoardArt.Tint(accent, 0.18f * opacity);
+        DrawPolygon([frame[1], frame[2], new(right - bevel * 0.5f, center.Y), new(left + bevel * 0.5f, center.Y)], [sheen, sheen, Colors.Transparent, Colors.Transparent]);
+        DrawPolyline([.. frame, frame[0]], BoardArt.Tint(accent, 0.95f * opacity), 2.5f, true);
         var rail = Math.Min(112, Size.X * 0.09f) * enter;
         DrawLine(new(left - rail, center.Y), frame[0], BoardArt.Tint(accent, opacity * 0.6f), 2, true);
         DrawLine(frame[3], new(right + rail, center.Y), BoardArt.Tint(accent, opacity * 0.6f), 2, true);
 
         var icon = height * 0.31f;
         var fontSize = (int)(height * 0.40f);
-        var titleWidth = ThemeDB.FallbackFont.GetStringSize(style.Title, fontSize: fontSize).X;
+        var titleWidth = RelickVisuals.Display.GetStringSize(style.Title, fontSize: fontSize).X;
         var titleStart = center.X - (titleWidth + icon + 14) / 2;
         BoardArt.CenterText(this, announcement.Detail, new(center.X, top + height * 0.28f), (int)(height * 0.13f), BoardArt.Tint(accent, opacity));
         BoardArt.Icon(this, style.Icon, new(titleStart + icon / 2, center.Y + height * 0.10f), icon, BoardArt.Tint(accent, opacity));
-        BoardArt.Text(this, style.Title, new(titleStart + icon + 14, center.Y + height * 0.26f), fontSize, BoardArt.Tint(BoardArt.Ink, opacity));
+        BoardArt.Title(this, style.Title, new(titleStart + icon + 14, center.Y + height * 0.26f), fontSize, BoardArt.Tint(BoardArt.Ink, opacity));
     }
 }

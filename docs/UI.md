@@ -4,11 +4,27 @@ El juego inicia directamente en `OnlineLobby`, desde `scenes/Main.tscn`. No se c
 
 ## Identidad y futuros playmats
 
-La cabecera muestra el logotipo original de Relick. Marcos con esquinas recortadas, símbolos sólidos y circuitos de bajo contraste conectan las cartas y los controles con la estética del manga y sus referencias a videojuegos. Los paneles de ambos jugadores comparten una superficie carbón/plata; la identidad del propietario permanece en su cabecera.
+La cabecera muestra el logotipo original de Relick. Marcos con esquinas recortadas, símbolos sólidos y circuitos de bajo contraste conectan las cartas y los controles con la estética del manga y sus referencias a videojuegos. Cada campo se tiñe con el acento de su jugador y se ilumina durante su turno; la identidad del propietario permanece en su cabecera.
 
 `RelickVisuals` centraliza marcos, controles, logotipo y señales de interacción. `RelickPlaymat` define fondo, superficies, borde y circuitos, con una textura opcional para el tapete. Es una base para temas futuros, todavía sin selector, persistencia ni cambio en caliente. El arte de un tapete se dibuja bajo las superficies legibles de la interfaz.
 
 Los significados de `RelickVisuals.State` son independientes del tapete: selección dorada con confirmación, objetivo cian con escuadras y foco de teclado blanco. La prioridad es selección > objetivo > hover; el foco añade un borde interior. Vida baja conserva su señal de peligro. Las zonas vacías mantienen su tamaño y posición con contornos tenues y costes discretos. Las fases futuras quedan atenuadas, las completadas llevan confirmación y la actual se indica con `»`.
+
+## Tablero de escritorio
+
+Con un lienzo de al menos 1400×980 unidades lógicas, `OnlineArena` construye el tablero completo; los tamaños menores conservan las distribuciones apiladas descritas más abajo, con el mismo acabado visual.
+
+- **Campos enfrentados.** El rival ocupa la mitad superior y el jugador la inferior. Cada campo (`ArenaPresentation.Side`) tiene al héroe en su esquina exterior —nombre, retrato, vidas, Destreza, PR y cristales de acción—, las cuatro habilidades en la fila más cercana al centro y, detrás, equipo, cobertura de Oro, cartas sobre el Relikario, Memoria, Corruptas y mazo. El campo rival es el mismo, girado.
+- **Carril central.** `ArenaPresentation.CenterBand` conserva el nombre `CombatCenter`: canje y Bonus de cada jugador en su extremo y, entre ambos, la resolución pública y el botón Historial. Su altura es fija; las respuestas y resultados cambian de texto sin mover los campos.
+- **Manos.** La mano propia es un abanico a tamaño casi completo bajo el campo; al pasar el cursor la carta sube y crece desde su borde inferior, sin mover su área de pulsación. La mano rival se muestra como reversos solapados sobre su campo.
+- **Riel de lectura.** A la derecha: COMBO y Menú, una copia grande de la carta señalada o seleccionada (`CardShowcase`), el inspector con sus decisiones y, abajo, la etapa actual con el botón de avance (`TurnDock`).
+- **Lienzo.** En escritorio el alto lógico es 1024 y el ancho sigue la proporción de la ventana (entre 1440 y 2280), de modo que un monitor panorámico no muestra bandas laterales.
+
+### Acabado y efectos
+
+`RelickVisuals` genera en memoria los marcos de esquinas recortadas con degradado, borde iluminado y halo (`Glass`, `Surface`, `Field`); no dependen de archivos importados. Los títulos usan una variante inclinada y pesada de la fuente del proyecto (`RelickVisuals.Display`). El tapete es un sombreador (`scripts/arena_playmat.gdshader`): dos mitades teñidas con el color de cada jugador, trama de puntos, líneas de velocidad, chevrones y un divisor luminoso cuyos pulsos toman el color de quien tiene el turno. Las zonas vacías son huecos con escuadras; las ocupadas proyectan sombra.
+
+`ImpactLayer` añade señales cosméticas a partir de los mismos eventos autorizados que mueven los retratos: número de daño o curación sobre el personaje, destello de pantalla al recibir daño, un trazo del atacante al defensor y un aro donde aterriza cada carta. No bloquea jugadas, no forma parte de `IsAnimating` y se limpia al recuperar el estado. Los objetivos válidos laten en cian; la selección mantiene un halo dorado fijo. Con movimiento reducido se omiten trazos, aros y destellos, y los números aparecen sin desplazarse.
 
 ## Salas y preparación
 
@@ -139,7 +155,7 @@ para cada botón o entrada de menú. Los rótulos breves son locales al cliente 
 modifican costes, efectos, mensajes del servidor ni el protocolo de red. Se bloquean
 los envíos durante animaciones, desconexión o una jugada pendiente, igual que antes.
 
-PC, tablet y teléfono comparten alcance horizontal. El proyecto permite girar entre ambos lados del teléfono. Una ventana de escritorio alta conserva un lienzo horizontal con bandas.
+PC, tablet y teléfono comparten alcance horizontal. El proyecto permite girar entre ambos lados del teléfono. Una ventana de escritorio alta conserva un lienzo horizontal con bandas; una ancha amplía el lienzo.
 
 Con menos de 1100 unidades lógicas de ancho, el campo admite desplazamiento vertical y los controles secundarios pasan al menú. En pantallas cortas —altura menor de 600— se muestran tablero, inspector y galería de cartas juntos. La mano usa desplazamiento vertical propio, con una columna en los anchos menores y dos desde 820 unidades; conserva el arte completo y la escala anterior de cada carta. El tablero admite desplazamiento también en ventanas anchas y cortas. En pantallas altas la mano mantiene su fila horizontal. Los objetivos táctiles principales miden al menos 48 unidades lógicas; los diálogos se ajustan al área disponible y admiten desplazamiento.
 
@@ -181,7 +197,7 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. C
 - Los impactos distinguen el resultado final del ataque mediante `Hit.AttackDie`: 4 conserva la reacción reducida anterior, 5 usa un retroceso normal y 6 un tambaleo crítico con recuperación más lenta. La cantidad de daño y los dados secundarios no seleccionan el clip. Los tres impactos terminan en el reposo agotado si la vida actual es cero; no se interrumpen al recibir ese cambio de estado.
 - Los iconos usan siluetas angulares y los marcos dibujados no crean recursos de estilo en cada redibujado. No se introdujo una caché global ilimitada de estilos o colores animados.
 
-Los siete atlas de Yuno conservan un lienzo lógico de 608×504 por cuadro. La importación limita el ancho a 2432 píxeles y mantiene la cuadrícula: reposo, ataque, daño reducido, normal y crítico, reposo agotado y curación usan el mismo tamaño visual. Los clips, su procedencia y sus prompts están documentados en [las animaciones de Yuno](../assets/characters/yuno/README.md).
+Los seis atlas de Yuno conservan un lienzo lógico de 608×504 por cuadro; el reposo con vida es una imagen fija animada por sombreador, continua a cualquier frecuencia de pantalla. La importación limita el ancho a 2432 píxeles y mantiene la cuadrícula: reposo, ataque, daño reducido, normal y crítico, reposo agotado y curación usan el mismo tamaño visual. Los clips, su procedencia y sus prompts están documentados en [las animaciones de Yuno](../assets/characters/yuno/README.md).
 
 ## Resolución e historial público
 
@@ -223,6 +239,9 @@ dotnet build Relick.csproj
 
 Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-search-only` a los argumentos de la prueba; para Cambio de Mentes, usa `--mind-swap-only`. Se puede combinar con `--ui-screenshot-dir=/tmp/relick-ui` para guardar las capturas de PC y móvil horizontal.
 
+`--portraits-only` reproduce las pruebas de los retratos de Yuno —impactos reducido, normal y
+crítico, reposo agotado a cero vidas y curación— sin recorrer el resto de la matriz.
+
 `--history-only` verifica activación, Error y contraerror, resultados, privacidad,
 apertura/cierre mediante entrada real, recuperación sin duplicados y bloqueo
 durante el dado en cinco tamaños, desde ambos asientos.
@@ -250,7 +269,7 @@ de conexión del lobby; `--ui-screenshot-dir` permite capturar el aviso en el du
 
 `--preparation-only` comprueba elección inicial, mulligan y ambos dados de iniciativa en los cuatro tamaños y desde ambos asientos, incluido el resultado, la espera del robo inicial y la recuperación sin repetir la animación.
 
-La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. La lectura del inspector añade 1280×480: verifica el modo vacío compacto y desplaza efectos largos mediante eventos de rueda, comprobando que cabecera, atributos, coste, botones y mano permanecen fijos. `--inspector-only` ejecuta esa revisión enfocada. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. Incluye las seis zonas de Bomba de Tiempo y la selección de seis cartas de memoria para reciclar, con una memoria mayor que la mano. También comprueba los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos: orden tras el dado, repetición, reconstrucción y recuperación visual sin reproducir efectos pasados. `--shared-arena-test` se mantiene como alias de esta prueba PvP; ya no ejecuta práctica.
+La matriz recorre 1440×1024, 1024×768, 844×390 y 700×390 desde ambos asientos. La lectura del inspector añade 1280×480: verifica el modo vacío compacto y desplaza efectos largos mediante eventos de rueda, comprobando que cabecera, atributos, coste, botones y mano permanecen fijos. `--inspector-only` ejecuta esa revisión enfocada. Comprueba límites, privacidad, estabilidad de selección inicial, bloqueo tras confirmar, recuperación y terminación de animaciones. Incluye las seis zonas de Bomba de Tiempo y la selección de seis cartas de memoria para reciclar, con una memoria mayor que la mano. También comprueba los tres impactos, su transición al reposo agotado a cero vidas y las curaciones para ambos jugadores/asientos: orden tras el dado, repetición, reconstrucción y recuperación visual sin reproducir efectos pasados.
 
 Para capturas:
 

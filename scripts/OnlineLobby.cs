@@ -47,7 +47,7 @@ public partial class OnlineLobby : Control
             CallDeferred(nameof(LobbyVisualPreview));
             return;
         }
-        if (OS.GetCmdlineUserArgs().Contains("--shared-arena-test") || OS.GetCmdlineUserArgs().Contains("--pvp-ui-test"))
+        if (OS.GetCmdlineUserArgs().Contains("--pvp-ui-test"))
         {
             SetProcess(false); CallDeferred(nameof(ArenaUiSmokeTest)); return;
         }

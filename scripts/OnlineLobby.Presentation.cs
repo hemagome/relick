@@ -50,6 +50,7 @@ public partial class OnlineLobby
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
         _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);
+        _lobbyTitle.AddThemeFontOverride("font", RelickVisuals.Display);
 
         var identity = Surface(column, 16); _identityPanel = identity;
         var identityRow = new HBoxContainer(); identityRow.AddThemeConstantOverride("separation", 20); identity.AddChild(identityRow);

@@ -139,7 +139,7 @@ public partial class OnlineArena
         _turnControls.Visible = relikia.Length > 0;
     }
 
-    private void BuildAdvanceControl(HBoxContainer header)
+    private void BuildAdvanceControl(Node header)
     {
         var s = _snapshot!;
         _advanceButton = null;
@@ -148,7 +148,7 @@ public partial class OnlineArena
         if (advance < 0) return;
         _advanceButton = (AdvancePhaseButton)AddOption(header, advance);
         _advanceButton.Name = "AdvanceStage";
-        _advanceButton.TooltipText = ArenaGuidance.SuggestAdvance(s)
+        _advanceButton.TooltipText = AdvanceSuggested(s)
             ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.";
     }
 
@@ -350,10 +350,14 @@ public partial class OnlineArena
             cost = _preparing ? "" : ArenaActionText.CardCost(card);
         }
         _inspector.Present(card, title, cost, _selection.Text, counters);
+        _showcase?.Present(card);
         _contextCost.TooltipText = cost;
         _actionDock.SizeFlagsVertical = card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
-        var interaction = (Control)_actionDock.GetParent().GetParent();
-        interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        if (_showcase == null)
+        {
+            var interaction = (Control)_actionDock.GetParent().GetParent();
+            interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        }
         var hasDecisions = _moves.GetChildCount() > 0;
         var hasTurnControls = _turnControls.GetParent() == _decisionBar && _turnControls.Visible;
         // Keep Relikia aligned to the right when it is the only control in the row.
@@ -436,8 +440,22 @@ public partial class OnlineArena
         _inspector.SetHint(text);
     }
 
+    private DuelSnapshot? _advanceSuggestionSource;
+    private bool _advanceSuggested;
+
+    // Asked every frame: the answer only changes with the snapshot.
+    private bool AdvanceSuggested(DuelSnapshot snapshot)
+    {
+        if (!ReferenceEquals(_advanceSuggestionSource, snapshot))
+        {
+            _advanceSuggestionSource = snapshot;
+            _advanceSuggested = ArenaGuidance.SuggestAdvance(snapshot);
+        }
+        return _advanceSuggested;
+    }
+
     private void RefreshAdvanceInvitation(bool blocked)
-        => _advanceButton?.SetInvitation(!blocked && !_preparing && _snapshot != null && ArenaGuidance.SuggestAdvance(_snapshot));
+        => _advanceButton?.SetInvitation(!blocked && !_preparing && _snapshot != null && AdvanceSuggested(_snapshot));
 
 
     private string ChoiceOrigin(DuelOption option) => option.Move.Kind switch

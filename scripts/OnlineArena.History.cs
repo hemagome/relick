@@ -72,7 +72,6 @@ public partial class OnlineArena
             {
                 _resolutionMessage.Text = (live == null ? latest.Text + "\n" : "") + string.Join("\n", latest.Details.Take(2));
                 _resolutionMessage.TooltipText = latest.Text + "\n" + string.Join("\n", latest.Details);
-                _resolutionMessage.AddThemeFontSizeOverride("font_size", Compact || Short ? 13 : 14);
                 _resolutionMessage.MaxLinesVisible = 3;
                 _resolutionMessage.CustomMinimumSize = Vector2.Zero;
             }

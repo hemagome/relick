@@ -6,6 +6,8 @@ public static class ArenaViewport
 {
     public static bool Compact(Control control) => control.Size.X < 1100;
     public static bool Short(Control control) => control.Size.Y < 600;
+    /// <summary>Room for the full board: both fields, the hand and the reading rail without scrolling.</summary>
+    public static bool Desktop(Control control) => control.Size.X >= 1400 && control.Size.Y >= 980;
 
     // One landscape canvas, including when a desktop window is resized taller than wide.
     public static Vector2I LandscapeSize(Vector2I size) => new(
@@ -13,7 +15,7 @@ public static class ArenaViewport
 
     public static void Configure(Window window)
     {
-        if (OS.GetCmdlineUserArgs().Contains("--shared-arena-test") || OS.GetCmdlineUserArgs().Contains("--pvp-ui-test") ||
+        if (OS.GetCmdlineUserArgs().Contains("--pvp-ui-test") ||
             OS.GetCmdlineUserArgs().Any(a => a is "--music-test" or "--audio-test") ||
             OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--lobby-preview-dir="))) return;
         var mobile = OS.HasFeature("mobile");
@@ -28,9 +30,10 @@ public static class ArenaViewport
         }
         if (DisplayServer.GetName() == "headless") return;
         if (size.X <= 0 || size.Y <= 0) return;
+        // Desktop keeps a 1024-high canvas and widens it to the window, so wide monitors show no bands.
         var logical = mobile || size.X < 1100
             ? LandscapeSize(new((int)(size.X / density), (int)(size.Y / density)))
-            : new Vector2I(1440, 1024);
+            : new Vector2I(Math.Clamp((int)Math.Round(1024.0 * size.X / size.Y), 1440, 2280), 1024);
         if (window.ContentScaleSize != logical) window.ContentScaleSize = logical;
     }
 
@@ -56,44 +59,9 @@ public static class ArenaViewport
         dialog.PopupCenteredClamped(new Vector2I((int)available.X - 24, (int)available.Y - 24), 0.95f);
     }
 
-    public static void EnlargeTouchTargets(Node node)
-    {
-        if (node is Button button)
-        {
-            button.CustomMinimumSize = new(button.CustomMinimumSize.X, Math.Max(48, button.CustomMinimumSize.Y));
-            button.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            if (button is MenuButton menu) TouchMenu(menu.GetPopup());
-        }
-        foreach (var child in node.GetChildren()) EnlargeTouchTargets(child);
-    }
-
     public static void TouchMenu(PopupMenu menu)
     {
         menu.AddThemeFontSizeOverride("font_size", 18);
         menu.AddThemeConstantOverride("v_separation", 24);
-    }
-
-    public static void AdaptDialogContent(Control content, Vector2 available)
-    {
-        var width = Math.Max(260, available.X - 48);
-        if (content is HBoxContainer row) row.Vertical = true;
-        if (content is GridContainer grid) grid.Columns = Math.Max(1, (int)(width / 136));
-        content.CustomMinimumSize = new(Math.Min(content.CustomMinimumSize.X, width), Math.Min(content.CustomMinimumSize.Y, Math.Max(140, available.Y - 130)));
-        if (content is Label label) { label.AutowrapMode = TextServer.AutowrapMode.WordSmart; label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; }
-        foreach (var child in content.GetChildren().OfType<Control>()) AdaptDialogContent(child, available);
-        EnlargeTouchTargets(content);
-    }
-
-    public static void PresentDialog(Window dialog, Control content, Vector2 available)
-    {
-        AdaptDialogContent(content, available);
-        if (content is not ScrollContainer)
-        {
-            dialog.RemoveChild(content);
-            var scroll = new ScrollContainer { CustomMinimumSize = new(Math.Max(260, available.X - 48), Math.Max(140, available.Y - 130)),
-                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-            content.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; scroll.AddChild(content); dialog.AddChild(scroll);
-        }
-        FitDialog(dialog, available);
     }
 }
