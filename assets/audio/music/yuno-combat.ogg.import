@@ -15,5 +15,5 @@ dest_files=["res://.godot/imported/yuno-combat.ogg-bd1e565bd6095ad6566723ba1d87d
 loop=true
 loop_offset=0
 bpm=160
-beat_count=128
+beat_count=192
 bar_beats=4

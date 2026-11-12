@@ -14,6 +14,6 @@ dest_files=["res://.godot/imported/yuno-climax.ogg-c6fad9eca1c6753874b72483691ef
 
 loop=true
 loop_offset=0
-bpm=160
-beat_count=128
+bpm=168
+beat_count=160
 bar_beats=4

@@ -1,13 +1,13 @@
 # Música adaptativa y efectos
 
-El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. Las tres composiciones originales están incluidas y asignadas en `assets/audio/music.tres`; los cinco efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
+El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. Las tres composiciones originales y sus dos puentes están incluidos y asignados en `assets/audio/music.tres`; los cinco efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
 
 ## Estados
 
 | Clip | Música | Entrada |
 | --- | --- | --- |
-| 0 · Menu | Menús y espera | Inicio, salas, selección de habilidad y mulligan. También es la entrada para futuras pantallas de título y deck builder. |
-| Combat:relikario | Duelo | Primera presentación del estado de duelo después de la preparación, incluyendo reconexión. Se mantiene durante robo, acciones, respuestas y turnos. |
+| 0 · Menu | Menús y espera | Inicio, búsqueda y salas. También es la entrada para futuras pantallas de título y deck builder. |
+| Combat:relikario | Duelo | Al abrirse la arena con la selección de habilidad inicial, incluyendo reconexión. Se mantiene durante mulligan, robo, acciones, respuestas y turnos. |
 | Climax:relikario | Momento crítico | Cualquiera de los dos Relikarios alcanza cero vidas. Se mantiene aunque se cure y durante el resultado. |
 
 Volver efectivamente al lobby restablece `Menu` y permite un nuevo combate sin heredar el clímax. Abrir ventanas, inspeccionar cartas, cambiar de turno, reconstruir el tablero y desconectarse temporalmente no reinician la reproducción.
@@ -20,23 +20,38 @@ Volver efectivamente al lobby restablece `Menu` y permite un nuevo combate sin h
 
 El catálogo actual solo contiene Yuno y su evolución; se incluyen sus dos temas y el menú compartido. Las vistas de un servidor anterior que no envíe identidad usan `yuno` como valor compatible. Un personaje nuevo sin música asignada utiliza `DefaultEnemyTheme`, configurado como Yuno.
 
-Para añadir otro Relikario, agrega dos clips en `music.tres` llamados exactamente `Combat:<id>` y `Climax:<id>`, con sus archivos correspondientes. Los índices son libres; el director busca por nombre. Las variantes pueden declararse en `ThemeAliases`, en el inspector del autoload. No hace falta cambiar el director para agregar un nuevo par de pistas.
+La selección de habilidad todavía no conoce al rival y usa el tema de `yuno`; cuando haya más Relikarios, incluye su identidad en esa vista para que el combate empiece con el tema correcto.
+
+Para añadir otro Relikario, agrega dos clips en `music.tres` llamados exactamente `Combat:<id>` y `Climax:<id>`, con sus archivos correspondientes. Los índices son libres; el director busca por nombre. Las variantes pueden declararse en `ThemeAliases`, en el inspector del autoload. No hace falta cambiar el director para agregar un nuevo par de pistas. Los puentes `ToCombat:<id>` y `ToClimax:<id>` son opcionales: sin ellos se aplica el fundido general.
 
 ## Transiciones
 
-Las tres piezas comparten 160 BPM, 4/4, 128 pulsos, 32 compases, 48 segundos y una cuadrícula armónica en re menor. Cada arreglo mantiene esa posición y aumenta la instrumentación e intensidad. La regla general de la tabla contiene todas las conexiones, incluido el salto directo menú → clímax al recuperar un duelo crítico:
+Cada pieza tiene su propio compás y tempo, en re menor. La tensión sube a través de un puente: una entrada de dos compases sobre la dominante que desemboca en el primer pulso de la pieza siguiente, como los enlaces hacia los temas de batalla de Octopath Traveler.
 
-- Salida: **Next Bar**, al siguiente compás de la pista de origen.
-- Entrada: **Same Position**, la misma posición musical en la pista destino.
-- Mezcla: **Cross**, fundido de cuatro pulsos de la pista de origen.
+| Pieza | Tempo y compás | Duración |
+| --- | --- | --- |
+| Menu | 126 BPM, 3/4, 144 pulsos | 68,6 s |
+| Combat:yuno | 160 BPM, 4/4, 192 pulsos | 72 s |
+| Climax:yuno | 168 BPM, 4/4, 160 pulsos | 57,1 s |
+| ToCombat:yuno | 160 BPM, 8 pulsos y cola | 3 s + cola |
+| ToClimax:yuno | 168 BPM, 8 pulsos y cola | 2,9 s + cola |
 
-Godot programa la transición en el hilo de audio. El cliente solicita la fase; no calcula compases con `_Process`, temporizadores o la latencia de red. Pedir otra vez la misma fase no vuelve a ejecutar `Play()` ni repite la transición.
+| Cambio | Salida | Puente | Llegada |
+| --- | --- | --- | --- |
+| Menú → combate | Siguiente pulso; el menú se apaga en tres pulsos | `ToCombat`: redoble de timbal, arpa y fanfarria ascendente | Primer pulso del combate, sin fundido |
+| Combate → clímax | Siguiente compás; el combate se apaga en un pulso | `ToClimax`: tres golpes y una escala hacia la tónica | Primer pulso del clímax, sin fundido |
+| Menú → clímax (recuperación) | Siguiente pulso | `ToClimax` | Primer pulso del clímax |
+| Cualquier otro, incluida la vuelta al menú | Siguiente pulso | — | Comienzo de la pieza, fundido cruzado de cuatro pulsos |
 
-La espera hasta el siguiente compás dura como máximo aproximadamente 1,5 segundos, seguida de un fundido de 1,5 segundos. El combate continúa mientras se completa la transición. El silencio del bus tampoco detiene el reloj: subir el volumen conserva la reproducción.
+`MusicDirector` solo pide el puente cuando la fase sube (menú < combate < clímax) y existe un clip `To<nombre del destino>` sin bucle cuyo avance automático apunta a esa pieza. El puente es un clip normal con **Auto Advance** hacia su destino y una regla puente → destino con salida **End**, llegada **Start** y fundido **Disabled**. No se usa el *filler clip* de la tabla: en Godot 4.7 hace entrar el destino con un fundido de un segundo, que borra el primer golpe.
 
-Las futuras pistas que usen la regla general deben conservar tempo, duración y cuadrícula armónica. Al importarlas activa **Loop**, **BPM = 160**, **Beat Count = 128** y **Bar Beats = 4**, con el primer pulso al comienzo del archivo. Si su composición necesita otra estructura, configura reglas explícitas y un puente musical para sus conexiones.
+Los puentes se importan sin bucle, con **BPM** y **Beat Count = 8**. Godot programa el destino al terminar esos ocho pulsos, pero un OGG sin bucle sigue sonando hasta el final del archivo: la cola de reverberación del puente se mezcla sobre el comienzo de la pieza. En `music.tres` cada puente debe tener un índice mayor que el de su destino para que la entrada sea exacta a la muestra.
 
-`AudioStreamInteractive` también admite clips **filler** para puentes compuestos específicamente. Esos clips usan nombres distintos a los de las fases y reglas de transición explícitas; no requieren cambios en las reglas del duelo.
+Godot programa las transiciones en el hilo de audio. El cliente solicita la fase; no calcula compases con `_Process`, temporizadores o la latencia de red. Pedir otra vez la misma fase no vuelve a ejecutar `Play()` ni repite la transición. Si la fase cambia durante un puente, el destino pendiente se cancela y se aplica la regla del nuevo cambio.
+
+La entrada al combate tarda como máximo medio segundo de espera más los tres segundos del puente; la del clímax, hasta un compás (1,5 s) más 2,9 s. El duelo continúa mientras tanto. El silencio del bus tampoco detiene el reloj: subir el volumen conserva la reproducción.
+
+Las piezas en bucle se importan con **Loop**, su **BPM**, **Beat Count** y **Bar Beats**, con el primer pulso al comienzo del archivo y la cola del final plegada sobre el principio.
 
 Para una futura pantalla de menú:
 
@@ -71,7 +86,7 @@ python3 tools/audio/check.py
 godot --headless --log-file /tmp/relick-audio-test.log --path . -- --audio-test --audio-settings-path=/tmp/relick-audio-test.cfg
 ```
 
-La prueba no requiere servidor. Valida los archivos y su información musical, selección por enemigo en ambos asientos, evolución, clímax, curación, recuperación, peticiones rápidas, efectos junto a sus animaciones, controles, persistencia y cuatro tamaños. Usa un tono acelerado en `tests/fixtures/music-clock.ogg` para algunas comprobaciones del reloj; ese tono no se asigna al juego. Los resultados correctos son `MUSIC_PASS`, `SFX_PASS` y `AUDIO_SETTINGS_PASS`.
+La prueba no requiere servidor. Valida los archivos y su información musical, el combate desde la selección de habilidad, el paso por ambos puentes, selección por enemigo en ambos asientos, evolución, clímax, curación, recuperación, peticiones rápidas, efectos junto a sus animaciones, controles, persistencia y cuatro tamaños. Usa un tono acelerado en `tests/fixtures/music-clock.ogg` para algunas comprobaciones del reloj; ese tono no se asigna al juego. Los resultados correctos son `MUSIC_PASS`, `SFX_PASS` y `AUDIO_SETTINGS_PASS`.
 
 Para capturas renderizadas añade `--audio-screenshot-dir=/tmp/relick-audio-ui` y ejecuta sin `--headless`. La comprobación de archivos valida duración, niveles, extremos de los efectos y continuidad de los bucles; la apreciación musical de los arreglos queda abierta a ajustes al escucharlos.
 
