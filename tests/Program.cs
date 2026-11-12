@@ -69,14 +69,23 @@ var tests = new (string Name, Action Run)[]
         p.Relikia = 300;
         Ok(g.Learn(0, 0).Success); Eq(p.Relikia, 0); Eq(p.Skills.Count, 2);
     }),
-    ("Se pueden enseñar copias repetidas; no se puede enseñar tras atacar", () =>
+    ("Se pueden enseñar copias repetidas de una habilidad", () =>
     {
-        var (g, rng) = Combat();
+        var (g, _) = Combat();
         g.State.Active.Hand.Add("destiny-shuffle"); g.State.Active.Relikia = 300;
         Ok(g.Learn(0, 1).Success); Eq(g.State.Active.Skills.Count, 2);
+    }),
+    ("Se puede enseñar una habilidad después de atacar", () =>
+    {
+        var (g, rng) = Combat();
+        var p = g.State.Active;
+        p.Hand.Add("destiny-shuffle"); p.Relikia = 300;
         rng.EnqueueDie(1); Ok(AttackKeepingRoll(g,0, 0, 0).Success);
-        g.State.Active.Hand.Add("destiny-shuffle"); g.State.Active.Relikia = 500;
-        Ok(!g.Learn(0, 1).Success);
+        Eq(g.State.Phase, Phase.Combat); Ok(g.State.AttackedThisTurn);
+        var learn = DuelOptions.For(g, 0).Single(o => o.Move.Kind == DuelMoveKind.Learn);
+        Eq(learn.Move.Index, 0);
+        Ok(g.Learn(0, 0).Success); Eq(p.Skills.Count, 2); Eq(p.Relikia, 0);
+        Ok(!g.Learn(0, 0).Success);
     }),
     ("Cuatro habilidades: 0, 300, 500 y 1000 PR, sin permitir una quinta", () =>
     {
@@ -485,6 +494,8 @@ var tests = new (string Name, Action Run)[]
         p.Hand.Clear(); p.Hand.Add("destiny-shuffle"); Eq(g.HasAvailablePlay(0), false);
         p.Relikia = 300; Ok(g.HasAvailablePlay(0)); g.State.LearnedThisTurn = true; Ok(!g.HasAvailablePlay(0));
         p.Hand.Add("attack"); Ok(g.HasAvailablePlay(0)); g.State.AttackedThisTurn = true; Ok(!g.HasAvailablePlay(0));
+        g.State.LearnedThisTurn = false; Ok(g.HasAvailablePlay(0));
+        g.State.LearnedThisTurn = true;
         g.Advance(0); p.Bonus = "destiny-shuffle"; p.Hand.Clear(); p.Relikia = 99; Ok(!g.HasAvailablePlay(0));
         p.Relikia = 100; Ok(g.HasAvailablePlay(0)); p.Exchange.Add("attack"); Ok(!g.HasAvailablePlay(0));
         p.Relikia = 300; Ok(g.HasAvailablePlay(0)); p.Relikia = 0; p.Hand.Add("test-recover"); Ok(g.HasAvailablePlay(0));

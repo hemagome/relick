@@ -92,7 +92,7 @@ static class SimulationDriver
         {
             var field = game.FieldCombatTargets(actor).FirstOrDefault();
             if (field != null) return game.UseFieldCode(actor, field.Zone, field.Index);
-            if (!s.LearnedThisTurn && !s.AttackedThisTurn && p.Skills.Count < GameEngine.MaxSkills)
+            if (!s.LearnedThisTurn && p.Skills.Count < GameEngine.MaxSkills)
             {
                 var learn = p.Hand.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Skill);
                 if (learn >= 0 && p.Relikia >= game.SkillCost(p)) return game.Learn(actor, learn);

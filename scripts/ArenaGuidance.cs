@@ -93,7 +93,7 @@ internal static class ArenaGuidance
             if (p.Skills.Length >= GameEngine.MaxSkills) return "Los cuatro espacios de habilidad están ocupados.";
             var position = Enumerable.Range(0, GameEngine.MaxSkills).First(i => p.SkillIndexAtPosition(i) < 0);
             if (p.Pr < GameEngine.SkillSlotCosts[position]) return "No tienes PR suficientes para enseñar en el siguiente espacio.";
-            return "Solo puedes enseñar una habilidad por turno, antes de atacar.";
+            return "Solo puedes enseñar una habilidad por turno.";
         }
         if (card.Kind == CardKind.Equipment && s.Phase != Phase.Actions) return "Los equipos se colocan en tu fase de acciones.";
         if (card.Kind == CardKind.Code && !card.IsCombo && s.Phase != Phase.Actions) return "Este código se juega en tu fase de acciones.";

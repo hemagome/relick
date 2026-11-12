@@ -36,6 +36,7 @@ public partial class OnlineArena
             }
             Available("ataque", g => g.State.AttackedThisTurn = false, DuelMoveKind.Attack);
             Available("aprendizaje", g => { g.State.LearnedThisTurn = g.State.AttackedThisTurn = false; g.State.Active.Relikia = 500; }, DuelMoveKind.Learn);
+            Available("aprendizaje tras atacar", g => { g.State.LearnedThisTurn = false; g.State.AttackedThisTurn = true; g.State.Active.Relikia = 500; }, DuelMoveKind.Learn);
             Available("COMBO", g => g.State.Active.Hand.Add(CardCatalog.PlumberStar.Id), DuelMoveKind.PlayCode);
             Available("COMBO propio con respuestas omitidas", g => { g.State.Active.Hand.Add(CardCatalog.PlumberStar.Id); g.SetComboResponses(actor, false); }, DuelMoveKind.PlayCode);
             Available("Bonus", g => g.State.Active.Bonus = CardCatalog.Jessica.Id, DuelMoveKind.FieldCode);

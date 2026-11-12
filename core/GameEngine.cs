@@ -114,10 +114,10 @@ public sealed partial class GameEngine
         if (CanEvolve(actor)) return true;
         return State.Phase switch
         {
-            Phase.Combat => FieldCombatTargets(actor).Any() || !State.AttackedThisTurn && (
+            Phase.Combat => FieldCombatTargets(actor).Any() ||
                 CanAttack(actor) ||
                 (!State.LearnedThisTurn && p.Skills.Count < MaxSkills && p.Relikia >= SkillCost(p) &&
-                 p.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Skill))),
+                 p.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Skill)),
             Phase.Actions => (State.ActionsLeft > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment || CodeUnavailableReason(actor, c.i) == null)) ||
                 RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
             Phase.Discard => State.DiscardsRemaining > 0 && p.Hand.Count > 0,
@@ -135,8 +135,8 @@ public sealed partial class GameEngine
         if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
         var id = p.Hand[handIndex];
         if (CardCatalog.Get(id).Kind != CardKind.Skill) return CommandResult.Fail("Esta carta no es una habilidad.");
-        if (State.LearnedThisTurn || State.AttackedThisTurn)
-            return CommandResult.Fail("Solo puedes enseñar una habilidad, antes de atacar.");
+        if (State.LearnedThisTurn)
+            return CommandResult.Fail("Solo puedes enseñar una habilidad por turno.");
         if (p.Skills.Count >= MaxSkills) return CommandResult.Fail("Los cuatro espacios de habilidad están ocupados.");
         var cost = SkillCost(p);
         var position = p.NextSkillPosition();
