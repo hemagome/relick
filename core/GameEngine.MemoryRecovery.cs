@@ -9,7 +9,7 @@ public sealed partial class GameEngine
             {
                 // Exclude this resolving copy by position, never every card with its definition.
                 if (_activeActivation is { Kind: ActivationKind.Code, ReplayCorrupted: false } frame &&
-                    CardCatalog.Get(frame.CardId).RecoverMemory && frame.Actor == owner && frame.MemoryIndex == index) continue;
+                    CardCatalog.Get(frame.CardId).RecoverMemory && frame.MemorySeat == owner && frame.MemoryIndex == index) continue;
                 yield return new(owner, index);
             }
     }
@@ -38,6 +38,7 @@ public sealed partial class GameEngine
         var source = State.Players[owner]; var recipient = State.Players[actor]; var id = source.Memory[memoryIndex];
         source.Memory.RemoveAt(memoryIndex); ShiftSniperIndices(owner, memoryIndex);
         recipient.Hand.Add(id);
+        if (owner != actor) recipient.MarkForeignHandCard(recipient.Hand.Count - 1);
         MemoryCardClaimed?.Invoke(owner, actor, memoryIndex, recipient.Hand.Count - 1);
         // The source memory is public, but the card is not marked revealed in its new hand.
         State.LastCombat = $"{recipient.Name} añade {CardCatalog.Get(id).Name} de la memoria de {source.Name} a su mano con Disquete.";

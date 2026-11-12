@@ -45,7 +45,7 @@ public sealed partial class GameEngine
             State.PendingAttackRoll = attack with { SkillSlot = source == slot ? null : source > slot ? source - 1 : source };
         ShiftSavedAttackSlots(State.PendingDestruction?.Completed, owner, slot);
         ShiftSavedAttackSlots(_pendingDieEffect?.Next, owner, slot);
-        NotifyPileMove(p, id, CardZone.Skill, slot); p.Memory.Add(id);
+        SendToMemory(p, id, CardZone.Skill, slot);
     }
 
     private static void ShiftSavedAttackSlots(EngineContinuation? next, int owner, int slot)

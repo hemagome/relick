@@ -13,9 +13,11 @@ public sealed partial class GameEngine
         if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Equipment)
             return CommandResult.Fail("Selecciona un equipo de tu mano.");
         var id = p.Hand[handIndex];
+        // The card waits in its owner's memory while the activation can still be answered.
+        var waiting = SendToMemory(p, id, CardZone.Hand, handIndex, notify: false)!;
         p.RemoveHandCard(handIndex); State.ActionsLeft--;
-        var memoryIndex = p.Memory.Count; p.Memory.Add(id);
-        var frame = new EngineActivation(actor, id, 1, 0, State.Phase) { Kind = ActivationKind.Equipment, MemoryIndex = memoryIndex };
+        var frame = new EngineActivation(actor, id, 1, 0, State.Phase)
+            { Kind = ActivationKind.Equipment, MemoryIndex = waiting.Index, MemoryOwner = waiting.Owner == actor ? null : waiting.Owner };
         BeginActivation(frame);
         return CommandResult.Ok();
     }
@@ -25,7 +27,7 @@ public sealed partial class GameEngine
         var frame = _activeActivation!; var p = State.Players[frame.Actor];
         if (p.Equipment == null || p.Equipment == frame.CardId && CardCatalog.Get(frame.CardId).Stackable)
         {
-            p.Memory.RemoveAt(frame.MemoryIndex); ShiftSniperIndices(frame.Actor, frame.MemoryIndex);
+            MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p);
             if (p.Equipment != null)
             {
                 p.EquipmentStackedCopies++;
@@ -56,17 +58,16 @@ public sealed partial class GameEngine
         var id = p.Equipment;
         var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
         ChangeZahiraHosts(Array.IndexOf(State.Players, p), FieldZone.Equipment, index < 0 ? p.EquipmentStackedCopies : index);
-        NotifyPileMove(p, id, CardZone.Equipment, destination: trap ? CardZone.OutOfGame : CardZone.Memory);
+        var landed = SendToMemory(p, id, CardZone.Equipment, -1);
         if (p.EquipmentStackedCopies > 0)
         {
-            p.EquipmentStackedCopies--; p.Memory.Add(id);
+            p.EquipmentStackedCopies--;
             Log($"{p.Name} destruye una copia de {CardCatalog.Get(id).Name}: quedan {p.EquipmentStackedCopies + 1} equipadas.");
             return;
         }
         p.Equipment = null; p.EquipmentDie = 0; p.EquipmentCounters = 0;
         p.EquipmentExpiresAtTurnStart = false;
-        if (!trap) p.Memory.Add(id);
-        Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: {(trap ? "queda fuera del juego" : "va a su memoria")}.");
+        Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: {(trap ? "queda fuera del juego" : landed!.Owner == Seat(p) ? "va a su memoria" : $"va a la memoria de {State.Players[landed.Owner].Name}, su dueño")}.");
     }
 
     private void ReplaceEquipment(EngineContinuation next)

@@ -1,40 +1,76 @@
 namespace Relick.Core;
 
 public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira }
-public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination);
+/// <summary>Owner is the player the card leaves; MemoryOwner is the memory that receives it.</summary>
+public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1)
+{
+    public bool ToRivalMemory => Destination == CardZone.Memory && MemoryOwner >= 0 && MemoryOwner != Owner;
+}
 
 public sealed partial class GameEngine
 {
     public event Action<PileMovement>? CardMovedToPile;
 
-    private void NotifyPileMove(PlayerState p, string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory)
-        => CardMovedToPile?.Invoke(new(Array.IndexOf(State.Players, p), id, source, index, destination));
+    private int Seat(PlayerState p) => Array.IndexOf(State.Players, p);
 
-    private void SendHandToMemory(PlayerState p, int index)
+    private void NotifyPileMove(PlayerState p, string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory, int memoryOwner = -1)
+        => CardMovedToPile?.Invoke(new(Seat(p), id, source, index, destination, memoryOwner));
+
+    /// <summary>Returns where the card landed, or null when a trap leaves the game.</summary>
+    private MemorySelection? SendHandToMemory(PlayerState p, int index)
     {
         var id = p.Hand[index];
-        SendToMemory(p, id, CardZone.Hand, index);
+        var landed = SendToMemory(p, id, CardZone.Hand, index);
         p.RemoveHandCard(index);
+        return landed;
     }
 
-    private void SendToMemory(PlayerState p, string id, CardZone source, int index)
+    /// <summary>
+    /// Every card that leaves a hand or the field for a memory goes to its owner's memory,
+    /// whoever controlled it. Call this before removing a hand card: its slot carries the ownership.
+    /// </summary>
+    private MemorySelection? SendToMemory(PlayerState p, string id, CardZone source, int index, bool notify = true)
     {
+        var holder = Seat(p);
+        var foreign = source == CardZone.Hand ? p.IsForeignHandCard(index) : p.ReleaseForeignFieldCard(id);
+        var owner = foreign ? 1 - holder : holder;
         var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
-        NotifyPileMove(p, id, source, index, trap ? CardZone.OutOfGame : CardZone.Memory);
-        if (!trap) p.Memory.Add(id);
+        if (notify) NotifyPileMove(p, id, source, index, trap ? CardZone.OutOfGame : CardZone.Memory, trap ? -1 : owner);
+        if (trap) return null;
+        var memory = State.Players[owner].Memory;
+        memory.Add(id);
+        return new(owner, memory.Count - 1);
     }
 
-    private void ReturnHandCardToDeck(int actor, int index)
+    /// <summary>Moves a hand card onto its holder's field, keeping track of a borrowed copy.</summary>
+    private string MoveHandCardToField(PlayerState p, int index)
+    {
+        var id = p.Hand[index];
+        if (p.RemoveHandCard(index)) p.MarkForeignFieldCard(id);
+        return id;
+    }
+
+    /// <summary>Removes a memory card that returns to play under <paramref name="holder"/>'s control.</summary>
+    private void MoveMemoryCardToField(MemorySelection source, PlayerState holder)
+    {
+        var id = State.Players[source.Owner].Memory[source.Index];
+        State.Players[source.Owner].Memory.RemoveAt(source.Index); ShiftSniperIndices(source.Owner, source.Index);
+        if (source.Owner != Seat(holder)) holder.MarkForeignFieldCard(id);
+    }
+
+    /// <summary>Returns the seat whose deck received the card, or -1 when a trap left the game.</summary>
+    private int ReturnHandCardToDeck(int actor, int index)
     {
         var p = State.Players[actor];
         var id = p.Hand[index];
         if (CardCatalog.Get(id).CodeType == CodeType.Trap)
         {
             SendHandToMemory(p, index);
-            return;
+            return -1;
         }
         CardReturnedToDeck?.Invoke(actor, index, id);
-        p.RemoveHandCard(index);
-        p.Deck.Add(id);
+        var owner = p.RemoveHandCard(index) ? 1 - actor : actor;
+        State.Players[owner].Deck.Add(id);
+        return owner;
     }
 }

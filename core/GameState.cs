@@ -86,12 +86,42 @@ public sealed class PlayerState
     // revealing a different copy of the same card or a later draw into the vacated slot.
     internal bool RevealHandCard(int index) => index >= 0 && index < Hand.Count && _revealedHandSlots.Add(index);
     internal void HideHandCards() => _revealedHandSlots.Clear();
-    internal void RemoveHandCard(int index)
+    /// <summary>Removes the card and reports whether that exact copy belongs to the rival.</summary>
+    internal bool RemoveHandCard(int index)
     {
         Hand.RemoveAt(index);
         var remaining = _revealedHandSlots.Where(slot => slot != index).Select(slot => slot > index ? slot - 1 : slot).ToArray();
         _revealedHandSlots.Clear();
         _revealedHandSlots.UnionWith(remaining);
+        var foreign = _foreignHandSlots.Contains(index);
+        var borrowed = _foreignHandSlots.Where(slot => slot != index).Select(slot => slot > index ? slot - 1 : slot).ToArray();
+        _foreignHandSlots.Clear();
+        _foreignHandSlots.UnionWith(borrowed);
+        return foreign;
+    }
+
+    // Cards are plain identifiers, so ownership is tracked beside them. A hand slot listed
+    // here holds a copy owned by the rival (taken with Magnet, Cambio de Mentes, Disquete…).
+    // Decks and memories only ever contain their owner's cards.
+    private readonly HashSet<int> _foreignHandSlots = new();
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? ForeignHandSlots
+    {
+        get => _foreignHandSlots.Count == 0 ? null : _foreignHandSlots.Order().ToArray();
+        internal set { _foreignHandSlots.Clear(); if (value != null) _foreignHandSlots.UnionWith(value); }
+    }
+    public bool IsForeignHandCard(int index) => _foreignHandSlots.Contains(index);
+    internal void MarkForeignHandCard(int index) => _foreignHandSlots.Add(index);
+    // Rival-owned copies on this player's field (skills, equipment, covers, canje, Bonus).
+    // Identical copies are interchangeable there, so a multiset is enough.
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? ForeignFieldCards { get; internal set; }
+    internal void MarkForeignFieldCard(string id) => (ForeignFieldCards ??= []).Add(id);
+    internal bool ReleaseForeignFieldCard(string id)
+    {
+        if (ForeignFieldCards == null || !ForeignFieldCards.Remove(id)) return false;
+        if (ForeignFieldCards.Count == 0) ForeignFieldCards = null;
+        return true;
     }
     [JsonInclude]
     public List<string> Memory { get; internal set; } = new();

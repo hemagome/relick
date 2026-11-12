@@ -55,7 +55,7 @@ public sealed partial class GameEngine
                 continue;
             }
             NotifyPileMove(p, CardCatalog.Totem.Id, CardZone.Hand, index, CardZone.Equipment);
-            p.RemoveHandCard(index);
+            MoveHandCardToField(p, index);
             if (p.Equipment == null)
             {
                 p.Equipment = CardCatalog.Totem.Id; p.EquipmentStackedCopies = 0;
@@ -65,7 +65,7 @@ public sealed partial class GameEngine
         }
         var frame = _activeActivation!;
         NotifyPileMove(p, frame.CardId, CardZone.Memory, frame.MemoryIndex, CardZone.EquipmentCover);
-        p.Memory.RemoveAt(frame.MemoryIndex); ShiftSniperIndices(pending.Actor, frame.MemoryIndex);
+        MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p);
         p.EquipmentCovers ??= []; p.EquipmentCovers.Add(frame.CardId);
         Log($"{p.Name} coloca Tótem de Oro encima de su equipo.");
         State.PendingGoldenTotem = null; State.Phase = frame.ResumePhase;

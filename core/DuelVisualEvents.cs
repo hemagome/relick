@@ -19,6 +19,9 @@ public sealed class DuelVisualEvent
     public int Target { get; set; }
     public CardZone Source { get; set; }
     public CardZone Destination { get; set; }
+    // Pile cues only: the card lands in the memory of Player's rival, its original owner.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ToRivalMemory { get; set; }
 }
 
 public static class DuelVisualEvents
@@ -47,7 +50,7 @@ public static class DuelVisualEvents
         game.MemoryCardClaimed += (owner, recipient, sourceIndex, slot) => events.Add(new()
             { Kind = DuelVisualKind.MemoryClaim, Player = owner, Target = recipient, SourceIndex = sourceIndex, Value = slot, Source = CardZone.Memory, Destination = CardZone.Hand });
         game.CardMovedToPile += movement => events.Add(new() { Kind = DuelVisualKind.Pile, Player = movement.Owner,
-            Source = movement.Source, Destination = movement.Destination, Value = movement.Index });
+            Source = movement.Source, Destination = movement.Destination, Value = movement.Index, ToRivalMemory = movement.ToRivalMemory });
         return events;
     }
 }

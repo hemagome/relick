@@ -43,6 +43,10 @@ public sealed class EngineActivation
     public bool CanInterrupt { get; set; } = true;
     public bool FromMemory { get; set; }
     public int MemoryIndex { get; set; }
+    // Seat whose memory holds the activating card; null means the actor's own memory.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? MemoryOwner { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore] public int MemorySeat => MemoryOwner ?? Actor;
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public FieldTarget? FieldSource { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public EngineActivation? Parent { get; set; }
@@ -203,7 +207,7 @@ public sealed partial class GameEngine
         {
             if (frame.FieldSource is { } source) DestroyCardNow(source);
         }
-        else if (frame.Kind == ActivationKind.Equipment) NotifyPileMove(State.Players[frame.Actor], frame.CardId, CardZone.Activation);
+        else if (frame.Kind == ActivationKind.Equipment) NotifyPileMove(State.Players[frame.Actor], frame.CardId, CardZone.Activation, memoryOwner: frame.MemorySeat);
         State.Phase = frame.ResumePhase;
         if (frame.Kind == ActivationKind.Reroll) _activeActivation = frame.Parent;
     }
