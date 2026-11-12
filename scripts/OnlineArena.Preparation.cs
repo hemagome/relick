@@ -186,9 +186,12 @@ public partial class OnlineArena
         foreach (var flight in _openingTurnDraw is { } draw ? _flights.Append(draw) : _flights)
         {
             var relative = flight.Event.Player == _snapshot!.MySeat ? 0 : 1;
+            if (!pending && flight.LeavesExchange)
+                (ZoneNode(relative, CardZone.Exchange, flight.Event.Value) as ZoneCardButton)?.SetExchangePreview(null);
             var target = flight.Event.Kind switch
             {
                 DuelVisualKind.Draw => ZoneNode(relative, CardZone.Hand, flight.Event.Value),
+                DuelVisualKind.BonusClaim => ZoneNode(flight.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, flight.Event.Value),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.Pile when flight.IsPlacement => ZoneNode(relative, flight.Event.Destination, flight.Event.Value),
                 _ => null

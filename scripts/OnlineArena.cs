@@ -121,7 +121,8 @@ public partial class OnlineArena : Control
             var openingFlights = IsLiveOpening(snapshot) ? CaptureMulliganOrigins(snapshot) : null;
             var animate = !_preparing && !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
             var origins = CaptureOrigins(snapshot, previous);
-            var placement = animate ? CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!) : null;
+            var placement = animate ? CaptureExchangePlacement(snapshot, previous!, origins) ??
+                CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!) : null;
             if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.Value = snapshot.Die; }
             _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
             if (!animate)

@@ -516,6 +516,7 @@ public partial class OnlineArena
             }, random);
             foreach (var p in game.State.Players) p.Dexterity = 0;
             var owner = game.State.Active; owner.Bonus = CardCatalog.Jessica.Id; owner.Exchange.Add(CardCatalog.Jessica.Id);
+            var rival = game.State.Players[1 - actor]; rival.Bonus = CardCatalog.Magnet.Id; rival.Exchange.Add(CardCatalog.Magnet.Id);
             owner.Equipment = CardCatalog.Pendant.Id; owner.ActionsLeft = 0;
             for (var step = 0; step < 4; step++)
             {
@@ -529,9 +530,26 @@ public partial class OnlineArena
                     for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     var relative = actor == seat ? 0 : 1;
                     var track = _root!.FindChild($"BonusTrack{relative}", true, false) as ExchangeTrack;
-                    if (track == null || track.BonusButton.Caption.Contains("USADA") != (step is 1 or 2) ||
-                        track.ExchangeButtons[0].Caption.Contains("USADA") != (step == 2))
+                    if (track == null || track.BonusButton.EffectUsed != (step is 1 or 2) ||
+                        track.ExchangeButtons[0].EffectUsed != (step == 2))
                         throw new Exception("Jessica no presenta correctamente el uso de cada copia pública.");
+                    var exchange = track.ExchangeButtons[0];
+                    var otherTrack = (ExchangeTrack)_root.FindChild($"BonusTrack{1 - relative}", true, false);
+                    foreach (var card in new[] { exchange, otherTrack.ExchangeButtons[0] })
+                    {
+                        var art = card.CardRect;
+                        if (art.Size.X <= art.Size.Y || art.Size.Y <= card.Size.Y - 40 ||
+                            !new Rect2(Vector2.Zero, card.Size).Encloses(art))
+                            throw new Exception($"La carta de canje {card.Card!.Name} no muestra una miniatura horizontal ampliada en {size}.");
+                    }
+                    foreach (var bonus in new[] { track.BonusButton, otherTrack.BonusButton })
+                    {
+                        var art = bonus.CardRect;
+                        if (art.Size.X >= art.Size.Y || art.Size.Y < bonus.Size.Y - 9 || !new Rect2(Vector2.Zero, bonus.Size).Encloses(art))
+                            throw new Exception($"El Bonus {bonus.Card!.Name} no ocupa el espacio vertical disponible en {size}.");
+                    }
+                    if (!track.ExchangeButtons[1].Disabled)
+                        throw new Exception("Una ranura de canje vacía se puede seleccionar.");
                     if ((track.BonusButton.Targetable ? 1 : 0) + (track.ExchangeButtons[0].Targetable ? 1 : 0) != (step == 0 && actor == seat ? 2 : 0))
                         throw new Exception("Jessica no ilumina sus zonas al dueño en su combate, o permite repetir el efecto.");
                     if (step == 0 && actor == seat)
@@ -539,6 +557,12 @@ public partial class OnlineArena
                         SelectField(actor, FieldZone.Bonus, -1);
                         if (!_moveButtons.Any(b => PresentedOption(b)?.Move is { Kind: DuelMoveKind.FieldCode, Value: (int)FieldZone.Bonus }))
                             throw new Exception("Jessica no presenta la activación de la copia tocada.");
+                        ClearContext();
+                        _arenaScroll?.EnsureControlVisible(exchange);
+                        for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                        GuiInputTestDriver.Click(exchange);
+                        if (!_moveButtons.Any(b => PresentedOption(b)?.Move is { Kind: DuelMoveKind.FieldCode, Value: (int)FieldZone.Exchange, Index: 0 }))
+                            throw new Exception("Jessica no presenta la activación desde su miniatura horizontal de canje.");
                         ClearContext();
                     }
                     if (step == 1 && _snapshot!.Die != 5) throw new Exception("La reconexión pierde el dado pendiente de Jessica.");
@@ -566,6 +590,122 @@ public partial class OnlineArena
         }
         _selected.Clear();
         GD.Print("PVP_JESSICA_LAYOUT_PASS · activaciones desde canje y Bonus, dado y usos públicos, reconexión, privacidad y cuatro tamaños para ambos asientos.");
+    }
+
+    internal async Task CheckExchangeAnimation()
+    {
+        void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+        async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+        static GameEngine Fixture(int actor)
+        {
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Ana", "Beto"], StartingSeat = actor,
+                Hands = [[CardCatalog.Sniper.Id, CardCatalog.Magnet.Id], [CardCatalog.Sniper.Id, CardCatalog.Magnet.Id]],
+                Decks = [Enumerable.Repeat(CardCatalog.Attack.Id, 4).ToList(), Enumerable.Repeat(CardCatalog.Attack.Id, 4).ToList()],
+                Bonuses = [CardCatalog.Jessica.Id, CardCatalog.Jessica.Id]
+            }, new SeededRandom(31));
+            game.State.Phase = Phase.Actions;
+            return game;
+        }
+
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        foreach (var seat in new[] { 0, 1 })
+        foreach (var actor in new[] { 0, 1 })
+        {
+            var game = Fixture(actor);
+            GetWindow().ContentScaleSize = size;
+            await Layout();
+            var relative = actor == seat ? 0 : 1;
+            for (var index = 0; index < 2; index++)
+            {
+                ResetAnimations();
+                var before = DuelSnapshot.For(game, seat, (ulong)(870 + index));
+                PresentTestSnapshot(before);
+                if (actor == seat) SelectCard(0);
+                await Layout();
+                var source = actor == seat ? ZoneNode(0, CardZone.Hand, 0) : null;
+                var face = game.State.Active.Hand[0];
+                var cues = DuelVisualEvents.Capture(game);
+                Check(new DuelMove { Kind = DuelMoveKind.Exchange, Index = 0 }.Apply(game, actor).Success, "No se canjea la carta de prueba.");
+                var after = DuelSnapshot.For(game, seat, before.Revision + 1);
+                after.Visuals = cues;
+                var origins = CaptureOrigins(after, before);
+                var placement = CaptureExchangePlacement(after, before, origins);
+                Check(placement?.Face == face && placement.Event.Source == CardZone.Hand && placement.Event.Value == index,
+                    "El canje no prepara el vuelo desde la mano hasta la ranura correcta.");
+                if (source != null && RectVisible(source, ZoneRect(source)))
+                    Check(placement!.Origin == ZoneRect(source), "El vuelo de canje comienza en otra carta de la mano.");
+
+                PresentTestSnapshot(after);
+                Animate(cues, origins, placement);
+                var tile = (ZoneCardButton)ZoneNode(relative, CardZone.Exchange, index)!;
+                var first = (ZoneCardButton)ZoneNode(relative, CardZone.Exchange, 0)!;
+                var bonus = index == 1 ? ZoneNode(relative, CardZone.Hand, 0) : null;
+                Check(tile.AwaitingExchange && _flights.Peek() == placement && (index == 0 || first.HasExchangePreview),
+                    "El tablero adelanta el resultado antes de colocar la carta de canje.");
+                Check(bonus == null || bonus.Modulate.A == 0, "El Bonus aparece en la mano antes de completar el canje.");
+                await Layout();
+                UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
+                Check(_activeFlight == placement && _flightTarget == tile && _flightFront?.Visible == (actor == seat),
+                    "La colocación pierde su destino o adelanta la cara de la carta rival.");
+                if (size.X == 1440)
+                    Check(!_placementPreview && (index == 1 || _flightDestination == PortraitFootprint(ZoneRect(tile))),
+                        "El vuelo de escritorio no llega al espacio horizontal de canje.");
+                var scroll = _arenaScroll?.ScrollVertical;
+                UpdateFlights(0.49);
+                Check(_flightFront!.Visible && Math.Abs(_flight!.Rotation - Mathf.Pi / 2) < 0.12f && tile.AwaitingExchange,
+                    "La carta no gira a horizontal antes de aterrizar.");
+                UpdateFlights(0.9);
+                Check(_activeFlight == null && !tile.AwaitingExchange && _arenaScroll?.ScrollVertical == scroll,
+                    "La carta no aterriza o desplaza el tablero.");
+                if (index == 0) Check(tile.Card?.Id == face && !IsAnimating, "No aparece la primera carta en el canje.");
+                else
+                {
+                    Check(tile.HasExchangePreview && _flights.Peek().LeavesExchange,
+                        "La segunda carta desaparece antes de la salida hacia memoria.");
+                    for (var frame = 0; IsAnimating && frame < 16; frame++) UpdateFlights(0.5);
+                    Check(!first.HasExchangePreview && !tile.HasExchangePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1),
+                        "El canje no retira ambas cartas o no entrega el Bonus.");
+                    Animate(cues, origins, placement);
+                    UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
+                    ResetAnimations();
+                    Check(!tile.AwaitingExchange && !first.HasExchangePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1),
+                        "Interrumpir el canje deja una carta oculta o una animación pendiente.");
+                }
+            }
+        }
+
+        var bonusGame = Fixture(0);
+        bonusGame.State.Active.Relikia = 400;
+        var bonusBefore = DuelSnapshot.For(bonusGame, 0, 880);
+        Check(bonusGame.UseRelikiaEffect(0, RelikiaEffect.ChangeBonus).Success, "No se prepara el cambio de Bonus.");
+        var bonusFlight = CaptureExchangePlacement(DuelSnapshot.For(bonusGame, 0, 881), bonusBefore, []);
+        Check(bonusFlight?.Event.Source == CardZone.Bonus && bonusFlight.Face == CardCatalog.Jessica.Id,
+            "La carta de Relikia no sale del Bonus.");
+        Check(bonusGame.UseRelikiaEffect(0, RelikiaEffect.DrawAndPlace).Success, "No se prepara el robo de Relikia.");
+        var relikiaBefore = DuelSnapshot.For(bonusGame, 1, 882);
+        var relikiaCues = DuelVisualEvents.Capture(bonusGame);
+        Check(new DuelMove { Kind = DuelMoveKind.Placement, Index = 0, Value = (int)CardDestination.Exchange }.Apply(bonusGame, 0).Success,
+            "La carta robada no completa el canje de Relikia.");
+        var relikiaAfter = DuelSnapshot.For(bonusGame, 1, 883);
+        relikiaAfter.Visuals = relikiaCues;
+        var relikiaFlight = CaptureExchangePlacement(relikiaAfter, relikiaBefore, []);
+        Check(relikiaFlight?.Event.Source == CardZone.Hand && relikiaFlight.Face == CardCatalog.Sniper.Id,
+            "El rival no puede ver la carta pública que completa el canje de Relikia.");
+
+        var sniper = Fixture(0);
+        sniper.State.Phase = Phase.Discard;
+        sniper.State.DiscardPlayer = 0;
+        sniper.State.DiscardsRemaining = 1;
+        sniper.State.DiscardResumePhase = Phase.Actions;
+        Check(sniper.Discard(0, 0).Success, "No se prepara Mira de Sniper en memoria.");
+        var sniperBefore = DuelSnapshot.For(sniper, 1, 882);
+        Check(sniper.ResolveSniper(0, false).Success, "No se canjea Mira de Sniper.");
+        var sniperFlight = CaptureExchangePlacement(DuelSnapshot.For(sniper, 1, 883), sniperBefore, []);
+        Check(sniperFlight?.Event.Source == CardZone.Memory && sniperFlight.Face == CardCatalog.Sniper.Id,
+            "Mira de Sniper no sale de memoria al canje.");
+        GD.Print("PVP_EXCHANGE_ANIMATION_PASS · mano, giro, privacidad, segundo canje, Bonus, memoria y cuatro tamaños desde ambos asientos.");
     }
 
     internal async Task CheckPlumberStarLayout()
