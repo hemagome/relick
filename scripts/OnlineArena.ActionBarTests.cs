@@ -40,6 +40,18 @@ public partial class OnlineArena
     {
         var button = PresentedButton(_snapshot!.Options[index]);
         if (button is { Disabled: false }) { button.EmitSignal(Button.SignalName.Pressed); return true; }
+        var option = _snapshot.Options[index];
+        if (option.Move.Kind == DuelMoveKind.Relikia && option.Move.Value != (int)RelikiaEffect.ReplayCode &&
+            _root?.FindChild("ResourceBadge0", true, false) is ResourceBadge badge)
+        {
+            OpenRelikiaMenu(badge);
+            var item = _relikiaMenu?.GetItemIndex(option.Move.Value) ?? -1;
+            if (_relikiaMenu != null && item >= 0 && !_relikiaMenu.IsItemDisabled(item))
+            {
+                _relikiaMenu.EmitSignal(PopupMenu.SignalName.IdPressed, option.Move.Value);
+                return true;
+            }
+        }
         foreach (var menu in _actionMenus)
         {
             var item = menu.GetPopup().GetItemIndex(index);
@@ -90,6 +102,10 @@ public partial class OnlineArena
                 $"Barra inicial desborda {size}: mínimo {initialMinimum}, raíz {_root.Size}, mano {_hand!.GetGlobalRect()}.");
             Check(!PresentsKind(DuelMoveKind.Concede) && _arenaMenu!.GetPopup().GetItemIndex(1) >= 0, "Abandonar sigue entre las acciones de cartas.");
             Check(_moves.GetChildCount() == 0 && !_cardActions.Visible, "Una mano sin seleccionar muestra acciones ajenas.");
+            var ownBadge = _root.FindChild("ResourceBadge0", true, false) as ResourceBadge;
+            var rivalBadge = _root.FindChild("ResourceBadge1", true, false) as ResourceBadge;
+            Check(ownBadge is { Interactive: true }, "El contador de PR propio no abre los efectos de Relikia.");
+            Check(rivalBadge is { Interactive: false }, "El contador de PR rival responde como un botón.");
             if (seat == actor)
             {
                 var before = game.SaveSnapshot();
@@ -183,7 +199,7 @@ public partial class OnlineArena
                 memoryGame.State.Active.Relikia = 500; memoryGame.State.Active.Memory.Add(CardCatalog.Senshuni.Id);
                 PresentTestSnapshot(DuelSnapshot.For(memoryGame, seat, 314)); await Layout();
                 var replay = _snapshot!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode);
-                Check(replay >= 0 && _actionMenus.Any(m => m.Name == "RelikiaActions"), "Relikia pierde el acceso a sus opciones.");
+                Check(replay >= 0, "Relikia pierde el acceso a sus opciones.");
                 PrepareTestOption(replay); await Layout();
                 Check(ChoosingEffectCards && PresentedButton(_snapshot.Options[replay])?.Text == "Activar" && _contextTitle.Text == "Senshuni" &&
                     _contextCost.Text.Contains("2 acciones") && _contextCost.Text.Contains("400 PR"), "La galería de memoria pierde el código o su coste real.");
@@ -194,8 +210,41 @@ public partial class OnlineArena
             Check(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1, $"La barra contextual desborda {size}: {minimum}.");
             Check(_hand!.GetGlobalRect().End.Y <= Size.Y + 1, $"La mano se sale en {size}: arena {Size}, raíz {_root.Size}, mínimo {minimum}, mano {_hand.GetGlobalRect()}, galería {_showReplayMemory}.");
         }
+        // The own PR counter is the only Relikia entry point. Keep this check outside the
+        // resize loop so a pending window layout cannot rebuild the board under the popup,
+        // and use a desktop size where the own panel is visible without scrolling.
+        GetWindow().Size = new Vector2I(1440, 1024); GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
+        var menuGame = new GameEngine(41);
+        menuGame.State.Phase = Phase.Actions; menuGame.State.CurrentPlayer = 0;
+        menuGame.State.Active.Relikia = 500; menuGame.State.Active.Memory.Add(CardCatalog.Senshuni.Id);
+        PresentTestSnapshot(DuelSnapshot.For(menuGame, 0, 900)); await Layout();
+        var menuBadge = _root!.FindChild("ResourceBadge0", true, false) as ResourceBadge;
+        Check(menuBadge is { Interactive: true }, "El contador de PR propio no es interactivo.");
+        GuiInputTestDriver.Hover(menuBadge!); await Layout();
+        GuiInputTestDriver.Click(menuBadge!);
+        var relikiaMenu = _relikiaMenu;
+        Check(relikiaMenu is { Visible: true }, "El contador de PR no abre el menú de Relikia.");
+        var replayItem = relikiaMenu!.GetItemIndex((int)RelikiaEffect.ReplayCode);
+        Check(RelikiaEffects.All.All(e => relikiaMenu.GetItemIndex((int)e.Id) >= 0) && replayItem >= 0 && !relikiaMenu.IsItemDisabled(replayItem),
+            "El menú de Relikia no ofrece los cuatro efectos o bloquea el código legal.");
+        relikiaMenu.EmitSignal(PopupMenu.SignalName.IdPressed, (int)RelikiaEffect.ReplayCode); await Layout();
+        var menuReplay = _snapshot!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode);
+        var memoryIndex = Array.IndexOf(_deckSearchOptions, _snapshot.Options[menuReplay]);
+        Check(ChoosingEffectCards && memoryIndex >= 0, "El menú de Relikia no abre la galería de memoria.");
+        SelectCard(memoryIndex); await Layout();
+        Check(PresentedButton(_snapshot.Options[menuReplay])?.Text == "Activar" && _contextTitle.Text == "Senshuni", "El menú de Relikia pierde el código elegido.");
+
+        PresentTestSnapshot(DuelSnapshot.For(menuGame, 1, 901)); await Layout();
+        var waitingBadge = _root!.FindChild("ResourceBadge0", true, false) as ResourceBadge;
+        Check(waitingBadge is { Interactive: true }, "El contador de PR deja de responder fuera del turno.");
+        GuiInputTestDriver.Hover(waitingBadge!); await Layout();
+        GuiInputTestDriver.Click(waitingBadge!);
+        var waitingMenu = _relikiaMenu;
+        Check(waitingMenu is { Visible: true } && RelikiaEffects.All.All(e => waitingMenu.IsItemDisabled(waitingMenu.GetItemIndex((int)e.Id))),
+            "El menú de Relikia permite efectos fuera del turno propio.");
+        waitingMenu!.Hide();
         ResetInteraction();
-        GD.Print("PVP_CONTEXT_ACTION_BAR_PASS · barra breve, costes, selección real de habilidades y zonas, índice/revisión, menús separados y cuatro tamaños para ambos asientos.");
+        GD.Print("PVP_CONTEXT_ACTION_BAR_PASS · barra breve, costes, selección real de habilidades y zonas, índice/revisión, contador de PR para Relikia y cuatro tamaños para ambos asientos.");
     }
 
     private static GameEngine PendingCodeFixture(int actor, string card)

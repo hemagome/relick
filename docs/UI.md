@@ -108,8 +108,9 @@ para atacar, Atacar permite elegir una de las que se resaltan en el tablero.
 El inspector acrílico muestra el nombre, el efecto y el coste de la carta.
 Pasar el cursor sobre una carta visible abre su vista previa.
 Un clic en el campo vacío limpia la selección del duelo y cierra la vista previa.
-El avance de etapa ocupa un control separado, Relikia tiene su propio
-menú y Abandonar está en el menú general con su confirmación habitual.
+El avance de etapa ocupa un control separado, el contador de PR propio abre
+los efectos de Relikia y Abandonar está en el menú general con su confirmación
+habitual. El contador rival es solo informativo.
 
 La lectura de cartas usa un inspector compartido en mano, elección inicial y
 consultas de zonas. Conserva las cartas completas y sus tamaños de presentación.

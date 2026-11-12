@@ -17,6 +17,7 @@ public sealed class ArenaPlayerActions
     public Action Evolve { get; init; } = () => { };
     public bool CanEvolve { get; init; }
     public string EvolutionHint { get; init; } = "Evolucionar cuesta 1800 PR y requiere un 6 natural.";
+    public Action<ResourceBadge>? Relikia { get; init; }
 }
 
 public static class ArenaPresentation
@@ -103,7 +104,9 @@ public static class ArenaPresentation
             star.TooltipText = "Estrella del Fontanero: no recibe daño y multiplica su daño hasta el final de este turno.";
             stats.AddChild(star);
         }
-        stats.AddChild(new ResourceBadge { Amount = owner.Pr, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+        var resources = new ResourceBadge { Name = $"ResourceBadge{index}", Amount = owner.Pr, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+        if (!enemy && actions.Relikia is { } relikia) resources.Activated = () => relikia(resources);
+        stats.AddChild(resources);
         crystals.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         stats.AddChild(crystals);
         if (actions.ZahiraCaption is { } zahiraCaption)
@@ -286,7 +289,9 @@ public static class ArenaPresentation
             star.TooltipText = "Estrella del Fontanero: no recibe daño y multiplica su daño hasta el final de este turno.";
             stats.AddChild(star);
         }
-        stats.AddChild(new ResourceBadge { Amount = owner.Pr });
+        var resources = new ResourceBadge { Name = $"ResourceBadge{index}", Amount = owner.Pr };
+        if (!enemy && actions.Relikia is { } relikia) resources.Activated = () => relikia(resources);
+        stats.AddChild(resources);
         if (!enemy)
         {
             var evolve = Button(stats, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);

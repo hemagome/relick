@@ -185,6 +185,7 @@ public partial class OnlineArena : Control
 
     private void Render(bool animateActions = false, DuelSnapshot? previous = null)
     {
+        _relikiaMenu = null;
         _inspectorPreview = null;
         _fieldPress = null;
         var handPosition = _hand?.ScrollHorizontal ?? 0;
@@ -239,7 +240,8 @@ public partial class OnlineArena : Control
                     else SelectSkill(slot);
                 },
                 InspectSkill = slot => ShowCards("Habilidad", [player.Skills[slot]]),
-                Evolve = () => SendKind(DuelMoveKind.Evolve), CanEvolve = s.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve) && !Connection.PlayPending && !IsAnimating
+                Evolve = () => SendKind(DuelMoveKind.Evolve), CanEvolve = s.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve) && !Connection.PlayPending && !IsAnimating,
+                Relikia = relative == 0 && !_preparing && s.Winner == null ? OpenRelikiaMenu : null
             };
         }
         var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? resultCaption : s.LastCombat;
@@ -300,7 +302,6 @@ public partial class OnlineArena : Control
             inspectorColumn.AddChild(_showcase);
             var reading = new VBoxContainer { Name = "RailReading", SizeFlagsVertical = SizeFlags.ExpandFill };
             inspectorColumn.AddChild(reading);
-            _turnControls = new HBoxContainer { Name = "TurnControls", Visible = false };
             BuildActionArea(reading);
             BuildResultPanel(reading);
             var turnDock = new VBoxContainer { Name = "TurnDock" };
@@ -324,8 +325,6 @@ public partial class OnlineArena : Control
             _status.Visible = !Short; brandColumn.AddChild(_status);
             ArenaPresentation.StageIndicator(Short ? _root : header, stage, stageDetail, Short);
             BuildComboResponseToggle(header);
-            _turnControls = new HBoxContainer { Name = "TurnControls", Visible = false };
-            if (Short) header.AddChild(_turnControls);
             BuildAdvanceControl(header);
             BuildArenaMenu(header);
             if (Compact && !Short) ArenaPresentation.Scoreline(_root, [s.Players[s.MySeat], s.Players[1 - s.MySeat]]);
@@ -441,7 +440,7 @@ public partial class OnlineArena : Control
     }
     private void BuildMoves()
     {
-        foreach (var node in new[] { (Node)_moves, _turnControls, _cardActions })
+        foreach (var node in new[] { (Node)_moves, _cardActions })
             foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); }
         _cardActionAnchor = null;
         _cardActions.Hide();
@@ -449,10 +448,9 @@ public partial class OnlineArena : Control
         if (_advanceButton != null) _moveButtons.Add(_advanceButton);
         if (_preparing)
         {
-            _turnControls.Visible = false;
             BuildPreparationMoves(); RefreshInspector(); return;
         }
-        RefreshBoardTargets(); BuildTurnControls(); BuildContextMoves();
+        RefreshBoardTargets(); BuildContextMoves();
         _lastDisabled = null; UpdateEnabled();
     }
 

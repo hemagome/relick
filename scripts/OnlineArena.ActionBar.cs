@@ -7,7 +7,7 @@ public partial class OnlineArena
 {
     private Label _contextTitle = null!, _contextCost = null!;
     private CardInspector _inspector = null!;
-    private HBoxContainer _turnControls = null!, _decisionBar = null!;
+    private HBoxContainer _decisionBar = null!;
     private ScrollContainer _movesScroll = null!;
     private VBoxContainer _actionDock = null!;
     private AdvancePhaseButton? _advanceButton;
@@ -40,7 +40,6 @@ public partial class OnlineArena
         _movesScroll = scroll; actions.AddChild(scroll);
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 6); _moves.AddThemeConstantOverride("v_separation", 6); scroll.AddChild(_moves);
-        if (!Short) actions.AddChild(_turnControls);
     }
 
     private static bool IsHandAction(DuelMoveKind kind) => kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or
@@ -116,27 +115,6 @@ public partial class OnlineArena
             }
             PlayOption(index, s);
         };
-    }
-
-    private void BuildTurnControls()
-    {
-        var s = _snapshot!;
-        var relikia = s.Options.Select((o, i) => (o, i)).Where(c => c.o.Move.Kind == DuelMoveKind.Relikia).ToArray();
-        if (relikia.Length > 0)
-        {
-            var menu = new MenuButton { Name = "RelikiaActions", Text = "Relikia", CustomMinimumSize = new(0, 48) };
-            _turnControls.AddChild(menu); _actionMenus.Add(menu); var popup = menu.GetPopup(); ArenaViewport.TouchMenu(popup);
-            foreach (var c in relikia.Where(c => c.o.Move.Value != (int)RelikiaEffect.ReplayCode))
-                popup.AddItem(ArenaActionText.Label(c.o, s) + " · " + ArenaActionText.Cost(c.o, s), c.i);
-            if (relikia.Any(c => c.o.Move.Value == (int)RelikiaEffect.ReplayCode)) popup.AddItem("Activar desde memoria · 2 acciones + 400 PR", s.Options.Count);
-            popup.IdPressed += id =>
-            {
-                if ((int)id == s.Options.Count)
-                { _showReplayMemory = true; _selected.Clear(); _fieldSelection = null; _skillContext = false; Render(); }
-                else PlayOption((int)id, s);
-            };
-        }
-        _turnControls.Visible = relikia.Length > 0;
     }
 
     private void BuildAdvanceControl(Node header)
@@ -359,11 +337,9 @@ public partial class OnlineArena
             interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
         }
         var hasDecisions = _moves.GetChildCount() > 0;
-        var hasTurnControls = _turnControls.GetParent() == _decisionBar && _turnControls.Visible;
-        // Keep Relikia aligned to the right when it is the only control in the row.
-        _movesScroll.Visible = hasDecisions || hasTurnControls;
+        _movesScroll.Visible = hasDecisions;
         _movesScroll.MouseFilter = hasDecisions ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
-        _decisionBar.Visible = _movesScroll.Visible;
+        _decisionBar.Visible = hasDecisions;
     }
 
     private string ContextTitle()

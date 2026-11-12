@@ -279,26 +279,75 @@ public partial class DexterityBadge : Control
 public partial class ResourceBadge : Control
 {
     public int Amount { get; set; }
+    /// <summary>Set before the badge enters the tree to turn the counter into a button.</summary>
+    public Action? Activated { get; set; }
+    public bool Interactive => Activated != null;
+    private bool _hover, _held;
+
     public override void _Ready()
     {
         CustomMinimumSize = new(94, 30);
-        MouseFilter = MouseFilterEnum.Ignore;
         Resized += QueueRedraw;
+        if (Activated == null)
+        {
+            MouseFilter = MouseFilterEnum.Ignore;
+            AccessibilityName = $"Relick Points · {Amount}";
+            return;
+        }
+        MouseFilter = MouseFilterEnum.Stop;
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        FocusMode = FocusModeEnum.All;
+        AccessibilityName = $"Relick Points · {Amount}. Efectos de Relikia";
+        TooltipText = $"Tienes {Amount} PR. Pulsa para ver los efectos de Relikia.";
+        MouseEntered += () => { _hover = true; QueueRedraw(); };
+        MouseExited += () => { _hover = false; _held = false; QueueRedraw(); };
+        FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
+    }
+
+    public override void _GuiInput(InputEvent @event)
+    {
+        if (Activated == null) return;
+        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left } mouse)
+        {
+            if (mouse.Pressed)
+            {
+                _held = true; GrabFocus(); QueueRedraw(); AcceptEvent();
+            }
+            else
+            {
+                var activate = _held && new Rect2(Vector2.Zero, Size).HasPoint(mouse.Position);
+                _held = false; QueueRedraw(); AcceptEvent();
+                if (activate) Activated();
+            }
+            return;
+        }
+        if (@event is InputEventKey { Pressed: true, Echo: false } key && key.Keycode is Key.Enter or Key.Space)
+        {
+            Activated(); AcceptEvent();
+        }
     }
 
     public override void _Draw()
     {
         var rect = new Rect2(Vector2.Zero, Size);
-        RelickVisuals.Shadow(this, rect.Grow(-3), BoardArt.Tint(BoardArt.Gold, Amount > 0 ? 0.22f : 0.06f), 6);
-        BoardArt.Plate(this, rect, new Color("191a26"), BoardArt.Tint(BoardArt.Gold, Amount > 0 ? 0.85f : 0.4f), 8);
+        var active = Interactive && (_hover || _held || HasFocus());
+        RelickVisuals.Shadow(this, rect.Grow(-3), BoardArt.Tint(BoardArt.Gold, active ? 0.38f : Amount > 0 ? 0.22f : 0.06f), active ? 10 : 6);
+        BoardArt.Plate(this, rect, active ? new Color("242536") : new Color("191a26"),
+            BoardArt.Tint(BoardArt.Gold, Amount > 0 ? active ? 1f : 0.85f : active ? 0.8f : 0.4f), 8, active ? 2 : 1);
         BoardArt.Icon(this, GameIcon.Gem, new(15, Size.Y / 2), 13, BoardArt.Gold);
         var text = $"{Amount} PR";
         var font = RelickVisuals.Strong;
         var fontSize = 18;
-        while (fontSize > 9 && font.GetStringSize(text, fontSize: fontSize).X > Size.X - 34) fontSize--;
+        var available = Size.X - (Interactive ? 44 : 34);
+        while (fontSize > 9 && font.GetStringSize(text, fontSize: fontSize).X > available) fontSize--;
         var width = font.GetStringSize(text, fontSize: fontSize).X;
+        var center = Interactive ? Size.X / 2 + 3 : (Size.X + 22) / 2;
         var baseline = Size.Y / 2 + (font.GetAscent(fontSize) - font.GetDescent(fontSize)) / 2;
-        DrawString(font, new((Size.X + 22 - width) / 2, baseline), text, HorizontalAlignment.Left, -1, fontSize, BoardArt.Gold);
+        DrawString(font, new(center - width / 2, baseline), text, HorizontalAlignment.Left, -1, fontSize, BoardArt.Gold);
+        if (!Interactive) return;
+        var x = Size.X - 12; var y = Size.Y / 2;
+        DrawPolyline([new(x - 4, y - 2), new(x, y + 2), new(x + 4, y - 2)],
+            BoardArt.Tint(BoardArt.Gold, active ? 1f : 0.65f), 1.6f, true);
     }
 }
 
