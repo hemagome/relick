@@ -13,6 +13,33 @@ public partial class OnlineArena
             ChoosingCorruption && o.Move.Kind == DuelMoveKind.Corrupt || _showReplayMemory && o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode).ToArray();
     }
 
+    private int? EffectCardOwner(DuelOption option)
+    {
+        if (_showReplayMemory && option.Move.Kind == DuelMoveKind.Relikia && option.Move.Value == (int)RelikiaEffect.ReplayCode)
+            return _snapshot!.MySeat;
+        return option.Move.Kind is DuelMoveKind.RecoverMemory or DuelMoveKind.MindResetMemory or DuelMoveKind.Corrupt
+            ? option.Move.Target : null;
+    }
+
+    // Memory choices keep their flat option index for selection; the gallery only groups them.
+    private IReadOnlyList<ArenaPresentation.HandSection>? MemorySections()
+    {
+        if (_deckSearchOptions.Length == 0) return null;
+        var owners = _deckSearchOptions.Select(EffectCardOwner).ToArray();
+        if (owners.Any(owner => owner is not (0 or 1))) return null;
+        var s = _snapshot!;
+        var sections = new List<ArenaPresentation.HandSection>();
+        foreach (var seat in new[] { s.MySeat, 1 - s.MySeat })
+        {
+            var indices = Enumerable.Range(0, _deckSearchOptions.Length).Where(i => owners[i] == seat).ToArray();
+            if (indices.Length == 0) continue;
+            var name = s.Players[seat].Name;
+            sections.Add(new(seat == s.MySeat ? $"TU MEMORIA · {name}" : $"MEMORIA DE {name}",
+                seat == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral, new CardOwner(seat, name), indices));
+        }
+        return sections;
+    }
+
     private void ApplyPrivateComboPreference(DuelSnapshot snapshot)
     {
         _snapshot = snapshot;

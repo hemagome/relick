@@ -167,7 +167,7 @@ public sealed partial class LobbyConnection : IDisposable
             if (packet.Board.Winner == null || Room is not { } room || room.Code != roomCode) return;
             // Keep a public, read-only result even if the room disappears in the same FrameTick.
             packet.Board.MySeat = room.MySeat; packet.Board.Options = []; packet.Board.Visuals = [];
-            foreach (var player in packet.Board.Players) player.Hand = [];
+            foreach (var player in packet.Board.Players) { player.Hand = []; player.HandOwners = null; }
             LastResult = packet.Board; LastResultRoom = roomCode;
             RememberFullResult();
         }

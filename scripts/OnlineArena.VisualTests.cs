@@ -796,6 +796,12 @@ public partial class OnlineArena
                     if (_handCards.Count != 4 || _deckSearchOptions.Count(o => o.CardId == CardCatalog.FloppyDisk.Id) != 2 ||
                         _deckSearchOptions.Any(o => o.Move.Target == actor && o.Move.Index == 2))
                         throw new Exception("Disquete no distingue las otras copias de su copia activa.");
+                    var titles = _hand!.FindChildren("HandSectionTitle*", "Label", true, false).OfType<Label>().ToArray();
+                    if (titles.Length != 2 || !titles.Any(t => t.Text.Contains("TU MEMORIA")) || !titles.Any(t => t.Text.Contains("MEMORIA DE")))
+                        throw new Exception("Disquete no separa visualmente las dos memorias.");
+                    if (_handCards.Count(c => c.OriginalOwner?.Seat == actor) != 2 || _handCards.Count(c => c.OriginalOwner?.Seat == 1 - actor) != 2 ||
+                        _handCards.Single(c => c.Card.Id == CardCatalog.Bonfire.Id).OriginalOwner?.Seat != 1 - actor)
+                        throw new Exception("Las cartas de memoria no muestran a su dueño original.");
                     var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == 1);
                     SelectCard(index); var option = _deckSearchOptions[index];
                     // Fixed, wrapping headers settle through Godot's deferred container layout.
@@ -818,6 +824,12 @@ public partial class OnlineArena
                 for (var i = 0; i < 12; i++) { UpdateFlights(0.5); await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
                 if (IsAnimating || FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
                     throw new Exception("La recuperación deja una animación pendiente o revela la mano.");
+                if (seat == actor)
+                {
+                    var recovered = _handCards.SingleOrDefault(c => c.Card.Id == CardCatalog.Bonfire.Id);
+                    if (recovered?.OriginalOwner?.Seat != 1 - actor || !recovered.TooltipText.Contains("Dueño original"))
+                        throw new Exception("La mano no identifica el dueño original de la carta recuperada.");
+                }
             }
         }
         _selected.Clear();
@@ -1043,6 +1055,11 @@ public partial class OnlineArena
                     if (seat == actor && step > 0)
                     {
                         if (!ChoosingResetCards || _handCards.Count == 0) throw new Exception("Faltan las cartas seleccionables de Resetear.");
+                        var titles = _hand!.FindChildren("HandSectionTitle*", "Label", true, false).OfType<Label>().ToArray();
+                        if (step < 3 && (titles.Length != 2 || !titles.Any(t => t.Text.Contains("TU MEMORIA")) || !titles.Any(t => t.Text.Contains("MEMORIA DE"))))
+                            throw new Exception("Resetear no separa visualmente las dos memorias.");
+                        if (step == 3 && titles.Length != 0)
+                            throw new Exception("Resetear agrupa como memoria una carta de mano.");
                         SelectCard(0);
                         if (!_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Move.Kind == (step < 3 ? DuelMoveKind.MindResetMemory : DuelMoveKind.MindResetHand)))
                             throw new Exception("Falta el botón para confirmar la carta de Resetear.");

@@ -1,10 +1,31 @@
 using Relick.Core;
+using System.Text.Json;
 
 // A card taken from the rival stays the rival's: whenever it reaches a memory, it is its owner's.
 static class CardOwnershipTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
+        ("Dueño: la proyección solo revela dueños de ranuras visibles y el paquete privado los conserva", () =>
+        {
+            var (g, _) = Fixture([CardCatalog.Attack.Id], [CardCatalog.Senshuni.Id, CardCatalog.Pendant.Id, CardCatalog.Bonfire.Id]);
+            Steal(g, 0, 0);
+            var own = DuelSnapshot.For(g, 0, 1);
+            Check(own.Players[0].HandOwners is { } ownOwners && ownOwners.SequenceEqual(new int?[] { 0, 1 }));
+            var rival = DuelSnapshot.For(g, 1, 1);
+            Check(rival.Players[0].HandOwners == null && rival.Players[0].Hand.All(id => id == null));
+            var publicBoard = DuelSnapshot.For(g, -1, 1);
+            Check(publicBoard.Players.All(p => p.HandOwners == null));
+            var packet = DuelPackets.Combine(new DuelBoardPacket { Board = publicBoard },
+                new DuelPrivateData { MySeat = 0, OwnHand = own.Players[0].Hand, OwnHandOwners = own.Players[0].HandOwners }, []);
+            Check(packet.Players[0].HandOwners!.SequenceEqual(new int?[] { 0, 1 }));
+            g.State.Players[1].RevealHandCard(0);
+            var revealed = DuelSnapshot.For(g, -1, 2);
+            Check(revealed.Players[1].HandOwners is { } visible && visible[0] == 1 && visible[1] == null);
+            var json = JsonSerializer.Serialize(own, DuelJson.Default.DuelSnapshot);
+            var restored = JsonSerializer.Deserialize(json, DuelJson.Default.DuelSnapshot)!;
+            Check(restored.Players[0].HandOwners!.SequenceEqual(new int?[] { 0, 1 }));
+        }),
         ("Dueño: un código tomado con Magnet vuelve a la memoria del rival al jugarlo", () =>
         {
             var (g, rng) = Fixture([CardCatalog.Attack.Id], [CardCatalog.Attack.Id, CardCatalog.Senshuni.Id]);

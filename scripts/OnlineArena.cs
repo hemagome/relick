@@ -366,7 +366,9 @@ public partial class OnlineArena : Control
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short, railColumns) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
                 ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null, railColumns,
-                useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop);
+                useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop,
+                sections: MemorySections(), ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : OwnHandCardOwner,
+                viewerSeat: s.MySeat);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, handVerticalPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
@@ -403,11 +405,21 @@ public partial class OnlineArena : Control
         for (var i = 0; i < hand.Length; i++)
         {
             var id = hand[i];
+            var owner = opponent.HandOwners is { } owners && i < owners.Length && owners[i] is int seat
+                ? new CardOwner(seat, _snapshot!.Players[seat].Name) : null;
             var card = new OpponentHandCard { Name = $"OpponentHandCard{i}", PublicCard = id == null ? null : CardCatalog.Get(id),
-                FaceSize = strip ? new(43, 60.8f) : new(54, 76.4f) };
+                OriginalOwner = owner, ViewerSeat = _snapshot.MySeat, FaceSize = strip ? new(43, 60.8f) : new(54, 76.4f) };
             var index = i;
             card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);
         }
+    }
+
+    private CardOwner? OwnHandCardOwner(int index)
+    {
+        var s = _snapshot!;
+        var owners = s.Players[s.MySeat].HandOwners;
+        return owners is { } seats && index >= 0 && index < seats.Length && seats[index] is int owner
+            ? new CardOwner(owner, s.Players[owner].Name) : null;
     }
 
     private void SelectCard(int index)

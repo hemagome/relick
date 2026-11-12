@@ -761,6 +761,9 @@ public partial class AttachmentStack : Button
     }
 }
 
+/// <summary>Original owner of a visible hand card; used by the future sleeve customisation.</summary>
+public sealed record CardOwner(int Seat, string Name);
+
 public partial class HandCard : Button
 {
     public CardDefinition Card { get; set; } = null!;
@@ -771,10 +774,13 @@ public partial class HandCard : Button
     private Vector2 DrawSize => Size / PresentationScale;
     public bool Chosen { get; set; }
     public bool Mulligan { get; set; }
+    public CardOwner? OriginalOwner { get; set; }
+    public int? ViewerSeat { get; set; }
     private float _hover;
     private Texture2D? _artwork;
     public bool HasSkillArtwork => Card.Kind == CardKind.Skill && _artwork != null;
     public bool HasAttackArtwork => Card.Kind == CardKind.Attack && _artwork != null;
+    private bool OwnerIsForeign => OriginalOwner is { } owner && ViewerSeat is { } viewer && owner.Seat != viewer;
     public override void _Ready()
     {
         if (Card.Kind == CardKind.Attack)
@@ -785,7 +791,9 @@ public partial class HandCard : Button
         CustomMinimumSize = new Vector2(126, 184) * PresentationScale;
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         MouseDefaultCursorShape = CursorShape.PointingHand;
-        TooltipText = $"{Card.Name}\n{Card.Text}";
+        TooltipText = OriginalOwner is { } owner
+            ? $"{Card.Name}\n{Card.Text}\nDueño original: {owner.Name}" + (OwnerIsForeign ? " · carta prestada" : "")
+            : $"{Card.Name}\n{Card.Text}";
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         SetProcess(false);
         FocusEntered += UpdatePreview; FocusExited += UpdatePreview;
@@ -830,6 +838,7 @@ public partial class HandCard : Button
                 DrawSetTransform(origin, 0, Vector2.One * scale);
 
                 DrawSelection(y, accent);
+                DrawOwner(y);
                 return;
             }
             var imageSize = _artwork.GetSize();
@@ -838,6 +847,7 @@ public partial class HandCard : Button
             DrawTextureRect(_artwork, new Rect2(r.Position + (r.Size - extent) / 2, extent), false);
 
             DrawSelection(y, accent);
+            DrawOwner(y);
             return;
         }
         BoardArt.Plate(this, r, RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 12, Chosen ? 2 : 1);
@@ -852,6 +862,23 @@ public partial class HandCard : Button
         while (fontSize > 11 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > DrawSize.X - 18) fontSize--;
         BoardArt.CenterText(this, name, new(DrawSize.X / 2, y + 122), fontSize, BoardArt.Ink);
         DrawSelection(y, accent);
+        DrawOwner(y);
+    }
+
+    // A sleeve edge marks every card whose owner is known; the rival's cards also carry a
+    // readable badge before selection, not only in the inspector after tapping.
+    private void DrawOwner(float y)
+    {
+        if (OriginalOwner is not { } owner) return;
+        var foreign = OwnerIsForeign;
+        var color = foreign ? RelickVisuals.State.Rival : RelickVisuals.State.Own;
+        var left = 3f; var right = DrawSize.X - 3;
+        DrawLine(new Vector2(left, y + 8), new Vector2(left, y + 167), color, foreign ? 4 : 3, true);
+        DrawLine(new Vector2(left + 4, y + 2), new Vector2(right - 4, y + 2), color, foreign ? 3 : 2, true);
+        if (!foreign) return;
+        var badge = new Rect2(8, y + 154, 48, 16);
+        BoardArt.Plate(this, badge, new Color("0b1020"), color, 4, 1);
+        BoardArt.CenterText(this, "RIVAL", new(badge.GetCenter().X, badge.Position.Y + 12), 8, color);
     }
 
     private void DrawSelection(float y, Color accent)

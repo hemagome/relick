@@ -39,6 +39,10 @@ public sealed class DuelPlayerView
     public string[] Attached { get; set; } = [];
     public string[] Exchange { get; set; } = [];
     public string[] Memory { get; set; } = [];
+    // Original owner of each hand slot. Null at an index whose card is hidden;
+    // the array itself is omitted when no slot is visible.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int?[]? HandOwners { get; set; }
     public int CorruptedCount { get; set; }
 }
 
@@ -83,6 +87,24 @@ public sealed class DuelSnapshot
     public DuelPlayerView[] Players { get; set; } = [];
     public List<DuelOption> Options { get; set; } = [];
 
+    private static bool HandSlotVisible(GameState s, PlayerState p, int slot, int ownerSeat, int viewerSeat)
+        => ownerSeat == viewerSeat || p.IsHandCardRevealed(slot) ||
+           (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == viewerSeat) ||
+           (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == viewerSeat && s.PendingMindReset.Target == ownerSeat);
+
+    private static int?[]? VisibleHandOwners(GameState s, PlayerState p, int ownerSeat, int viewerSeat)
+    {
+        var visible = false;
+        var owners = new int?[p.Hand.Count];
+        for (var slot = 0; slot < p.Hand.Count; slot++)
+        {
+            if (!HandSlotVisible(s, p, slot, ownerSeat, viewerSeat)) continue;
+            owners[slot] = p.IsForeignHandCard(slot) ? 1 - ownerSeat : ownerSeat;
+            visible = true;
+        }
+        return visible ? owners : null;
+    }
+
     public static DuelSnapshot For(GameEngine game, int seat, ulong revision)
     {
         var s = game.State;
@@ -118,9 +140,10 @@ public sealed class DuelSnapshot
                 HasReachedZero = p.HasReachedZero,
                 RelikarioId = p.Relikario.Id,
                 Actions = p.ActionsLeft, DeckCount = p.Deck.Count, HandCount = p.Hand.Count,
-                Hand = p.Hand.Select((id, i) => index == seat || p.IsHandCardRevealed(i) ||
-                    (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == seat) ||
-                    (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == seat && s.PendingMindReset.Target == index) ? id : null).ToArray(),
+                Hand = p.Hand.Select((id, i) => HandSlotVisible(s, p, i, index, seat) ? id : null).ToArray(),
+                // Ownership is only disclosed for slots whose identity is already visible;
+                // a hidden card must not leak whether it originally belonged to the rival.
+                HandOwners = VisibleHandOwners(s, p, index, seat),
                 Skills = p.Skills.ToArray(), SkillPositions = Enumerable.Range(0, p.Skills.Count).Select(p.SkillPosition).ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
                 BonusEffectUsed = p.BonusEffectUsed, ExchangeEffectsUsed = p.ExchangeEffectsUsed?.ToArray(),
                 ZahiraHost = p.ZahiraHost,

@@ -7,6 +7,8 @@ namespace Relick;
 public partial class OpponentHandCard : Button
 {
     public CardDefinition? PublicCard { get; init; }
+    public CardOwner? OriginalOwner { get; init; }
+    public int ViewerSeat { get; init; } = -1;
     public Vector2 FaceSize { get; init; } = new(54, 76.4f);
     public bool IsFaceDown => PublicCard == null;
     public bool Targetable { get; set; }
@@ -20,7 +22,10 @@ public partial class OpponentHandCard : Button
         MouseDefaultCursorShape = CursorShape.PointingHand;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         TooltipText = PublicCard == null ? "Carta boca abajo del rival. Su contenido está oculto."
-            : $"REVELADA · {PublicCard.Name}\n{PublicCard.Text}\nPulsa para consultar.";
+            : OriginalOwner is { } owner
+                ? $"REVELADA · {PublicCard.Name}\n{PublicCard.Text}\nDueño original: {owner.Name}" +
+                  (owner.Seat == ViewerSeat ? " · tu carta" : "") + "\nPulsa para consultar."
+                : $"REVELADA · {PublicCard.Name}\n{PublicCard.Text}\nPulsa para consultar.";
         if (PublicCard == null)
             _back = GD.Load<Texture2D>("res://assets/cards/card-back.png")
                 ?? throw new InvalidOperationException("No se pudo cargar el reverso de las cartas.");
@@ -50,5 +55,13 @@ public partial class OpponentHandCard : Button
             DrawTextureRect(_back, rect, false);
         }
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, IsHovered(), HasFocus());
+        if (_back != null || OriginalOwner is not { } owner || ViewerSeat < 0) return;
+        var mine = owner.Seat == ViewerSeat;
+        var accent = mine ? RelickVisuals.State.Own : RelickVisuals.State.Rival;
+        BoardArt.Outline(this, new Rect2(Vector2.One, Size - Vector2.One * 2), accent, 5, mine ? 2 : 1);
+        if (!mine) return;
+        var badge = new Rect2(Size.X / 2 - 18, Size.Y - 18, 36, 13);
+        BoardArt.Plate(this, badge, new Color("0b1020"), accent, 3, 1);
+        BoardArt.CenterText(this, "TUYA", new(badge.GetCenter().X, badge.Position.Y + 10), 7, accent);
     }
 }

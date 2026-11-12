@@ -25,6 +25,9 @@ public static class ArenaPresentation
     public static readonly Color Mint = RelickVisuals.State.Own;
     public static readonly Color Coral = RelickVisuals.State.Rival;
 
+    /// <summary>Cards selected from one memory, rendered as its own labelled block.</summary>
+    public sealed record HandSection(string Title, Color Accent, CardOwner Owner, IReadOnlyList<int> Indices);
+
     public static Label Text(string text, int size = 16, Color? color = null)
     {
         var label = new Label { Text = text };
@@ -422,7 +425,8 @@ public static class ArenaPresentation
 
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
         Action<int> pressed, bool preparing, bool shortScreen, string? title = null, int railColumns = 0, bool useFan = true,
-        bool desktop = false)
+        bool desktop = false, IReadOnlyList<HandSection>? sections = null, Func<int, CardOwner?>? ownerOf = null,
+        int viewerSeat = -1)
     {
         Control? balance = null;
         if (desktop && title == null)
@@ -436,17 +440,32 @@ public static class ArenaPresentation
         if (title == null) HandCounter(parent, hand.Count, enemy: false);
         else parent.AddChild(HandHeading(title, hand.Count, railColumns));
         var scroll = CardGallery("HandScroll", shortScreen, railColumns);
-        var fanned = useFan && railColumns == 0 && hand.Count > 0;
+        var grouped = sections is { Count: > 0 };
+        var fanned = useFan && !grouped && railColumns == 0 && hand.Count > 0;
         scroll.FollowFocus = fanned;
         var raised = desktop && fanned;
-        Control cards = fanned ? new HandFan { Headroom = raised ? DesktopHandLift + 6 : 4, MaximumAngle = raised ? 5 : 8, Spread = raised } : GalleryContents(railColumns, 10);
-        for (var i = 0; i < hand.Count; i++)
+        Control cards;
+        if (grouped)
         {
-            var slot = i;
-            var card = new HandCard { Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), Mulligan = preparing,
-                InFan = fanned, Lift = raised ? DesktopHandLift : 9,
-                PresentationScale = fanned ? raised ? DesktopHandScale : HandFan.CardScale : shortScreen ? 0.6f : desktop ? DesktopHandScale : 1 };
-            card.Pressed += () => pressed(slot); cards.AddChild(card);
+            cards = SectionedContents(hand, sections!, selected, pressed, shortScreen, railColumns, viewerSeat);
+            // The section heading adds one text line above the cards.
+            scroll.CustomMinimumSize = new(scroll.CustomMinimumSize.X, (shortScreen ? 120 : 196) + 16);
+        }
+        else
+        {
+            cards = fanned ? new HandFan { Headroom = raised ? DesktopHandLift + 6 : 4, MaximumAngle = raised ? 5 : 8, Spread = raised } : GalleryContents(railColumns, 10);
+            for (var i = 0; i < hand.Count; i++)
+            {
+                var slot = i;
+                var card = new HandCard
+                {
+                    Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), Mulligan = preparing,
+                    InFan = fanned, Lift = raised ? DesktopHandLift : 9, OriginalOwner = ownerOf?.Invoke(i),
+                    ViewerSeat = viewerSeat >= 0 ? viewerSeat : null,
+                    PresentationScale = fanned ? raised ? DesktopHandScale : HandFan.CardScale : shortScreen ? 0.6f : desktop ? DesktopHandScale : 1
+                };
+                card.Pressed += () => pressed(slot); cards.AddChild(card);
+            }
         }
         if (hand.Count == 0 && railColumns == 0)
         {
@@ -456,6 +475,41 @@ public static class ArenaPresentation
         scroll.AddChild(cards); parent.AddChild(scroll);
         if (balance != null) parent.AddChild(balance);
         return scroll;
+    }
+
+    private static Control SectionedContents(IReadOnlyList<string> hand, IReadOnlyList<HandSection> sections,
+        Func<int, bool> selected, Action<int> pressed, bool shortScreen, int railColumns, int viewerSeat)
+    {
+        Container stack = railColumns > 0
+            ? new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }
+            : new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        stack.AddThemeConstantOverride("separation", railColumns > 0 ? 16 : 24);
+        foreach (var section in sections)
+        {
+            if (section.Indices.Count == 0) continue;
+            var block = new VBoxContainer { Name = $"HandSection{section.Owner.Seat}", SizeFlagsHorizontal = railColumns > 0 ? Control.SizeFlags.ExpandFill : Control.SizeFlags.ShrinkBegin };
+            block.AddThemeConstantOverride("separation", 4);
+            var heading = Heading($"{section.Title}  ·  {section.Indices.Count} CARTAS", 10, section.Accent);
+            heading.Name = $"HandSectionTitle{section.Owner.Seat}";
+            heading.TooltipText = $"{section.Title} · {section.Indices.Count} cartas";
+            block.AddChild(heading);
+            var rule = new ColorRect { Color = BoardArt.Tint(section.Accent, 0.65f), CustomMinimumSize = new(0, 2), MouseFilter = Control.MouseFilterEnum.Ignore };
+            block.AddChild(rule);
+            var cards = GalleryContents(railColumns, 10);
+            foreach (var i in section.Indices)
+            {
+                var slot = i;
+                var card = new HandCard
+                {
+                    Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), InFan = false, Lift = 9,
+                    OriginalOwner = section.Owner, ViewerSeat = viewerSeat >= 0 ? viewerSeat : null,
+                    PresentationScale = shortScreen ? 0.6f : railColumns > 0 ? 0.9f : DesktopHandScale
+                };
+                card.Pressed += () => pressed(slot); cards.AddChild(card);
+            }
+            block.AddChild(cards); stack.AddChild(block);
+        }
+        return stack;
     }
 
     internal const float DesktopHandScale = 0.94f;
