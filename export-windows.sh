@@ -22,18 +22,6 @@ mkdir -p "$relick_staging/Relick"
 "$relick_godot" --headless --path "$relick_root" --editor --import --log-file "$relick_staging/import.log"
 "$relick_godot" --headless --path "$relick_root" --export-release "Windows Desktop" "$relick_staging/Relick/Relick.exe" --log-file "$relick_staging/export.log"
 
-cat > "$relick_staging/Relick/LEEME.txt" <<'EOF'
-Relick para Windows de 64 bits
-
-1. Extrae todo el ZIP en una carpeta.
-2. Abre Relick.exe. Conserva los demás archivos y carpetas junto al ejecutable.
-3. Con internet, escribe tu nombre y crea una sala o introduce el código del rival.
-
-No necesitas instalar Godot ni el SDK de .NET.
-Ambos jugadores deben usar una versión compatible del juego.
-Esta versión se conecta al servidor de desarrollo de Relick en SpacetimeDB.
-EOF
-
 python3 - "$relick_staging" "$relick_root/artifacts/Relick-windows-x86_64.zip" <<'PY'
 from pathlib import Path
 import os
