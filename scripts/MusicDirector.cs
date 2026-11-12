@@ -21,6 +21,7 @@ public partial class MusicDirector : AudioStreamPlayer
     private string? _duel;
     private bool _climax;
     private int _requested = -1;
+    private MusicPhase _phase = MusicPhase.Menu;
     private bool _released;
     private readonly HashSet<string> _unavailable = [];
 
@@ -49,11 +50,6 @@ public partial class MusicDirector : AudioStreamPlayer
             _duel = duel;
             _climax = false;
         }
-        if (snapshot.Phase == Phase.Preparation)
-        {
-            Request(MusicPhase.Menu);
-            return;
-        }
         if (snapshot.Players.Length != 2 || snapshot.MySeat is < 0 or > 1) return;
         // A player's soundtrack is determined exclusively by the opposing Relikario.
         var enemy = snapshot.Players[1 - snapshot.MySeat].RelikarioId;
@@ -77,7 +73,8 @@ public partial class MusicDirector : AudioStreamPlayer
             return;
         }
         if (_requested == clip) return;
-        _requested = clip;
+        var rising = phase > _phase;
+        _requested = clip; _phase = phase;
         if (!Playing)
         {
             _score.InitialClip = clip;
@@ -87,8 +84,19 @@ public partial class MusicDirector : AudioStreamPlayer
         else if (_playback != null)
         {
             // Godot schedules the transition on its audio thread, using the score's table.
-            _playback.SwitchToClip(clip);
+            _playback.SwitchToClip(rising ? LeadIn(clip) : clip);
         }
+    }
+
+    // A rise in tension goes through the theme's lead-in, which advances to the piece on its own.
+    private int LeadIn(int clip)
+    {
+        var name = "To" + _score!.GetClipName(clip);
+        for (var i = 0; i < _score.ClipCount; i++)
+            if (_score.GetClipName(i) == name && _score.GetClipStream(i) is AudioStreamOggVorbis { Loop: false, Bpm: > 0, BeatCount: > 0 } &&
+                _score.GetClipAutoAdvance(i) == AudioStreamInteractive.AutoAdvanceMode.Enabled &&
+                _score.GetClipAutoAdvanceNextClip(i) == clip) return i;
+        return clip;
     }
 
     private int FindClip(MusicPhase phase, string theme)

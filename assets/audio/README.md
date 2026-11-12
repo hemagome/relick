@@ -1,14 +1,16 @@
 # Audio de Relick
 
-Las composiciones instrumentales y los efectos de robo, curación y ataque se sintetizan específicamente para este proyecto mediante `tools/audio/render.cpp`, sin muestras ni melodías de terceros. La música usa una estética de RPG y arcade con piano eléctrico, arpegios, bajos, pads, campanas, percusión y una voz de sintetizador principal. Los efectos de dado y barajado utilizan grabaciones con licencia CC0, detalladas abajo.
+Las composiciones instrumentales se sintetizan específicamente para este proyecto mediante `tools/audio/score.cpp`, y los efectos de robo, curación y ataque mediante `tools/audio/render.cpp`, sin muestras ni melodías de terceros. La música es orquestal, al estilo de un RPG: cuerdas, trompetas y trompas, flauta, guitarra y arpa pulsadas, piano, timbales, batería y platillos, en una sala con reverberación. Los efectos de dado y barajado utilizan grabaciones con licencia CC0, detalladas abajo.
 
 | Archivo | Título | Uso |
 | --- | --- | --- |
-| `music/menu.ogg` | Antes del destino | Menú común, piano y arpegios suaves con percusión contenida. |
-| `music/yuno-combat.ogg` | Apuesta de acero | Duelo contra Yuno: melodía principal, bajo y batería más activos. |
-| `music/yuno-climax.ogg` | La última tirada | Cero vidas contra Yuno: octavas, contrarritmos y arpegios más densos. |
+| `music/menu.ogg` | Antes del destino | Menú común: vals en 3/4 a 126 BPM para guitarra, flauta y cuerdas. 68,6 s. |
+| `music/yuno-to-combat.ogg` | — | Puente hacia el combate: redoble, arpa y fanfarria sobre la dominante. |
+| `music/yuno-combat.ogg` | Apuesta de acero | Duelo contra Yuno: 160 BPM, ostinato de cuerdas en 3+3+2 y tema de trompetas. 72 s. |
+| `music/yuno-to-climax.ogg` | — | Puente hacia el clímax: tres golpes y una escala ascendente. |
+| `music/yuno-climax.ogg` | La última tirada | Cero vidas contra Yuno: 168 BPM, cadencia descendente y el tema del combate a toda orquesta. 57,1 s. |
 
-Cada pista dura 48 segundos: 160 BPM, 4/4 y 128 pulsos. Comparten una estructura armónica de ocho compases desarrollada en cuatro secciones. Las reverberaciones y las colas de las notas se envuelven en el bucle para mantener continuidad. Los archivos `.import` conservan el tempo, el compás, la longitud musical y la repetición; deben versionarse junto con los OGG.
+Las tres piezas están en re menor y el clímax retoma el tema del combate. En las piezas en bucle, las reverberaciones y las colas de las notas se pliegan sobre el comienzo para mantener continuidad; los puentes conservan su cola después del último pulso para que suene sobre la pieza siguiente. Los archivos `.import` conservan el tempo, el compás, la longitud musical y la repetición; deben versionarse junto con los OGG.
 
 | Efecto | Duración | Diseño |
 | --- | --- | --- |
@@ -34,6 +36,6 @@ godot --headless --editor --path . --import
 python3 tools/audio/check.py
 ```
 
-El script compila el sintetizador en un directorio temporal, genera los másteres, codifica las pistas y elimina sus temporales. Reconstruye el dado y el barajado desde los originales CC0 incluidos. Conserva los archivos de importación existentes. No requiere red, servicios de pago, soundfonts ni paquetes de Python.
+El script compila los dos generadores en un directorio temporal, genera los másteres, codifica las pistas y elimina sus temporales. Reconstruye el dado y el barajado desde los originales CC0 incluidos. Conserva los archivos de importación existentes. No requiere red, servicios de pago, soundfonts ni paquetes de Python.
 
 La integración, las reglas para agregar temas de otros Relikarios y los controles de volumen están documentados en [Música y efectos](../../docs/MUSIC.md).
