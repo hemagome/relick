@@ -10,8 +10,8 @@ public sealed class ArenaPlayerActions
     public Action Attached { get; init; } = () => { };
     public Action Equipment { get; init; } = () => { };
     public Action EquipmentCovers { get; init; } = () => { };
-    public Action Zahira { get; init; } = () => { };
-    public string? ZahiraCaption { get; init; }
+    // One entry per Zahira Flair the player has on the field; a Trap deck allows two.
+    public IReadOnlyList<(string Caption, Action Press)> Zahiras { get; init; } = [];
     public Action<int> Skill { get; init; } = _ => { };
     public Action<int> InspectSkill { get; init; } = _ => { };
     public Action Evolve { get; init; } = () => { };
@@ -137,10 +137,11 @@ public static class ArenaPresentation
             evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
             evolve.CustomMinimumSize = new(0, 28); evolve.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         }
-        if (actions.ZahiraCaption is { } zahiraCaption)
+        for (var copy = 0; copy < actions.Zahiras.Count; copy++)
         {
-            var zahira = Button(stand, zahiraCaption, actions.Zahira);
-            zahira.Name = $"Zahira{index}"; zahira.ClipText = true; zahira.TooltipText = zahiraCaption;
+            var (zahiraCaption, press) = actions.Zahiras[copy];
+            var zahira = Button(stand, zahiraCaption, press);
+            zahira.Name = copy == 0 ? $"Zahira{index}" : $"Zahira{index}Copy{copy + 1}"; zahira.ClipText = true; zahira.TooltipText = zahiraCaption;
             zahira.Icon = BoardArt.LoadCardArtwork(CardCatalog.ZahiraFlair);
             zahira.AddThemeConstantOverride("icon_max_width", 20);
             zahira.AddThemeFontSizeOverride("font_size", 11); zahira.CustomMinimumSize = new(0, 30);
@@ -361,10 +362,11 @@ public static class ArenaPresentation
         portrait.CustomMinimumSize = new(0, portrait.PortraitHeight);
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
         if (narrow) column.AddChild(memories);
-        if (actions.ZahiraCaption is { } zahiraCaption)
+        for (var copy = 0; copy < actions.Zahiras.Count; copy++)
         {
-            var zahira = Button(column, zahiraCaption, actions.Zahira);
-            zahira.Name = $"Zahira{index}";
+            var (zahiraCaption, press) = actions.Zahiras[copy];
+            var zahira = Button(column, zahiraCaption, press);
+            zahira.Name = copy == 0 ? $"Zahira{index}" : $"Zahira{index}Copy{copy + 1}";
             zahira.ClipText = true;
             zahira.TooltipText = zahiraCaption;
             zahira.Icon = BoardArt.LoadCardArtwork(CardCatalog.ZahiraFlair);

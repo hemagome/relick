@@ -22,8 +22,9 @@ public sealed partial class GameEngine
             if (p.Equipment != null) yield return new(owner, FieldZone.Equipment, -1, p.Equipment);
             for (var i = 0; i < (p.EquipmentCovers?.Count ?? 0); i++)
                 yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
-            if (ZahiraRootZone(owner) is FieldZone.Equipment or FieldZone.EquipmentCover or FieldZone.Bonus)
-                yield return new(owner, FieldZone.Zahira, -1, CardCatalog.ZahiraFlair.Id);
+            for (var slot = 0; slot < PlayerState.ZahiraSlots; slot++)
+                if (ZahiraRootZone(owner, slot) is FieldZone.Equipment or FieldZone.EquipmentCover or FieldZone.Bonus)
+                    yield return new(owner, FieldZone.Zahira, ZahiraIndex(slot), CardCatalog.ZahiraFlair.Id);
             if (p.Bonus != null) yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
             if (p.Hand.Count > (owner == excludedOwner && excludedHand >= 0 ? 1 : 0))
                 yield return new(owner, FieldZone.Hand, -1, "");
@@ -50,7 +51,8 @@ public sealed partial class GameEngine
             for (var i = 0; i < p.Exchange.Count; i++)
                 if (CardCatalog.Get(p.Exchange[i]).Kind != CardKind.Skill)
                     yield return new(owner, FieldZone.Exchange, i, p.Exchange[i]);
-            if (p.ZahiraHost != null) yield return new(owner, FieldZone.Zahira, -1, CardCatalog.ZahiraFlair.Id);
+            for (var slot = 0; slot < PlayerState.ZahiraSlots; slot++)
+                if (p.Zahira(slot) != null) yield return new(owner, FieldZone.Zahira, ZahiraIndex(slot), CardCatalog.ZahiraFlair.Id);
         }
     }
     private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0, int excludedHand = -1)

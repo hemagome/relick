@@ -19,5 +19,8 @@ public static class RelikarioCatalog
         CanRerollAttack: true, Level: 2, MaxRerolls: 2, CanRerollAnyDie: true, ConvertRerolledSix: false, EvolutionCost: 1800,
         EvolutionHealing: 2, AttackDieBonusExceptOne: 1);
 
+    /// <summary>Base forms a deck can be built around; evolutions are reached during the duel.</summary>
+    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno];
+
     public static RelikarioDefinition? EvolutionFor(RelikarioDefinition current) => current.Id == Yuno.Id ? YunoLv2 : null;
 }

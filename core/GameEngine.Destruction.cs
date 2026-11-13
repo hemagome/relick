@@ -72,7 +72,7 @@ public sealed partial class GameEngine
         switch (target.Zone)
         {
             case FieldZone.Equipment: DestroyEquipmentNow(p, target.Index); return;
-            case FieldZone.Zahira: RemoveZahira(target.Owner); return;
+            case FieldZone.Zahira: RemoveZahira(target.Owner, ZahiraSlot(target.Index)); return;
             case FieldZone.EquipmentCover:
                 ChangeZahiraHosts(target.Owner, target.Zone, target.Index);
                 p.EquipmentCovers!.RemoveAt(target.Index);

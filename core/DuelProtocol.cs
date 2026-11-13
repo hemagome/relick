@@ -16,6 +16,9 @@ public sealed class DuelOpening
     public bool IncludeZahiraFlair { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IncludeSuperAttack { get; set; }
+    // Each seat's Trap deck. When present it replaces the three training fields above.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>[]? Traps { get; set; }
 }
 
 public enum DuelMoveKind

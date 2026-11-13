@@ -40,6 +40,7 @@ public sealed partial class GameEngine
             var player = new PlayerState { Name = opening.Names[seat], Bonus = opening.Bonuses[seat],
                 SuperMagnetCopies = Math.Clamp(opening.SuperMagnetCopies?.ElementAtOrDefault(seat) ?? 0, 0, 2),
                 ZahiraAvailable = opening.IncludeZahiraFlair, SuperAttackAvailable = opening.IncludeSuperAttack };
+            if (opening.Traps?.ElementAtOrDefault(seat) is { } traps) LoadTraps(player, traps);
             if (player.Bonus is { } bonus && CardCatalog.Get(bonus).FieldCombatDie) player.BonusPlacedTurn = 1;
             player.Hand.AddRange(opening.Hands[seat]);
             player.Deck.AddRange(opening.Decks[seat]);
@@ -429,7 +430,7 @@ public sealed partial class GameEngine
     {
         CompleteActivationIfFinished();
         State.Phase = Phase.Final;
-        State.ZahiraRolledThisFinal = false;
+        State.ZahiraRolledThisFinal = false; State.ZahiraFinalSlot = 0;
         if (State.Active.Hand.Count > MaxHandSize)
             Log($"{State.Active.Name} debe descartar hasta tener {MaxHandSize} cartas en la mano.");
         CompleteEndTurnIfReady();
@@ -449,10 +450,10 @@ public sealed partial class GameEngine
         if (TryRollZahiraAtFinal()) return;
         if (ConsumeRepeatedStage(Phase.Final))
         {
-            State.ZahiraRolledThisFinal = false;
+            State.ZahiraRolledThisFinal = false; State.ZahiraFinalSlot = 0;
             return;
         }
-        State.ZahiraRolledThisFinal = false;
+        State.ZahiraRolledThisFinal = false; State.ZahiraFinalSlot = 0;
         foreach (var player in State.Players) player.StarEffects = 0;
         State.CurrentPlayer = 1 - State.CurrentPlayer;
         BeginTurn();

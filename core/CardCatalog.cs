@@ -14,7 +14,9 @@ public sealed record CardDefinition(
     bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false, int SearchAttacks = 0,
     int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
     bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool RecoverMemory = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false, bool DrawThenDie = false, bool ReloadBothHands = false,
-    int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false, bool DeployTotems = false)
+    int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false, bool DeployTotems = false,
+    // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
+    string? Relikario = null, bool Special = false)
 {
     public int NormalDamageAt(int counters) => MaxNormalDamage > 0 ? Math.Min(MaxNormalDamage, NormalDamage + counters * DamagePerReroll) : NormalDamage + counters * DamagePerReroll;
     public int CriticalDamageAt(int counters) => CriticalDamage + counters * DamagePerReroll;
@@ -59,7 +61,7 @@ public static class CardCatalog
         Heal: 1, PreventDamage: true, DestroyAtNextTurnStart: true);
     public static readonly CardDefinition Reverse = new("reverse-shuffle", "Relick Reverse Shuffle", CardKind.Skill,
         "Al relanzar un dado propio: +1 al daño normal (máx. 5) y crítico de esta copia. Si una carta propia va a ser destruida, puedes destruir esta habilidad enseñada en su lugar, incluidos costes de equipos. Al enseñarla en el espacio de 500 o 1000 PR: lanza D6, puedes relanzarlo hasta dos veces y roba la mitad del resultado final, redondeada hacia arriba.",
-        NormalDamage: 2, CriticalDamage: 4, Reward: 600, DamagePerReroll: 1, MaxNormalDamage: 5, ProtectOwnCard: true, DrawOnExpensiveLearn: true);
+        NormalDamage: 2, CriticalDamage: 4, Reward: 600, DamagePerReroll: 1, MaxNormalDamage: 5, ProtectOwnCard: true, DrawOnExpensiveLearn: true, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition TripleAttack = new("triple-cross-attack", "Triple Ataque Cruzado", CardKind.Code,
         "Busca 3 ataques de tu mazo a tu mano.", CodeType: CodeType.Play, SearchAttacks: 3);
     public static readonly CardDefinition Sniper = new("sniper-scope", "Mira de Sniper", CardKind.Equipment,
@@ -89,9 +91,9 @@ public static class CardCatalog
     public static readonly CardDefinition Attack = new("attack", "Ataque", CardKind.Attack,
         "Consume esta carta para atacar con una habilidad enseñada.");
     public static readonly CardDefinition Magnet = new("magnet-shuffle", "Relick Magnet Shuffle", CardKind.Skill,
-        "Daño normal: 1D6 · Crítico: 5 · Premio: 500 PR. Al realizar un crítico puedes mirar la mano del adversario y tomar una carta de ella o de su Bonus.", 0, 5, 500);
+        "Daño normal: 1D6 · Crítico: 5 · Premio: 500 PR. Al realizar un crítico puedes mirar la mano del adversario y tomar una carta de ella o de su Bonus.", 0, 5, 500, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition Destiny = new("destiny-shuffle", "Relick Destiny Shuffle", CardKind.Skill,
-        "Daño normal: 3 · Crítico: 5 · Premio: 600 PR. Coloca 1 contador sobre esta copia y descarta 3 cartas para cancelar el daño de un ataque (4 cartas si es crítico). Con 2 contadores esta copia no puede volver a activar el efecto.", 3, 5, 600);
+        "Daño normal: 3 · Crítico: 5 · Premio: 600 PR. Coloca 1 contador sobre esta copia y descarta 3 cartas para cancelar el daño de un ataque (4 cartas si es crítico). Con 2 contadores esta copia no puede volver a activar el efecto.", 3, 5, 600, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition Senshuni = new("senshuni", "Senshuni", CardKind.Code,
         "Roba 2 cartas.", Draw: 2, CodeType: CodeType.Character);
     public static readonly CardDefinition Pendant = new("lucky-pendant", "Colgante de la Suerte", CardKind.Equipment,
@@ -126,5 +128,8 @@ public static class CardCatalog
         Enumerable.Repeat(Attack.Id, 12)
             .Concat(new[] { TripleAttack.Id, MindReset.Id, Agility.Id, Pc.Id, Magnet.Id, Destiny.Id, Reverse.Id, Sniper.Id,
                 Pendant.Id, DiamondHelmet.Id, Senshuni.Id, Dodge.Id, CardboardBox.Id, KonamyCode.Id, ExtraLife.Id, MindSwap.Id, PointsIncrease.Id, TimeBomb.Id, BlueEgg.Id, Reroll.Id, LoadError.Id, Bonfire.Id, FloppyDisk.Id, PlumberStar.Id, Jessica.Id, QuickLoad.Id, ReloadCartridge.Id, TimeBender.Id, Totem.Id, GoldenTotem.Id }).ToList();
+
+    /// <summary>Trap deck that accompanies <see cref="TrainingDeck"/>; it is separate from the 42 main cards.</summary>
+    public static List<string> TrainingTraps() => [SuperMagnet.Id, ZahiraFlair.Id, SuperAttack.Id];
 }
 

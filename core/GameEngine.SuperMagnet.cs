@@ -7,6 +7,16 @@ public sealed partial class GameEngine
     public const int TrainingSuperMagnetCopies = 1;
     public event Action<int, int>? SuperMagnetCharged;
 
+    private static void LoadTraps(PlayerState player, IReadOnlyCollection<string> traps)
+    {
+        int Copies(CardDefinition card) => Math.Min(DeckRules.MaxTrapCopies, traps.Count(id => id == card.Id));
+        player.SuperMagnetCopies = Copies(CardCatalog.SuperMagnet);
+        player.ZahiraAvailable = Copies(CardCatalog.ZahiraFlair) > 0;
+        player.ZahiraSpares = Math.Max(0, Copies(CardCatalog.ZahiraFlair) - 1);
+        player.SuperAttackAvailable = Copies(CardCatalog.SuperAttack) > 0;
+        player.SuperAttackSpares = Math.Max(0, Copies(CardCatalog.SuperAttack) - 1);
+    }
+
     private void QueueTrapCraft(int actor)
     {
         var player = State.Players[actor];
@@ -14,7 +24,7 @@ public sealed partial class GameEngine
         // Every current path into these exchange slots places the card for its owner.
         if (player.SuperMagnetCopies > 0 && exchanged.Any(card => card.Kind == CardKind.Equipment))
             (State.TrapCraftQueue ??= []).Add(new(actor, CardCatalog.SuperMagnet.Id));
-        else if (player.ZahiraAvailable && exchanged.All(card => card.CodeType == CodeType.Character))
+        else if (player.ZahiraAvailable && FreeZahiraSlot(player) >= 0 && exchanged.All(card => card.CodeType == CodeType.Character))
             (State.TrapCraftQueue ??= []).Add(new(actor, CardCatalog.ZahiraFlair.Id));
         else if (player.SuperAttackAvailable && exchanged.All(card => card.Kind == CardKind.Attack))
             (State.TrapCraftQueue ??= []).Add(new(actor, CardCatalog.SuperAttack.Id));
@@ -43,7 +53,7 @@ public sealed partial class GameEngine
         var player = State.Players[recipe.Actor];
         return recipe.CardId switch
         {
-            var id when id == CardCatalog.ZahiraFlair.Id => player.ZahiraAvailable,
+            var id when id == CardCatalog.ZahiraFlair.Id => player.ZahiraAvailable && FreeZahiraSlot(player) >= 0,
             var id when id == CardCatalog.SuperAttack.Id => player.SuperAttackAvailable,
             var id when id == CardCatalog.SuperMagnet.Id => player.SuperMagnetCopies > 0,
             _ => false
@@ -64,15 +74,15 @@ public sealed partial class GameEngine
         State.TrapCraftResumePhase = null;
         if (create && recipe.CardId == CardCatalog.SuperAttack.Id)
         {
-            player.SuperAttackAvailable = false;
+            if (player.SuperAttackSpares > 0) player.SuperAttackSpares--; else player.SuperAttackAvailable = false;
             player.Hand.Add(recipe.CardId);
             Log($"{player.Name} crea Súper Ataque y lo añade a su mano.");
             CompletePendingPlay();
         }
         else if (create && recipe.CardId == CardCatalog.ZahiraFlair.Id)
         {
-            player.ZahiraAvailable = false;
-            BeginZahiraPlacement(actor, creating: true);
+            if (player.ZahiraSpares > 0) player.ZahiraSpares--; else player.ZahiraAvailable = false;
+            BeginZahiraPlacement(actor, creating: true, FreeZahiraSlot(player));
         }
         else if (create)
         {
