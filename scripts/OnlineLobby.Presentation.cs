@@ -45,8 +45,11 @@ public partial class OnlineLobby
         navigation.AddChild(brand);
         navigation.AddThemeConstantOverride("separation", 16);
         navigation.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var sound = AddButton(navigation, "Sonido", () => GetNode<AudioPreferences>("/root/AudioPreferences").OpenControls());
-        sound.Name = "LobbyAudioSettings"; sound.CustomMinimumSize = new(90, 44);
+        // The same speaker that opens the sound controls beside the duel menu.
+        var sound = new IconButton { Name = "LobbyAudioSettings", Symbol = GameIcon.Speaker, CustomMinimumSize = new(52, 48),
+            TooltipText = "Sonido", AccessibilityName = "Sonido", SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        sound.Pressed += () => GetNode<AudioPreferences>("/root/AudioPreferences").OpenControls();
+        navigation.AddChild(sound);
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
         _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);
