@@ -804,6 +804,11 @@ public partial class HandCard : Button
     internal float Lift { get; init; } = 9;
     public float PresentationScale { get; set; } = 1;
     private Vector2 DrawSize => Size / PresentationScale;
+    /// <summary>Shows a skill upright in its own landscape format instead of rotating it into the hand's portrait footprint.</summary>
+    public bool Landscape { get; init; }
+    private bool Wide => Landscape && HasSkillArtwork;
+    /// <summary>The card face in the card's own units; the remaining height leaves room to rise.</summary>
+    private Vector2 Face => Wide ? new(175, 124) : new(DrawSize.X - 2, 175);
     public bool Chosen
     {
         get => _chosen;
@@ -833,7 +838,7 @@ public partial class HandCard : Button
                 ?? throw new InvalidOperationException($"No se pudo cargar la ilustración de {Card.Name}.");
         if (Card.Kind is CardKind.Equipment or CardKind.Code) _artwork = GD.Load<Texture2D>($"res://assets/cards/{Card.Id}-clean.png");
         if (Card.Kind == CardKind.Skill) _artwork = SkillArtwork.Load(Card);
-        CustomMinimumSize = new Vector2(126, 184) * PresentationScale;
+        CustomMinimumSize = (Wide ? new Vector2(177, 133) : new Vector2(126, 184)) * PresentationScale;
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         MouseDefaultCursorShape = CursorShape.PointingHand;
         TooltipText = OriginalOwner is { } owner
@@ -866,7 +871,7 @@ public partial class HandCard : Button
         var accent = BoardArt.CardColor(Card);
         var icon = BoardArt.CardIcon(Card);
         var y = 7 - _hover * (InFan ? Lift : 5);
-        var r = new Rect2(1, y, DrawSize.X - 2, 175);
+        var r = new Rect2(new Vector2(1, y), Face);
         // A raised card grows from its lower edge, so neighbours keep their place in the fan.
         var zoom = Zoom;
         var scale = PresentationScale * zoom;
@@ -876,6 +881,13 @@ public partial class HandCard : Button
         if (_artwork != null)
         {
             if (_hover > 0.01f && !Chosen) RelickVisuals.Shadow(this, r.Grow(-2), BoardArt.Tint(accent, 0.45f * _hover), 12, 8);
+            if (Wide)
+            {
+                DrawTextureRect(_artwork, r, false);
+                DrawSelection(y, accent);
+                DrawOwner(y);
+                return;
+            }
             if (Card.Kind == CardKind.Skill)
             {
                 // Rotate landscape skills into the portrait footprint of the hand.
@@ -918,19 +930,20 @@ public partial class HandCard : Button
         if (OriginalOwner is not { } owner) return;
         var foreign = OwnerIsForeign;
         var color = foreign ? RelickVisuals.State.Rival : RelickVisuals.State.Own;
-        var left = 3f; var right = DrawSize.X - 3;
-        DrawLine(new Vector2(left, y + 8), new Vector2(left, y + 167), color, foreign ? 4 : 3, true);
+        var left = 3f; var right = Face.X - 1; var bottom = y + Face.Y;
+        DrawLine(new Vector2(left, y + 8), new Vector2(left, bottom - 8), color, foreign ? 4 : 3, true);
         DrawLine(new Vector2(left + 4, y + 2), new Vector2(right - 4, y + 2), color, foreign ? 3 : 2, true);
         if (!foreign || !ShowOwnerBadge) return;
-        var badge = new Rect2(8, y + 154, 48, 16);
+        var badge = new Rect2(8, bottom - 21, 48, 16);
         BoardArt.Plate(this, badge, new Color("0b1020"), color, 4, 1);
         BoardArt.CenterText(this, "RIVAL", new(badge.GetCenter().X, badge.Position.Y + 12), 8, color);
     }
 
     private void DrawSelection(float y, Color accent)
     {
-        RelickVisuals.Interaction(this, new Rect2(1, y, DrawSize.X - 2, 175), Chosen, false, !Disabled && IsHovered(), HasFocus());
-        if (Chosen && Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(DrawSize.X / 2, y + 99), 9, RelickVisuals.State.Selected);
+        var face = Face;
+        RelickVisuals.Interaction(this, new Rect2(new Vector2(1, y), face), Chosen, false, !Disabled && IsHovered(), HasFocus());
+        if (Chosen && Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(1 + face.X / 2, y + face.Y * 0.57f), 9, RelickVisuals.State.Selected);
     }
 
 }
