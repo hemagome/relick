@@ -298,10 +298,12 @@ cierre sin modificar el duelo, en cuatro tamaños y ambos asientos. Con
 ## Respuestas COMBO
 
 El encabezado del duelo incluye un control táctil de dos estados, disponible
-para ambos jugadores durante su propio turno o el del rival:
+para ambos jugadores durante su propio turno o el del rival. Se dibuja como el
+rótulo COMBO impreso en las cartas, una placa clara e inclinada con bisel, y
+cada pulsación cambia la insignia de su extremo:
 
-- **COMBO: preguntar** permite las respuestas opcionales de cartas COMBO.
-- **COMBO: pasar** omite esas respuestas y conserva las cartas, incluidos los
+- **COMBO: preguntar** (placa clara, insignia menta con mano alzada) permite las respuestas opcionales de cartas COMBO.
+- **COMBO: pasar** (placa apagada, insignia coral con salto) omite esas respuestas y conserva las cartas, incluidos los
   contraerrores. No consume acciones ni PR. Los COMBO pueden seguir jugándose
   como jugadas voluntarias durante las etapas normales del turno propio.
 

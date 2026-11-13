@@ -5,7 +5,7 @@ namespace Relick;
 
 public partial class OnlineArena
 {
-    private Button? _comboResponsesToggle;
+    private ComboToggle? _comboResponsesToggle;
 
     private void RefreshEffectCardOptions()
     {
@@ -52,9 +52,8 @@ public partial class OnlineArena
     {
         _comboResponsesToggle = null;
         if (_preparing || _snapshot?.Winner != null) return;
-        var toggle = new Button { Name = "ComboResponsesToggle", ToggleMode = true, CustomMinimumSize = new(0, 48) };
-        toggle.AddThemeFontSizeOverride("font_size", Short ? 12 : 14);
-        toggle.TooltipText = "Preguntar: permite responder con cartas COMBO.\nPasar: conserva tus COMBO y omite sus respuestas, incluidos contraerrores.\nNo omite decisiones de habilidades, equipos ni efectos ya iniciados.\nPreferencia privada; no consume acciones ni PR.";
+        var toggle = new ComboToggle { Name = "ComboResponsesToggle", Compact = Short };
+        toggle.TooltipText = "Mano alzada · Preguntar: permite responder con cartas COMBO.\nSalto · Pasar: conserva tus COMBO y omite sus respuestas, incluidos contraerrores.\nNo omite decisiones de habilidades, equipos ni efectos ya iniciados.\nPreferencia privada; no consume acciones ni PR.";
         var room = RoomCode;
         toggle.Toggled += enabled => Connection.SetComboResponses(enabled, room);
         header.AddChild(toggle); _comboResponsesToggle = toggle;
@@ -65,8 +64,7 @@ public partial class OnlineArena
     {
         if (_comboResponsesToggle == null) return;
         var enabled = Connection.RequestedComboResponses ?? !snapshot.AutoPassCombos;
-        _comboResponsesToggle.SetPressedNoSignal(enabled);
-        _comboResponsesToggle.Text = enabled ? "COMBO: preguntar" : "COMBO: pasar";
+        _comboResponsesToggle.ShowAsking(enabled);
         _comboResponsesToggle.Disabled = !Connection.Ready || Connection.PlayPending || snapshot.Winner != null;
     }
 }

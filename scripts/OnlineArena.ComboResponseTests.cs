@@ -23,7 +23,7 @@ public partial class OnlineArena
             var toggle = _comboResponsesToggle;
             var expected = seat != actor || enabled;
             if (toggle == null || !toggle.IsVisibleInTree() || toggle.ButtonPressed != expected ||
-                toggle.Text != (expected ? "COMBO: preguntar" : "COMBO: pasar"))
+                toggle.AccessibilityName != (expected ? "COMBO: preguntar" : "COMBO: pasar"))
                 throw new Exception("El control COMBO pierde el estado propio o muestra la preferencia rival.");
             if (_moveButtons.Contains(toggle) || toggle.GetGlobalRect().Size.Y < 48)
                 throw new Exception("El control COMBO se mezcla con jugadas o no tiene tamaño táctil.");

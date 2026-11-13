@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -191,6 +191,17 @@ public static class BoardArt
                 Stroke(new(-5, -6), new(-1, -10), new(-1, -5));
                 Stroke(new(-1, 6), new(-1, 10), new(-7, 4), new(-12, 4), new(-12, -4), new(-9, -4));
                 c.DrawLine(new(-13, -12), new(11, 12), color, 3, true);
+                break;
+            case GameIcon.Hand:
+                // A raised open hand: four fingers over the palm, thumb to the side.
+                Block(-10, -9, 4.5f, 12); Block(-4.5f, -13, 4.5f, 16); Block(1, -12, 4.5f, 15); Block(6.5f, -8, 4.5f, 11);
+                Shape(new(-10, 1), new(11, 1), new(11, 6), new(5, 14), new(-6, 14), new(-10, 8));
+                Shape(new(-10, 3), new(-15, -3), new(-12, -6), new(-7, 0));
+                break;
+            case GameIcon.Skip:
+                Shape(new(-14, -11), new(-2, 0), new(-14, 11));
+                Shape(new(-3, -11), new(9, 0), new(-3, 11));
+                Block(10, -11, 4, 22);
                 break;
         }
         c.DrawSetTransform(Vector2.Zero, 0, Vector2.One * canvasScale);
@@ -958,6 +969,67 @@ public partial class IconView : Control
 }
 
 /// <summary>Menu trigger shown as a symbol; its name stays available to tooltips and screen readers.</summary>
+/// <summary>
+/// The private COMBO preference drawn like the printed COMBO tag of the cards: a pale bevelled
+/// plate with a raised hand while COMBO responses are asked, dimmed with a skip mark while passed.
+/// </summary>
+public partial class ComboToggle : Button
+{
+    private static readonly Color AskFace = new("f2f2f0"), AskEdge = new("4a4f59"), AskInk = new("1b1d22");
+    private static readonly Color PassFace = new("b9bcc3"), PassEdge = new("2c3038"), PassInk = new("4b4f57");
+    public bool Compact { get; init; }
+    private float PlateWidth => Compact ? 150 : 184;
+
+    public override void _Ready()
+    {
+        ToggleMode = true;
+        CustomMinimumSize = new(PlateWidth + 6, 48);
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus", "hover_pressed" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        Toggled += _ => Describe();
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+        FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
+        Describe();
+    }
+
+    /// <summary>Shows a state without emitting <see cref="BaseButton.Toggled"/>.</summary>
+    public void ShowAsking(bool asking) { SetPressedNoSignal(asking); Describe(); }
+
+    private void Describe()
+    {
+        AccessibilityName = ButtonPressed ? "COMBO: preguntar" : "COMBO: pasar";
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var asking = ButtonPressed;
+        var h = Size.Y; var radius = h * 0.42f; var slant = h * 0.3f;
+        var right = Math.Min(Size.X - 4, PlateWidth) - radius;
+        var hover = !Disabled && IsHovered();
+        var fade = Disabled ? 0.45f : 1;
+        Color A(Color c, bool lift = false) { if (lift && hover) c = c.Lightened(0.12f); return new(c, c.A * fade); }
+        Vector2[] Slanted(float left, float top, float end, float bottom) =>
+            [new(left + slant, top), new(end, top), new(end - slant, bottom), new(left, bottom)];
+
+        // The bevel shows heavier at the bottom, like the printed tag, under the face.
+        DrawColoredPolygon(Slanted(0, 0, right, h), A(asking ? AskEdge : PassEdge));
+        DrawColoredPolygon(Slanted(4, 3, right - 4, h - 6), A(asking ? AskFace : PassFace, true));
+        // The lettering stays clear of the badge, shrinking when the plate is narrow.
+        var center = new Vector2(right - slant / 2, h / 2);
+        var font = RelickVisuals.Display; var size = (int)(h * 0.46f);
+        var left = slant * 0.6f; var width = center.X - radius - 4 - left;
+        while (size > 10 && font.GetStringSize("COMBO", HorizontalAlignment.Left, -1, size).X > width) size--;
+        var baseline = (h - 3) / 2 + (font.GetAscent(size) - font.GetDescent(size)) / 2;
+        DrawString(font, new(left, baseline), "COMBO", HorizontalAlignment.Center, width, size, A(asking ? AskInk : PassInk));
+
+        DrawCircle(center, radius, A(AskInk));
+        DrawCircle(center, radius - 3, A(asking ? RelickVisuals.State.Own : RelickVisuals.State.Rival, true));
+        BoardArt.Icon(this, asking ? GameIcon.Hand : GameIcon.Skip, center, radius * 1.05f, A(AskInk));
+        if (HasFocus()) DrawPolyline([.. Slanted(-2, -2, right + 2, h + 2), new(slant - 2, -2)], BoardArt.Gold, 2, true);
+    }
+}
+
 public partial class IconMenuButton : MenuButton
 {
     public GameIcon Symbol { get; init; } = GameIcon.Gear;

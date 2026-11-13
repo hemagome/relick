@@ -78,7 +78,7 @@ internal static class ArenaGuidance
         var own = s.CurrentPlayer == s.MySeat && s.DecisionPlayer == s.MySeat;
         var normal = s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final;
         if (card.IsCombo && s.AutoPassCombos && (!own || !normal))
-            return "Activa «COMBO: preguntar» para responder con esta carta.";
+            return "Pulsa COMBO hasta ver la mano alzada para responder con esta carta.";
         if (!own && !card.IsCombo) return "Es el turno del rival. Puedes consultar esta carta mientras esperas.";
         if (!normal) return "Completa primero la decisión pendiente. " + Instruction(s);
         if (card.Kind is CardKind.Attack or CardKind.Skill)
