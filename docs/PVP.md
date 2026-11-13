@@ -89,7 +89,7 @@ spacetime generate --module-path server/spacetimedb --lang csharp --out-dir netw
 RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh -- --pvp --pvp-profile=uno
 ```
 
-Repite la última orden con `--pvp-profile=dos` para el rival local. Las variables de entorno prevalecen sobre `network/server.cfg`. Los bindings están generados con 2.14.1 y se incluyen en el repositorio. No edites esos archivos manualmente ni generes con `--include-private`.
+Repite la última orden con `--pvp-profile=dos` para el rival local. Las variables de entorno prevalecen sobre `network/server.cfg`. Los bindings están generados con 2.15.0 y se incluyen en el repositorio. No edites esos archivos manualmente ni generes con `--include-private`.
 
 Pruebas contra un servidor real ya iniciado y con el módulo publicado:
 

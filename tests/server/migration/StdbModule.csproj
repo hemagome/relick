@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net8.0</TargetFramework><RuntimeIdentifier>wasi-wasm</RuntimeIdentifier><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><DefineConstants>$(DefineConstants);</DefineConstants></PropertyGroup>
-  <ItemGroup><PackageReference Include="SpacetimeDB.Runtime" Version="2.14.1" />
+  <ItemGroup><PackageReference Include="SpacetimeDB.Runtime" Version="2.15.0" />
     <Compile Include="../../../server/spacetimedb/*.cs" Link="Module/%(Filename)%(Extension)" />
     <Compile Include="../../../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
   </ItemGroup>
