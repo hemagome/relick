@@ -427,9 +427,22 @@ public partial class OnlineArena
                         var packets = origins.Where(p => p.Key.Kind == DuelVisualKind.HandDiscard).ToArray();
                         if (packets.Length != 2 || packets.Any(p => p.Value.Face != null))
                             throw new Exception("El descarte de manos pierde un origen o revela identidades ocultas en la animación.");
+                    }
+                    if (step is 1 or 3)
+                    {
+                        // Both hands empty and refill at the same time: each flight launches with its rival's mirror.
                         Animate(cues, origins);
-                        for (var i = 0; i < 16; i++) { UpdateFlights(0.5); await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
-                        if (IsAnimating) throw new Exception("El descarte de manos deja vuelos pendientes.");
+                        var pairs = new HashSet<object>();
+                        for (var i = 0; i < 24; i++)
+                        {
+                            UpdateFlights(0.3);
+                            if (_activeFlight != null && _companion is { } pair && pair.Flight.Event.Kind == _activeFlight.Event.Kind &&
+                                pair.Flight.Event.Player != _activeFlight.Event.Player) pairs.Add(pair);
+                            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                        }
+                        if (IsAnimating) throw new Exception("El descarte o el robo de Cartucho deja vuelos pendientes.");
+                        if (size == new Vector2I(1440, 1024) && pairs.Count != (step == 1 ? 1 : 4))
+                            throw new Exception($"Cartucho anima a los jugadores por turnos en lugar de a la vez ({pairs.Count} pares, paso {step}).");
                     }
                     if (step == 3 && (_handCards.Count != 4 || current.Players.Any(p => p.HandCount != 4)))
                         throw new Exception("Cartucho no presenta las cuatro cartas nuevas de cada jugador.");
