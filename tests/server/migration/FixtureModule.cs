@@ -32,7 +32,7 @@ public static partial class Module
     {
         var me = ctx.Db.Member.Player.Find(ctx.Sender)!.Value;
         if (ctx.Db.CurrentDuel.RoomCode.Find(me.RoomCode) is not CurrentDuel current || current.Revision != 0) throw new Exception("Se requiere una sala nueva preparada.");
-        var opening = InitialDuel(ctx.Db.Opening.RoomCode.Find(me.RoomCode)!.Value, ctx.Db.Member.RoomCode.Filter(me.RoomCode), ctx.Db.Card.RoomCode.Filter(me.RoomCode));
+        var opening = InitialDuel(ctx.Db.Opening.RoomCode.Find(me.RoomCode)!.Value, ctx.Db.Member.RoomCode.Filter(me.RoomCode), ctx.Db.Card.RoomCode.Filter(me.RoomCode), _ => null);
         var random = new DuelRandom(); var game = GameEngine.FromOpening(opening, random); var actor = opening.StartingSeat;
         var option = DuelOptions.For(game, actor).FindIndex(o => o.Move.Kind == DuelMoveKind.Learn);
         var move = DuelOptions.For(game, actor)[option].Move; random.Record(max => ctx.Rng.Next(max));

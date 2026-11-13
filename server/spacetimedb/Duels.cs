@@ -32,7 +32,7 @@ public static partial class Module
         public string Json;
     }
 
-    private static DuelOpening InitialDuel(Opening opening, IEnumerable<Member> members, IEnumerable<Card> roomCards)
+    private static DuelOpening InitialDuel(Opening opening, IEnumerable<Member> members, IEnumerable<Card> roomCards, Func<Identity, List<string>?> trapsOf)
     {
         var players = members.OrderBy(m => m.Seat).ToArray();
         var cards = roomCards.ToList();
@@ -43,9 +43,8 @@ public static partial class Module
             Hands = players.Select(p => cards.Where(c => c.Owner == p.Player && c.InHand).OrderBy(c => c.Position).Select(c => c.Definition).ToList()).ToArray(),
             Decks = players.Select(p => cards.Where(c => c.Owner == p.Player && !c.InHand && c.Id != bonuses[p.Seat]).OrderBy(c => c.Position).Select(c => c.Definition).ToList()).ToArray(),
             Bonuses = bonuses.Select(id => (string?)cards.Single(c => c.Id == id).Definition).ToArray(),
-            SuperMagnetCopies = [GameEngine.TrainingSuperMagnetCopies, GameEngine.TrainingSuperMagnetCopies],
-            IncludeZahiraFlair = true,
-            IncludeSuperAttack = true
+            // Rooms dealt before Trap decks existed have no loadout and keep the training Traps.
+            Traps = players.Select(p => trapsOf(p.Player) ?? CardCatalog.TrainingTraps()).ToArray()
         };
     }
 

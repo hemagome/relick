@@ -10,6 +10,8 @@
     <Compile Include="../../network/bindings/**/*.cs" Link="Bindings/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../network/LobbyConnection.cs" Link="LobbyConnection.cs" />
     <Compile Include="../../network/LobbyConnection.QuickMatch.cs" Link="LobbyConnection.QuickMatch.cs" />
+    <Compile Include="../../network/AuthSession.cs" Link="AuthSession.cs" />
+    <Compile Include="../../network/LobbyConnection.Decks.cs" Link="LobbyConnection.Decks.cs" />
     <Compile Include="../../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

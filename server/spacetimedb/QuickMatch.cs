@@ -31,7 +31,7 @@ public static partial class Module
     [Reducer]
     public static void FindQuickMatch(ReducerContext ctx, string name, string searchId)
     {
-        name = ValidateName(name);
+        name = PlayerName(ctx, name);
         if (!Guid.TryParseExact(searchId, "N", out _)) throw new Exception("Identificador de búsqueda inválido.");
         if (ctx.Db.Member.Player.Find(ctx.Sender) != null) return;
         var now = ctx.Timestamp.MicrosecondsSinceUnixEpoch;
