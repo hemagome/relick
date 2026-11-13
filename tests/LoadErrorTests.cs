@@ -3,7 +3,7 @@ static class LoadErrorTests
 {
     public static (string Name, Action Run)[] Cases => new (string, Action)[]
     {
-        ("Error de Carga: Huevo anulado devuelve acción y 200 PR; doble Error conserva Huevo", () =>
+        ("Error de Carga: Huevo anulado devuelve la acción; doble Error conserva el robo opcional", () =>
         {
             foreach (var counter in new[] { false, true })
             {
@@ -14,8 +14,8 @@ static class LoadErrorTests
                 if (counter) Check(g.PlayCode(0, 0).Success); else Check(g.PassErrorResponse(0).Success);
                 if (counter)
                 {
-                    Check(a.ActionsLeft == 0 && b.ActionsLeft == 2 && a.Relikia == 0 && g.State.Phase == Phase.DestroyChoice);
-                    Check(g.ResolveDestruction(0, 1, true).Success && b.Equipment == null);
+                    Check(a.ActionsLeft == 0 && b.ActionsLeft == 2 && a.Relikia == 200 && g.State.Phase == Phase.DestroyChoice);
+                    Check(g.ResolveDestruction(0, 1, true).Success && b.Equipment == null && g.State.Phase == Phase.BlueEggDrawChoice);
                 }
                 else Check(a.ActionsLeft == 2 && b.ActionsLeft == 1 && a.Relikia == 200 && b.Equipment == "lucky-pendant" && g.State.Phase == Phase.Actions);
                 Check(a.Memory.Contains("blue-egg") && b.Memory.Contains("load-error"));

@@ -190,14 +190,20 @@ public partial class OnlineArena
                 var destroy = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == actor && o.Move.Value == (int)FieldZone.Equipment);
                 Check(PresentedButton(destroy)?.Text == "Destruir" && equipment.Chosen, "La selección del equipo apunta a otra carta.");
                 Check(game.ResolveDestruction(actor, actor, true).Success, "No termina Huevo en el fixture de objetivos.");
+                PresentTestSnapshot(DuelSnapshot.For(game, seat, 313)); await Layout();
+                var drawChoices = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.BlueEggDraw).ToArray();
+                Check(drawChoices.Length == 2 && drawChoices.All(o => PresentedButton(o)?.GetParent() == _moves) &&
+                    PresentedButton(drawChoices.Single(o => o.Move.Flag))?.Text.Contains("200 PR") == true &&
+                    _contextTitle.Text == CardCatalog.BlueEgg.Name, "El robo opcional de Huevo no muestra ambas decisiones.");
+                Check(drawChoices.Single(o => !o.Move.Flag).Move.Apply(game, actor).Success, "No se puede omitir el robo de Huevo.");
                 p.Hand.Add(CardCatalog.TimeBomb.Id); Check(game.PlayCode(actor, p.Hand.Count - 1).Success, "No empieza Bomba en el fixture de mano.");
-                PresentTestSnapshot(DuelSnapshot.For(game, seat, 313)); await Layout(); await TapCard(0);
+                PresentTestSnapshot(DuelSnapshot.For(game, seat, 314)); await Layout(); await TapCard(0);
                 var ownHand = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == actor && o.Move.Value == (int)FieldZone.Hand);
                 Check(PresentedButton(ownHand)?.Text == "Destruir" && _contextTitle.Text == "Mi mano" && _selection.Text.Contains("azar"), "Bomba confunde la mano al azar con la carta tocada.");
 
                 var memoryGame = new GameEngine(41); memoryGame.State.Phase = Phase.Actions; memoryGame.State.CurrentPlayer = actor;
                 memoryGame.State.Active.Relikia = 500; memoryGame.State.Active.Memory.Add(CardCatalog.Senshuni.Id);
-                PresentTestSnapshot(DuelSnapshot.For(memoryGame, seat, 314)); await Layout();
+                PresentTestSnapshot(DuelSnapshot.For(memoryGame, seat, 315)); await Layout();
                 var replay = _snapshot!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode);
                 Check(replay >= 0, "Relikia pierde el acceso a sus opciones.");
                 PrepareTestOption(replay); await Layout();
@@ -208,7 +214,7 @@ public partial class OnlineArena
             Check(_moveButtons.All(b => !System.Text.RegularExpressions.Regex.IsMatch(b.Text, @"(?i)(carta|espacio)\s+\d+")), "La barra muestra identificadores internos.");
             var minimum = _root!.GetCombinedMinimumSize();
             Check(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1, $"La barra contextual desborda {size}: {minimum}.");
-            Check(_hand!.GetGlobalRect().End.Y <= Size.Y + 1, $"La mano se sale en {size}: arena {Size}, raíz {_root.Size}, mínimo {minimum}, mano {_hand.GetGlobalRect()}, galería {_showReplayMemory}.");
+            Check(HandFitsScreen, $"La mano se sale en {size}: arena {Size}, raíz {_root.Size}, mínimo {minimum}, mano {_hand.GetGlobalRect()}, galería {_showReplayMemory}.");
         }
         // The own PR counter is the only Relikia entry point. Keep this check outside the
         // resize loop so a pending window layout cannot rebuild the board under the popup,
@@ -262,7 +268,7 @@ public partial class OnlineArena
     private void CheckPendingCodeBounds()
     {
         var minimum = _root!.GetCombinedMinimumSize();
-        if (!(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1 && _hand!.GetGlobalRect().End.Y <= Size.Y + 1 &&
+        if (!(minimum.X <= _root.Size.X + 1 && minimum.Y <= _root.Size.Y + 1 && HandFitsScreen &&
             _root.GetGlobalRect().End.Y <= Size.Y + 1 && (_advanceButton == null || _advanceButton.GetGlobalRect().End.Y <= Size.Y + 1)))
         {
             var trace = new System.Text.StringBuilder();

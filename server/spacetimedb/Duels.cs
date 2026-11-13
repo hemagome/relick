@@ -56,7 +56,7 @@ public static partial class Module
         if ((ulong)ordered.Length != duel.Revision || ordered.Where((s, i) => s.Revision != (ulong)i + 1).Any())
             throw new Exception("Registro de partida incompleto.");
         return DuelReplay.Restore(JsonSerializer.Deserialize(duel.InitialJson, DuelJson.Default.DuelOpening)!,
-            ordered.Select(s => JsonSerializer.Deserialize(s.EntryJson, DuelJson.Default.DuelEntry)!));
+            ordered.Select(s => JsonSerializer.Deserialize(s.EntryJson, DuelJson.Default.DuelEntry)!), legacyBlueEgg: true);
     }
 
     // Compatibility view. It joins cached packets; it never runs or replays the engine.

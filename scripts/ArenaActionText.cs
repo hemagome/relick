@@ -35,6 +35,7 @@ internal static class ArenaActionText
         DuelMoveKind.PassError => "Dejar resolver",
         DuelMoveKind.Points => option.Move.Flag ? "Aumentar PR" : "Restar PR",
         DuelMoveKind.Destroy => "Destruir",
+        DuelMoveKind.BlueEggDraw => option.Move.Flag ? $"Robar 1 carta · {GameEngine.BlueEggDrawCost} PR" : "Continuar sin robar",
         DuelMoveKind.Placement => option.Move.Value == (int)CardDestination.Exchange ? "Canjear" : "Al mazo",
         DuelMoveKind.Reward => option.Move.Value == (int)RelikiaReward.OpponentDiscards ? "Provocar descartes" : "Corromper códigos",
         DuelMoveKind.Corrupt => "Corromper",
@@ -75,7 +76,7 @@ internal static class ArenaActionText
         {
             case DuelMoveKind.PlayCode:
                 var card = HandCard(option, s)!;
-                return Resources(card.ActionCost, card.PrCost, card.DiscardCost);
+                return Resources(card.ActionCost, GameEngine.CodePrCost(card, s.LegacyBlueEgg), card.DiscardCost);
             case DuelMoveKind.Equip: case DuelMoveKind.Exchange: return "1 acción";
             case DuelMoveKind.Learn:
                 var p = s.Players[s.MySeat];
@@ -83,7 +84,7 @@ internal static class ArenaActionText
                 return Resources(0, GameEngine.SkillSlotCosts[position]);
             case DuelMoveKind.Relikia:
                 var effect = RelikiaEffects.Get((RelikiaEffect)m.Value);
-                return Resources(effect.Actions, effect.Cost + (effect.Id == RelikiaEffect.ReplayCode ? CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]).PrCost : 0),
+                return Resources(effect.Actions, effect.Cost + (effect.Id == RelikiaEffect.ReplayCode ? GameEngine.CodePrCost(CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]), s.LegacyBlueEgg) : 0),
                     effect.Id == RelikiaEffect.ReplayCode ? CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]).DiscardCost : 0);
             case DuelMoveKind.FieldCode: case DuelMoveKind.Sniper: return "Sin coste adicional";
             case DuelMoveKind.Attack: return HandCard(option, s)?.Id == CardCatalog.SuperAttack.Id

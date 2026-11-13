@@ -141,6 +141,8 @@ public partial class OnlineArena
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.TrapCraft).ToList();
         else if (s.Phase == Phase.ZahiraTarget)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.ZahiraTarget).ToList();
+        else if (s.Phase == Phase.BlueEggDrawChoice)
+            indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.BlueEggDraw).ToList();
         else if (ChoosingEffectCards)
             indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i])).ToList();
         else if (_fieldSelection is { } field)
@@ -162,7 +164,7 @@ public partial class OnlineArena
                 indices = _pointsTarget.HasValue ? indices.Where(i => s.Options[i].Move.Target == _pointsTarget).ToList() : [];
         }
         var chooseAttackSkill = !_choosingAttackSkill && _selectedSkill < 0 && SelectedAttacks().Any();
-        var cardAnchoring = s.Phase is not (Phase.ErrorResponse or Phase.TrapCraftChoice or Phase.ZahiraTarget);
+        var cardAnchoring = s.Phase is not (Phase.ErrorResponse or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice);
         var handActions = cardAnchoring && !ChoosingEffectCards && !ChoosingRecycling &&
             !_skillContext && _fieldSelection == null && _selected.Count == 1;
         if (handActions)
@@ -176,9 +178,23 @@ public partial class OnlineArena
         var die = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && !s.Options[i].Move.Flag).ToArray();
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
             DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
-            s.Options[i].Move.Kind == DuelMoveKind.TrapCraft && s.Options[i].Move.Flag, -1);
+            s.Options[i].Move.Kind is DuelMoveKind.TrapCraft or DuelMoveKind.BlueEggDraw && s.Options[i].Move.Flag, -1);
         if (main < 0 && die.Length > 0) main = die[0];
-        if (die.Length > 0)
+        if (_showcase != null && ChoosingMemoryRecovery)
+        {
+            var confirm = main >= 0 ? AddOption(_moves, main, primary: true) : new Button
+            {
+                Text = "Recuperar", Disabled = true, TooltipText = "Selecciona una carta de la memoria."
+            };
+            if (main < 0)
+            {
+                _moves.AddChild(confirm);
+                RelickVisuals.Primary(confirm);
+            }
+            confirm.CustomMinimumSize = new(192, 56);
+            confirm.AddThemeFontSizeOverride("font_size", 18);
+        }
+        else if (die.Length > 0)
         {
             AddOption(_moves, die[0], primary: die[0] == main);
             AddChoiceMenu(_moves, "Modificar…", indices.Except(die));
@@ -303,6 +319,7 @@ public partial class OnlineArena
                 Phase.GoldenTotemChoice => CardCatalog.GoldenTotem.Id,
                 Phase.TrapCraftChoice => s.TrapCardId,
                 Phase.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
+                Phase.BlueEggDrawChoice => CardCatalog.BlueEgg.Id,
                 Phase.TurnBuffDiscard => s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id,
                 _ => null
             } : null;
@@ -327,14 +344,35 @@ public partial class OnlineArena
             card = preview.Card; title = card.Name; counters = preview.Counters;
             cost = _preparing ? "" : ArenaActionText.CardCost(card);
         }
-        _inspector.Present(card, title, cost, _selection.Text, counters);
-        _showcase?.Present(card);
+        var relikia = _showcase != null && activation == null ? _relikiaPreview : null;
+        if (relikia is { } effectId)
+        {
+            // The effect's own sheet explains it, so the menu only has to name it.
+            var effect = RelikiaEffects.Get(effectId);
+            cost = $"{effect.Cost} PR · {effect.ActionLabel}";
+            _inspector.Present(null, effect.Name, cost);
+            _showcase!.PresentSheet(effectId.ToString(), RelikiaSheet(effectId));
+        }
+        else
+        {
+            _inspector.Present(card, title, cost, _selection.Text, counters);
+            _showcase?.Present(card);
+        }
         _contextCost.TooltipText = cost;
-        _actionDock.SizeFlagsVertical = card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        var reading = card != null || relikia != null;
+        _actionDock.SizeFlagsVertical = reading ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        if (_showcase != null)
+        {
+            // With no card to read, the rail gives its height to the history.
+            _showcase.Visible = reading;
+            if (_historyFeed != null) _historyFeed.Visible = !reading && !_preparing;
+            if (_railReading != null) _railReading.SizeFlagsVertical = reading || _historyFeed is not { Visible: true } ? SizeFlags.ExpandFill : SizeFlags.Fill;
+        }
         if (_showcase == null)
         {
             var interaction = (Control)_actionDock.GetParent().GetParent();
-            interaction.SizeFlagsVertical = Short || card != null ? SizeFlags.ExpandFill : SizeFlags.Fill;
+            // The scrollable board and inspector share a column at medium sizes.
+            interaction.SizeFlagsVertical = Short || (card != null && _arenaScroll == null) ? SizeFlags.ExpandFill : SizeFlags.Fill;
         }
         var hasDecisions = _moves.GetChildCount() > 0;
         _movesScroll.Visible = hasDecisions;
@@ -347,6 +385,7 @@ public partial class OnlineArena
         var s = _snapshot!;
         if (s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name;
         if (s.Phase == Phase.GoldenTotemChoice && s.DecisionPlayer == s.MySeat) return "Tótem de Oro";
+        if (s.Phase == Phase.BlueEggDrawChoice) return CardCatalog.BlueEgg.Name;
         if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget && InspectorActivationId() is { } trap)
             return CardCatalog.Get(trap).Name;
         if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.LoadError.Name;
@@ -372,7 +411,7 @@ public partial class OnlineArena
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return "Anula la activación o deja que se resuelva.";
-        if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return ArenaGuidance.Instruction(s);
+        if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) return ArenaGuidance.Instruction(s);
         if (ChoosingRecycling) return $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas elegidas. " + (_selected.Count == s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards ? "Confirma para reciclar." : "Elige las cartas que faltan.");
         if (s.Phase == Phase.GoldenTotemChoice && myTurn) return $"Elige hasta dos Tótems · {_selected.Count}/2 seleccionados.";
         if (s.Phase == Phase.TurnBuffDiscard && myTurn) return $"Descarta {s.ActivationDiscardsRemaining} carta(s) para completar la activación · " + (_selected.Count == 1 ? CardCatalog.Get(SelectableCards[_selected.Single()]!).Name : "elige una carta");
@@ -407,7 +446,7 @@ public partial class OnlineArena
 
     private void RefreshRuntimeGuidance()
     {
-        if (_preparing || _snapshot == null) return;
+        if (_preparing || _snapshot == null || _relikiaPreview != null && _showcase != null) return;
         var text = _snapshot.Winner != null ? _decisionHint : !Connection.Ready
             ? "Conexión interrumpida. Reconecta para continuar."
             : Connection.PlayPending ? "Enviando tu decisión…"

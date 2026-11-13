@@ -46,7 +46,7 @@ public partial class OnlineArena
     {
         if (_resolutionMessage == null || _snapshot == null) return;
         var s = _snapshot; var latest = s.History?.LastOrDefault(); var live = s.Resolution;
-        _historyButton!.Visible = !_preparing;
+        _historyButton!.Visible = !_preparing && !_inlineHistory;
         _historyButton.Disabled = IsAnimating;
         _historyButton.TooltipText = IsAnimating ? "El historial estará disponible al terminar la resolución visual." : $"Últimas {DuelHistory.Capacity} jugadas públicas.";
         if (_arenaMenu != null)
@@ -78,6 +78,74 @@ public partial class OnlineArena
         }
         // Preserve legacy-server and preparation messages, including the initiative presentation.
         _resolutionMessage.Visible = !IsAnimating && _resolutionMessage.Text.Length > 0;
+        if (_resolutionPanel != null)
+            _resolutionPanel.Visible = _resolutionStage!.Visible || _resolutionSource.Visible || _resolutionResponses.Visible || _resolutionMessage.Visible;
+    }
+
+    /// <summary>On the desktop rail, what is resolving now stays above the card or the history.</summary>
+    private void BuildRailResolution(VBoxContainer parent, string message)
+    {
+        var panel = new PanelContainer { Name = "ResolutionPanel", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var style = RelickVisuals.Frame(BoardArt.Tint(BoardArt.Gold, 0.10f), BoardArt.Tint(BoardArt.Gold, 0.55f));
+        style.ContentMarginLeft = style.ContentMarginRight = 10; style.ContentMarginTop = style.ContentMarginBottom = 6;
+        panel.AddThemeStyleboxOverride("panel", style);
+        parent.AddChild(panel); _resolutionPanel = panel;
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 2); panel.AddChild(column);
+        var title = ArenaPresentation.Text(_snapshot!.Winner != null ? "RESULTADO DEL DUELO" : "RESOLUCIÓN DE COMBATE", 11, BoardArt.Gold);
+        title.AddThemeFontOverride("font", RelickVisuals.Display);
+        title.Visible = !_preparing; column.AddChild(title);
+        var status = ArenaPresentation.Text(message, 13); status.Name = "CombatMessage";
+        status.AutowrapMode = TextServer.AutowrapMode.WordSmart; status.Visible = message.Length > 0; column.AddChild(status);
+        _inlineHistory = true;
+        BuildResolution(column, title, status);
+        _resolutionSource!.HorizontalAlignment = HorizontalAlignment.Left;
+        _resolutionSource.AddThemeFontSizeOverride("font_size", 15);
+        _combatMessage = status;
+    }
+
+    /// <summary>The public plays, newest first. The rail shows them whenever no card is being read.</summary>
+    private void BuildHistoryFeed(VBoxContainer parent)
+    {
+        var s = _snapshot!;
+        var feed = new VBoxContainer { Name = "HistoryFeed", SizeFlagsVertical = SizeFlags.ExpandFill, Visible = !_preparing };
+        feed.AddThemeConstantOverride("separation", 4); parent.AddChild(feed); _historyFeed = feed;
+        var heading = ArenaPresentation.Text("HISTORIAL", 12, BoardArt.Gold);
+        heading.AddThemeFontOverride("font", RelickVisuals.Display); feed.AddChild(heading);
+        var scroll = new ScrollContainer { Name = "HistoryFeedScroll", SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        feed.AddChild(scroll);
+        var list = new VBoxContainer { Name = "HistoryFeedEntries", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        list.AddThemeConstantOverride("separation", 6); scroll.AddChild(list);
+        var entries = _preparing ? [] : s.History?.OrderByDescending(e => e.Id).Take(DuelHistory.Capacity).ToArray() ?? [];
+        if (entries.Length == 0)
+        {
+            var empty = ArenaPresentation.Text("Las jugadas públicas aparecerán aquí.", 13, BoardArt.Muted);
+            empty.AutowrapMode = TextServer.AutowrapMode.WordSmart; list.AddChild(empty);
+        }
+        var turn = -1;
+        foreach (var entry in entries)
+        {
+            if (entry.Turn != turn)
+            {
+                turn = entry.Turn;
+                var mark = ArenaPresentation.Text($"TURNO {entry.Turn:00}", 10, BoardArt.Muted);
+                mark.Name = "HistoryFeedTurn" + entry.Turn; list.AddChild(mark);
+            }
+            // The edge takes the colour of whoever played, as the fields do.
+            var mine = entry.SourceActor == s.MySeat;
+            var accent = entry.SourceActor is 0 or 1 ? mine ? ArenaPresentation.Mint : ArenaPresentation.Coral : BoardArt.Muted;
+            var panel = new PanelContainer { Name = "HistoryFeedEntry" + entry.Id, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var style = new StyleBoxFlat { BgColor = new Color(1, 1, 1, 0.035f), BorderColor = accent, BorderWidthLeft = 3,
+                ContentMarginLeft = 9, ContentMarginRight = 6, ContentMarginTop = 5, ContentMarginBottom = 5 };
+            panel.AddThemeStyleboxOverride("panel", style); list.AddChild(panel);
+            var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 1); panel.AddChild(column);
+            var action = ArenaPresentation.Text(entry.Text, 13); action.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(action);
+            if (entry.Details.Length > 0)
+            {
+                var detail = ArenaPresentation.Text(string.Join("\n", entry.Details), 12, BoardArt.Muted);
+                detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(detail);
+            }
+        }
     }
 
     private void ShowDuelHistory()

@@ -22,7 +22,7 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -67,6 +67,7 @@ public sealed class DuelMove
         DuelMoveKind.PassError => game.PassErrorResponse(actor),
         DuelMoveKind.Points => game.ResolvePointsChange(actor, Target, Flag),
         DuelMoveKind.Destroy => game.ResolveDestruction(actor, Target, (FieldZone)Value, Index),
+        DuelMoveKind.BlueEggDraw => game.ResolveBlueEggDraw(actor, Flag),
         DuelMoveKind.Relikia => game.UseRelikiaEffect(actor, (RelikiaEffect)Value, Index),
         DuelMoveKind.Placement => game.ResolveRelikiaPlacement(actor, Index, (CardDestination)Value),
         DuelMoveKind.Reward => game.ChooseRelikiaReward(actor, (RelikiaReward)Value),
@@ -135,10 +136,10 @@ public sealed class DuelRandom : IGameRandom
 
 public static class DuelReplay
 {
-    public static (GameEngine Game, DuelRandom Random) Restore(DuelOpening opening, IEnumerable<DuelEntry> entries)
+    public static (GameEngine Game, DuelRandom Random) Restore(DuelOpening opening, IEnumerable<DuelEntry> entries, bool legacyBlueEgg = false)
     {
         var random = new DuelRandom();
-        var game = GameEngine.FromOpening(opening, random);
+        var game = GameEngine.FromOpening(opening, random, legacyBlueEgg);
         foreach (var entry in entries)
         {
             random.Replay(entry.RandomValues);

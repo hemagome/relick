@@ -8,6 +8,8 @@ public partial class DeckStack : Control
     public int Amount { get; set; }
     public Color Accent { get; set; }
     private Texture2D? _back;
+    /// <summary>On the desktop board the pile fills its zone, like every other card.</summary>
+    public bool Board { get; init; }
     public override void _Ready()
     {
         CustomMinimumSize = new(Math.Max(70, CustomMinimumSize.X), 116);
@@ -22,6 +24,11 @@ public partial class DeckStack : Control
     {
         get
         {
+            if (Board)
+            {
+                var fit = BoardArt.FitArtwork(new Vector2(54, 77), new Rect2(4, 4, Size.X - 12, Size.Y - 12));
+                return fit;
+            }
             if (Size.Y <= 118) return new(new Vector2(5, 5), new Vector2(54, 77));
             var height = Math.Min(Size.Y - 34, (Size.X - 14) * 77 / 54);
             var extent = new Vector2(height * 54 / 77, height);
@@ -49,7 +56,7 @@ public partial class DeckStack : Control
         var caption = $"MAZO · {Amount}";
         var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 10).X + 14;
         var chip = new Rect2((Size.X - width) / 2, Size.Y - 22, width, 17);
-        BoardArt.Plate(this, chip, new Color(0, 0, 0, 0.45f), BoardArt.Tint(Accent, 0.4f), 4);
+        BoardArt.Plate(this, chip, Board ? new Color("0b1020") : new Color(0, 0, 0, 0.45f), BoardArt.Tint(Accent, Board ? 0.6f : 0.4f), 4);
         BoardArt.CenterText(this, caption, new(Size.X / 2, Size.Y - 10), 10, Accent);
     }
 }

@@ -161,7 +161,8 @@ static class GoldenTotemTests
             Reject(g, () => g.PlayCode(1, 1));
             Check(!g.CanPlayLoadError(1) && g.ResolveDestructionProtection(1, 0).Success);
             Check(target.EquipmentCovers!.Count == 1 && target.EquipmentStackedCopies == 1 && target.Skills.Count == 0);
-            Check(p.ActionsLeft == 1 && p.Relikia == 0 && g.State.PendingDestruction == null);
+            Check(p.ActionsLeft == 1 && p.Relikia == 200 && g.State.PendingDestruction == null &&
+                g.State.Phase == Phase.BlueEggDrawChoice);
         }),
         ("Oro: varias coberturas absorben intentos sucesivos, una por intento", () =>
         {

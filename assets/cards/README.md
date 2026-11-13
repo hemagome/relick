@@ -436,11 +436,14 @@ completo están en `output/imagegen/points-increase-original.jpg` y `output/imag
 
 ## Huevo Azul Explosivo y Re-lanza
 
-`blue-egg-clean.png` y `reroll-clean.png` se restauraron mediante la herramienta
-integrada para retirar las marcas superpuestas, conservando efectos y créditos.
-La reconstrucción puede introducir pequeñas diferencias en la ilustración.
-Los originales y prompts completos están en `output/imagegen/blue-egg-original.png`,
-`blue-egg-prompt.txt`, `reroll-original.jpg` y `reroll-prompt.txt`.
+`blue-egg-clean.png` corresponde a la edición LR-16/82. La herramienta integrada
+retiró la marca superpuesta y conservó los créditos impresos. Activar Huevo Azul
+Explosivo cuesta una acción. Tras resolver la destrucción de una no-habilidad en
+el campo, su activador puede pagar 200 PR para robar una carta.
+El prompt de esta edición está en `output/imagegen/blue-egg-v2-prompt.txt`.
+
+`reroll-clean.png` se restauró mediante la herramienta integrada. Su original y
+prompt están en `output/imagegen/reroll-original.jpg` y `output/imagegen/reroll-prompt.txt`.
 
 ## Error de Carga
 

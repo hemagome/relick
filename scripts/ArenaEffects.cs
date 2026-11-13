@@ -8,6 +8,7 @@ public partial class CardShowcase : Control
 {
     private const double AppearSeconds = 0.18;
     private CardDefinition? _card;
+    private string? _key;
     private Texture2D? _art, _back;
     private double _elapsed = AppearSeconds;
     internal CardDefinition? Card => _card;
@@ -27,11 +28,15 @@ public partial class CardShowcase : Control
         ? SkillArtwork.Load(card)
         : BoardArt.LoadCardArtwork(card) ?? (card.Kind == CardKind.Attack ? BoardArt.LoadCardArtwork(CardCatalog.Attack) : null);
 
-    internal void Present(CardDefinition? card)
+    internal void Present(CardDefinition? card) => Show(card?.Id, card, card == null ? null : Artwork(card));
+
+    /// <summary>Shows a reading sheet that is not a card, such as the explanation of a Relikia effect.</summary>
+    internal void PresentSheet(string key, Texture2D? sheet) => Show("sheet:" + key, null, sheet);
+
+    private void Show(string? key, CardDefinition? card, Texture2D? art)
     {
-        if (_card?.Id == card?.Id) return;
-        _card = card;
-        _art = card == null ? null : Artwork(card);
+        if (_key == key) return;
+        _key = key; _card = card; _art = art;
         _elapsed = ReducedMotion ? AppearSeconds : 0;
         SetProcess(!ReducedMotion);
         QueueRedraw();
@@ -48,18 +53,17 @@ public partial class CardShowcase : Control
     {
         var area = new Rect2(Vector2.Zero, Size).Grow(-10);
         if (area.Size.X <= 0 || area.Size.Y <= 0) return;
-        if (_card == null || _art == null)
+        if (_art == null)
         {
             var slot = BoardArt.FitArtwork(_back!, area.Grow(-18));
             BoardArt.Socket(this, slot.Grow(6), RelickVisuals.Playmat.Trace);
             DrawTextureRect(_back!, slot, false, new Color(1, 1, 1, 0.10f));
-            var hint = _card?.Name ?? "Pasa el cursor sobre una carta";
-            BoardArt.CenterText(this, hint, new(Size.X / 2, slot.GetCenter().Y + 5), 13, BoardArt.Muted);
+            if (_card != null) BoardArt.CenterText(this, _card.Name, new(Size.X / 2, slot.GetCenter().Y + 5), 13, BoardArt.Muted);
             return;
         }
         var t = (float)(_elapsed / AppearSeconds);
         var eased = 1 - (1 - t) * (1 - t);
-        var accent = BoardArt.CardColor(_card);
+        var accent = _card == null ? BoardArt.Gold : BoardArt.CardColor(_card);
         var fit = BoardArt.FitArtwork(_art, area);
         var rect = new Rect2(fit.GetCenter() - fit.Size * Mathf.Lerp(0.94f, 1, eased) / 2 + new Vector2(0, (1 - eased) * 8), fit.Size * Mathf.Lerp(0.94f, 1, eased));
         RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 6), rect.Size).Grow(-4), new Color(0, 0, 0, 0.6f * eased), 14, 8);

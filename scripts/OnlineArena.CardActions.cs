@@ -86,6 +86,12 @@ public partial class OnlineArena
             _cardActions.Hide();
             return;
         }
+        // A raised hand card is drawn above its hit area; its actions follow the card that is seen.
+        if (anchor is HandCard { InFan: true } raised)
+        {
+            var lift = raised.DrawnLift * anchor.GetGlobalTransform().Scale.Y;
+            visible = new Rect2(visible.Position - new Vector2(0, lift), visible.Size + new Vector2(0, lift));
+        }
 
         const float gap = 5;
         var size = _cardActions.GetCombinedMinimumSize();

@@ -117,7 +117,8 @@ public partial class OnlineArena
                         var textWidth = nextButton.GetThemeFont("font").GetStringSize(label, fontSize: nextButton.GetThemeFontSize("font_size")).X;
                         Check(nextButton.Text == label && nextButton.GetGlobalRect() == rect &&
                             frame is StyleBoxFlat flat && flat.BorderColor == StageAppearance.For(destination).Accent &&
-                            textWidth + frame.ContentMarginLeft + frame.ContentMarginRight <= rect.Size.X,
+                            // The desktop board is a scaled stage: the label is measured against the button's own width.
+                            textWidth + frame.ContentMarginLeft + frame.ContentMarginRight <= nextButton.Size.X,
                             $"El avance pierde su posición o el color de destino para {phase} en {size}.");
                     }
                 }

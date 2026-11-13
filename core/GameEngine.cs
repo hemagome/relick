@@ -32,7 +32,7 @@ public sealed partial class GameEngine
         _random = random;
     }
 
-    public static GameEngine FromOpening(DuelOpening opening, IGameRandom random)
+    public static GameEngine FromOpening(DuelOpening opening, IGameRandom random, bool legacyBlueEgg = false)
     {
         var state = new GameState { Phase = Phase.Combat, Turn = 1, CurrentPlayer = opening.StartingSeat };
         for (var seat = 0; seat < 2; seat++)
@@ -45,7 +45,7 @@ public sealed partial class GameEngine
             player.Deck.AddRange(opening.Decks[seat]);
             state.Players[seat] = player;
         }
-        var game = new GameEngine(state, random);
+        var game = new GameEngine(state, random) { LegacyBlueEgg = legacyBlueEgg };
         if (game.HasTimeBenderForDraw()) state.Phase = Phase.Draw;
         return game;
     }
@@ -103,7 +103,7 @@ public sealed partial class GameEngine
     /// <summary>Read-only query for plays other than advancing; never consumes cards or randomness.</summary>
     public bool HasAvailablePlay(int actor)
     {
-        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice or Phase.TrapCraftChoice or Phase.ZahiraTarget) return actor == State.DecisionPlayer;
+        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) return actor == State.DecisionPlayer;
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
         if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice or Phase.MemoryRecoveryChoice)
@@ -213,7 +213,7 @@ public sealed partial class GameEngine
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
         var played = SendHandToMemory(p, handIndex);
         p.ActionsLeft -= card.ActionCost;
-        p.Relikia -= card.PrCost;
+        p.Relikia -= CodePrCost(card);
         Log($"{p.Name} juega {card.Name}.");
         ActivateCode(actor, card, false, played?.Index ?? -1, played?.Owner);
         return CommandResult.Ok();

@@ -203,6 +203,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => $"{name} descarta una carta.",
             DuelMoveKind.Points => $"{name} {(m.Flag ? "aumenta" : "reduce")} los PR de {Target()}.",
             DuelMoveKind.Destroy => $"{name} elige destruir una carta de {Target()} ({(FieldZone)m.Value switch { FieldZone.Hand => "mano al azar", FieldZone.Bonus => "Bonus", FieldZone.Equipment => "equipo", _ => "campo" }}).",
+            DuelMoveKind.BlueEggDraw => m.Flag ? $"{name} paga {GameEngine.BlueEggDrawCost} PR para robar con Huevo Azul Explosivo." : $"{name} continúa sin robar con Huevo Azul Explosivo.",
             DuelMoveKind.Magnet => $"{name} elige tomar una carta {(m.Flag ? "del Bonus rival" : "de la mano rival")} por Magnet Shuffle.",
             DuelMoveKind.SkipMagnet => $"{name} decide no tomar una carta por Magnet Shuffle.",
             DuelMoveKind.Placement => $"{name} coloca una carta {(m.Value == (int)CardDestination.Exchange ? "en canje" : "al fondo del mazo")}.",

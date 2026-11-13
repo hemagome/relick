@@ -109,7 +109,8 @@ public static class CardCatalog
         CodeType: CodeType.Play, ChangePointsFromDie: true);
 
     public static readonly CardDefinition BlueEgg = new("blue-egg", "Huevo Azul Explosivo", CardKind.Code,
-        "Paga 200 PR. Destruye una no-habilidad en el campo.", CodeType: CodeType.Object, PrCost: 200, DestroyNonSkill: true);
+        "Selecciona y destruye una no-habilidad en el campo. Además puedes pagar 200 PR para robar 1 carta.",
+        CodeType: CodeType.Object, DestroyNonSkill: true);
     public static readonly CardDefinition Reroll = new("reroll", "Re-lanza", CardKind.Code,
         "COMBO. Activar esta carta no cuenta como acción. Relanza uno de tus dados. Si sale 1, 2 o 3, roba 1 carta.", CodeType: CodeType.Play, IsCombo: true, ActionCost: 0, RerollOwnDie: true);
 

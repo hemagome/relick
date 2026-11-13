@@ -3,6 +3,14 @@ public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, Equip
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
+    public const int BlueEggDrawCost = 200;
+    internal bool LegacyBlueEgg { get; private init; }
+
+    internal static int CodePrCost(CardDefinition card, bool legacyBlueEgg) =>
+        legacyBlueEgg && card.Id == CardCatalog.BlueEgg.Id ? BlueEggDrawCost : card.PrCost;
+
+    private int CodePrCost(CardDefinition card) => CodePrCost(card, LegacyBlueEgg);
+
     public bool IsZoneDestruction => State.Phase == Phase.DestroyChoice && _activeActivation is { Kind: ActivationKind.Code } frame &&
         CardCatalog.Get(frame.CardId).DestroyChosenZone;
 
@@ -69,7 +77,8 @@ public sealed partial class GameEngine
         if (card.CancelActivation && HandReservedForActivation(Array.IndexOf(State.Players, p)))
             return "Las cartas restantes están reservadas para el descarte de la activación pendiente.";
         if (State.Turn < card.EarliestTurn) return $"{card.Name} solo puede activarse a partir del turno {card.EarliestTurn} de la partida.";
-        if (p.Relikia < card.PrCost + extraCost) return $"Necesitas {card.PrCost + extraCost} PR.";
+        var prCost = CodePrCost(card) + extraCost;
+        if (p.Relikia < prCost) return $"Necesitas {prCost} PR.";
         if (card.ReloadBothHands && (p.Hand.Count <= (excludedHand < 0 ? 0 : 1) || State.Players[1 - Array.IndexOf(State.Players, p)].Hand.Count == 0))
             return "Ambos jugadores necesitan al menos una carta que descartar, además del Cartucho que se activa.";
         if (card.SearchAttacks > 0 && !p.Deck.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack)) return "No hay ataques en tu mazo.";
@@ -92,6 +101,7 @@ public sealed partial class GameEngine
         if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Code) return "Elige un código.";
         var card = CardCatalog.Get(p.Hand[handIndex]);
         if (State.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return "Completa la decisión del Código Trampa antes de jugar.";
+        if (State.Phase == Phase.BlueEggDrawChoice) return "Decide primero si robas con Huevo Azul Explosivo.";
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
             State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)))
             return "Activa las respuestas COMBO para responder con esta carta.";
@@ -109,7 +119,7 @@ public sealed partial class GameEngine
         var target = DestructionTargets().FirstOrDefault(t => t.Owner == owner && t.Zone == zone && (zone is FieldZone.Equipment or FieldZone.Bonus || t.Index == index));
         if (target == null) return CommandResult.Fail("Elige un objetivo válido para esta destrucción.");
         var p = State.Players[owner];
-        var codeName = IsZoneDestruction ? CardCatalog.Get(_activeActivation!.CardId).Name : "Huevo Azul Explosivo";
+        var codeName = _activeActivation is { } frame ? CardCatalog.Get(frame.CardId).Name : CardCatalog.BlueEgg.Name;
         var id = target.CardId;
         if (zone == FieldZone.Hand)
         {
@@ -119,6 +129,30 @@ public sealed partial class GameEngine
         var chosen = target with { Index = index, CardId = id };
         var completed = new EngineContinuation { Kind = ContinuationKind.FinishCodeDestruction, Actor = actor, Target = chosen, Text = codeName };
         if (!TryReplaceOpponentFieldEffect(actor, chosen, completed)) RequestDestruction(chosen, completed);
+        return CommandResult.Ok();
+    }
+
+    private void OfferBlueEggDraw(int actor)
+    {
+        if (State.Players[actor].Relikia >= BlueEggDrawCost) State.Phase = Phase.BlueEggDrawChoice;
+    }
+
+    public CommandResult ResolveBlueEggDraw(int actor, bool pay)
+    {
+        if (State.Phase != Phase.BlueEggDrawChoice || State.DecisionPlayer != actor)
+            return CommandResult.Fail("No te corresponde decidir el robo de Huevo Azul Explosivo.");
+        var p = State.Players[actor];
+        if (pay && p.Relikia < BlueEggDrawCost)
+            return CommandResult.Fail($"Necesitas {BlueEggDrawCost} PR.");
+
+        State.Phase = Phase.Actions;
+        if (pay)
+        {
+            p.Relikia -= BlueEggDrawCost;
+            Log($"{p.Name} paga {BlueEggDrawCost} PR para robar una carta con {CardCatalog.BlueEgg.Name}.");
+            DrawCards(p, 1);
+        }
+        CompleteActivationIfFinished();
         return CommandResult.Ok();
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
