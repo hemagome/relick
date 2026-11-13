@@ -51,12 +51,13 @@ public partial class OnlineArena
     private void BuildInitialSkillMoves()
     {
         PreparationConfirmButton = null;
-        _selection.Text = "Elige tu habilidad inicial. Podrás cambiarla durante el mulligan.";
-        InitialSkillConfirmButton = ArenaPresentation.Button(_moves, _initialSkillPending ? "Eligiendo habilidad…" : "Elegir habilidad y repartir", () =>
+        _selection.Text = "";
+        InitialSkillConfirmButton = ArenaPresentation.Button(_moves, _initialSkillPending ? "Eligiendo habilidad…" : "Elegir habilidad", () =>
         {
             if (CanChooseInitialSkill && _initialSkillCandidate != null) Connection.ChooseInitialSkill(_initialSkillCandidate);
         });
         InitialSkillConfirmButton.Name = "ConfirmInitialSkill";
+        _moves.Alignment = FlowContainer.AlignmentMode.Center;
         RelickVisuals.Primary(InitialSkillConfirmButton);
         InitialSkillConfirmButton.SetMeta("discards", 0); _moveButtons.Add(InitialSkillConfirmButton);
         if (Compact) InitialSkillConfirmButton.CustomMinimumSize = new(Short ? 280 : 0, 48);

@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -191,6 +191,23 @@ public static class BoardArt
                 Stroke(new(-5, -6), new(-1, -10), new(-1, -5));
                 Stroke(new(-1, 6), new(-1, 10), new(-7, 4), new(-12, 4), new(-12, -4), new(-9, -4));
                 c.DrawLine(new(-13, -12), new(11, 12), color, 3, true);
+                break;
+            case GameIcon.Hand:
+                // A raised open hand: four fingers over the palm, thumb to the side.
+                Block(-10, -9, 4.5f, 12); Block(-4.5f, -13, 4.5f, 16); Block(1, -12, 4.5f, 15); Block(6.5f, -8, 4.5f, 11);
+                Shape(new(-10, 1), new(11, 1), new(11, 6), new(5, 14), new(-6, 14), new(-10, 8));
+                Shape(new(-10, 3), new(-15, -3), new(-12, -6), new(-7, 0));
+                break;
+            case GameIcon.Skip:
+                Shape(new(-14, -11), new(-2, 0), new(-14, 11));
+                Shape(new(-3, -11), new(9, 0), new(-3, 11));
+                Block(10, -11, 4, 22);
+                break;
+            case GameIcon.WhiteFlag:
+                // Surrender flag: a pole with a waving cloth.
+                Block(-12, -14, 3.5f, 29);
+                Shape(new(-8, -13), new(-2, -11), new(4, -13), new(9, -14), new(14, -12), new(14, 2),
+                    new(9, 0), new(4, 1), new(-2, 3), new(-8, 1));
                 break;
         }
         c.DrawSetTransform(Vector2.Zero, 0, Vector2.One * canvasScale);
@@ -804,6 +821,11 @@ public partial class HandCard : Button
     internal float Lift { get; init; } = 9;
     public float PresentationScale { get; set; } = 1;
     private Vector2 DrawSize => Size / PresentationScale;
+    /// <summary>Shows a skill upright in its own landscape format instead of rotating it into the hand's portrait footprint.</summary>
+    public bool Landscape { get; init; }
+    private bool Wide => Landscape && HasSkillArtwork;
+    /// <summary>The card face in the card's own units; the remaining height leaves room to rise.</summary>
+    private Vector2 Face => Wide ? new(175, 124) : new(DrawSize.X - 2, 175);
     public bool Chosen
     {
         get => _chosen;
@@ -833,7 +855,7 @@ public partial class HandCard : Button
                 ?? throw new InvalidOperationException($"No se pudo cargar la ilustración de {Card.Name}.");
         if (Card.Kind is CardKind.Equipment or CardKind.Code) _artwork = GD.Load<Texture2D>($"res://assets/cards/{Card.Id}-clean.png");
         if (Card.Kind == CardKind.Skill) _artwork = SkillArtwork.Load(Card);
-        CustomMinimumSize = new Vector2(126, 184) * PresentationScale;
+        CustomMinimumSize = (Wide ? new Vector2(177, 133) : new Vector2(126, 184)) * PresentationScale;
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         MouseDefaultCursorShape = CursorShape.PointingHand;
         TooltipText = OriginalOwner is { } owner
@@ -866,7 +888,7 @@ public partial class HandCard : Button
         var accent = BoardArt.CardColor(Card);
         var icon = BoardArt.CardIcon(Card);
         var y = 7 - _hover * (InFan ? Lift : 5);
-        var r = new Rect2(1, y, DrawSize.X - 2, 175);
+        var r = new Rect2(new Vector2(1, y), Face);
         // A raised card grows from its lower edge, so neighbours keep their place in the fan.
         var zoom = Zoom;
         var scale = PresentationScale * zoom;
@@ -876,6 +898,13 @@ public partial class HandCard : Button
         if (_artwork != null)
         {
             if (_hover > 0.01f && !Chosen) RelickVisuals.Shadow(this, r.Grow(-2), BoardArt.Tint(accent, 0.45f * _hover), 12, 8);
+            if (Wide)
+            {
+                DrawTextureRect(_artwork, r, false);
+                DrawSelection(y, accent);
+                DrawOwner(y);
+                return;
+            }
             if (Card.Kind == CardKind.Skill)
             {
                 // Rotate landscape skills into the portrait footprint of the hand.
@@ -918,19 +947,20 @@ public partial class HandCard : Button
         if (OriginalOwner is not { } owner) return;
         var foreign = OwnerIsForeign;
         var color = foreign ? RelickVisuals.State.Rival : RelickVisuals.State.Own;
-        var left = 3f; var right = DrawSize.X - 3;
-        DrawLine(new Vector2(left, y + 8), new Vector2(left, y + 167), color, foreign ? 4 : 3, true);
+        var left = 3f; var right = Face.X - 1; var bottom = y + Face.Y;
+        DrawLine(new Vector2(left, y + 8), new Vector2(left, bottom - 8), color, foreign ? 4 : 3, true);
         DrawLine(new Vector2(left + 4, y + 2), new Vector2(right - 4, y + 2), color, foreign ? 3 : 2, true);
         if (!foreign || !ShowOwnerBadge) return;
-        var badge = new Rect2(8, y + 154, 48, 16);
+        var badge = new Rect2(8, bottom - 21, 48, 16);
         BoardArt.Plate(this, badge, new Color("0b1020"), color, 4, 1);
         BoardArt.CenterText(this, "RIVAL", new(badge.GetCenter().X, badge.Position.Y + 12), 8, color);
     }
 
     private void DrawSelection(float y, Color accent)
     {
-        RelickVisuals.Interaction(this, new Rect2(1, y, DrawSize.X - 2, 175), Chosen, false, !Disabled && IsHovered(), HasFocus());
-        if (Chosen && Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(DrawSize.X / 2, y + 99), 9, RelickVisuals.State.Selected);
+        var face = Face;
+        RelickVisuals.Interaction(this, new Rect2(new Vector2(1, y), face), Chosen, false, !Disabled && IsHovered(), HasFocus());
+        if (Chosen && Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(1 + face.X / 2, y + face.Y * 0.57f), 9, RelickVisuals.State.Selected);
     }
 
 }
@@ -945,6 +975,98 @@ public partial class IconView : Control
 }
 
 /// <summary>Menu trigger shown as a symbol; its name stays available to tooltips and screen readers.</summary>
+/// <summary>
+/// The private COMBO preference drawn like the printed COMBO tag of the cards: a pale bevelled
+/// plate with a raised hand while COMBO responses are asked, dimmed with a skip mark while passed.
+/// </summary>
+public partial class ComboToggle : Button
+{
+    private static readonly Color AskFace = new("f2f2f0"), AskEdge = new("4a4f59"), AskInk = new("1b1d22");
+    private static readonly Color PassFace = new("b9bcc3"), PassEdge = new("2c3038"), PassInk = new("4b4f57");
+    public bool Compact { get; init; }
+    private float PlateWidth => Compact ? 132 : 160;
+    /// <summary>The plate is drawn shorter than the 48 px touch target.</summary>
+    private const float PlateHeight = 40;
+
+    public override void _Ready()
+    {
+        ToggleMode = true;
+        CustomMinimumSize = new(PlateWidth + 6, 48);
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus", "hover_pressed" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        Toggled += _ => Describe();
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+        FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
+        Describe();
+    }
+
+    /// <summary>Shows a state without emitting <see cref="BaseButton.Toggled"/>.</summary>
+    public void ShowAsking(bool asking) { SetPressedNoSignal(asking); Describe(); }
+
+    private void Describe()
+    {
+        AccessibilityName = ButtonPressed ? "COMBO: preguntar" : "COMBO: pasar";
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var asking = ButtonPressed;
+        var h = Math.Min(Size.Y, PlateHeight); var top = (Size.Y - h) / 2; var bottom = top + h;
+        var radius = h * 0.44f; var slant = h * 0.3f;
+        var right = Math.Min(Size.X - 4, PlateWidth) - radius;
+        var hover = !Disabled && IsHovered();
+        var fade = Disabled ? 0.45f : 1;
+        Color A(Color c, bool lift = false) { if (lift && hover) c = c.Lightened(0.12f); return new(c, c.A * fade); }
+        Vector2[] Slanted(float left, float upper, float end, float lower) =>
+            [new(left + slant, upper), new(end, upper), new(end - slant, lower), new(left, lower)];
+
+        // The bevel shows heavier at the bottom, like the printed tag, under the face.
+        DrawColoredPolygon(Slanted(0, top, right, bottom), A(asking ? AskEdge : PassEdge));
+        DrawColoredPolygon(Slanted(3, top + 3, right - 3, bottom - 5), A(asking ? AskFace : PassFace, true));
+        // The lettering stays clear of the badge, shrinking when the plate is narrow.
+        var center = new Vector2(right - slant / 2, Size.Y / 2);
+        var font = RelickVisuals.Display; var size = (int)(h * 0.46f);
+        var left = slant * 0.6f; var width = center.X - radius - 3 - left;
+        while (size > 10 && font.GetStringSize("COMBO", HorizontalAlignment.Left, -1, size).X > width) size--;
+        var baseline = top + (h - 2) / 2 + (font.GetAscent(size) - font.GetDescent(size)) / 2;
+        DrawString(font, new(left, baseline), "COMBO", HorizontalAlignment.Center, width, size, A(asking ? AskInk : PassInk));
+
+        DrawCircle(center, radius, A(AskInk));
+        DrawCircle(center, radius - 3, A(asking ? RelickVisuals.State.Own : RelickVisuals.State.Rival, true));
+        BoardArt.Icon(this, asking ? GameIcon.Hand : GameIcon.Skip, center, radius * 1.05f, A(AskInk));
+        if (HasFocus()) DrawFocus(Slanted(0, top, right, bottom), center, radius);
+    }
+
+    /// <summary>The focus ring follows the plate and the badge together, so it never cuts across the symbol.</summary>
+    private void DrawFocus(Vector2[] plate, Vector2 center, float radius)
+    {
+        var circle = new Vector2[32];
+        for (var i = 0; i < circle.Length; i++) circle[i] = center + Vector2.FromAngle(i * Mathf.Tau / circle.Length) * radius;
+        static float Area(Vector2[] p) => Math.Abs(p.Select((v, i) => v.Cross(p[(i + 1) % p.Length])).Sum()) / 2;
+        var outline = Geometry2D.MergePolygons(plate, circle).MaxBy(Area);
+        if (outline == null) return;
+        var ring = Geometry2D.OffsetPolygon(outline, 2.5f, Geometry2D.PolyJoinType.Round).MaxBy(Area);
+        if (ring != null) DrawPolyline([.. ring, ring[0]], BoardArt.Gold, 2, true);
+    }
+}
+
+/// <summary>A toolbar action shown as a symbol; its name stays available to tooltips and screen readers.</summary>
+public partial class IconButton : Button
+{
+    public GameIcon Symbol { get; init; }
+
+    public override void _Ready()
+    {
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+    }
+
+    public override void _Draw() => BoardArt.Icon(this, Symbol, Size / 2, Math.Min(26, Math.Min(Size.X, Size.Y) - 18),
+        Disabled ? BoardArt.Muted : IsHovered() ? Colors.White : BoardArt.Ink);
+}
+
 public partial class IconMenuButton : MenuButton
 {
     public GameIcon Symbol { get; init; } = GameIcon.Gear;

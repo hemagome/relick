@@ -113,7 +113,8 @@ public partial class OnlineArena
     private string PreparationCaption() => _choosingOpeningSkill ? "ELIGE UNA HABILIDAD" : _openingInfo?.Started == true ? "COMPLETADA" :
         _openingInfo?.MyConfirmed == true ? "ESPERANDO AL RIVAL" : _openingPending ? "CONFIRMANDO" : "ELIGE TU MANO";
 
-    private string PreparationMessage() => _choosingOpeningSkill ? "Elige una habilidad de tu mazo" : _openingInfo?.Started == true ? "Preparación completada" :
+    // While choosing a skill the chooser's own heading already says it.
+    private string PreparationMessage() => _choosingOpeningSkill ? "" : _openingInfo?.Started == true ? "Preparación completada" :
         _openingInfo?.MyConfirmed == true ? "Mano confirmada\nEsperando al rival…" :
         _openingPending ? "Confirmando tu mano…" : _openingCards.Length != OpeningHandSize ? "Repartiendo las manos…" : "Elige tu mano inicial";
 

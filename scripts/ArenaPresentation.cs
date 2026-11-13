@@ -420,16 +420,40 @@ public static class ArenaPresentation
         return panel;
     }
 
-    public static ScrollContainer InitialSkills(Node parent, IReadOnlyList<string> skills, string? chosen, Action<string> selected, bool shortScreen, int railColumns = 0)
+    public static ScrollContainer InitialSkills(Node parent, IReadOnlyList<string> skills, string? chosen, Action<string> selected, bool shortScreen,
+        int railColumns = 0, bool desktop = false)
     {
-        parent.AddChild(HandHeading("ELIGE TU HABILIDAD INICIAL", skills.Count, railColumns));
+        // The cards speak for their own number; the heading only names the decision.
+        var heading = Text(railColumns > 0 ? "HABILIDAD INICIAL" : "ELIGE TU HABILIDAD INICIAL", shortScreen ? 14 : desktop ? 30 : 20, BoardArt.Gold);
+        heading.Name = "InitialSkillHeading";
+        heading.AddThemeFontOverride("font", RelickVisuals.Display);
+        heading.HorizontalAlignment = HorizontalAlignment.Center;
+        // On the board a wrapped heading would size the fixed panel from its zero-width first frame, and it never shrinks back.
+        if (!desktop) heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        parent.AddChild(heading);
         var scroll = CardGallery("InitialSkillScroll", shortScreen, railColumns);
-        var row = GalleryContents(railColumns, 12); scroll.AddChild(row); parent.AddChild(scroll);
+        Container row;
+        if (desktop)
+        {
+            // Over the board there is room for three large landscape cards per row; more wrap
+            // into a fixed grid, whose size is known on the first frame, and the panel scrolls.
+            scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+            scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+            var grid = new GridContainer { Columns = Math.Clamp(skills.Count, 1, 3) };
+            grid.AddThemeConstantOverride("h_separation", 24); grid.AddThemeConstantOverride("v_separation", 18);
+            row = grid;
+            var middle = new CenterContainer { Name = "InitialSkillMiddle",
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+            middle.AddChild(row); scroll.AddChild(middle);
+        }
+        else { row = GalleryContents(railColumns, 12); scroll.AddChild(row); }
+        parent.AddChild(scroll);
+        var scale = shortScreen ? 0.6f : desktop ? 2f : 1.3f;
         for (var i = 0; i < skills.Count; i++)
         {
             var id = skills[i];
             var card = new HandCard { Name = "InitialSkillCard" + i, Card = CardCatalog.Get(id), Chosen = id == chosen,
-                PresentationScale = shortScreen ? 0.6f : 1 };
+                PresentationScale = scale, Landscape = true };
             card.Pressed += () => selected(id); row.AddChild(card);
         }
         return scroll;
@@ -565,7 +589,7 @@ public static class ArenaPresentation
 
     private static Label HandHeading(string title, int count, int railColumns)
     {
-        var caption = railColumns > 0 ? (title == "ELIGE TU HABILIDAD INICIAL" ? "HABILIDAD INICIAL" : title.Split(" · ")[0]) + $"\n{count} CARTAS" : $"{title}  ·  {count} CARTAS";
+        var caption = railColumns > 0 ? title.Split(" · ")[0] + $"\n{count} CARTAS" : $"{title}  ·  {count} CARTAS";
         var heading = Text(caption, 10); heading.TooltipText = title;
         heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         return heading;

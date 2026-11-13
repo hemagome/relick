@@ -117,8 +117,9 @@ El inspector acrílico muestra el nombre, el efecto y el coste de la carta.
 Pasar el cursor sobre una carta visible abre su vista previa.
 Un clic en el campo vacío limpia la selección del duelo y cierra la vista previa.
 El avance de etapa ocupa un control separado, el contador de PR propio abre
-los efectos de Relikia y Abandonar está en el menú general con su confirmación
-habitual. El contador rival es solo informativo.
+los efectos de Relikia, y junto a la rueda dentada del menú están la bandera
+blanca para abandonar y un parlante que abre los controles de sonido. Su confirmación es un cuadro centrado, del tamaño de su
+pregunta, con «Cancelar» y «Abandonar». El contador rival es solo informativo.
 
 La lectura de cartas usa un inspector compartido en mano, elección inicial y
 consultas de zonas. Conserva las cartas completas y sus tamaños de presentación.
@@ -298,10 +299,12 @@ cierre sin modificar el duelo, en cuatro tamaños y ambos asientos. Con
 ## Respuestas COMBO
 
 El encabezado del duelo incluye un control táctil de dos estados, disponible
-para ambos jugadores durante su propio turno o el del rival:
+para ambos jugadores durante su propio turno o el del rival. Se dibuja como el
+rótulo COMBO impreso en las cartas, una placa clara e inclinada con bisel, y
+cada pulsación cambia la insignia de su extremo:
 
-- **COMBO: preguntar** permite las respuestas opcionales de cartas COMBO.
-- **COMBO: pasar** omite esas respuestas y conserva las cartas, incluidos los
+- **COMBO: preguntar** (placa clara, insignia menta con mano alzada) permite las respuestas opcionales de cartas COMBO.
+- **COMBO: pasar** (placa apagada, insignia coral con salto) omite esas respuestas y conserva las cartas, incluidos los
   contraerrores. No consume acciones ni PR. Los COMBO pueden seguir jugándose
   como jugadas voluntarias durante las etapas normales del turno propio.
 

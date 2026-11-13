@@ -423,7 +423,7 @@ public partial class OnlineArena : Control
             }
         }
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
-            SelectInitialSkillCandidate, Short, railColumns) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
+            SelectInitialSkillCandidate, Short, railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
                 ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null, railColumns,
                 useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop,
                 sections: MemorySections(), ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : OwnHandCardOwner,
@@ -590,13 +590,20 @@ public partial class OnlineArena : Control
     private void PlayOption(int index, DuelSnapshot state)
     {
         if (!Connection.Ready || Connection.PlayPending || IsAnimating) return;
-        if (state.Options[index].Move.Kind == DuelMoveKind.Concede)
-        {
-            var dialog = new ConfirmationDialog { Title = "Abandonar duelo", DialogText = "Tu rival ganará esta partida. ¿Quieres abandonar?" };
-            dialog.Confirmed += () => { Connection.Play(index, expectedRevision: state.Revision, expectedRoom: RoomCode, expectedSnapshot: state); dialog.QueueFree(); };
-            dialog.Canceled += () => dialog.QueueFree(); AddChild(dialog); ArenaViewport.FitDialog(dialog, Size);
-        }
+        if (state.Options[index].Move.Kind == DuelMoveKind.Concede) ConfirmConcede(index, state);
         else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode, state);
+    }
+
+    private void ConfirmConcede(int index, DuelSnapshot state)
+    {
+        if (GetChildren().OfType<ConfirmationDialog>().Any(d => d.Name == "ConcedeDialog")) return;
+        var dialog = new ConfirmationDialog { Name = "ConcedeDialog", Title = "Abandonar duelo",
+            DialogText = "Tu rival ganará esta partida. ¿Quieres abandonar?", OkButtonText = "Abandonar", CancelButtonText = "Cancelar" };
+        dialog.Confirmed += () => { Connection.Play(index, expectedRevision: state.Revision, expectedRoom: RoomCode, expectedSnapshot: state); dialog.QueueFree(); };
+        dialog.Canceled += () => dialog.QueueFree(); AddChild(dialog);
+        foreach (var button in new[] { dialog.GetOkButton(), dialog.GetCancelButton() }) button.CustomMinimumSize = new(132, 48);
+        // A short question needs only its own size, centred over the duel.
+        dialog.PopupCentered();
     }
 
     private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null)
