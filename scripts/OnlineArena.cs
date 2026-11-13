@@ -306,11 +306,12 @@ public partial class OnlineArena : Control
             Side(1);
             Side(0);
 
-            // The rival's hand hangs from the top edge at full card size; only its lower band shows.
-            const float rivalBand = 40;
+            // The rival's hand hangs from the top edge at full card size and shows the same band as ours.
+            const float rivalBand = ArenaPresentation.DesktopHandVisible;
+            const float rivalFanHeight = BoardCanvas.CardHeight + 60;
             var rivalHand = new HBoxContainer { Name = "RivalHandRow", Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
             rivalHand.AddThemeConstantOverride("separation", 8);
-            canvas.Place(rivalHand, new Rect2(340, rivalBand - BoardCanvas.CardHeight, BoardCanvas.DesignWidth - 680, BoardCanvas.CardHeight), BoardAnchor.Top);
+            canvas.Place(rivalHand, new Rect2(340, rivalBand - rivalFanHeight, BoardCanvas.DesignWidth - 680, rivalFanHeight), BoardAnchor.Top);
             BuildOpponentHand(rivalHand, new Vector2(BoardCanvas.CardWidth, BoardCanvas.CardHeight));
 
             // Turn, stage and the advance button live on the divider, in the colour of whose turn it is.
@@ -471,16 +472,21 @@ public partial class OnlineArena : Control
         var strip = parent is HBoxContainer;
         ArenaPresentation.HandCounter(parent, opponent.HandCount, enemy: true);
         var face = boardFace ?? (strip ? new Vector2(43, 60.8f) : new Vector2(54, 76.4f));
-        var scroll = new ScrollContainer { Name = "OpponentHandScroll", CustomMinimumSize = new(0, boardFace?.Y ?? (strip ? 62 : 90)), VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            HorizontalScrollMode = strip && hand.Length <= 16 ? ScrollContainer.ScrollMode.Disabled : ScrollContainer.ScrollMode.Auto,
-            SizeFlagsHorizontal = strip && hand.Length > 16 ? SizeFlags.ExpandFill : SizeFlags.Fill };
-        // Held cards overlap on the board strip, as a hand does.
-        var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", boardFace is { } wide ? -(int)(wide.X * 0.58f) : strip ? -10 : 4); scroll.AddChild(row); parent.AddChild(scroll);
+        Control row;
         if (boardFace != null)
         {
-            // Only the band below the top edge is on screen: the count sits in it, beside the cards.
-            scroll.MouseFilter = MouseFilterEnum.Ignore; row.MouseFilter = MouseFilterEnum.Ignore;
-            if (parent.FindChild("OpponentHandCounter", false, false) is Control counter) counter.SizeFlagsVertical = SizeFlags.ShrinkEnd;
+            // The rival's hand mirrors ours: same card size, tilt and visible band, hanging from the top edge.
+            row = new HandFan { Name = "OpponentHandFan", Mirrored = true, Headroom = 0, MaximumAngle = 3, Spread = true,
+                SizeFlagsVertical = SizeFlags.Fill };
+        }
+        else
+        {
+            var scroll = new ScrollContainer { Name = "OpponentHandScroll", CustomMinimumSize = new(0, strip ? 62 : 90), VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
+                HorizontalScrollMode = strip && hand.Length <= 16 ? ScrollContainer.ScrollMode.Disabled : ScrollContainer.ScrollMode.Auto,
+                SizeFlagsHorizontal = strip && hand.Length > 16 ? SizeFlags.ExpandFill : SizeFlags.Fill };
+            // Held cards overlap on the board strip, as a hand does.
+            var box = new HBoxContainer(); box.AddThemeConstantOverride("separation", strip ? -10 : 4); scroll.AddChild(box); parent.AddChild(scroll);
+            row = box;
         }
         for (var i = 0; i < hand.Length; i++)
         {
@@ -492,6 +498,12 @@ public partial class OnlineArena : Control
             var index = i;
             card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);
         }
+        if (boardFace == null) return;
+        // The fan lays its cards out on entering the tree, so it joins the board once it holds them.
+        parent.AddChild(row);
+        // Only the band below the top edge is on screen: the count sits in it, beside the cards.
+        if (parent.FindChild("OpponentHandCounter", false, false) is Control counter) counter.SizeFlagsVertical = SizeFlags.ShrinkEnd;
+        parent.AddChild(new Control { CustomMinimumSize = new(44, 0), MouseFilter = MouseFilterEnum.Ignore });
     }
 
     private CardOwner? OwnHandCardOwner(int index)

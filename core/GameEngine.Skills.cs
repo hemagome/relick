@@ -97,6 +97,9 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
+    // Presentation signal: owner, recipient, slot in the owner's hand, slot in the recipient's hand. Never carries identities.
+    public event Action<int, int, int, int>? HandCardTaken;
+
     public CommandResult ResolveMagnet(int actor, bool fromBonus, int handIndex = -1)
     {
         var error = ValidateTurn(actor, Phase.MagnetChoice);
@@ -115,6 +118,7 @@ public sealed partial class GameEngine
             var returning = rival.RemoveHandCard(handIndex);
             State.Active.Hand.Add(id);
             if (!returning) State.Active.MarkForeignHandCard(State.Active.Hand.Count - 1);
+            HandCardTaken?.Invoke(1 - actor, actor, handIndex, State.Active.Hand.Count - 1);
         }
         Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
         if (fromBonus) RefillBonus(rival);

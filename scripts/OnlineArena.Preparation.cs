@@ -193,7 +193,7 @@ public partial class OnlineArena
             var target = flight.Event.Kind switch
             {
                 DuelVisualKind.Draw => ZoneNode(relative, CardZone.Hand, flight.Event.Value),
-                DuelVisualKind.BonusClaim => ZoneNode(flight.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, flight.Event.Value),
+                DuelVisualKind.BonusClaim or DuelVisualKind.HandSteal => ZoneNode(flight.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, flight.Event.Value),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.Pile when flight.IsPlacement => ZoneNode(relative, flight.Event.Destination, flight.Event.Value),
                 _ => null

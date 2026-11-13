@@ -173,6 +173,11 @@ public partial class OnlineLobby
                 await online.CheckMemoryRecoveryLayout(); online.QueueFree(); await Layout();
                 GD.Print("PVP_MEMORY_RECOVERY_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--steal-only"))
+            {
+                await online.CheckHandStealAnimation(); online.QueueFree(); await Layout();
+                GD.Print("PVP_HAND_STEAL_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--reverse-only"))
             {
                 await online.CheckReverseLayout(); online.QueueFree(); await Layout();
@@ -258,6 +263,7 @@ public partial class OnlineLobby
             await online.CheckDexterityLayout();
             await online.CheckYunoEvolutionLayout();
             await online.CheckReverseLayout();
+            await online.CheckHandStealAnimation();
             await online.CheckDuelResults();
             await online.CheckPreparationLayout();
             await online.CheckChoiceBounds();
