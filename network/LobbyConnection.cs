@@ -132,7 +132,7 @@ public sealed partial class LobbyConnection : IDisposable
                     Ready = false;
                     Connecting = false;
                     Message = "No se pudo sincronizar la sala: " + error.Message;
-                }).Subscribe(new[] { "SELECT * FROM my_room", "SELECT * FROM my_board", "SELECT * FROM my_duel_hand", "SELECT * FROM my_choices", "SELECT * FROM my_move_result" });
+                }).Subscribe(new[] { "SELECT * FROM my_room", "SELECT * FROM my_board", "SELECT * FROM my_duel_hand", "SELECT * FROM my_choices", "SELECT * FROM my_move_result", "SELECT * FROM my_account", "SELECT * FROM my_decks" });
                 connection.SubscriptionBuilder().OnApplied(_ =>
                 {
                     QuickMatchAvailable = true;
@@ -161,6 +161,7 @@ public sealed partial class LobbyConnection : IDisposable
         _connection.Reducers.OnJoinRoom += (context, _, _) => RoomReply(context);
         _connection.Reducers.OnLeaveRoom += context => RoomReply(context);
         RegisterQuickMatchReplies();
+        RegisterDeckReplies();
         void BoardResult(string json, string roomCode)
         {
             var packet = JsonSerializer.Deserialize(json, DuelJson.Default.DuelBoardPacket)!;
@@ -369,6 +370,11 @@ public sealed partial class LobbyConnection : IDisposable
         try { send(); }
         catch (Exception) { RoomError = Message = "No se pudo confirmar la solicitud. Pulsa Reconectar para comprobar tu sala."; }
     }
+    public AccountInfo? Account => _connection?.Db.MyAccount.Iter().SingleOrDefault();
+    public void SetDisplayName(string name)
+    {
+        if (Ready && ValidName(name) && name.Trim() != Account?.Name) _connection!.Reducers.SetDisplayName(name.Trim());
+    }
     public void Create(string name)
     {
         if (!Ready || PendingRoomRequest != RoomRequest.None || Room != null || Searching || !ValidName(name)) return;
@@ -469,5 +475,6 @@ public sealed partial class LobbyConnection : IDisposable
         _cachedDuelJson = _cachedHandJson = _cachedOptionsJson = null; _cachedDuel = null;
         if (_connection?.IsActive == true) _connection.Disconnect();
         _connection = null; _preparationSubscription = null;
+        _decks = null; DeckPending = false; DeckRevision++;
     }
 }

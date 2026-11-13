@@ -124,17 +124,101 @@ static class ZahiraFlairTests
             rival.Equipment = CardCatalog.SuperMagnet.Id;
             Create(game, 1, FieldZone.Bonus);
             Check(rival.EquipmentCounters == 1 && game.State.Active.ZahiraHost == null && !game.State.Active.ZahiraAvailable);
-        })
+        }),
+        ("Zahira Flair: dos copias propias cubren cartas distintas y cada una lanza su dado", () =>
+        {
+            var (game, random) = Fixture(copies: 2);
+            Check(game.State.Players[0] is { ZahiraAvailable: true, ZahiraSpares: 1 });
+            Place(game, 0, 1, FieldZone.Relikario);
+            Check(game.State.Players[0] is { ZahiraAvailable: true, ZahiraSpares: 0, ZahiraHost2: null });
+            Place(game, 0, 1, FieldZone.Bonus);
+            var ana = game.State.Players[0];
+            Check(ana is { ZahiraAvailable: false, ZahiraHost.Zone: FieldZone.Relikario, ZahiraHost2.Zone: FieldZone.Bonus });
+            Check(game.EffectsSuppressed(1, FieldZone.Relikario) && game.EffectsSuppressed(1, FieldZone.Bonus));
+            Trade(game, 0);
+            Check(game.State.Phase == Phase.Actions);
+
+            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+            ana = game.State.Players[0];
+            var view = DuelSnapshot.For(game, 1, 1).Players[0];
+            Check(view.Zahira(0) == ana.ZahiraHost && view.Zahira(1) == ana.ZahiraHost2 && view.ZahiraHost2 != null);
+            Check(game.Advance(0).Success && game.State.CurrentPlayer == 1);
+            // First copy deals its damage; the second destroys itself and frees the Bonus.
+            random.EnqueueDie(5); random.EnqueueDie(1);
+            game.State.Phase = Phase.Actions;
+            Check(game.Advance(1).Success && game.State.CurrentPlayer == 0 && game.State.Players[1].Health == 6);
+            Check(ana.ZahiraHost != null && ana.ZahiraHost2 == null);
+            Check(game.EffectsSuppressed(1, FieldZone.Relikario) && !game.EffectsSuppressed(1, FieldZone.Bonus));
+
+            // The freed place takes the next copy only if one remains: both were already created.
+            Trade(game, 0);
+            Check(game.State.Phase == Phase.Actions);
+        }),
+        ("Zahira Flair: cuatro en campo, dos por jugador, y las cubiertas no actúan", () =>
+        {
+            var (game, random) = Fixture(copies: 2);
+            Place(game, 0, 1, FieldZone.Relikario);
+            // Beto's own exchanges replace his Bonus, so Ana's second copy goes on a card that stays put.
+            Place(game, 0, 0, FieldZone.Bonus);
+            game.State.CurrentPlayer = 1;
+            Trade(game, 1);
+            Check(game.ResolveTrapCraft(1, true).Success && game.State.Phase == Phase.ZahiraTarget);
+            Check(game.ZahiraTargets(1).Count(target => target.Zone == FieldZone.Zahira) == 2 &&
+                  game.ZahiraTargets(1).All(target => target.Zone != FieldZone.Zahira || target.Owner == 0));
+            Check(game.ResolveZahiraTarget(1, 0, FieldZone.Zahira, GameEngine.ZahiraIndex(0)).Success);
+            Trade(game, 1);
+            Check(game.ResolveTrapCraft(1, true).Success);
+            // Both rival copies stay eligible, even the one already covered; one's own copies never are.
+            Check(game.ZahiraTargets(1).Count(target => target.Zone == FieldZone.Zahira) == 2);
+            Check(!game.ResolveZahiraTarget(1, 1, FieldZone.Zahira, GameEngine.ZahiraIndex(0)).Success);
+            Check(game.ResolveZahiraTarget(1, 0, FieldZone.Zahira, GameEngine.ZahiraIndex(1)).Success);
+
+            Check(game.State.Players.All(p => p.ZahiraHost != null && p.ZahiraHost2 != null));
+            Check(!game.EffectsSuppressed(1, FieldZone.Relikario) && !game.EffectsSuppressed(0, FieldZone.Bonus));
+            Check(game.EffectsSuppressed(0, FieldZone.Zahira, GameEngine.ZahiraIndex(0)) && game.EffectsSuppressed(0, FieldZone.Zahira, GameEngine.ZahiraIndex(1)));
+
+            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+            // Ana's covered copies do not roll in Beto's final stage.
+            var rolls = game.State.LastDie;
+            game.State.Phase = Phase.Actions;
+            Check(game.Advance(1).Success && game.State.CurrentPlayer == 0 && game.State.LastDie == rolls);
+            // Beto's first copy destroys the Zahira Flair under it and leaves with it; his second destroys itself.
+            random.EnqueueDie(6); random.EnqueueDie(2);
+            game.State.Phase = Phase.Actions;
+            Check(game.Advance(0).Success && game.State.CurrentPlayer == 1);
+            var (ana, beto) = (game.State.Players[0], game.State.Players[1]);
+            Check(ana.ZahiraHost == null && ana.ZahiraHost2 is { Zone: FieldZone.Bonus } && beto.ZahiraHost == null && beto.ZahiraHost2 == null);
+            Check(game.EffectsSuppressed(0, FieldZone.Bonus) && !game.EffectsSuppressed(1, FieldZone.Relikario));
+            Check(game.State.Players.All(p => p.Health == 8 && !p.Memory.Contains(CardCatalog.ZahiraFlair.Id)));
+        }),
     ];
 
-    private static (GameEngine, ScriptedRandom) Fixture()
+    private static void Trade(GameEngine game, int actor)
+    {
+        var p = game.State.Players[actor];
+        var index = p.Hand.Count;
+        p.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Jessica.Id]);
+        p.ActionsLeft = 2;
+        game.State.Phase = Phase.Actions;
+        Check(game.Exchange(actor, index).Success && game.Exchange(actor, index).Success);
+    }
+
+    private static void Place(GameEngine game, int actor, int owner, FieldZone zone, int index = -1)
+    {
+        Trade(game, actor);
+        Check(game.State.Phase == Phase.TrapCraftChoice && game.ResolveTrapCraft(actor, true).Success &&
+              game.ResolveZahiraTarget(actor, owner, zone, index).Success);
+    }
+
+    private static (GameEngine, ScriptedRandom) Fixture(int copies = 0)
     {
         var random = new ScriptedRandom();
         var game = GameEngine.FromOpening(new DuelOpening
         {
             Names = ["Ana", "Beto"], Hands = [[], []],
             Decks = [Enumerable.Repeat(CardCatalog.Attack.Id, 16).ToList(), Enumerable.Repeat(CardCatalog.Attack.Id, 16).ToList()],
-            Bonuses = [CardCatalog.Attack.Id, CardCatalog.Attack.Id], IncludeZahiraFlair = true
+            Bonuses = [CardCatalog.Attack.Id, CardCatalog.Attack.Id], IncludeZahiraFlair = true,
+            Traps = copies == 0 ? null : [Enumerable.Repeat(CardCatalog.ZahiraFlair.Id, copies).ToList(), Enumerable.Repeat(CardCatalog.ZahiraFlair.Id, copies).ToList()]
         }, random);
         game.State.Phase = Phase.Actions;
         game.State.Turn = 2;

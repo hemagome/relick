@@ -69,7 +69,7 @@ internal sealed class PublicDuelObservation : IDisposable
     private readonly DuelMove _move;
     private readonly int _actor, _turn;
     private readonly DuelResolutionView? _beforeResolution;
-    private readonly (int Health, int Pr, int Actions, string? Equipment, int Copies, FieldTarget? ZahiraHost)[] _before;
+    private readonly (int Health, int Pr, int Actions, string? Equipment, int Copies, FieldTarget? ZahiraHost, FieldTarget? ZahiraHost2)[] _before;
     private readonly List<string> _outcomes = [];
     private string _card = "";
     private int _sourceActor;
@@ -79,7 +79,7 @@ internal sealed class PublicDuelObservation : IDisposable
     {
         _game = game; _actor = actor; _move = move; _turn = game.State.Turn;
         _beforeResolution = game.PublicResolution();
-        _before = game.State.Players.Select(p => (p.Health, p.Relikia, p.ActionsLeft, p.Equipment, p.EquipmentStackedCopies, p.ZahiraHost)).ToArray();
+        _before = game.State.Players.Select(p => (p.Health, p.Relikia, p.ActionsLeft, p.Equipment, p.EquipmentStackedCopies, p.ZahiraHost, p.ZahiraHost2)).ToArray();
         var source = PublicSource(game, actor, move);
         _card = source ?? _beforeResolution?.CardId ?? "";
         _sourceActor = source != null ? actor : _beforeResolution?.Actor ?? actor;
@@ -145,7 +145,8 @@ internal sealed class PublicDuelObservation : IDisposable
             if (_draws[i] > 0) _outcomes.Add($"{Player(i)} roba {_draws[i]} carta(s).");
             if (p.Equipment != null && (p.Equipment != old.Equipment || p.EquipmentStackedCopies > old.Copies))
                 _outcomes.Add($"{Player(i)} equipa {Card(p.Equipment)}.");
-            if (_move.Kind == DuelMoveKind.ZahiraTarget && p.ZahiraHost is { } host && host != old.ZahiraHost)
+            if (_move.Kind == DuelMoveKind.ZahiraTarget &&
+                (p.ZahiraHost != old.ZahiraHost ? p.ZahiraHost : p.ZahiraHost2 != old.ZahiraHost2 ? p.ZahiraHost2 : null) is { } host)
                 _outcomes.Add($"Zahira Flair de {Player(i)} cubre {_game.FieldCardName(host)} de {Player(host.Owner)}.");
         }
         if (state.Winner != null) _outcomes.Add(state.Winner == -1 ? "El duelo termina en empate." : $"{Player(state.Winner.Value)} gana el duelo.");

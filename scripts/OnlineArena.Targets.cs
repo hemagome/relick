@@ -62,7 +62,7 @@ public partial class OnlineArena
             FieldZone.Bonus => p.Bonus, FieldZone.Exchange => p.Exchange.ElementAtOrDefault(field.Index),
             FieldZone.Hand => p.Hand.ElementAtOrDefault(field.Index), FieldZone.Skill => p.Skills.ElementAtOrDefault(field.Index),
             FieldZone.Attached => p.Attached.ElementAtOrDefault(field.Index),
-            FieldZone.Zahira when p.ZahiraHost != null => CardCatalog.ZahiraFlair.Id, _ => null
+            FieldZone.Zahira when p.Zahira(GameEngine.ZahiraSlot(field.Index)) != null => CardCatalog.ZahiraFlair.Id, _ => null
         };
     }
 

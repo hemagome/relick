@@ -30,8 +30,19 @@ public sealed class PlayerState
     public bool ZahiraAvailable { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool SuperAttackAvailable { get; internal set; }
+    // Copies beyond the first. Kept apart from the flags above so earlier snapshots still load.
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int ZahiraSpares { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int SuperAttackSpares { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public FieldTarget? ZahiraHost { get; internal set; }
+    // A Trap deck holds up to two copies, so one player can have two on the field at once.
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public FieldTarget? ZahiraHost2 { get; internal set; }
+    public const int ZahiraSlots = 2;
+    public FieldTarget? Zahira(int slot) => slot == 0 ? ZahiraHost : ZahiraHost2;
+    internal void SetZahira(int slot, FieldTarget? host) { if (slot == 0) ZahiraHost = host; else ZahiraHost2 = host; }
     // Consumed at the owner's next turn start, even if Reverse replaces the destruction.
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool EquipmentExpiresAtTurnStart { get; internal set; }
@@ -228,6 +239,9 @@ public sealed class GameState
     public ZahiraPlacement? PendingZahiraPlacement { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ZahiraRolledThisFinal { get; internal set; }
+    // Next Zahira Flair of the waiting player that still has to roll in this final stage.
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int ZahiraFinalSlot { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Phase? TrapCraftResumePhase { get; internal set; }
     public int DecisionPlayer => Phase == Phase.TrapCraftChoice ? TrapCraftQueue![0].Actor : Phase == Phase.ZahiraTarget ? PendingZahiraPlacement!.Actor : Phase == Phase.TotemChoice ? PendingTotemDamage!.Target : Phase == Phase.EffectDamageChoice ? 1 - PendingEffectDamage!.Actor : Phase is Phase.TurnBuffDiscard or Phase.TurnBuffResolving ? PendingTurnBuff!.Actor : Phase == Phase.DestructionResponse ? PendingDestruction!.Target.Owner : Phase == Phase.SniperChoice ? PendingSniper!.Actor : Phase == Phase.MindResetChoice ? PendingMindReset!.Actor : Phase == Phase.ErrorResponse ? ErrorResponder : Phase == Phase.CodeResponse ? 1 - PendingCode!.Actor : Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? PendingDieRoll!.Player : Phase == Phase.DefenseChoice ? 1 - CurrentPlayer

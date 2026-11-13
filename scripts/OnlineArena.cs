@@ -250,17 +250,21 @@ public partial class OnlineArena : Control
             crystals.Present(player.Actions, $"{actionsLabel} · {player.Name}", animateActions, rechargeActions);
             crystals.Visible = !_preparing && s.Phase != Phase.Preparation;
             _portraits[relative].SetHealth(player.Health);
-            var zahiraCaption = player.ZahiraHost is { } host
-                ? $"Zahira Flair sobre {(host.Zone == FieldZone.Relikario ? RelikarioCatalog.Yuno.Name : CardCatalog.Get(host.CardId).Name)} · {s.Players[host.Owner].Name}"
-                : null;
+            var zahiras = new List<(string, Action)>();
+            for (var slot = 0; slot < PlayerState.ZahiraSlots; slot++)
+            {
+                if (player.Zahira(slot) is not { } host) continue;
+                var index = GameEngine.ZahiraIndex(slot);
+                zahiras.Add(($"Zahira Flair sobre {(host.Zone == FieldZone.Relikario ? RelikarioCatalog.Yuno.Name : CardCatalog.Get(host.CardId).Name)} · {s.Players[host.Owner].Name}",
+                    () => SelectField(seat, FieldZone.Zahira, index)));
+            }
             return new ArenaPlayerActions
             {
                 Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory, player.CorruptedCount),
                 Attached = () => SelectFieldPile(seat, FieldZone.Attached),
                 Equipment = () => SelectEquipment(seat),
                 EquipmentCovers = () => SelectFieldPile(seat, FieldZone.EquipmentCover),
-                Zahira = () => SelectField(seat, FieldZone.Zahira, -1),
-                ZahiraCaption = zahiraCaption,
+                Zahiras = zahiras,
                 Skill = slot =>
                 {
                     if (slot >= player.Skills.Length) return;

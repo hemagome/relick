@@ -26,6 +26,8 @@ public sealed class DieEffect
     public int AttackDamageBonus { get; set; }
     public string SkillId { get; set; } = "";
     public bool Rerolled { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int Slot { get; set; }
     public EngineContinuation? Next { get; set; }
 }
 public enum ActivationKind { Code, Equipment, Reroll, Counter, MindReset, TurnBuff, FieldCode }
@@ -125,7 +127,7 @@ public sealed partial class GameEngine
         switch (effect.Purpose)
         {
             case DiePurpose.QuickLoad: ResolveQuickLoadDie(effect.Actor, die); break;
-            case DiePurpose.Zahira: ResolveZahiraDie(effect.Actor, die); break;
+            case DiePurpose.Zahira: ResolveZahiraDie(effect.Actor, die, effect.Slot); break;
             case DiePurpose.FieldCombat: ResolveFieldCombatDie(effect, die); break;
             case DiePurpose.SkillLearning:
                 Log($"{p.Name} resuelve el aprendizaje de Reverse Shuffle: D6 = {die}, roba {(die + 1) / 2} carta(s).");

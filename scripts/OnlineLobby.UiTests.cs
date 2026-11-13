@@ -19,9 +19,17 @@ public partial class OnlineLobby
             {
                 await CheckMatchmakingAnimation(); await Layout(); GD.Print("PVP_MATCHMAKING_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--decks-only"))
+            {
+                await CheckDeckScreens(); await Layout(); GD.Print("PVP_DECKS_ONLY_PASS"); QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--account-only"))
+            {
+                await CheckAccountScreens(); await Layout(); GD.Print("PVP_ACCOUNT_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--lobby-only"))
             {
-                await CheckLobbyPolish(); await CheckMatchmakingAnimation();
+                await CheckAccountScreens(); await CheckDeckScreens(); await CheckLobbyPolish(); await CheckMatchmakingAnimation();
                 await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); QuitWithAudio(); return;
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);

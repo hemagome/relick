@@ -75,7 +75,7 @@ public static partial class Module
     [Reducer]
     public static void CreateRoom(ReducerContext ctx, string name)
     {
-        name = ValidateName(name);
+        name = PlayerName(ctx, name);
         // Retrying after a lost acknowledgement does not create extra rooms or cards.
         if (ctx.Db.Member.Player.Find(ctx.Sender) is not null) return;
         RequireNoQuickSearch(ctx);
@@ -98,7 +98,7 @@ public static partial class Module
     [Reducer]
     public static void JoinRoom(ReducerContext ctx, string code, string name)
     {
-        name = ValidateName(name);
+        name = PlayerName(ctx, name);
         if (code.Length > 32) throw new Exception("Código de sala inválido.");
         code = code.Trim().ToUpperInvariant();
         if (ctx.Db.Member.Player.Find(ctx.Sender) is Member current)
@@ -146,7 +146,10 @@ public static partial class Module
 
     private static void Deal(ReducerContext ctx, Member member)
     {
-        var deck = CardCatalog.TrainingDeck();
+        // The deck is copied into the room, so later edits never change a match already dealt.
+        var (deck, traps) = DeckFor(ctx, member.Player);
+        ctx.Db.Loadout.Player.Delete(member.Player);
+        ctx.Db.Loadout.Insert(new Loadout { Player = member.Player, RoomCode = member.RoomCode, Traps = traps });
         for (var i = 0; i < deck.Count; i++)
             ctx.Db.Card.Insert(new Card
             {

@@ -28,9 +28,9 @@ public sealed partial class GameEngine
         p.Relikario = next;
         var previousHealth = p.Health;
         if (!EffectsSuppressed(actor, FieldZone.Relikario)) p.Health = Math.Min(p.MaxHealth, p.Health + next.EvolutionHealing);
-        for (var owner = 0; owner < State.Players.Length; owner++)
-            if (State.Players[owner].ZahiraHost is { Zone: FieldZone.Relikario } host && host.Owner == actor)
-                State.Players[owner].ZahiraHost = host with { CardId = next.Id };
+        foreach (var (owner, slot, host) in Zahiras().ToList())
+            if (host.Zone == FieldZone.Relikario && host.Owner == actor)
+                State.Players[owner].SetZahira(slot, host with { CardId = next.Id });
         // Evolution does not refresh an ability already used during this turn.
         Log($"{p.Name} evoluciona a {p.Relikario.Name} Lv {p.Level}: paga {next.EvolutionCost} PR, recupera {p.Health - previousHealth} vida(s), hasta el máximo de {p.MaxHealth} de su nivel 1.");
         return CommandResult.Ok();

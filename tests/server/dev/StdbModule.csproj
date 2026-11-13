@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The game module with anonymous access allowed, for the local relick-dev database and automated tests. Never publish it to Maincloud. -->
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework><RuntimeIdentifier>wasi-wasm</RuntimeIdentifier><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><DefineConstants>$(DefineConstants);RELICK_DEV_AUTH</DefineConstants></PropertyGroup>
+  <ItemGroup><PackageReference Include="SpacetimeDB.Runtime" Version="2.15.0" />
+    <Compile Include="../../../server/spacetimedb/*.cs" Link="Module/%(Filename)%(Extension)" />
+    <Compile Include="../../../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

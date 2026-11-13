@@ -208,7 +208,7 @@ public static class DuelOptions
                                 FieldZone.Hand => own ? "Tu mano al azar" : "Mano rival al azar",
                                 FieldZone.Equipment => own ? "Tu equipo" : "Equipo rival",
                                 FieldZone.EquipmentCover => $"{(own ? "Tu" : "Rival")} Tótem de Oro · copia {t.Index + 1}",
-                                FieldZone.Zahira => $"{(own ? "Tu" : "Rival")} Zahira Flair",
+                                FieldZone.Zahira => $"{(own ? "Tu" : "Rival")} Zahira Flair{(GameEngine.ZahiraSlot(t.Index) > 0 ? " · segunda copia" : "")}",
                                 _ => own ? "Tu Bonus" : "Bonus rival"
                             };
                             Add(DuelMoveKind.Destroy, place, t.Index, (int)t.Zone, t.Owner);

@@ -60,19 +60,9 @@ public partial class OnlineLobby : Control
         var profile = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--pvp-profile=")) ?? "default";
         var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(_server + "\n" + _database + "\n" + profile)));
         _tokenPath = ProjectSettings.GlobalizePath("user://pvp-" + key + ".token");
-        _lobby.TokenReceived += token =>
-        {
-            try
-            {
-                // Create with user-only permissions from the start, including on Linux.
-                var options = new System.IO.FileStreamOptions { Mode = System.IO.FileMode.Create, Access = System.IO.FileAccess.Write };
-                if (!OperatingSystem.IsWindows()) options.UnixCreateMode = System.IO.UnixFileMode.UserRead | System.IO.UnixFileMode.UserWrite;
-                using var writer = new System.IO.StreamWriter(new System.IO.FileStream(_tokenPath, options));
-                writer.Write(token);
-            }
-            catch (Exception) { GD.PushWarning("No se pudo guardar la identidad PvP para la próxima sesión."); }
-        };
-        Connect();
+        // An account's credential is short-lived and renewed from its own session file; only the anonymous one is kept as is.
+        _lobby.TokenReceived += token => { if (_auth == null) SavePrivate(_tokenPath, token); };
+        StartSession(config, key);
         if (OS.GetCmdlineUserArgs().Contains("--pvp-preparation-test")) CallDeferred(nameof(PreparationSmokeTest));
         if (OS.GetCmdlineUserArgs().Contains("--pvp-combat-test")) CallDeferred(nameof(CombatSmokeTest));
         if (OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--pvp-input-peer="))) CallDeferred(nameof(InputPeerSmokeTest));
@@ -81,6 +71,7 @@ public partial class OnlineLobby : Control
     private void Connect()
     {
         _localError = "";
+        if (ConnectWithAccount()) return;
         try
         {
             var token = System.IO.File.Exists(_tokenPath) ? System.IO.File.ReadAllText(_tokenPath) : null;
@@ -95,7 +86,9 @@ public partial class OnlineLobby : Control
 
     public override void _Process(double delta)
     {
+        if (!UpdateAccount()) return;
         _lobby.Tick();
+        if (AccountWasDeleted()) return;
         var room = _lobby.Room;
         if (HoldForQuickMatch(room, _lobby.Ready, _lobby.Searching, _lobby.PendingRoomRequest, delta)) return;
         if (_presentedRoomCode.Length > 0 && room == null && _lobby.Ready)
@@ -110,13 +103,15 @@ public partial class OnlineLobby : Control
             _lobby.ClearResult(); _resultExitRequested = false;
             _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
         }
+        // A room recovered while browsing decks takes the player back to it.
+        if (room != null) CloseDecks();
         if (_arena == null && room != null && (room.Dealt || _lobby.Duel != null))
         {
             OpenArena(room!.Code);
         }
         _copyFeedbackSeconds = Math.Max(0, _copyFeedbackSeconds - delta);
         if (_lobby.Ready && _lobby.Searching) _searchSeconds += delta;
-        PresentLobbyState(room, _lobby.Ready, _lobby.Connecting, _lobby.PendingRoomRequest, _lobby.RoomError, _lobby.Message, _lobby.Searching, _lobby.QuickMatchAvailable);
+        PresentLobbyState(room, _lobby.Ready, _lobby.Connecting || _accountStage == AccountStage.Restoring, _lobby.PendingRoomRequest, _lobby.RoomError, _lobby.Message, _lobby.Searching, _lobby.QuickMatchAvailable);
     }
 
     private void OpenArena(string roomCode)
@@ -159,7 +154,7 @@ public partial class OnlineLobby : Control
         }
     }
 
-    public override void _ExitTree() => _lobby.Dispose();
+    public override void _ExitTree() { _authCancel?.Cancel(); _lobby.Dispose(); }
     private static Label Text(string text, int size = 16)
     {
         var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };

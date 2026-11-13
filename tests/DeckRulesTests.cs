@@ -1,0 +1,116 @@
+using Relick.Core;
+static class DeckRulesTests
+{
+    private const string Yuno = "yuno";
+
+    public static (string, Action)[] Cases => new (string, Action)[]
+    {
+        ("Mazo: el de entrenamiento y sus Trampas cumplen las reglas oficiales", () =>
+        {
+            Legal(CardCatalog.TrainingDeck(), CardCatalog.TrainingTraps());
+            Legal(CardCatalog.TrainingDeck(), []);
+        }),
+        ("Mazo: exactamente 42 cartas y exactamente 12 Ataques", () =>
+        {
+            var deck = CardCatalog.TrainingDeck();
+            Broken(deck.Append("senshuni").ToList(), [], "exactamente 42");
+            Broken(deck.Skip(1).ToList(), [], "exactamente 42", "exactamente 12");
+            // Swapping an Attack for a Code keeps 42 cards but leaves 11 Attacks.
+            Broken(Swap(deck, "attack", "senshuni"), [], "exactamente 12");
+            Broken(Swap(deck, "pc-8bits", "attack"), [], "exactamente 12");
+        }),
+        ("Mazo: Triple Ataque Cruzado es un Código y no cuenta como Ataque", () =>
+        {
+            Check(!DeckRules.IsAttack(CardCatalog.TripleAttack) && DeckRules.IsAttack(CardCatalog.Attack));
+            Check(!DeckRules.IsAttack(CardCatalog.SuperAttack) && DeckRules.IsTrap(CardCatalog.SuperAttack));
+            Check(CardCatalog.TrainingDeck().Select(CardCatalog.Get).Count(DeckRules.IsAttack) == 12);
+        }),
+        ("Mazo: mínimo tres habilidades compatibles", () =>
+        {
+            Broken(Swap(CardCatalog.TrainingDeck(), "reverse-shuffle", "senshuni"), [], "al menos 3 habilidades");
+            Check(new[] { CardCatalog.Magnet, CardCatalog.Destiny, CardCatalog.Reverse }.All(skill => skill.Relikario == Yuno && DeckRules.Compatible(skill, Yuno)));
+            Check(!DeckRules.Compatible(CardCatalog.Magnet, "otro") && DeckRules.Compatible(CardCatalog.Senshuni, "otro"));
+        }),
+        ("Mazo: hasta dos copias por nombre; los Ataques están exentos", () =>
+        {
+            var deck = CardCatalog.TrainingDeck();
+            Legal(Swap(deck, "pc-8bits", "senshuni"), []);
+            Broken(Swap(Swap(deck, "pc-8bits", "senshuni"), "sniper-scope", "senshuni"), [], "Máximo 2 copias de Senshuni");
+            Legal(Swap(deck, "pc-8bits", "magnet-shuffle"), []);
+        }),
+        ("Mazo: los Códigos Trampa van aparte, hasta tres y dos copias de cada uno", () =>
+        {
+            var deck = CardCatalog.TrainingDeck();
+            Broken(Swap(deck, "pc-8bits", "super-magnet"), [], "propio mazo");
+            Broken(deck, ["senshuni"], "solo admite Códigos Trampa");
+            Legal(deck, ["super-magnet", "super-magnet", "zahira-flair"]);
+            Broken(deck, ["super-magnet", "super-magnet", "super-magnet"], "Máximo 2 copias de Súper Imán");
+            Broken(deck, ["super-magnet", "super-magnet", "zahira-flair", "super-attack"], "hasta 3 cartas");
+            Check(CardCatalog.All.Values.Where(DeckRules.IsTrap).Select(card => card.Id).Order()
+                .SequenceEqual(new[] { "super-attack", "super-magnet", "zahira-flair" }));
+        }),
+        ("Mazo: el duelo arranca con el mazo de Trampas de cada jugador", () =>
+        {
+            GameEngine Open(List<string> mine)
+            {
+                var game = GameEngine.FromOpening(new DuelOpening
+                {
+                    Names = ["Ana", "Beto"], Hands = [[], []], Decks = [CardCatalog.TrainingDeck(), CardCatalog.TrainingDeck()],
+                    Bonuses = [CardCatalog.Attack.Id, CardCatalog.Attack.Id], Traps = [mine, ["super-magnet"]],
+                    // Ignored once a Trap deck is supplied.
+                    IncludeSuperAttack = true, IncludeZahiraFlair = true, SuperMagnetCopies = [2, 2]
+                }, new SeededRandom(3));
+                game.State.Turn = 2; game.State.Phase = Phase.Actions;
+                return game;
+            }
+            void TradeAttacks(GameEngine game)
+            {
+                var player = game.State.Active; var index = player.Hand.Count;
+                player.Hand.AddRange(["attack", "attack"]); player.ActionsLeft = 2;
+                Check(game.Exchange(0, index).Success && game.Exchange(0, index).Success);
+            }
+
+            var two = Open(["super-attack", "super-attack"]);
+            Check(two.State.Players[0] is { SuperAttackAvailable: true, SuperAttackSpares: 1, ZahiraAvailable: false, SuperMagnetCopies: 0 });
+            Check(two.State.Players[1] is { SuperAttackAvailable: false, SuperMagnetCopies: 1 });
+            TradeAttacks(two); Check(two.ResolveTrapCraft(0, true).Success);
+            two = GameEngine.FromSnapshot(two.SaveSnapshot(), new SeededRandom(3));
+            Check(two.State.Players[0] is { SuperAttackAvailable: true, SuperAttackSpares: 0 });
+            TradeAttacks(two); Check(two.State.Phase == Phase.TrapCraftChoice && two.ResolveTrapCraft(0, true).Success);
+            Check(!two.State.Players[0].SuperAttackAvailable && two.State.Players[0].Hand.Count(id => id == "super-attack") == 2);
+            TradeAttacks(two); Check(two.State.Phase == Phase.Actions);
+
+            var none = Open([]);
+            TradeAttacks(none); Check(none.State.Phase == Phase.Actions && !none.State.Players[0].ZahiraAvailable);
+        }),
+        ("Mazo: cartas y Relikarios desconocidos se rechazan sin lanzar", () =>
+        {
+            Broken(Swap(CardCatalog.TrainingDeck(), "pc-8bits", "no-existe"), [], "desconocidas: no-existe");
+            Check(DeckRules.Validate("yuno-lv2", CardCatalog.TrainingDeck(), []).Any(error => error.Contains("Relikario del mazo no existe")));
+            Check(DeckRules.Validate(Yuno, [], []).Count > 0);
+        })
+    };
+
+    private static List<string> Swap(List<string> deck, string remove, string add)
+    {
+        var copy = deck.ToList();
+        Check(copy.Remove(remove));
+        copy.Add(add);
+        return copy;
+    }
+
+    private static void Legal(List<string> deck, List<string> traps)
+    {
+        var errors = DeckRules.Validate(Yuno, deck, traps);
+        if (errors.Count > 0) throw new Exception("Se esperaba un mazo legal: " + string.Join(" | ", errors));
+    }
+
+    private static void Broken(List<string> deck, List<string> traps, params string[] expected)
+    {
+        var errors = DeckRules.Validate(Yuno, deck, traps);
+        if (errors.Count != expected.Length || expected.Any(text => !errors.Any(error => error.Contains(text))))
+            throw new Exception($"Se esperaba [{string.Join(" | ", expected)}] y se obtuvo [{string.Join(" | ", errors)}]");
+    }
+
+    private static void Check(bool condition) { if (!condition) throw new Exception("Comprobación fallida"); }
+}

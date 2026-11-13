@@ -22,6 +22,8 @@ public partial class OnlineLobby
     private static readonly Color LobbyMint = new("5ed6b3");
     private static readonly Color LobbyBlue = new("9ebdff");
     private Button _quickMatch = null!;
+    private Button _decks = null!;
+    private DeckScreen? _deckScreen;
     private Label _quickMatchStatus = null!;
     private bool _presentedSearching;
     private double _searchSeconds;
@@ -50,6 +52,13 @@ public partial class OnlineLobby
             TooltipText = "Sonido", AccessibilityName = "Sonido", SizeFlagsVertical = SizeFlags.ShrinkCenter };
         sound.Pressed += () => GetNode<AudioPreferences>("/root/AudioPreferences").OpenControls();
         navigation.AddChild(sound);
+        _account = new MenuButton { Name = "AccountMenu", Text = "Cuenta", Flat = false, Visible = false,
+            CustomMinimumSize = new(110, 48), SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        navigation.AddChild(_account);
+        var accountMenu = _account.GetPopup();
+        accountMenu.AddItem("Cerrar sesión", 0); accountMenu.AddItem("Eliminar cuenta…", 1);
+        accountMenu.IdPressed += id => { if (id == 0) SignOut(); else ConfirmDeleteAccount(); };
+        ArenaViewport.TouchMenu(accountMenu);
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
         _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);
@@ -63,6 +72,11 @@ public partial class OnlineLobby
         _name = new LineEdit { Name = "PlayerName", PlaceholderText = "¿Cómo te llamas?", Text = "Jugador", MaxLength = 24,
             CustomMinimumSize = new(0, 48), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         identityRow.AddChild(_name);
+        _decks = AddButton(identityRow, "Mazo: Entrenamiento", OpenDecks);
+        _decks.Name = "OpenDecks"; _decks.ClipText = true; _decks.CustomMinimumSize = new(240, 48);
+        _decks.TooltipText = "Elige el mazo con el que juegas o arma uno nuevo.";
+        _name.TextSubmitted += _ => { SaveAccountName(); _name.ReleaseFocus(); };
+        _name.FocusExited += SaveAccountName;
 
         var cards = new HBoxContainer { Name = "RoomEntryCards" }; cards.AddThemeConstantOverride("separation", 18);
         column.AddChild(cards); _entryCards = cards;
@@ -86,7 +100,7 @@ public partial class OnlineLobby
         _code.AddThemeFontSizeOverride("font_size", 20); join.AddChild(_code);
         join.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
         var privateActions = new HBoxContainer(); privateActions.AddThemeConstantOverride("separation", 10); join.AddChild(privateActions);
-        _create = AddButton(privateActions, "Crear sala", () => { _lobbyNotice = _localError = ""; _lobby.Create(_name.Text); });
+        _create = AddButton(privateActions, "Crear sala", () => { _lobbyNotice = _localError = ""; SaveAccountName(); _lobby.Create(_name.Text); });
         _create.CustomMinimumSize = new(0, 48); _create.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _join = AddButton(privateActions, "Unirse", JoinRoom);
         _join.CustomMinimumSize = new(0, 48); _join.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -112,6 +126,7 @@ public partial class OnlineLobby
         _status = Description("Conectando…"); _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _status.SizeFlagsVertical = SizeFlags.ShrinkCenter; connection.AddChild(_status);
         BuildConnectionNotice();
+        BuildLoginScreen();
         Resized += AdjustLobbyLayout; AdjustLobbyLayout();
     }
 
@@ -121,12 +136,27 @@ public partial class OnlineLobby
         _roomPanel.Visible = inRoom;
     }
 
-    private void JoinRoom() { _lobbyNotice = _localError = ""; _lobby.Join(_code.Text, _name.Text); }
+    private void OpenDecks()
+    {
+        if (_deckScreen != null || _arena != null) return;
+        _deckScreen = new DeckScreen { Connection = _lobby, Guest = _lobby.Account?.Guest == true };
+        _deckScreen.Closed += CloseDecks;
+        _content.Visible = false; AddChild(_deckScreen);
+    }
+
+    private void CloseDecks()
+    {
+        if (_deckScreen == null) return;
+        RemoveChild(_deckScreen); _deckScreen.QueueFree(); _deckScreen = null;
+        _content.Visible = _arena == null && !_loginScreen.Visible;
+    }
+
+    private void JoinRoom() { _lobbyNotice = _localError = ""; SaveAccountName(); _lobby.Join(_code.Text, _name.Text); }
 
     private void QuickMatch()
     {
         _lobbyNotice = _localError = "";
-        if (_lobby.Searching) _lobby.CancelQuickMatch(); else _lobby.FindQuickMatch(_name.Text);
+        if (_lobby.Searching) _lobby.CancelQuickMatch(); else { SaveAccountName(); _lobby.FindQuickMatch(_name.Text); }
         if (_lobby.PendingRoomRequest == RoomRequest.FindQuickMatch) _quickMatchRequested = true;
     }
 
@@ -172,6 +202,9 @@ public partial class OnlineLobby
         _create.Text = pending == RoomRequest.Create ? "Creando…" : "Crear sala";
         _join.Text = pending == RoomRequest.Join ? "Entrando…" : "Unirse";
         _name.Editable = _code.Editable = room == null && !busy && !searching;
+        PresentAccountName(_name.Editable);
+        _decks.Disabled = !ready || busy || searching || room != null;
+        _decks.Text = "Mazo: " + (_lobby.Decks.FirstOrDefault(deck => deck.Active)?.Name ?? "Entrenamiento");
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;
         _copy.Text = _copiedCode == roomCode && _copyFeedbackSeconds > 0 ? "Copiado ✓" : "Copiar código";
