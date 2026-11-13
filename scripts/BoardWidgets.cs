@@ -42,9 +42,10 @@ public static class BoardArt
         return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
     }
 
-    internal static Rect2 FitArtwork(Texture2D artwork, Rect2 area)
+    internal static Rect2 FitArtwork(Texture2D artwork, Rect2 area) => FitArtwork(artwork.GetSize(), area);
+
+    internal static Rect2 FitArtwork(Vector2 size, Rect2 area)
     {
-        var size = artwork.GetSize();
         var extent = size * Math.Min(area.Size.X / size.X, area.Size.Y / size.Y);
         return new Rect2(area.GetCenter() - extent / 2, extent);
     }
@@ -358,6 +359,13 @@ public partial class LifeMeter : Control
     public float DisplayedRatio { get; private set; }
     public bool IsAnimating => _elapsed < _duration;
     public Color FillColor => ColorForRatio(DisplayedRatio);
+    /// <summary>Board heroes stack the count over the bar to fit beside the portrait.</summary>
+    public bool Stacked
+    {
+        get => _stacked;
+        set { _stacked = value; CustomMinimumSize = value ? new(104, 56) : new(190, 44); QueueRedraw(); }
+    }
+    private bool _stacked;
     private bool _initialized;
     private float _fromRatio;
     private float _targetRatio;
@@ -385,7 +393,6 @@ public partial class LifeMeter : Control
 
     public override void _Ready()
     {
-        CustomMinimumSize = new(190, 44);
         MouseFilter = MouseFilterEnum.Pass;
         Resized += QueueRedraw;
     }
@@ -415,13 +422,14 @@ public partial class LifeMeter : Control
         var strong = RelickVisuals.Strong;
         float Width(string text, int size) => ThemeDB.FallbackFont.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
         float StrongWidth(string text, int size) => strong.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
-        while (fontSize > 12 && StrongWidth(value, fontSize) + Width(max, Math.Max(10, fontSize / 2)) + 6 > Size.X * 0.43f - 36) fontSize--;
+        var room = Stacked ? Size.X - 40 : Size.X * 0.43f - 36;
+        while (fontSize > 12 && StrongWidth(value, fontSize) + Width(max, Math.Max(10, fontSize / 2)) + 6 > room) fontSize--;
         DrawString(strong, new(36, 34), value, HorizontalAlignment.Left, -1, fontSize, BoardArt.Ink);
         var maxStart = 36 + StrongWidth(value, fontSize) + 6;
         BoardArt.Text(this, max, new(maxStart, 33), Math.Max(10, fontSize / 2), BoardArt.Muted);
-        var start = Math.Max(112, maxStart + Width(max, Math.Max(10, fontSize / 2)) + 14);
-        BoardArt.Text(this, Health == 0 ? "GOLPE FINAL" : "VIDAS", new(start, 15), 9, color);
-        var track = new Rect2(start, 22, Math.Max(1, Size.X - start), 16);
+        var start = Stacked ? 0 : Math.Max(112, maxStart + Width(max, Math.Max(10, fontSize / 2)) + 14);
+        if (!Stacked) BoardArt.Text(this, Health == 0 ? "GOLPE FINAL" : "VIDAS", new(start, 15), 9, color);
+        var track = Stacked ? new Rect2(0, 40, Math.Max(1, Size.X), 16) : new Rect2(start, 22, Math.Max(1, Size.X - start), 16);
         BoardArt.Plate(this, track, new Color("060911"), new Color("3d4a6b"), 8);
         var inner = new Rect2(track.Position + new Vector2(3, 3), new Vector2(Math.Max(0, track.Size.X - 6), 10));
         // The lost stretch lingers in white while the bar drains: damage reads at a glance.
@@ -488,12 +496,11 @@ public partial class SkillTile : Button
         if (Skill == null || AwaitingLesson)
         {
             BoardArt.Socket(this, bounds, Accent, AwaitingLesson ? 1.6f : 1);
-            BoardArt.Icon(this, GameIcon.Bolt, size / 2 - new Vector2(0, 6), 26, BoardArt.Tint(AwaitingLesson ? Accent : BoardArt.Muted, AwaitingLesson ? 0.55f : 0.22f), PresentationScale);
+            // The cost is the only thing an empty space has to say: once, large and centred.
             var cost = $"{GameEngine.SkillSlotCosts[Slot]} PR";
-            var chip = new Rect2(8, size.Y - 28, ThemeDB.FallbackFont.GetStringSize(cost, fontSize: 12).X + 30, 20);
-            BoardArt.Plate(this, chip, new Color(0, 0, 0, 0.35f), BoardArt.Tint(BoardArt.Gold, 0.35f), 4);
-            BoardArt.Icon(this, GameIcon.Gem, new(chip.Position.X + 11, chip.GetCenter().Y), 10, BoardArt.Tint(BoardArt.Gold, 0.75f), PresentationScale);
-            BoardArt.Text(this, cost, new(chip.Position.X + 21, size.Y - 13), 12, BoardArt.Tint(BoardArt.Gold, 0.9f));
+            const int costSize = 30;
+            var baseline = size.Y / 2 + (RelickVisuals.Display.GetAscent(costSize) - RelickVisuals.Display.GetDescent(costSize)) / 2;
+            BoardArt.Title(this, cost, new(size.X / 2, baseline), costSize, BoardArt.Tint(AwaitingLesson ? Accent : BoardArt.Gold, AwaitingLesson ? 0.9f : 0.62f), centered: true);
         }
         else if (_skillArt != null)
         {
@@ -551,25 +558,44 @@ public partial class ExchangeTrack : VBoxContainer
     public bool Mirrored { get; init; }
     public event Action? BonusInspected;
     public event Action<int>? ExchangeInspected;
-    public override void _Ready()
+    /// <summary>The desktop board places the zones itself; the track only owns and names them.</summary>
+    public bool Detached { get; init; }
+    private bool _built;
+
+    public override void _Ready() => Build();
+
+    /// <summary>Creates the zones. A detached track hands them to the board instead of laying them out.</summary>
+    public void Build()
     {
-        CustomMinimumSize = new(TrackWidth > 0 ? TrackWidth : Compact ? 252 : 280, 0);
-        AddThemeConstantOverride("separation", 4);
-        var label = new Label { Text = $"{OwnerCaption}  ·  {Filled}/2 EN CANJE", MouseFilter = MouseFilterEnum.Ignore,
-            HorizontalAlignment = Mirrored ? HorizontalAlignment.Right : HorizontalAlignment.Left };
-        label.AddThemeFontSizeOverride("font_size", 9);
-        label.AddThemeColorOverride("font_color", Accent);
-        AddChild(label);
-        var row = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        row.AddThemeConstantOverride("separation", 6);
-        AddChild(row);
+        if (_built) return;
+        _built = true;
+        Node row;
+        if (Detached)
+        {
+            MouseFilter = MouseFilterEnum.Ignore;
+            row = new Node();
+        }
+        else
+        {
+            CustomMinimumSize = new(TrackWidth > 0 ? TrackWidth : Compact ? 252 : 280, 0);
+            AddThemeConstantOverride("separation", 4);
+            var label = new Label { Text = $"{OwnerCaption}  ·  {Filled}/2 EN CANJE", MouseFilter = MouseFilterEnum.Ignore,
+                HorizontalAlignment = Mirrored ? HorizontalAlignment.Right : HorizontalAlignment.Left };
+            label.AddThemeFontSizeOverride("font_size", 9);
+            label.AddThemeColorOverride("font_color", Accent);
+            AddChild(label);
+            var box = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+            box.AddThemeConstantOverride("separation", 6);
+            AddChild(box);
+            row = box;
+        }
         ExchangeButtons = new ZoneCardButton[2];
         for (var slot = 0; slot < 2; slot++)
         {
             var index = slot;
             var button = new ZoneCardButton
             {
-                Name = $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent, Compact = Compact,
+                Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent, Compact = Compact,
                 Layout = ZoneCardLayout.Landscape, EffectUsed = ExchangeEffectsUsed.Contains(slot), SizeFlagsStretchRatio = 1.25f,
                 CustomMinimumSize = new(0, TrackWidth > 0 ? 86 : 0),
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null
@@ -580,12 +606,15 @@ public partial class ExchangeTrack : VBoxContainer
         }
         BonusButton = new ZoneCardButton
         {
-            Name = "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard, Compact = Compact,
+            Name = Detached ? $"{Name}BonusCard" : "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard, Compact = Compact,
             Layout = ZoneCardLayout.Portrait, EffectUsed = BonusEffectUsed, Accent = BoardArt.Gold
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
         row.AddChild(BonusButton);
         if (Mirrored) row.MoveChild(BonusButton, 0);
+        if (!Detached) return;
+        foreach (var zone in row.GetChildren()) row.RemoveChild(zone);
+        row.Free();
     }
 }
 
@@ -685,7 +714,7 @@ public partial class ZoneCardButton : Button
             BoardArt.CenterText(this, caption, new(Size.X / 2, 15), 9, BoardArt.Tint(AwaitingEquipment ? Accent : BoardArt.Muted, AwaitingEquipment ? 1 : 0.8f));
             if (Size.Y > 60)
                 BoardArt.Icon(this, Caption.StartsWith("BONUS") ? GameIcon.Gift : Caption.StartsWith("CANJE") ? GameIcon.Exchange :
-                    Caption.StartsWith("ORO") ? GameIcon.Gem : GameIcon.Shield, Size / 2 + new Vector2(0, 5), 20, BoardArt.Tint(Accent, 0.16f));
+                    Caption.StartsWith("ORO") ? GameIcon.Gem : Caption.StartsWith("ÁREA") ? GameIcon.Flag : GameIcon.Shield, Size / 2 + new Vector2(0, 5), 20, BoardArt.Tint(Accent, 0.16f));
         }
         else if (Artwork is { } artwork)
         {
@@ -714,12 +743,15 @@ public partial class AttachmentStack : Button
     public IReadOnlyList<string> Cards { get; init; } = [];
     /// <summary>Board rows widen the slot so the fanned copies keep the row's full height.</summary>
     public float SlotWidth { get; init; }
+    /// <summary>On the desktop board the top card fills the zone; the count tells how many lie under it.</summary>
+    public bool Board { get; init; }
     private int Amount => Cards.Count;
     private Texture2D[] _previews = [];
     internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(Vector2.Zero, Size) : PreviewRect(_previews.Length - 1);
 
     private Rect2 PreviewRect(int index)
     {
+        if (Board) return BoardArt.FitArtwork(_previews[index], new Rect2(4, 4, Size.X - 8, Size.Y - 8));
         const float offset = 14;
         var spread = (_previews.Length - 1) * offset;
         var area = new Rect2(4 + index * offset, 4, Size.X - 8 - spread, Size.Y - 8);
@@ -750,7 +782,7 @@ public partial class AttachmentStack : Button
         }
         else if (_previews.Length == 0)
             BoardArt.Icon(this, GameIcon.Cards, Size / 2, 32, BoardArt.Muted);
-        for (var i = 0; i < _previews.Length; i++)
+        for (var i = Board ? Math.Max(0, _previews.Length - 1) : 0; i < _previews.Length; i++)
         {
             var rect = PreviewRect(i);
             RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
@@ -772,7 +804,18 @@ public partial class HandCard : Button
     internal float Lift { get; init; } = 9;
     public float PresentationScale { get; set; } = 1;
     private Vector2 DrawSize => Size / PresentationScale;
-    public bool Chosen { get; set; }
+    public bool Chosen
+    {
+        get => _chosen;
+        set { if (_chosen == value) return; _chosen = value; if (IsInsideTree() && Lifts) { ZIndex = RestingLayer; SetProcess(true); } }
+    }
+    private bool _chosen;
+    // The lowered desktop hand hides the effect box: a selected card stays up like a hovered one.
+    private bool Lifts => InFan && Lift > 9;
+    private int RestingLayer => IsHovered() ? 2 : HasFocus() || Lifts && _chosen ? 1 : 0;
+    private float Zoom => Lifts && _artwork != null ? 1 + 0.08f * _hover : 1;
+    /// <summary>How far above its resting place the card is drawn, in its own units.</summary>
+    internal float DrawnLift => (_hover * (InFan ? Lift : 5) + 175 * (Zoom - 1)) * PresentationScale;
     public bool Mulligan { get; set; }
     public CardOwner? OriginalOwner { get; set; }
     public int? ViewerSeat { get; set; }
@@ -798,6 +841,7 @@ public partial class HandCard : Button
             : $"{Card.Name}\n{Card.Text}";
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         SetProcess(false);
+        if (Lifts && _chosen) { _hover = 1; ZIndex = 1; }
         FocusEntered += UpdatePreview; FocusExited += UpdatePreview;
         MouseEntered += UpdatePreview; MouseExited += UpdatePreview;
     }
@@ -805,14 +849,14 @@ public partial class HandCard : Button
     private void UpdatePreview()
     {
         // Change the draw order without moving the hit area under the pointer.
-        if (InFan) ZIndex = IsHovered() ? 2 : HasFocus() ? 1 : 0;
+        if (InFan) ZIndex = RestingLayer;
         SetProcess(true);
         QueueRedraw();
     }
 
     public override void _Process(double delta)
     {
-        var target = IsHovered() || InFan && HasFocus() ? 1f : 0f;
+        var target = IsHovered() || InFan && HasFocus() || Lifts && _chosen ? 1f : 0f;
         if (Math.Abs(_hover - target) < 0.001f) { _hover = target; SetProcess(false); return; }
         _hover = Mathf.Lerp(_hover, target, Math.Min(1, (float)delta * 14));
         QueueRedraw();
@@ -824,7 +868,7 @@ public partial class HandCard : Button
         var y = 7 - _hover * (InFan ? Lift : 5);
         var r = new Rect2(1, y, DrawSize.X - 2, 175);
         // A raised card grows from its lower edge, so neighbours keep their place in the fan.
-        var zoom = InFan && Lift > 9 && _artwork != null ? 1 + 0.08f * _hover : 1;
+        var zoom = Zoom;
         var scale = PresentationScale * zoom;
         var origin = new Vector2(DrawSize.X / 2, r.End.Y) * PresentationScale * (1 - zoom);
         DrawSetTransform(origin, 0, Vector2.One * scale);

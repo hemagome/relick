@@ -43,7 +43,8 @@ public sealed partial class GameEngine
             frames[id].Parent = Register(frame.Parent);
             return id;
         }
-        var snapshot = new EngineSnapshot { State = State, PendingDie = _pendingDieEffect, ErrorResume = _errorResumePhase,
+        // Version 1 duels keep the original cost and decisions so cached option indices stay valid.
+        var snapshot = new EngineSnapshot { FormatVersion = LegacyBlueEgg ? 1 : 2, State = State, PendingDie = _pendingDieEffect, ErrorResume = _errorResumePhase,
             DieCaption = CurrentDieCaption, PublicHistory = PublicHistory, EndReason = PublicEndReason, Active = Register(_activeActivation), Chain = _activationChain.Select(Register).ToArray(), Frames = frames };
         // Online snapshots never retain an ever-growing log. The private audit has its own retention.
         var log = State.Log;
@@ -55,7 +56,7 @@ public sealed partial class GameEngine
     public static GameEngine FromSnapshot(string json, IGameRandom random)
     {
         var saved = JsonSerializer.Deserialize(json, EngineJson.Default.EngineSnapshot) ?? throw new InvalidOperationException("Estado de partida vacío.");
-        if (saved.FormatVersion != 1 || saved.State.Players.Length != 2) throw new InvalidOperationException("Formato de estado no compatible.");
+        if (saved.FormatVersion is not (1 or 2) || saved.State.Players.Length != 2) throw new InvalidOperationException("Formato de estado no compatible.");
         if (saved.State.PendingTrapCrafts is { } oldCrafts)
         {
             saved.State.TrapCraftQueue ??= oldCrafts.Select(actor => new TrapCraft(actor, CardCatalog.SuperMagnet.Id)).ToList();
@@ -71,7 +72,7 @@ public sealed partial class GameEngine
         EngineActivation? Frame(int index) => index == -1 ? null : index >= 0 && index < saved.Frames.Count ? saved.Frames[index].Frame :
             throw new InvalidOperationException("Activación persistida inválida.");
         for (var i = 0; i < saved.Frames.Count; i++) saved.Frames[i].Frame.Parent = Frame(saved.Frames[i].Parent);
-        var game = new GameEngine(saved.State, random) { _pendingDieEffect = saved.PendingDie, _errorResumePhase = saved.ErrorResume,
+        var game = new GameEngine(saved.State, random) { LegacyBlueEgg = saved.FormatVersion == 1, _pendingDieEffect = saved.PendingDie, _errorResumePhase = saved.ErrorResume,
             _activeActivation = Frame(saved.Active), CurrentDieCaption = saved.DieCaption, PublicHistory = saved.PublicHistory, PublicEndReason = saved.EndReason };
         game._activationChain.AddRange(saved.Chain.Select(i => Frame(i) ?? throw new InvalidOperationException("Cadena persistida inválida.")));
         return game;

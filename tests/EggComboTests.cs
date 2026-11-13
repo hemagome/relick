@@ -18,7 +18,8 @@ static class EggComboTests
                 var before = Snapshot(g);
                 Check(!g.ResolveDestruction(0, owner, FieldZone.Exchange, 99).Success && Snapshot(g) == before);
                 Check(g.ResolveDestruction(0, owner, zone, 0).Success && target.Memory.Contains("senshuni") && CardCount(g) == total);
-                Check(p.Relikia == 0 && p.ActionsLeft == 1);
+                Check(p.Relikia == 200 && p.ActionsLeft == 1 && g.State.Phase == Phase.BlueEggDrawChoice);
+                Check(g.ResolveBlueEggDraw(0, false).Success && p.Relikia == 200 && p.Hand.Count == 0 && g.State.Phase == Phase.Actions);
                 if (zone == FieldZone.Bonus) Check(target.Bonus == "attack" && target.Deck.Count == deck - 1 && placements == 1);
                 else Check(target.Exchange.Count == 0 && target.Deck.Count == deck && placements == 0);
             }
@@ -34,30 +35,94 @@ static class EggComboTests
         ("Huevo: destruir en canje conserva la otra carta y permite completar un nuevo canje", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active;
-            g.State.Phase = Phase.Actions; p.Hand.Clear(); p.Hand.AddRange(new[] { "blue-egg", "attack" }); p.Relikia = 200;
+            g.State.Phase = Phase.Actions; p.Hand.Clear(); p.Hand.AddRange(new[] { "blue-egg", "attack" });
             p.Bonus = "senshuni"; p.Exchange.Add("attack");
             Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 0, FieldZone.Exchange, 0).Success);
             Check(g.Exchange(0, 0).Success && p.Exchange.Single() == "attack" && p.Bonus == "senshuni");
         }),
-        ("Huevo: coste 200 PR, objetivo no-habilidad, destrucción a memoria y rechazos atómicos", () =>
+        ("Huevo: se activa con 0 PR, destruye una no-habilidad y rechaza objetivos inválidos", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Clear(); p.Hand.Add("blue-egg"); g.State.Phase = Phase.Actions;
-            p.Relikia = 200; var before = Snapshot(g); Check(!g.PlayCode(0, 0).Success && before == Snapshot(g));
-            g.State.Players[1].Equipment = "lucky-pendant"; p.Relikia = 199; before = Snapshot(g); Check(!g.PlayCode(0, 0).Success && before == Snapshot(g));
-            p.Relikia = 200; Check(g.PlayCode(0, 0).Success && p.Relikia == 0 && g.State.ActionsLeft == 1 && g.State.Phase == Phase.DestroyChoice);
+            var before = Snapshot(g); Check(!g.PlayCode(0, 0).Success && before == Snapshot(g));
+            g.State.Players[1].Equipment = "lucky-pendant";
+            Check(g.PlayCode(0, 0).Success && p.Relikia == 0 && g.State.ActionsLeft == 1 && g.State.Phase == Phase.DestroyChoice);
             before = Snapshot(g); Check(!g.ResolveDestruction(1, 1, true).Success && !g.ResolveDestruction(0, 2, true).Success && !g.Advance(0).Success && before == Snapshot(g));
             Check(g.ResolveDestruction(0, 1, true).Success && g.State.Players[1].Equipment == null && g.State.Players[1].Memory.Single() == "lucky-pendant");
-            g.State.ActionsLeft = 2; p.Hand.Add("blue-egg"); p.Relikia = 200; p.AttachedCards.Add("senshuni"); p.AttachedCards.Add("magnet-shuffle");
+            Check(g.State.Phase == Phase.Actions && !g.ResolveBlueEggDraw(0, true).Success);
+            g.State.ActionsLeft = 2; p.Hand.Add("blue-egg"); p.Relikia = 199; p.AttachedCards.Add("senshuni"); p.AttachedCards.Add("magnet-shuffle");
             Check(g.DestructionTargets().Count() == 1 && g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 0, false, 0).Success && p.Memory.Contains("senshuni") && p.AttachedCards.Single() == "magnet-shuffle");
+            Check(g.State.Phase == Phase.Actions && p.Relikia == 199 && p.Hand.Count == 0);
         }),
-        ("Huevo: Caja lo cancela devolviendo costes; Relikia exige 600 PR", () =>
+        ("Huevo: Caja cancela el efecto; Relikia cuesta 400 PR antes del robo opcional", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Clear(); p.Hand.Add("blue-egg"); p.Relikia = 200; g.State.Phase = Phase.Actions;
             g.State.Players[1].Equipment = "cardboard-box";
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.CodeResponse && g.ResolveCodeResponse(1, true).Success && p.Relikia == 200 && g.State.DestroyActor == null);
-            g.State.ActionsLeft = 2; p.Memory.Clear(); p.Memory.Add("blue-egg"); p.Equipment = "lucky-pendant"; p.Relikia = 599;
+            Check(g.State.Phase == Phase.Actions && p.ActionsLeft == 2 && p.Hand.Count == 0);
+            p.Memory.Clear(); p.Memory.Add("blue-egg"); p.Equipment = "lucky-pendant"; p.Relikia = 399;
             var before = Snapshot(g); Check(!g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && before == Snapshot(g));
-            p.Relikia = 600; Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && p.Relikia == 0 && p.CorruptedMemory.Single() == "blue-egg" && g.ResolveDestruction(0, 0, true).Success);
+            p.Relikia = 400; Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && p.Relikia == 0 && p.CorruptedMemory.Single() == "blue-egg" && g.ResolveDestruction(0, 0, true).Success);
+            Check(g.State.Phase == Phase.Actions && p.Hand.Count == 0);
+        }),
+        ("Huevo: tras restaurar la elección, solo el activador puede pagar y roba una sola vez", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active;
+            g.State.Phase = Phase.Actions; p.Hand[0] = CardCatalog.BlueEgg.Id; p.Relikia = 200;
+            g.State.Players[1].Equipment = CardCatalog.Pendant.Id;
+            Check(g.PlayCode(0, 0).Success && p.Relikia == 200);
+            Check(g.ResolveDestruction(0, 1, true).Success && p.Relikia == 200 && p.Hand.Count == 0);
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+            var choices = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.BlueEggDraw).ToArray();
+            Check(choices.Length == 2 && !DuelOptions.For(g, 1).Any(o => o.Move.Kind == DuelMoveKind.BlueEggDraw));
+            var draw = choices.Single(o => o.Move.Flag).Move;
+            var before = g.SaveSnapshot();
+            Check(!draw.Apply(g, 1).Success && !g.Advance(0).Success && g.SaveSnapshot() == before);
+            var deckCount = p.Deck.Count;
+            Check(draw.Apply(g, 0).Success && p.Relikia == 0 && p.Deck.Count == deckCount - 1 &&
+                p.Hand.Single() == CardCatalog.Attack.Id && p.ActionsLeft == 1 && g.State.Phase == Phase.Actions);
+            Check(!draw.Apply(g, 0).Success);
+        }),
+        ("Huevo: repone el Bonus y espera el reciclaje antes de ofrecer el robo", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active; var rival = g.State.Players[1];
+            g.State.Phase = Phase.Actions; p.Hand[0] = CardCatalog.BlueEgg.Id; p.Relikia = 200;
+            rival.Bonus = CardCatalog.Senshuni.Id;
+            rival.Deck.Clear(); rival.Deck.Add(CardCatalog.Attack.Id); rng.EnqueueDie(1);
+            Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 1, FieldZone.Bonus).Success);
+            Check(g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1 && rival.Bonus == CardCatalog.Attack.Id);
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+            Check(g.ResolveRecycling(1, [0]).Success && g.State.Phase == Phase.BlueEggDrawChoice);
+            Check(g.ResolveBlueEggDraw(0, true).Success && p.Relikia == 0 && p.Hand.Count == 1 && g.State.Phase == Phase.Actions);
+        }),
+        ("Huevo: robar la última carta abre el reciclaje y cobra una sola vez", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active;
+            g.State.Phase = Phase.Actions; p.Hand[0] = CardCatalog.BlueEgg.Id; p.Relikia = 200;
+            p.Deck.Clear(); p.Deck.Add(CardCatalog.Attack.Id); rng.EnqueueDie(1);
+            g.State.Players[1].Equipment = CardCatalog.Pendant.Id;
+            Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 1, true).Success);
+            Check(g.ResolveBlueEggDraw(0, true).Success && p.Hand.Single() == CardCatalog.Attack.Id && p.Relikia == 0);
+            Check(g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 0);
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+            Check(g.ResolveRecycling(0, [0]).Success && g.State.Phase == Phase.Actions &&
+                p.Hand.Count == 1 && p.Deck.Single() == CardCatalog.BlueEgg.Id && p.Relikia == 0);
+        }),
+        ("Huevo: el registro anterior conserva el pago de activación al reconstruir la partida", () =>
+        {
+            var opening = new DuelOpening
+            {
+                Names = ["A", "B"], StartingSeat = 0, Hands = [[CardCatalog.BlueEgg.Id], []],
+                Decks = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id, CardCatalog.Attack.Id]],
+                Bonuses = [null, CardCatalog.Senshuni.Id]
+            };
+            var (game, rng) = DuelReplay.Restore(opening, [], legacyBlueEgg: true);
+            var p = game.State.Active;
+            Check(game.Advance(0).Success && !game.PlayCode(0, 0).Success);
+            p.Relikia = 400;
+            Check(game.PlayCode(0, 0).Success && p.Relikia == 200);
+            game = GameEngine.FromSnapshot(game.SaveSnapshot(), rng);
+            Check(game.ResolveDestruction(0, 1, FieldZone.Bonus).Success &&
+                game.State.Active.Relikia == 200 && game.State.Phase == Phase.Actions);
         }),
         ("Re-lanza: gratis sin acciones, relanza 1, roba solo con 1–3, 6 no natural", () =>
         {

@@ -52,7 +52,28 @@ public partial class OnlineArena
                 }
                 var before = g.SaveSnapshot(); var ids = _snapshot!.History!.Select(e => e.Id).ToArray();
                 SelectCard(0); await Layout(); var selected = _selected.ToArray();
-                _arenaScroll?.EnsureControlVisible(_historyButton!); await Layout(); GuiInputTestDriver.Click(_historyButton!); await Layout();
+                if (_inlineHistory)
+                {
+                    // The desktop rail lists the plays itself and yields to the card being read.
+                    var feedRows = _historyFeed!.FindChildren("HistoryFeedEntry*", "PanelContainer", true, false).OfType<PanelContainer>().ToArray();
+                    var feedText = string.Join("\n", _historyFeed.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text));
+                    Check(feedRows.Length == 4 && feedRows[0].Name == "HistoryFeedEntry4" && feedText.Contains("anula Error de Carga") && feedText.Contains("roba 2") &&
+                        !feedText.Contains(CardCatalog.DiamondHelmet.Name) && !feedText.Contains(CardCatalog.Agility.Name),
+                        "El historial del inspector duplica filas, pierde resultados o revela robos privados.");
+                    Check(!_historyButton!.Visible && !_historyFeed.Visible && _showcase!.Visible, "El historial no cede el inspector a la carta seleccionada.");
+                    ClearContext(); await Layout();
+                    Check(_historyFeed.Visible && _showcase is { Visible: false }, "Sin carta señalada el inspector no muestra el historial.");
+                    SelectCard(0); await Layout();
+                    ShowDuelHistory();
+                }
+                else
+                {
+                    var historyButton = _historyButton!;
+                    _arenaScroll?.EnsureControlVisible(historyButton); await Layout();
+                    Check(RectVisible(historyButton, historyButton.GetGlobalRect()), $"Historial queda fuera del tablero en {size}, asiento {seat}.");
+                    GuiInputTestDriver.Click(historyButton);
+                }
+                await Layout();
                 var dialog = _historyDialog;
                 Check(dialog is { Visible: true }, "El botón no abre el historial.");
                 var rows = dialog!.FindChildren("HistoryEntry*", "PanelContainer", true, false).OfType<PanelContainer>().ToArray();

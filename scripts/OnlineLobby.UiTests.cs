@@ -26,6 +26,16 @@ public partial class OnlineLobby
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
+            if (OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--choice-preview-dir=")) is { } choicePreview)
+            {
+                await online.CaptureChoicePreview(choicePreview.Split('=', 2)[1]); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--board-preview-dir=")) is { } boardPreview)
+            {
+                await online.CaptureBoardPreview(boardPreview.Split('=', 2)[1]); online.QueueFree(); await Layout();
+                GD.Print("PVP_BOARD_PREVIEW_DONE"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--dexterity-only"))
             {
                 await online.CheckDexterityLayout(); online.QueueFree(); await Layout();
@@ -207,7 +217,11 @@ public partial class OnlineLobby
                 if (online.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown)) throw new Exception("Se revela la mano rival.");
                 if (online.FindChildren("*", "Button", true, false).OfType<Button>().Any(b => b.Text.Contains("práctica"))) throw new Exception("Queda un acceso al modo retirado.");
                 var hand = (ScrollContainer)online.FindChild("HandScroll", true, false);
-                if (hand.GetGlobalRect().End.Y > Size.Y + 1) throw new Exception("La mano sale de la pantalla.");
+                // The desktop hand is lowered on purpose: only the effect box may drop below the edge.
+                var firstCard = online.FindChild("HandCard0", true, false) as Control;
+                if (ArenaViewport.Desktop(online)
+                    ? firstCard == null || firstCard.GetGlobalRect().Position.Y > Size.Y - 100 || firstCard.GetGlobalRect().End.Y < Size.Y
+                    : hand.GetGlobalRect().End.Y > Size.Y + 1) throw new Exception("La mano sale de la pantalla.");
                 GD.Print($"PVP_ARENA_LAYOUT_PASS · {size} · asiento {seat}.");
             }
             GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
@@ -246,6 +260,7 @@ public partial class OnlineLobby
             await online.CheckReverseLayout();
             await online.CheckDuelResults();
             await online.CheckPreparationLayout();
+            await online.CheckChoiceBounds();
             await CheckArenaConnectionNotice(online);
             await online.CheckStageAnnouncements();
             online.Hide(); await CheckLobbyPolish(); await CheckMatchmakingAnimation();

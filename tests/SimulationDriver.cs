@@ -14,6 +14,7 @@ static class SimulationDriver
         if (s.Phase == Phase.GoldenTotemChoice)
             return game.ResolveGoldenTotem(actor, p.Hand.Select((id, index) => (id, index)).Where(c => c.id == CardCatalog.Totem.Id).Take(2).Select(c => c.index));
         if (s.Phase == Phase.TotemChoice) return game.ResolveTotem(actor, true);
+        if (s.Phase == Phase.BlueEggDrawChoice) return game.ResolveBlueEggDraw(actor, false);
         if (s.Phase == Phase.Draw) return game.Advance(actor);
         if (s.Phase == Phase.TurnBuffDiscard) return game.ResolveTurnBuffDiscard(actor, 0);
         if (s.Phase == Phase.EffectDamageChoice)

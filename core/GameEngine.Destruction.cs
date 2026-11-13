@@ -124,7 +124,10 @@ public sealed partial class GameEngine
         Log(next.Prevented ? $"{next.Text}: la carta original queda protegida por una sustitución." :
             $"{State.Players[next.Actor].Name} destruye {card} de {State.Players[target.Owner].Name} con {next.Text}.");
         State.DestroyActor = null; State.Phase = Phase.Actions;
-        if (!next.Prevented && target.Zone == FieldZone.Bonus) RefillBonus(State.Players[target.Owner]);
+        var drawChoice = !LegacyBlueEgg && _activeActivation?.CardId == CardCatalog.BlueEgg.Id
+            ? new EngineContinuation { Kind = ContinuationKind.OfferBlueEggDraw, Actor = next.Actor } : null;
+        if (!next.Prevented && target.Zone == FieldZone.Bonus) RefillBonus(State.Players[target.Owner], drawChoice);
+        else if (drawChoice != null) Continue(drawChoice);
         CompleteActivationIfFinished();
     }
 }

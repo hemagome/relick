@@ -59,7 +59,7 @@ public sealed partial class GameEngine
             if (extraError != null) return CommandResult.Fail(extraError);
         }
         p.Relikia -= definition.Cost;
-        if (effect == RelikiaEffect.ReplayCode) p.Relikia -= CardCatalog.Get(p.Memory[memoryIndex]).PrCost;
+        if (effect == RelikiaEffect.ReplayCode) p.Relikia -= CodePrCost(CardCatalog.Get(p.Memory[memoryIndex]));
         State.ActionsLeft -= definition.Actions;
         Log($"{p.Name} usa Relikia: {definition.Name} ({definition.Cost} PR, {definition.ActionLabel}).");
         switch (effect)

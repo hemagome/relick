@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -67,6 +67,7 @@ public sealed partial class GameEngine
             case ContinuationKind.AttackDieReady: ContinueAttackDie(); break;
             case ContinuationKind.AttackOneEquipment: DestroyAttackOneEquipment(next.Actor, next.Next); break;
             case ContinuationKind.FinishCodeDestruction: FinishCodeDestruction(next); break;
+            case ContinuationKind.OfferBlueEggDraw: OfferBlueEggDraw(next.Actor); break;
             case ContinuationKind.UsePendant: FinishPendant(next.Actor, (PendantEffect)next.Value); break;
             case ContinuationKind.UsePc: FinishPc(next.Actor, next.Value); break;
             case ContinuationKind.BoxDefense:

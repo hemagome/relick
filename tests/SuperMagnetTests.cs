@@ -95,7 +95,8 @@ static class SuperMagnetTests
             game.State.CurrentPlayer = 1; rival.Relikia = 200;
             rival.Hand.AddRange([CardCatalog.BlueEgg.Id, CardCatalog.TimeBomb.Id, CardCatalog.Attack.Id]);
             Check(game.PlayCode(1, 0).Success && game.ResolveDestruction(1, 0, FieldZone.Exchange, 0).Success);
-            Check(owner.Exchange.Single() == CardCatalog.Bonfire.Id && owner.EquipmentCounters == 1 && rival.Relikia == 0);
+            Check(owner.Exchange.Single() == CardCatalog.Bonfire.Id && owner.EquipmentCounters == 1 && rival.Relikia == 200);
+            Check(game.ResolveBlueEggDraw(1, false).Success);
             Check(game.PlayCode(1, 0).Success && game.ResolveDestruction(1, 0, FieldZone.Equipment).Success);
             Check(owner.Equipment == CardCatalog.SuperMagnet.Id && owner.EquipmentCounters == 2);
 
@@ -110,7 +111,7 @@ static class SuperMagnetTests
             var takeBonus = DuelOptions.For(game, 1).Single(o => o.Move.Kind == DuelMoveKind.Magnet && o.Move.Flag);
             Check(takeBonus.Move.Apply(game, 1).Success && owner.Bonus == bonus && owner.Deck.Count == deckCount && rival.Hand.Count == 0);
             Check(owner.Equipment == null && owner.EquipmentCounters == 0 && !owner.Memory.Contains(CardCatalog.SuperMagnet.Id));
-            Check(game.State.Phase == Phase.Combat && rival.Relikia == CardCatalog.Magnet.Reward);
+            Check(game.State.Phase == Phase.Combat && rival.Relikia == 200 + CardCatalog.Magnet.Reward);
             var details = game.PublicHistory!.Entries.Last().Details;
             Check(details.Any(line => line.Contains("3/3")) && details.Any(line => line.Contains("fuera del juego")));
             game.State.CurrentPlayer = 0; game.State.Phase = Phase.Actions;

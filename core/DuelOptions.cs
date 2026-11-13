@@ -218,6 +218,11 @@ public static class DuelOptions
                         Add(DuelMoveKind.Destroy, $"Destruir {Card(t.CardId)} de {s.Players[t.Owner].Name} · {zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : ""), t.Index, (int)t.Zone, t.Owner);
                     }
                     break;
+                case Phase.BlueEggDrawChoice:
+                    if (p.Relikia >= GameEngine.BlueEggDrawCost)
+                        Add(DuelMoveKind.BlueEggDraw, $"Robar 1 carta · {GameEngine.BlueEggDrawCost} PR", flag: true);
+                    Add(DuelMoveKind.BlueEggDraw, "Continuar sin robar");
+                    break;
                 case Phase.RelikiaChoice:
                     if (s.PendingRelikia == RelikiaChoice.PlaceHandCard)
                         for (var i = 0; i < p.Hand.Count; i++)

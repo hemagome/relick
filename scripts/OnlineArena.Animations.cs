@@ -45,12 +45,22 @@ public partial class OnlineArena
     };
     private static Rect2 ZoneRect(Control control) => control switch
     {
-        MemoryZoneButton pile => new(pile.GlobalPosition + pile.CardRect.Position, pile.CardRect.Size),
-        ZoneCardButton zone => new(zone.GlobalPosition + zone.CardRect.Position, zone.CardRect.Size),
-        AttachmentStack attached => new(attached.GlobalPosition + attached.CardRect.Position, attached.CardRect.Size),
-        HandCard { InFan: true } card => new(card.GetGlobalTransform() * (card.Size / 2) - card.Size / 2, card.Size),
+        MemoryZoneButton pile => Global(pile, pile.CardRect),
+        ZoneCardButton zone => Global(zone, zone.CardRect),
+        AttachmentStack attached => Global(attached, attached.CardRect),
+        HandCard { InFan: true } card => Upright(card),
         _ => control.GetGlobalRect()
     };
+
+    // The desktop board is a scaled stage: zone rectangles go through the control's transform.
+    private static Rect2 Global(Control control, Rect2 local) => control.GetGlobalTransform() * local;
+
+    private static Rect2 Upright(Control card)
+    {
+        var transform = card.GetGlobalTransform();
+        var size = card.Size * transform.Scale;
+        return new Rect2(transform * (card.Size / 2) - size / 2, size);
+    }
 
     private Dictionary<DuelVisualEvent, Flight> CaptureOrigins(DuelSnapshot current, DuelSnapshot? previous)
     {
@@ -332,7 +342,7 @@ public partial class OnlineArena
         if (placement.IsExchangePlacement && placement.Face is { } face && target is ZoneCardButton { Card: null } exchange)
         {
             var rect = exchange.ArtworkRect(BoardArt.LoadCardArtwork(CardCatalog.Get(face)));
-            slot = new Rect2(exchange.GlobalPosition + rect.Position, rect.Size);
+            slot = Global(exchange, rect);
         }
         _placementPreview = target == null || !bounds.Encloses(slot) || !RectVisible(target, slot);
         if (_placementPreview)
@@ -377,7 +387,7 @@ public partial class OnlineArena
             {
                 var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
                 if (deck == null) { SetDestinationPending(next, target, false); return; }
-                var deckRect = new Rect2(deck.GlobalPosition + deck.TopRect.Position, deck.TopRect.Size);
+                var deckRect = Global(deck, deck.TopRect);
                 if (kind == DuelVisualKind.Draw) PlaySound(SoundCue.CardDraw);
                 if (kind == DuelVisualKind.Shuffle) PlaySound(SoundCue.CardShuffle);
                 var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer or DuelVisualKind.MemoryClaim or DuelVisualKind.HandDiscard;
@@ -391,7 +401,9 @@ public partial class OnlineArena
                 Rect2? destination = returning || kind == DuelVisualKind.Shuffle ? deckRect : target == null ? null : ZoneRect(target);
                 var bounds = new Rect2(Vector2.Zero, Size);
                 // Never draw through clipped panels/docks when a small-screen zone is offscreen.
-                if (source == null || destination == null || !bounds.Encloses(source.Value) || !bounds.Encloses(destination.Value) ||
+                // On the desktop board the hands overhang the screen, so a flight may start or end partly outside it.
+                bool OnScreen(Rect2 rect) => _handLowered ? bounds.Intersects(rect) : bounds.Encloses(rect);
+                if (source == null || destination == null || !OnScreen(source.Value) || !OnScreen(destination.Value) ||
                     (!fromPrevious || returning) && !RectVisible(deck, deckRect) || target != null && !RectVisible(target, destination.Value))
                 { SetDestinationPending(next, target, false); return; }
                 _flightSource = next.Event.Source == CardZone.Exchange ? PortraitFootprint(source.Value) : source.Value;
@@ -492,7 +504,14 @@ public partial class OnlineArena
         if (anchor is HandCard { InFan: true })
             rect = anchor.GetGlobalTransform() * new Rect2(Vector2.Zero, anchor.Size);
         for (Node? parent = anchor; parent != null; parent = parent.GetParent())
-            if (parent is Control { ClipContents: true } clip && !clip.GetGlobalRect().Encloses(rect)) return false;
+            if (parent is Control { ClipContents: true } clip)
+            {
+                // Both hands hang over the edges of the desktop board on purpose: there a card
+                // counts as visible while any part of it is on the playmat.
+                // The board is a scaled stage: allow for the rounding of its transforms.
+                var bounds = clip.GetGlobalRect().Grow(1);
+                if (clip is BoardCanvas ? !bounds.Intersects(rect) : !bounds.Encloses(rect)) return false;
+            }
         return true;
     }
     private void ResetAnimations(bool preserveStageAnnouncements = false)

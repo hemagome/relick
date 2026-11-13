@@ -61,7 +61,7 @@ public partial class OnlineArena
                 foreach (var (pool, panelName) in new[] { (mine, "OwnRelikarioPanel"), (theirs, "EnemyRelikarioPanel") })
                 {
                     var panel = (Control)_root!.FindChild(panelName, true, false);
-                    Check(panel.IsAncestorOf(pool) && panel.GetGlobalRect().Encloses(pool.GetGlobalRect()) && pool.IsVisibleInTree(),
+                    Check((Desktop || panel.IsAncestorOf(pool)) && panel.GetGlobalRect().Encloses(pool.GetGlobalRect()) && pool.IsVisibleInTree(),
                         $"Los cristales no están dentro de su relikario ({panelName}) en {size}.");
                     if (!animate)
                     {

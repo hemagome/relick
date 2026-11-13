@@ -783,33 +783,62 @@ public partial class OnlineArena
             game.State.Players[1 - actor].Memory.AddRange([CardCatalog.FloppyDisk.Id, CardCatalog.Bonfire.Id]);
             if (!game.PlayCode(actor, 0).Success) throw new Exception("No comienza la recuperación de Disquete.");
             var saved = game.SaveSnapshot();
-            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var size in new[] { new Vector2I(1820, 1024), new(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
             foreach (var seat in new[] { 0, 1 })
             {
                 game = GameEngine.FromSnapshot(saved, new SeededRandom(43));
+                var rivalMemory = game.State.Players[1 - actor].Memory;
+                if (size.X == 1820) rivalMemory.InsertRange(1, Enumerable.Repeat(CardCatalog.Attack.Id, 24));
+                var targetSlot = rivalMemory.Count - 1;
                 GetWindow().ContentScaleSize = size;
                 for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 _selected.Clear(); ResetAnimations(); var before = DuelSnapshot.For(game, seat, 100); PresentTestSnapshot(before);
                 for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var recovery = new DuelMove { Kind = DuelMoveKind.RecoverMemory, Target = 1 - actor, Index = targetSlot };
                 if (seat == actor)
                 {
-                    if (_handCards.Count != 4 || _deckSearchOptions.Count(o => o.CardId == CardCatalog.FloppyDisk.Id) != 2 ||
+                    if (_handCards.Count != 2 + rivalMemory.Count || _deckSearchOptions.Count(o => o.CardId == CardCatalog.FloppyDisk.Id) != 2 ||
                         _deckSearchOptions.Any(o => o.Move.Target == actor && o.Move.Index == 2))
                         throw new Exception("Disquete no distingue las otras copias de su copia activa.");
                     var titles = _hand!.FindChildren("HandSectionTitle*", "Label", true, false).OfType<Label>().ToArray();
                     if (titles.Length != 2 || !titles.Any(t => t.Text.Contains("TU MEMORIA")) || !titles.Any(t => t.Text.Contains("MEMORIA DE")))
                         throw new Exception("Disquete no separa visualmente las dos memorias.");
-                    if (_handCards.Count(c => c.OriginalOwner?.Seat == actor) != 2 || _handCards.Count(c => c.OriginalOwner?.Seat == 1 - actor) != 2 ||
+                    if (_handCards.Count(c => c.OriginalOwner?.Seat == actor) != 2 || _handCards.Count(c => c.OriginalOwner?.Seat == 1 - actor) != rivalMemory.Count ||
                         _handCards.Single(c => c.Card.Id == CardCatalog.Bonfire.Id).OriginalOwner?.Seat != 1 - actor)
                         throw new Exception("Las cartas de memoria no muestran a su dueño original.");
                     if (_handCards.Any(c => c.ShowOwnerBadge))
                         throw new Exception("Los bloques de memoria repiten el distintivo de rival.");
-                    var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == 1);
-                    SelectCard(index); var option = _deckSearchOptions[index];
+                    Rect2? footerBounds = null;
+                    if (Desktop)
+                    {
+                        var footer = _moves.GetChildren().OfType<Button>().SingleOrDefault(b => b.Text == "Recuperar");
+                        if (footer is not { Disabled: true } || !RectVisible(footer, footer.GetGlobalRect()) ||
+                            !new Rect2(GlobalPosition, Size).Grow(1).Encloses(footer.GetGlobalRect()))
+                            throw new Exception($"Disquete no muestra el botón de confirmación al abrir el selector en {size}.");
+                        footerBounds = footer.GetGlobalRect();
+                    }
+                    var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == targetSlot);
+                    var option = _deckSearchOptions[index];
+                    var card = _handCards.Single(c => c.Name == $"HandCard{index}");
+                    _hand.EnsureControlVisible(card);
+                    for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    if (size.X == 1820 && _hand.ScrollVertical == 0)
+                        throw new Exception("La prueba de Disquete no desplaza la memoria extensa.");
+                    card.Disabled = false;
+                    GuiInputTestDriver.Click(card);
                     // Fixed, wrapping headers settle through Godot's deferred container layout.
                     for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     if (_moveButtons.Count(b => ReferenceEquals(PresentedOption(b), option)) != 1 || !_contextTitle.Text.Contains(CardCatalog.Bonfire.Name))
                         throw new Exception("La selección de memoria no corresponde a su opción autorizada.");
+                    var confirm = PresentedButton(option)!;
+                    if (!RectVisible(confirm, confirm.GetGlobalRect()) || !new Rect2(GlobalPosition, Size).Grow(1).Encloses(confirm.GetGlobalRect()))
+                        throw new Exception($"Recuperar queda fuera de pantalla en {size}: botón {confirm.GetGlobalRect()}, galería {_hand.GetGlobalRect()}, pie {_decisionBar.GetGlobalRect()}.");
+                    if (footerBounds is { } bounds && (!bounds.IsEqualApprox(confirm.GetGlobalRect()) ||
+                        !_decisionBar.GetGlobalRect().Grow(1).Encloses(confirm.GetGlobalRect())))
+                        throw new Exception("Recuperar se desplaza al elegir una carta de Disquete.");
+                    confirm.Disabled = false;
+                    GuiInputTestDriver.Click(confirm);
+                    recovery = PresentedOption(confirm)!.Move;
                 }
                 else if (_handCards.Count != 1 || _deckSearchOptions.Length != 0 || _handCards[0].Card.Id != CardCatalog.Attack.Id)
                     throw new Exception("Disquete reemplaza la mano del rival por opciones ajenas.");
@@ -817,7 +846,7 @@ public partial class OnlineArena
                 if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
                     throw new Exception($"Disquete desborda {size}: {minimum}.");
                 var cues = DuelVisualEvents.Capture(game);
-                if (!game.ResolveMemoryRecovery(actor, 1 - actor, 1).Success) throw new Exception("No se recupera la carta elegida.");
+                if (!recovery.Apply(game, actor).Success) throw new Exception("No se recupera la carta elegida.");
                 var after = DuelSnapshot.For(game, seat, 101); after.Visuals = cues;
                 var origins = CaptureOrigins(after, before);
                 if (origins.Single(p => p.Key.Kind == DuelVisualKind.MemoryClaim).Value.Face != CardCatalog.Bonfire.Id)
@@ -835,7 +864,7 @@ public partial class OnlineArena
             }
         }
         _selected.Clear();
-        GD.Print("PVP_MEMORY_RECOVERY_LAYOUT_PASS · ambas memorias, copias distintas, animación a mano, cuatro tamaños y ambos jugadores/asientos.");
+        GD.Print("PVP_MEMORY_RECOVERY_LAYOUT_PASS · ambas memorias, copias distintas, confirmación visible y animación a mano, cinco tamaños y ambos jugadores/asientos.");
     }
 
     internal async Task CheckReverseLayout()
@@ -1004,6 +1033,11 @@ public partial class OnlineArena
 
     internal async Task CheckHandLimitLayout()
     {
+        async Task Layout()
+        {
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
         foreach (var actor in new[] { 0, 1 })
         {
             var game = new GameEngine(7); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
@@ -1013,17 +1047,24 @@ public partial class OnlineArena
             foreach (var seat in new[] { 0, 1 })
             {
                 GetWindow().ContentScaleSize = size;
+                await Layout();
                 _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 50));
-                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await Layout();
                 var minimum = _root!.GetCombinedMinimumSize();
                 if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
                     throw new Exception($"Descarte final desborda {size}: {minimum}.");
                 if (seat == actor)
                 {
                     if (!_selection.Text.Contains("Descarta 2")) throw new Exception("Falta la indicación del límite de mano.");
-                    SelectCard(0);
-                    if (!_moves.GetChildren().OfType<Button>().Any(b => b.Text == "Descartar"))
-                        throw new Exception("Falta la opción para descartar la carta elegida.");
+                    var card = _handCards[0];
+                    _hand!.EnsureControlVisible(card); await Layout();
+                    card.Disabled = false;
+                    GuiInputTestDriver.Click(card); await Layout();
+                    var discard = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Discard && o.Move.Index == 0);
+                    if (PresentedButton(discard) is not { Text: "Descartar" } button ||
+                        button.GetParent() != _cardActions || !button.IsVisibleInTree() || _cardActionAnchor != card ||
+                        !new Rect2(GlobalPosition, Size).Grow(1).Encloses(button.GetGlobalRect()))
+                        throw new Exception($"Descartar no está visible junto a la carta elegida en {size}, asiento {seat}.");
                 }
                 else if (_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Discard))
                     throw new Exception("El rival puede descartar la mano activa.");

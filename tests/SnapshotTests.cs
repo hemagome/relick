@@ -25,7 +25,7 @@ static class SnapshotTests
         var cases = JsonSerializer.Deserialize<GoldenGame[]>(File.ReadAllText(path))!;
         foreach (var (test, index) in cases.Select((g,i)=>(g,i)))
         {
-            var random = new DuelRandom(); var game = test.InitialState == null ? GameEngine.FromOpening(test.Opening!, random) :
+            var random = new DuelRandom(); var game = test.InitialState == null ? GameEngine.FromOpening(test.Opening!, random, legacyBlueEgg: true) :
                 GameEngine.FromSnapshot("{\"State\":" + test.InitialState + "}", random);
             // Already-evolved legacy fixtures start under the replaced health/dice rules.
             // Current evolution tests cover their corrected snapshot recovery explicitly.

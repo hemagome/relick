@@ -46,6 +46,7 @@ internal static class ArenaGuidance
             Phase.EffectDamageChoice => Has(DuelMoveKind.PlayCode) ? "Responde con un COMBO o confirma recibir el daño." : "Confirma recibir el daño.",
             Phase.CodeResponse => "Anula el código con Caja o deja que se resuelva.",
             Phase.DestructionResponse => "Elige una protección o permite la destrucción.",
+            Phase.BlueEggDrawChoice => $"Decide si pagas {GameEngine.BlueEggDrawCost} PR para robar una carta.",
             Phase.TotemChoice => "Decide si destruyes un Tótem para cancelar el daño.",
             Phase.SniperChoice => "Elige si equipas Mira de Sniper o la colocas en canje.",
             Phase.TrapCraftChoice when s.TrapCardId == CardCatalog.ZahiraFlair.Id => "Tu canje permite crear Zahira Flair.",
@@ -99,7 +100,7 @@ internal static class ArenaGuidance
         if (card.Kind == CardKind.Code && !card.IsCombo && s.Phase != Phase.Actions) return "Este código se juega en tu fase de acciones.";
         if (p.Actions < (card.Kind == CardKind.Equipment ? 1 : card.ActionCost)) return "No te quedan acciones suficientes para jugar esta carta.";
         if (s.Turn < card.EarliestTurn) return $"Esta carta puede activarse a partir del turno {card.EarliestTurn}.";
-        if (p.Pr < card.PrCost) return "No tienes PR suficientes para activar esta carta.";
+        if (p.Pr < GameEngine.CodePrCost(card, s.LegacyBlueEgg)) return "No tienes PR suficientes para activar esta carta.";
         if (p.HandCount - 1 < card.DiscardCost) return "No tienes suficientes cartas adicionales para pagar el descarte.";
         if (card.FieldCombatDie) return "Activa Jessica Lee desde Bonus o canje durante tu fase de combate.";
         if (card.DodgeAttack) return "Requiere un ataque rival pendiente de defensa.";

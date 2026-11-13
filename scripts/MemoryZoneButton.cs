@@ -12,12 +12,15 @@ public partial class MemoryZoneButton : Button
     public Color Accent { get; init; } = new("b5a2fa");
     private Texture2D? _back;
     private HandCard? _preview;
+    /// <summary>On the desktop board the pile fills its zone, like every other card.</summary>
+    public bool Board { get; init; }
     // Legacy docks keep the compact counter; board rows show the top card as a real pile.
     private bool Tall => Size.Y > 96;
     public Rect2 CardRect
     {
         get
         {
+            if (Board) return BoardArt.FitArtwork(new Vector2(126, 175), new Rect2(4, 4, Size.X - 8, Size.Y - 8));
             if (!Tall) return new(6, 18, 26, 36.8f);
             var height = Size.Y - 48;
             var extent = new Vector2(height * 126 / 184, height);
@@ -44,7 +47,7 @@ public partial class MemoryZoneButton : Button
         if (Corrupted && Amount > 0) _back = GD.Load<Texture2D>("res://assets/cards/card-back.png");
         if (!Corrupted && TopCard != null)
         {
-            var preview = new HandCard { Name = "MemoryTopCard", Card = TopCard, Disabled = true,
+            var preview = new HandCard { Name = "MemoryTopCard", Card = TopCard, Disabled = true, ShowBehindParent = Board,
                 Size = new(126, 184), Scale = new(0.2f, 0.2f), Position = new(6, 17) };
             preview.Ready += () => { preview.MouseFilter = MouseFilterEnum.Ignore; preview.SetProcess(false); };
             AddChild(preview); _preview = preview;
@@ -57,6 +60,7 @@ public partial class MemoryZoneButton : Button
 
     public override void _Draw()
     {
+        if (Board) { DrawBoardPile(); return; }
         BoardArt.Socket(this, new Rect2(Vector2.Zero, Size), Accent, Amount == 0 ? 1 : 0.55f);
         BoardArt.CenterText(this, Corrupted ? "CORRUPTAS" : "MEMORIA", new(Size.X / 2, 13), 8, Accent);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, IsHovered(), HasFocus());
@@ -90,5 +94,35 @@ public partial class MemoryZoneButton : Button
         var chip = new Rect2((Size.X - width) / 2, Size.Y - 24, width, 19);
         BoardArt.Plate(this, chip, new Color(0, 0, 0, 0.5f), BoardArt.Tint(Accent, 0.45f), 4);
         BoardArt.CenterText(this, text, new(Size.X / 2, Size.Y - 10), 14, BoardArt.Ink);
+    }
+
+    // The top card is a child drawn behind this pile, so the socket would dim it: an occupied
+    // pile only adds its name and count over the card.
+    private void DrawBoardPile()
+    {
+        var bounds = new Rect2(Vector2.Zero, Size);
+        var caption = Corrupted ? "CORRUPTAS" : "MEMORIA";
+        var card = CardRect;
+        if (Amount == 0 || !Corrupted && TopCard == null)
+        {
+            BoardArt.Socket(this, bounds, Accent);
+            BoardArt.CenterText(this, caption, new(Size.X / 2, 15), 9, BoardArt.Tint(Accent, 0.9f));
+            BoardArt.Icon(this, Corrupted ? GameIcon.Cards : GameIcon.Memory, Size / 2 + new Vector2(0, 5), 20, BoardArt.Tint(Accent, 0.16f));
+        }
+        else
+        {
+            if (_back != null) DrawTextureRect(_back, BoardArt.FitArtwork(_back, new Rect2(4, 4, Size.X - 8, Size.Y - 8)), false);
+            BoardArt.Outline(this, card.Grow(2), BoardArt.Tint(Accent, 0.55f), 6);
+            var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 9).X + 14;
+            var tab = new Rect2((Size.X - width) / 2, 0, width, 16);
+            BoardArt.Plate(this, tab, new Color("0b1020"), BoardArt.Tint(Accent, 0.7f), 4);
+            BoardArt.CenterText(this, caption, new(Size.X / 2, 12), 9, Accent);
+        }
+        var text = Amount.ToString();
+        var chipWidth = Math.Max(28, ThemeDB.FallbackFont.GetStringSize(text, fontSize: 14).X + 14);
+        var chip = new Rect2((Size.X - chipWidth) / 2, Size.Y - 26, chipWidth, 20);
+        BoardArt.Plate(this, chip, new Color("0b1020"), BoardArt.Tint(Accent, 0.6f), 4);
+        BoardArt.CenterText(this, text, new(Size.X / 2, Size.Y - 11), 14, BoardArt.Ink);
+        RelickVisuals.Interaction(this, bounds, false, false, IsHovered(), HasFocus());
     }
 }
