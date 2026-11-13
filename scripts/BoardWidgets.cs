@@ -984,7 +984,9 @@ public partial class ComboToggle : Button
     private static readonly Color AskFace = new("f2f2f0"), AskEdge = new("4a4f59"), AskInk = new("1b1d22");
     private static readonly Color PassFace = new("b9bcc3"), PassEdge = new("2c3038"), PassInk = new("4b4f57");
     public bool Compact { get; init; }
-    private float PlateWidth => Compact ? 150 : 184;
+    private float PlateWidth => Compact ? 132 : 160;
+    /// <summary>The plate is drawn shorter than the 48 px touch target.</summary>
+    private const float PlateHeight = 40;
 
     public override void _Ready()
     {
@@ -1010,29 +1012,42 @@ public partial class ComboToggle : Button
     public override void _Draw()
     {
         var asking = ButtonPressed;
-        var h = Size.Y; var radius = h * 0.42f; var slant = h * 0.3f;
+        var h = Math.Min(Size.Y, PlateHeight); var top = (Size.Y - h) / 2; var bottom = top + h;
+        var radius = h * 0.44f; var slant = h * 0.3f;
         var right = Math.Min(Size.X - 4, PlateWidth) - radius;
         var hover = !Disabled && IsHovered();
         var fade = Disabled ? 0.45f : 1;
         Color A(Color c, bool lift = false) { if (lift && hover) c = c.Lightened(0.12f); return new(c, c.A * fade); }
-        Vector2[] Slanted(float left, float top, float end, float bottom) =>
-            [new(left + slant, top), new(end, top), new(end - slant, bottom), new(left, bottom)];
+        Vector2[] Slanted(float left, float upper, float end, float lower) =>
+            [new(left + slant, upper), new(end, upper), new(end - slant, lower), new(left, lower)];
 
         // The bevel shows heavier at the bottom, like the printed tag, under the face.
-        DrawColoredPolygon(Slanted(0, 0, right, h), A(asking ? AskEdge : PassEdge));
-        DrawColoredPolygon(Slanted(4, 3, right - 4, h - 6), A(asking ? AskFace : PassFace, true));
+        DrawColoredPolygon(Slanted(0, top, right, bottom), A(asking ? AskEdge : PassEdge));
+        DrawColoredPolygon(Slanted(3, top + 3, right - 3, bottom - 5), A(asking ? AskFace : PassFace, true));
         // The lettering stays clear of the badge, shrinking when the plate is narrow.
-        var center = new Vector2(right - slant / 2, h / 2);
+        var center = new Vector2(right - slant / 2, Size.Y / 2);
         var font = RelickVisuals.Display; var size = (int)(h * 0.46f);
-        var left = slant * 0.6f; var width = center.X - radius - 4 - left;
+        var left = slant * 0.6f; var width = center.X - radius - 3 - left;
         while (size > 10 && font.GetStringSize("COMBO", HorizontalAlignment.Left, -1, size).X > width) size--;
-        var baseline = (h - 3) / 2 + (font.GetAscent(size) - font.GetDescent(size)) / 2;
+        var baseline = top + (h - 2) / 2 + (font.GetAscent(size) - font.GetDescent(size)) / 2;
         DrawString(font, new(left, baseline), "COMBO", HorizontalAlignment.Center, width, size, A(asking ? AskInk : PassInk));
 
         DrawCircle(center, radius, A(AskInk));
         DrawCircle(center, radius - 3, A(asking ? RelickVisuals.State.Own : RelickVisuals.State.Rival, true));
         BoardArt.Icon(this, asking ? GameIcon.Hand : GameIcon.Skip, center, radius * 1.05f, A(AskInk));
-        if (HasFocus()) DrawPolyline([.. Slanted(-2, -2, right + 2, h + 2), new(slant - 2, -2)], BoardArt.Gold, 2, true);
+        if (HasFocus()) DrawFocus(Slanted(0, top, right, bottom), center, radius);
+    }
+
+    /// <summary>The focus ring follows the plate and the badge together, so it never cuts across the symbol.</summary>
+    private void DrawFocus(Vector2[] plate, Vector2 center, float radius)
+    {
+        var circle = new Vector2[32];
+        for (var i = 0; i < circle.Length; i++) circle[i] = center + Vector2.FromAngle(i * Mathf.Tau / circle.Length) * radius;
+        static float Area(Vector2[] p) => Math.Abs(p.Select((v, i) => v.Cross(p[(i + 1) % p.Length])).Sum()) / 2;
+        var outline = Geometry2D.MergePolygons(plate, circle).MaxBy(Area);
+        if (outline == null) return;
+        var ring = Geometry2D.OffsetPolygon(outline, 2.5f, Geometry2D.PolyJoinType.Round).MaxBy(Area);
+        if (ring != null) DrawPolyline([.. ring, ring[0]], BoardArt.Gold, 2, true);
     }
 }
 
