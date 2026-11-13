@@ -52,7 +52,7 @@ public partial class OnlineArena
     {
         _comboResponsesToggle = null;
         if (_preparing || _snapshot?.Winner != null) return;
-        var toggle = new ComboToggle { Name = "ComboResponsesToggle", Compact = Short };
+        var toggle = new ComboToggle { Name = "ComboResponsesToggle", Compact = Short || Desktop };
         toggle.TooltipText = "Mano alzada · Preguntar: permite responder con cartas COMBO.\nSalto · Pasar: conserva tus COMBO y omite sus respuestas, incluidos contraerrores.\nNo omite decisiones de habilidades, equipos ni efectos ya iniciados.\nPreferencia privada; no consume acciones ni PR.";
         var room = RoomCode;
         toggle.Toggled += enabled => Connection.SetComboResponses(enabled, room);

@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -202,6 +202,12 @@ public static class BoardArt
                 Shape(new(-14, -11), new(-2, 0), new(-14, 11));
                 Shape(new(-3, -11), new(9, 0), new(-3, 11));
                 Block(10, -11, 4, 22);
+                break;
+            case GameIcon.WhiteFlag:
+                // Surrender flag: a pole with a waving cloth.
+                Block(-12, -14, 3.5f, 29);
+                Shape(new(-8, -13), new(-2, -11), new(4, -13), new(9, -14), new(14, -12), new(14, 2),
+                    new(9, 0), new(4, 1), new(-2, 3), new(-8, 1));
                 break;
         }
         c.DrawSetTransform(Vector2.Zero, 0, Vector2.One * canvasScale);
@@ -1028,6 +1034,22 @@ public partial class ComboToggle : Button
         BoardArt.Icon(this, asking ? GameIcon.Hand : GameIcon.Skip, center, radius * 1.05f, A(AskInk));
         if (HasFocus()) DrawPolyline([.. Slanted(-2, -2, right + 2, h + 2), new(slant - 2, -2)], BoardArt.Gold, 2, true);
     }
+}
+
+/// <summary>A toolbar action shown as a symbol; its name stays available to tooltips and screen readers.</summary>
+public partial class IconButton : Button
+{
+    public GameIcon Symbol { get; init; }
+
+    public override void _Ready()
+    {
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+    }
+
+    public override void _Draw() => BoardArt.Icon(this, Symbol, Size / 2, Math.Min(26, Math.Min(Size.X, Size.Y) - 18),
+        Disabled ? BoardArt.Muted : IsHovered() ? Colors.White : BoardArt.Ink);
 }
 
 public partial class IconMenuButton : MenuButton

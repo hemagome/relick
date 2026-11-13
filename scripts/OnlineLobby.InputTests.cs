@@ -39,15 +39,6 @@ public partial class OnlineLobby
             // The other player's preparation may rebuild the controls while layout settles.
             GuiInputTestDriver.Click(resolve());
         }
-        async Task ArenaMenu(int id)
-        {
-            var menu = (MenuButton)_arena!.FindChild("ArenaMenu", true, false);
-            await Click(menu); var popup = menu.GetPopup(); await Until(() => popup.Visible);
-            popup.GrabFocus(); popup.SetFocusedItem(popup.GetItemIndex(id)); await Frame();
-            GetTree().Root.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = true }, true);
-            GetTree().Root.PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = false }, true);
-            await Frame();
-        }
         async Task<int> CountCardDraws(Func<Task> present)
         {
             var sound = GetNode<SoundDirector>("/root/SoundDirector");
@@ -131,7 +122,7 @@ public partial class OnlineLobby
             if (host)
             {
                 await Until(() => System.IO.File.Exists(session + ".guest.ready"));
-                await ArenaMenu(1);
+                await Click((Control)_arena!.FindChild("ConcedeButton", true, false));
                 var confirmation = _arena.GetChildren().OfType<ConfirmationDialog>().Single();
                 await Until(() => confirmation.Visible);
                 await Click(confirmation.GetOkButton());

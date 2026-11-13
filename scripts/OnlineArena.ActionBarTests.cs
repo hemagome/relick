@@ -100,7 +100,9 @@ public partial class OnlineArena
             var initialMinimum = _root!.GetCombinedMinimumSize();
             Check(initialMinimum.X <= Size.X + 1 && initialMinimum.Y <= Size.Y + 1,
                 $"Barra inicial desborda {size}: mínimo {initialMinimum}, raíz {_root.Size}, mano {_hand!.GetGlobalRect()}.");
-            Check(!PresentsKind(DuelMoveKind.Concede) && _arenaMenu!.GetPopup().GetItemIndex(1) >= 0, "Abandonar sigue entre las acciones de cartas.");
+            Check(!PresentsKind(DuelMoveKind.Concede) && _root.FindChild("ConcedeButton", true, false) is IconButton { Visible: true } &&
+                _root.FindChild("SoundButton", true, false) is IconButton { Visible: true } && _arenaMenu!.GetPopup().GetItemIndex(5) < 0 &&
+                _arenaMenu!.GetPopup().GetItemIndex(1) < 0, "Abandonar y Sonido no aparecen como iconos junto al menú o siguen en él.");
             Check(_moves.GetChildCount() == 0 && !_cardActions.Visible, "Una mano sin seleccionar muestra acciones ajenas.");
             var ownBadge = _root.FindChild("ResourceBadge0", true, false) as ResourceBadge;
             var rivalBadge = _root.FindChild("ResourceBadge1", true, false) as ResourceBadge;

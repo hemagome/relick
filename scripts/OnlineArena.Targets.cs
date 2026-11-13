@@ -10,21 +10,31 @@ public partial class OnlineArena
     private void BuildArenaMenu(Node header)
     {
         var s = _snapshot!;
-        _arenaMenu = new IconMenuButton { Name = "ArenaMenu", CustomMinimumSize = new(52, 48),
+        // The desktop rail keeps its width with three symbols beside the COMBO plate.
+        var icon = new Vector2(Desktop ? 44 : 52, 48);
+        // Conceding sits beside the menu as a white flag; it still asks for confirmation.
+        if (s.Options.Any(o => o.Move.Kind == DuelMoveKind.Concede))
+        {
+            var concede = new IconButton { Name = "ConcedeButton", Symbol = GameIcon.WhiteFlag, CustomMinimumSize = icon,
+                TooltipText = "Abandonar duelo", AccessibilityName = "Abandonar duelo" };
+            concede.Pressed += () => SendKind(DuelMoveKind.Concede);
+            header.AddChild(concede);
+        }
+        var sound = new IconButton { Name = "SoundButton", Symbol = GameIcon.Speaker, CustomMinimumSize = icon,
+            TooltipText = "Sonido", AccessibilityName = "Sonido" };
+        sound.Pressed += () => GetNode<AudioPreferences>("/root/AudioPreferences").OpenControls();
+        header.AddChild(sound);
+        _arenaMenu = new IconMenuButton { Name = "ArenaMenu", CustomMinimumSize = icon,
             TooltipText = "Menú", AccessibilityName = "Menú" };
         header.AddChild(_arenaMenu); var popup = _arenaMenu.GetPopup(); ArenaViewport.TouchMenu(popup);
         if (!_preparing) popup.AddItem("Historial de jugadas", 3);
-        if (s.Options.Any(o => o.Move.Kind == DuelMoveKind.Concede)) popup.AddItem("Abandonar duelo", 1);
         if (s.Winner != null || _preparing) popup.AddItem(s.Winner != null ? "Volver al lobby" : "Cerrar sala", 2);
         if (s.Winner != null) popup.AddItem("Ver resultado", 4);
-        popup.AddItem("Sonido", 5);
         popup.IdPressed += id =>
         {
             if (id == 3) ShowDuelHistory();
-            if (id == 1) { var option = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Concede); if (option >= 0) PlayOption(option, s); }
             if (id == 2) { if (s.Winner != null) RequestResultExit(); else Connection.Leave(RoomCode); }
             if (id == 4) { _resultDismissed = false; UpdateResultPresentation(); }
-            if (id == 5) GetNode<AudioPreferences>("/root/AudioPreferences").OpenControls();
         };
     }
 

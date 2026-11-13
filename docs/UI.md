@@ -117,8 +117,9 @@ El inspector acrílico muestra el nombre, el efecto y el coste de la carta.
 Pasar el cursor sobre una carta visible abre su vista previa.
 Un clic en el campo vacío limpia la selección del duelo y cierra la vista previa.
 El avance de etapa ocupa un control separado, el contador de PR propio abre
-los efectos de Relikia y Abandonar está en el menú general con su confirmación
-habitual. El contador rival es solo informativo.
+los efectos de Relikia, y junto a la rueda dentada del menú están la bandera
+blanca para abandonar y un parlante que abre los controles de sonido. Su confirmación es un cuadro centrado, del tamaño de su
+pregunta, con «Cancelar» y «Abandonar». El contador rival es solo informativo.
 
 La lectura de cartas usa un inspector compartido en mano, elección inicial y
 consultas de zonas. Conserva las cartas completas y sus tamaños de presentación.
