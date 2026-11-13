@@ -59,7 +59,16 @@ static class AttackRewardTests
                 Check(g.State.Phase == Phase.MagnetChoice && g.State.Active.Relikia == 0 && target.Health == 3);
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
                 if (mode == "skip") Check(g.SkipMagnet(0).Success);
-                else if (mode == "hand") Check(g.ResolveMagnet(0, false, 0).Success);
+                else if (mode == "hand")
+                {
+                    // The steal cue carries only slots, so the client can fly the card between the hands.
+                    var cues = DuelVisualEvents.Capture(g); var slot = target.Hand.Count - 1;
+                    Check(g.ResolveMagnet(0, false, slot).Success);
+                    var steal = cues.Single(c => c.Kind == DuelVisualKind.HandSteal);
+                    Check(steal.Player == 1 && steal.Target == 0 && steal.SourceIndex == slot &&
+                        steal.Value == g.State.Players[0].Hand.Count - 1 && g.State.Players[0].Hand[steal.Value] == "attack" &&
+                        steal.Caption == "" && cues.All(c => c.Kind != DuelVisualKind.Draw));
+                }
                 else
                 {
                     rng.EnqueueDie(2); Check(g.ResolveMagnet(0, true).Success);

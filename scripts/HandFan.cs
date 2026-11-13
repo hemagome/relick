@@ -9,6 +9,8 @@ public partial class HandFan : Control
     internal float Headroom { get; init; } = 4;
     internal float MaximumAngle { get; init; } = 8;
     internal bool Spread { get; init; }
+    /// <summary>The rival's fan: it hangs from the top edge, so the arc and the tilt are mirrored.</summary>
+    internal bool Mirrored { get; init; }
 
     public override void _Ready()
     {
@@ -20,7 +22,7 @@ public partial class HandFan : Control
 
     private void ArrangeCards()
     {
-        var cards = GetChildren().OfType<HandCard>().ToArray();
+        var cards = GetChildren().OfType<Button>().ToArray();
         if (cards.Length == 0) return;
 
         var face = cards[0].CustomMinimumSize;
@@ -38,8 +40,9 @@ public partial class HandFan : Control
             for (var i = 0; i < cards.Length; i++)
             {
                 var side = (i - halfCount) / Math.Max(0.5f, halfCount);
-                var center = new Vector2(i * spacing, 8 * side * side);
-                var pose = new Transform2D(side * maxAngle, center);
+                var mirror = Mirrored ? -1 : 1;
+                var center = new Vector2(i * spacing, mirror * 8 * side * side);
+                var pose = new Transform2D(mirror * side * maxAngle, center);
                 poses[i] = pose;
                 var rect = pose * new Rect2(-pivot, face);
                 bounds = i == 0 ? rect : bounds.Merge(rect);
@@ -49,8 +52,9 @@ public partial class HandFan : Control
 
         CustomMinimumSize = Pose(step).Size.Ceil() + new Vector2(12, 2 + Headroom);
         var bounds = Pose(spread);
+        // A mirrored fan rests its lowest edge on the bottom of the control, where the screen edge cuts it.
         var offset = new Vector2(Math.Max(Size.X, CustomMinimumSize.X) / 2 - bounds.GetCenter().X,
-            Headroom - bounds.Position.Y);
+            Mirrored ? Math.Max(Size.Y, CustomMinimumSize.Y) - Headroom - bounds.End.Y : Headroom - bounds.Position.Y);
         for (var i = 0; i < cards.Length; i++)
         {
             var card = cards[i];
