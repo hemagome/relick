@@ -84,10 +84,21 @@ spacetime start --listen-addr 127.0.0.1:3100
 En otra, desde la raíz del repositorio:
 
 ```bash
-spacetime publish relick-dev --server http://127.0.0.1:3100 --module-path server/spacetimedb --no-config
+spacetime publish relick-dev --server http://127.0.0.1:3100 --module-path tests/server/dev --no-config
 spacetime generate --module-path server/spacetimedb --lang csharp --out-dir network/bindings --namespace Relick.Network.Types --yes
 RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh -- --pvp --pvp-profile=uno
 ```
+
+El módulo real (`server/spacetimedb`) solo admite jugadores que iniciaron sesión con SpacetimeAuth. `tests/server/dev` compila el mismo código con `RELICK_DEV_AUTH`, que también admite la identidad anónima del dispositivo; es el que usan el desarrollo local y las pruebas automáticas. **No publiques `tests/server/dev` en Maincloud.** Al indicar `RELICK_SERVER` el juego entra sin cuenta, salvo que también indiques `RELICK_AUTH_CLIENT`.
+
+Para probar el inicio de sesión real en local, publica el módulo real en otra base y pasa el cliente de SpacetimeAuth:
+
+```bash
+spacetime publish relick-auth-check --server http://127.0.0.1:3100 --module-path server/spacetimedb --no-config
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-auth-check RELICK_AUTH_CLIENT=client_034x0qkKtrinrInTSvJZAI ./jugar.sh -- --pvp
+```
+
+`dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --login <client-id>` comprueba el mismo inicio de sesión sin abrir el juego, y `-- --decks` los mazos guardados y las cuentas.
 
 Repite la última orden con `--pvp-profile=dos` para el rival local. Las variables de entorno prevalecen sobre `network/server.cfg`. Los bindings están generados con 2.15.0 y se incluyen en el repositorio. No edites esos archivos manualmente ni generes con `--include-private`.
 

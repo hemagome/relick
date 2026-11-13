@@ -18,7 +18,7 @@ Necesitas Godot .NET y el SDK de .NET 8. Abre `project.godot` y pulsa F5, o ejec
 6. Enseña habilidades, ataca, juega códigos, equipa o canjea cartas. Quien inicia no puede atacar durante el primer turno de la partida; el rival sí puede atacar en el siguiente, y después ambos pueden hacerlo. Las opciones visibles están autorizadas por el servidor.
 7. Al terminar, cierra la sala para volver a la pantalla de creación y acceso. Durante preparación puedes cerrarla; durante un duelo puedes abandonar mediante su confirmación.
 
-La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RELICK_DATABASE` permiten usar otra base de desarrollo. La identidad del dispositivo se guarda para recuperar una sala con Reconectar. El directorio de identidad anterior se conserva aunque el título del juego ahora sea Relick.
+La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RELICK_DATABASE` permiten usar otra base de desarrollo. El juego pide iniciar sesión con SpacetimeAuth (correo, Discord u otra cuenta) y guarda la sesión para entrar directo la próxima vez; la cuenta conserva el nombre y los mazos en cualquier dispositivo. Contra un servidor indicado con `RELICK_SERVER` se entra sin cuenta, con la identidad del dispositivo, salvo que también se indique `RELICK_AUTH_CLIENT`. El directorio de identidad anterior se conserva aunque el título del juego ahora sea Relick.
 
 ## Exportar para Windows
 
@@ -66,7 +66,7 @@ Android compila para `net9.0`, requerido por la plantilla APK de Godot; escritor
 - Interfaz horizontal adaptable a PC, tablet y teléfono. Exportación APK de prueba para Android ARM64; la validación en hardware Android y la exportación para iOS siguen pendientes.
 - Servidor autoritativo: el cliente presenta información autorizada y envía intenciones; no decide dados, daño ni legalidad del duelo.
 
-La [clasificación indicada por el usuario](docs/CARD_TAXONOMY.md) es la referencia para ampliar efectos y deckbuilding. Documenta habilidades genéricas/específicas, equipos ligeros, áreas orientables y códigos Jugada/Acción/Trampa con extradeck, distinguiendo la especificación de lo ya implementado. Aún no hay constructor de mazos ni catálogo completo.
+La [clasificación indicada por el usuario](docs/CARD_TAXONOMY.md) es la referencia para ampliar efectos y deckbuilding. Documenta habilidades genéricas/específicas, equipos ligeros, áreas orientables y códigos Jugada/Acción/Trampa con extradeck, distinguiendo la especificación de lo ya implementado. Desde la sala de duelos, **Mazo** abre los mazos guardados y el constructor: 42 cartas con exactamente 12 Ataques, al menos 3 habilidades compatibles, hasta 2 copias por nombre y un mazo aparte de hasta 3 Códigos Trampa. Las reglas están en `core/DeckRules.cs` y el servidor las aplica al repartir. El catálogo aún no está completo.
 
 ## Documentación
 
