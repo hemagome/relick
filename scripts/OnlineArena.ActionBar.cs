@@ -40,6 +40,17 @@ public partial class OnlineArena
         _movesScroll = scroll; actions.AddChild(scroll);
         _moves = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _moves.AddThemeConstantOverride("h_separation", 6); _moves.AddThemeConstantOverride("v_separation", 6); scroll.AddChild(_moves);
+        _moves.MinimumSizeChanged += FitMovesScroll;
+    }
+
+    // Buttons that wrap onto a second row (e.g. pay or skip Huevo Azul's draw) stay visible instead of
+    // hiding behind the scrollbar; longer lists still scroll once they pass the cap.
+    private void FitMovesScroll()
+    {
+        var floor = ChoosingMemoryRecovery ? 60 : 50;
+        var cap = Short ? 104 : 168;
+        var height = Mathf.Clamp(_moves.GetCombinedMinimumSize().Y, floor, Math.Max(floor, cap));
+        if (!Mathf.IsEqualApprox(_movesScroll.CustomMinimumSize.Y, height)) _movesScroll.CustomMinimumSize = new(0, height);
     }
 
     private static bool IsHandAction(DuelMoveKind kind) => kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or

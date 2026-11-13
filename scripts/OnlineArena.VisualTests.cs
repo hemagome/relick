@@ -378,6 +378,47 @@ public partial class OnlineArena
         GD.Print("PVP_TIME_BENDER_LAYOUT_PASS · dos descartes, cuatro etapas, repetición, reconexión, privacidad, ambos jugadores y cuatro tamaños.");
     }
 
+    internal async Task CheckBlueEggDrawLayout()
+    {
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], StartingSeat = 0,
+            Hands = [[CardCatalog.BlueEgg.Id, CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
+            Decks = [CardCatalog.TrainingDeck(), CardCatalog.TrainingDeck()],
+            Bonuses = [CardCatalog.Pendant.Id, CardCatalog.Senshuni.Id]
+        }, new SeededRandom(7));
+        game.State.Phase = Phase.Actions; game.State.Turn = 3; game.State.Players[0].Relikia = 300;
+        if (!game.PlayCode(0, 0).Success || !game.ResolveDestruction(0, 1, FieldZone.Bonus, 0).Success || game.State.Phase != Phase.BlueEggDrawChoice)
+            throw new Exception("No se prepara el robo opcional de Huevo Azul Explosivo.");
+        var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        foreach (var seat in new[] { 0, 1 })
+        {
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size;
+            PresentTestSnapshot(DuelSnapshot.For(game, seat, 520));
+            for (var i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var choices = _moveButtons.Where(b => PresentedOption(b)?.Move.Kind == DuelMoveKind.BlueEggDraw).ToArray();
+            if (seat == 1)
+            {
+                if (choices.Length != 0) throw new Exception("El rival puede decidir el robo de Huevo Azul Explosivo.");
+                continue;
+            }
+            var view = _movesScroll.GetGlobalRect().Grow(1);
+            if (choices.Length != 2 || choices.Any(b => !b.IsVisibleInTree() || !view.Encloses(b.GetGlobalRect())))
+                throw new Exception($"Huevo Azul Explosivo no muestra a la vez pagar y continuar en {size}.");
+            var minimum = _root!.GetCombinedMinimumSize();
+            if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1)
+                throw new Exception($"Huevo Azul Explosivo desborda {size}: {minimum}.");
+            if (directory != null && DisplayServer.GetName() != "headless")
+            {
+                System.IO.Directory.CreateDirectory(directory);
+                await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory, $"blue-egg-draw-{size.X}x{size.Y}.png"));
+            }
+        }
+        GD.Print("PVP_BLUE_EGG_DRAW_LAYOUT_PASS · pagar y continuar visibles a la vez, solo para quien decide, en cuatro tamaños.");
+    }
+
     internal async Task CheckReloadCartridgeLayout()
     {
         if (GD.Load<Texture2D>("res://assets/cards/reload-cartridge-clean.png") == null)

@@ -148,6 +148,11 @@ public partial class OnlineLobby
                 await online.CheckTimeBenderLayout(); online.QueueFree(); await Layout();
                 GD.Print("PVP_TIME_BENDER_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--blue-egg-only"))
+            {
+                await online.CheckBlueEggDrawLayout(); online.QueueFree(); await Layout();
+                GD.Print("PVP_BLUE_EGG_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--reload-cartridge-only"))
             {
                 await online.CheckReloadCartridgeLayout(); online.QueueFree(); await Layout();
@@ -250,6 +255,7 @@ public partial class OnlineLobby
             await online.CheckJessicaLayout();
             await online.CheckQuickLoadLayout();
             await online.CheckReloadCartridgeLayout();
+            await online.CheckBlueEggDrawLayout();
             await online.CheckTimeBenderLayout();
             await online.CheckTotemLayout();
             await online.CheckGoldenTotemLayout();
