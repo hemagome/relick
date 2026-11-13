@@ -53,7 +53,7 @@ public partial class DeckStack : Control
         {
             BoardArt.Icon(this, GameIcon.Cards, top.GetCenter(), 20, BoardArt.Tint(Accent, 0.16f));
         }
-        var caption = $"MAZO · {Amount}";
+        var caption = Amount.ToString();
         var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 10).X + 14;
         var chip = new Rect2((Size.X - width) / 2, Size.Y - 22, width, 17);
         BoardArt.Plate(this, chip, Board ? new Color("0b1020") : new Color(0, 0, 0, 0.45f), BoardArt.Tint(Accent, Board ? 0.6f : 0.4f), 4);
