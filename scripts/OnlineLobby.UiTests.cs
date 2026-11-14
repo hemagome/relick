@@ -101,6 +101,11 @@ public partial class OnlineLobby
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
                 GD.Print("PVP_GUIDANCE_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--polish-only"))
+            {
+                await online.CheckPolishEffects(); online.QueueFree(); await Layout();
+                GD.Print("PVP_POLISH_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--board-reading-only"))
             {
                 await online.CheckBoardReading(); online.QueueFree(); await Layout();
@@ -259,6 +264,7 @@ public partial class OnlineLobby
             await online.CheckDecisionGuidance();
             await online.CheckDecisionFeedback();
             await online.CheckBoardReading();
+            await online.CheckPolishEffects();
             await online.CheckActionCounters();
             await online.CheckMemoryInspection();
             await online.CheckPublicHistory();

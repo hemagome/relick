@@ -430,6 +430,11 @@ public partial class LifeMeter : Control
     /// <summary>At 0 lives the next damage ends the duel; the drained bar becomes the warning.</summary>
     public bool FinalBlow => Health == 0 && _initialized;
     internal const string FinalBlowCaption = "GOLPE FINAL";
+    /// <summary>Set from the system preference or the project setting; a final blow then keeps a steady glow.</summary>
+    internal bool ReducedMotion { get; set; }
+    /// <summary>The heart breathes red while one more damage would end the duel.</summary>
+    internal bool Pulsing => FinalBlow && !ReducedMotion;
+    private const float PulseSeconds = 1.6f;
     private bool _initialized;
     private float _fromRatio;
     private float _targetRatio;
@@ -463,9 +468,15 @@ public partial class LifeMeter : Control
     {
         MouseFilter = MouseFilterEnum.Pass;
         Resized += QueueRedraw;
+        ReducedMotion = DisplayServer.AccessibilityShouldReduceAnimation() == 1 ||
+            ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool();
     }
 
-    public override void _Process(double delta) => AdvancePlayback(delta);
+    public override void _Process(double delta)
+    {
+        AdvancePlayback(delta);
+        if (Pulsing && !IsAnimating) QueueRedraw();
+    }
 
     public void AdvancePlayback(double delta)
     {
@@ -482,7 +493,13 @@ public partial class LifeMeter : Control
     {
         var color = FillColor;
         var danger = Health > 0 && Health * 5 <= Maximum;
-        RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(color, danger ? 0.55f : 0.32f), 9, 9);
+        if (Health == 0)
+        {
+            // At 0 lives the glow is the warning colour; it breathes unless motion is reduced.
+            var pulse = Pulsing ? 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 1000f * Mathf.Tau / PulseSeconds) : 1;
+            RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(RelickVisuals.State.Danger, 0.3f + 0.45f * pulse), (int)(8 + 8 * pulse), 9);
+        }
+        else RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(color, danger ? 0.55f : 0.32f), 9, 9);
         BoardArt.Icon(this, GameIcon.Heart, new(17, 23), 23, color);
         var value = Health.ToString();
         var max = $"/ {Maximum}";

@@ -46,6 +46,7 @@ public partial class OnlineArena
             _seenRejectionSerial = Connection.PlayRejectionSerial;
             _rejectionText = Connection.PlayRejection;
             _rejectionUntil = Time.GetTicksMsec() + RejectionMilliseconds;
+            ShakeRejected();
         }
         if (_root == null || _snapshot == null) return;
         _inspector.SetAlert(ShowingRejection ? _rejectionText : "");

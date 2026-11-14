@@ -83,7 +83,11 @@ public partial class ImpactLayer : Control
     private double _flash = FlashSeconds;
     private Color _flashColor;
     internal bool ReducedMotion { get; set; }
-    internal int ActiveCount => _numbers.Count + _rings.Count + _beams.Count + (_flash < FlashSeconds ? 1 : 0);
+    private const double CardSeconds = 0.8;
+    private (Texture2D Art, Vector2 Center, Color Accent, double Age)? _card;
+    /// <summary>A code just played by either duelist is shown for a moment over the middle of the board.</summary>
+    internal bool ShowingCard => _card != null;
+    internal int ActiveCount => _numbers.Count + _rings.Count + _beams.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0);
     internal Vector2? LastNumberAt => _numbers.Count == 0 ? null : _numbers[^1].At;
 
     public override void _Ready()
@@ -123,9 +127,17 @@ public partial class ImpactLayer : Control
         SetProcess(true); QueueRedraw();
     }
 
+    /// <summary>Pops the played card's art at <paramref name="center"/>; skipped with reduced motion.</summary>
+    internal void PlayedCard(Texture2D art, Vector2 center, Color accent)
+    {
+        if (ReducedMotion) return;
+        _card = (art, center, accent, 0);
+        SetProcess(true); QueueRedraw();
+    }
+
     internal void Clear()
     {
-        _numbers.Clear(); _rings.Clear(); _beams.Clear(); _flash = FlashSeconds;
+        _numbers.Clear(); _rings.Clear(); _beams.Clear(); _flash = FlashSeconds; _card = null;
         SetProcess(false); QueueRedraw();
     }
 
@@ -148,6 +160,7 @@ public partial class ImpactLayer : Control
             if (b.Age >= BeamSeconds) _beams.RemoveAt(i); else _beams[i] = b;
         }
         if (_flash < FlashSeconds) _flash = Math.Min(FlashSeconds, _flash + step);
+        if (_card is { } card) _card = card.Age + step >= CardSeconds ? null : card with { Age = card.Age + step };
         if (ActiveCount == 0) SetProcess(false);
         QueueRedraw();
     }
@@ -157,6 +170,19 @@ public partial class ImpactLayer : Control
         var origin = GlobalPosition;
         if (_flash < FlashSeconds)
             DrawRect(new Rect2(Vector2.Zero, Size), BoardArt.Tint(_flashColor, 0.20f * (1 - (float)(_flash / FlashSeconds))));
+        if (_card is { } played)
+        {
+            // Pop in, hold, then rise slightly while fading: long enough to recognise, short enough not to wait for.
+            var t = (float)(played.Age / CardSeconds);
+            var pop = t < 0.18f ? Mathf.Lerp(0.82f, 1.04f, t / 0.18f) : t < 0.3f ? Mathf.Lerp(1.04f, 1, (t - 0.18f) / 0.12f) : 1;
+            var alpha = t < 0.12f ? t / 0.12f : t > 0.7f ? 1 - (t - 0.7f) / 0.3f : 1;
+            var height = 270 * pop;
+            var size = new Vector2(height * played.Art.GetWidth() / played.Art.GetHeight(), height);
+            var rect = new Rect2(played.Center - origin - size / 2 - new Vector2(0, t > 0.7f ? 18 * (t - 0.7f) / 0.3f : 0), size);
+            RelickVisuals.Shadow(this, rect.Grow(-4), BoardArt.Tint(played.Accent, 0.55f * alpha), 22, 10);
+            DrawTextureRect(played.Art, rect, false, new Color(1, 1, 1, alpha));
+            BoardArt.Outline(this, rect, BoardArt.Tint(played.Accent, alpha), 8, 2);
+        }
         foreach (var (from, to, color, age) in _beams)
         {
             var t = (float)(age / BeamSeconds);

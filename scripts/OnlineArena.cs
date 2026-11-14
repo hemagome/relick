@@ -116,6 +116,7 @@ public partial class OnlineArena : Control
         _die.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
         BuildStageBanner();
+        BuildResultOverlay();
         _cardActions.AddThemeConstantOverride("separation", 4);
         AddChild(_cardActions);
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -175,6 +176,7 @@ public partial class OnlineArena : Control
             _needsBaseline = false; Render(animate || openingFlights != null, previous);
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins, placement);
+            if (animate) FlashPlayedCard(previous!, snapshot);
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
         if (_root == null) return;
@@ -189,7 +191,7 @@ public partial class OnlineArena : Control
         UpdateRelikiaPreview();
         UpdateEnabled(); RefreshRuntimeGuidance(); RefreshDecisionFeedback();
         PositionCardActions();
-        UpdateResultPresentation();
+        UpdateResultPresentation(); PositionResultOverlay();
         PresentPlaymat();
         foreach (var target in _pulsingTargets)
             if (IsInstanceValid(target)) target.QueueRedraw();
@@ -615,7 +617,7 @@ public partial class OnlineArena : Control
     private void PlayOption(int index, DuelSnapshot state)
     {
         if (!Connection.Ready || Connection.PlayPending || IsAnimating) return;
-        ClearRejection();
+        ClearRejection(); RememberPlayAnchor();
         if (state.Options[index].Move.Kind == DuelMoveKind.Concede) ConfirmConcede(index, state);
         else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode, state);
     }

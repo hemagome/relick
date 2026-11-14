@@ -211,6 +211,17 @@ Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque. `--board-reading-only` comprueba los contadores (sin solapes con ninguna zona, en cinco tamaños y ambos asientos), el golpe final, la segunda caída y la ranura por enseñar.
 
+## Toques de animación
+
+Cuatro efectos cosméticos. Ninguno forma parte de `IsAnimating`: no bloquean jugadas ni decisiones. Todos se apagan con la preferencia de movimiento reducido del sistema o con `relick/accessibility/reduced_motion`.
+
+- **Jugada rechazada.** Además del aviso del inspector, la carta o zona cuya acción se envió se sacude 0,2 s. Lo que se desplaza es su posición dibujada, que vuelve exactamente a su sitio.
+- **Golpe final.** Con 0 vidas, el brillo rojo del corazón late en un ciclo de 1,6 s. Con movimiento reducido el brillo queda fijo.
+- **Resultado central.** Cuando el duelo termina y ya acabaron el dado, los vuelos y el último impacto, aparece un momento central sobre el tapete. Muestra el resultado, la causa pública y las vidas y PR finales, y entra con una escala breve. Nunca toma el puntero y no tapa el riel, que conserva «Volver al lobby», «Revisar tablero» y el historial. Pasados 1,5 s, cualquier clic o tecla lo retira sin consumir el evento. «Revisar tablero» también lo cierra, y no reaparece para el mismo duelo.
+- **Código jugado.** Cuando el historial público registra la activación de un código nuevo, de cualquiera de los dos jugadores, su ilustración aparece 0,8 s sobre el centro del tablero con el color del jugador. Una decisión dentro de la misma resolución, como elegir la carta de Disquete, no repite el destello.
+
+Prueba enfocada: `--polish-only`. También forma parte de la matriz completa, y con `--ui-screenshot-dir` guarda el resultado y el código jugado.
+
 ## Textos de interfaz
 
 Un texto visible solo se mantiene si aporta algo que no dicen ya la forma, la posición, otro texto o el propio recuento de cartas. Cuando se sustituye por un icono, su texto sigue en el tooltip y en el nombre accesible. Las reglas, los costes, los nombres de cartas y los verbos de acción no se recortan.
