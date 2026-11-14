@@ -1,4 +1,5 @@
 using Godot;
+using Relick.Core;
 using Relick.Network;
 using Relick.Network.Types;
 
@@ -72,8 +73,9 @@ public partial class OnlineLobby
         _name = new LineEdit { Name = "PlayerName", PlaceholderText = "¿Cómo te llamas?", Text = "Jugador", MaxLength = 24,
             CustomMinimumSize = new(0, 48), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         identityRow.AddChild(_name);
-        _decks = AddButton(identityRow, "Mazo: Entrenamiento", OpenDecks);
+        _decks = AddButton(identityRow, "Entrenamiento", OpenDecks);
         _decks.Name = "OpenDecks"; _decks.ClipText = true; _decks.CustomMinimumSize = new(240, 48);
+        _decks.Icon = DeckScreen.Thumbnail(RelikarioCatalog.Yuno.Id); _decks.ExpandIcon = true; _decks.AddThemeConstantOverride("icon_max_width", 40); _decks.AddThemeConstantOverride("h_separation", 10);
         _decks.TooltipText = "Elige el mazo con el que juegas o arma uno nuevo.";
         _name.TextSubmitted += _ => { SaveAccountName(); _name.ReleaseFocus(); };
         _name.FocusExited += SaveAccountName;
@@ -204,7 +206,9 @@ public partial class OnlineLobby
         _name.Editable = _code.Editable = room == null && !busy && !searching;
         PresentAccountName(_name.Editable);
         _decks.Disabled = !ready || busy || searching || room != null;
-        _decks.Text = "Mazo: " + (_lobby.Decks.FirstOrDefault(deck => deck.Active)?.Name ?? "Entrenamiento");
+        var activeDeck = _lobby.Decks.FirstOrDefault(deck => deck.Active);
+        _decks.Text = activeDeck?.Name ?? "Entrenamiento";
+        _decks.Icon = DeckScreen.Thumbnail(activeDeck?.Relikario ?? RelikarioCatalog.Yuno.Id);
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;
         _copy.Text = _copiedCode == roomCode && _copyFeedbackSeconds > 0 ? "Copiado ✓" : "Copiar código";

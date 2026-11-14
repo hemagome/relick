@@ -122,7 +122,7 @@ public partial class DeckScreen : Control
     private static string Shorten(string name) => name.Length <= 32 ? name : name[..32].Trim();
 
     /// <summary>The Relikario's portrait cut from its skill cards, or null when it has none yet.</summary>
-    private static Texture2D? Thumbnail(string relikario) =>
+    internal static Texture2D? Thumbnail(string relikario) =>
         relikario == RelikarioCatalog.Yuno.Id ? GD.Load<Texture2D>("res://assets/characters/yuno/thumbnail.png") : null;
 
     private void AddRow(string key, string relikario, string name, string summary, bool active, bool valid, bool busy, Action use, Action? edit, Action? copy, Action? delete)
