@@ -9,6 +9,12 @@ public sealed record RelikarioDefinition(string Id, string Name, int MaxHealth, 
     public int StartingDexterity => MaxHealth <= 7 ? 2 : MaxHealth <= 9 ? 1 : 0;
 }
 
+/// <summary>A Relikario as listed by the deck builder; <see cref="Definition"/> is null until it is programmed.</summary>
+public sealed record RelikarioEntry(string Id, string Name, RelikarioDefinition? Definition = null)
+{
+    public bool Playable => Definition != null;
+}
+
 public static class RelikarioCatalog
 {
     public static readonly RelikarioDefinition Yuno = new("yuno", "Yuno Gyambura", 8,
@@ -21,6 +27,16 @@ public static class RelikarioCatalog
 
     /// <summary>Base forms a deck can be built around; evolutions are reached during the duel.</summary>
     public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno];
+
+    /// <summary>Every Relikario of the game, in the order the deck builder lists them. Only those with a
+    /// definition are programmed and can have decks built for them; the rest are shown as coming soon.</summary>
+    public static readonly IReadOnlyList<RelikarioEntry> Roster =
+    [
+        new("yuno", "Yuno", Yuno), new("osamu", "Osamu"), new("wd", "WD"), new("godkira", "Godkira"), new("jen95", "Jen95"),
+        new("yuno-8bits", "Yuno 8 bits"), new("yuno-abogado", "Yuno abogado"), new("yuno-oro", "Yuno oro"), new("senshuni", "Senshuni"),
+        new("zii-jay", "Zii Jay"), new("hiperman", "Hiperman"), new("ef-jen", "EF Jen"), new("ef-wd", "EF WD"), new("ironwing", "Ironwing"),
+        new("shuya", "Shuya"), new("zarpo", "Zarpo"), new("kael", "Kael"), new("kurtz", "Kurtz")
+    ];
 
     public static RelikarioDefinition? EvolutionFor(RelikarioDefinition current) => current.Id == Yuno.Id ? YunoLv2 : null;
 }

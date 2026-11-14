@@ -77,3 +77,14 @@ Las opciones de importación limitan las hojas a 2432 píxeles de ancho (320 la 
 texturas a media resolución, con cuadros de 304 × 252 y la misma cuadrícula. Los PNG
 fuente conservan las dimensiones de las exportaciones. El componente calcula las regiones desde el tamaño importado
 y conserva el lienzo lógico de 608 × 504. Véase [interfaz y optimizaciones](../../../docs/UI.md).
+
+## Carta de Relikario y retrato
+
+`card-lv1.png` y `card-lv2.png` son las cartas impresas de Yuno Gyambura (TUTOYUNO-1/7 y BY5-1/14) a 697 × 987,
+tal como las aportó el usuario. **Todavía conservan la marca de agua diagonal RELICK**: no se pudo retirar con
+`image_gen` porque la cuota de Codex estaba agotada. Hay que sustituirlas por versiones limpias. El selector de
+Relikario las muestra y las alterna con un giro.
+
+`portrait.png` es un recorte cuadrado de 212 × 212 tomado del interior de `thumbnail.png`, sin el corte pentagonal,
+para las fichas cuadradas del selector.
+
