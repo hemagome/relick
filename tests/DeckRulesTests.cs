@@ -106,6 +106,13 @@ static class DeckRulesTests
             Legal(deck, ["super-magnet"], ["super-magnet", "zahira-flair"]);
             Broken(deck, ["super-magnet", "super-magnet"], ["super-magnet"], "Máximo 2 copias de Súper Imán entre el mazo de Códigos Trampa y el banquillo");
         }),
+        ("Relikarios: la lista tiene los 18 y solo los programados se pueden elegir", () =>
+        {
+            var roster = RelikarioCatalog.Roster;
+            Check(roster.Count == 18 && roster.Select(r => r.Id).Distinct().Count() == 18 && roster[0].Id == RelikarioCatalog.Yuno.Id);
+            Check(roster.Where(r => r.Playable).Select(r => r.Definition!).SequenceEqual(RelikarioCatalog.Playable));
+            Check(roster.Where(r => r.Playable).All(r => r.Id == r.Definition!.Id));
+        }),
         ("Mazo: cartas y Relikarios desconocidos se rechazan sin lanzar", () =>
         {
             Broken(Swap(CardCatalog.TrainingDeck(), "pc-8bits", "no-existe"), [], "desconocidas: no-existe");

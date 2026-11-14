@@ -16,6 +16,7 @@ public partial class DeckScreen : Control
     /// <summary>Decks to show instead of the server's, for offline previews and tests.</summary>
     internal IReadOnlyList<DeckInfo>? PreviewDecks { get; set; }
     internal DeckEditor? Editor { get; private set; }
+    internal RelikarioPicker? Picker { get; private set; }
 
     private MarginContainer _margin = null!;
     private VBoxContainer? _rows;
@@ -25,6 +26,7 @@ public partial class DeckScreen : Control
     private bool _shownPending;
     private string _shownError = "";
     private ulong _editingId;
+    private string _editingRelikario = RelikarioCatalog.Yuno.Id;
     private int _savesBeforeEdit;
     private bool _saving;
 
@@ -52,7 +54,7 @@ public partial class DeckScreen : Control
     private void Clear()
     {
         foreach (var child in _margin.GetChildren()) { _margin.RemoveChild(child); child.QueueFree(); }
-        _rows = null; _status = null; _create = null; Editor = null;
+        _rows = null; _status = null; _create = null; Editor = null; Picker = null;
     }
 
     private void ShowList()
@@ -64,7 +66,7 @@ public partial class DeckScreen : Control
         back.Name = "DecksBack"; back.CustomMinimumSize = new(120, 48);
         var title = ArenaPresentation.Text("Mis mazos", ShortScreen ? 26 : 36); title.AddThemeFontOverride("font", RelickVisuals.Display);
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill; header.AddChild(title);
-        _create = ArenaPresentation.Button(header, "Nuevo mazo", () => Edit(0, "Mazo nuevo", Enumerable.Repeat(CardCatalog.Attack.Id, DeckRules.AttackCount).ToList(), []));
+        _create = ArenaPresentation.Button(header, "Nuevo mazo", ChooseRelikario);
         _create.Name = "NewDeck"; _create.CustomMinimumSize = new(160, 48); RelickVisuals.Primary(_create);
         _create.Visible = !Guest;
         if (Guest)
@@ -114,8 +116,8 @@ public partial class DeckScreen : Control
             var saved = deck;
             AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, summary, deck.Active, problems.Count == 0, busy,
                 use: () => Connection.SetActiveDeck(saved.Id),
-                edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps, saved.Side),
-                copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps, saved.Side),
+                edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps, saved.Side, saved.Relikario),
+                copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps, saved.Side, saved.Relikario),
                 delete: () => ConfirmDelete(saved));
         }
     }
@@ -172,17 +174,27 @@ public partial class DeckScreen : Control
         dialog.PopupCentered();
     }
 
-    internal void Edit(ulong id, string name, IReadOnlyList<string> cards, IReadOnlyList<string> traps, IReadOnlyList<string>? side = null)
+    /// <summary>A new deck starts by choosing its Relikario; the editor then opens with the twelve Attacks every deck carries.</summary>
+    internal void ChooseRelikario()
     {
         Clear();
-        _editingId = id; _saving = false;
-        Editor = new DeckEditor { DeckName = name, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen };
+        Picker = new RelikarioPicker { ShortScreen = ShortScreen };
+        Picker.Closed += ShowList;
+        Picker.Chosen += relikario => Edit(0, "Mazo nuevo", Enumerable.Repeat(CardCatalog.Attack.Id, DeckRules.AttackCount).ToList(), [], relikario: relikario);
+        _margin.AddChild(Picker);
+    }
+
+    internal void Edit(ulong id, string name, IReadOnlyList<string> cards, IReadOnlyList<string> traps, IReadOnlyList<string>? side = null, string? relikario = null)
+    {
+        Clear();
+        _editingId = id; _saving = false; _editingRelikario = relikario ?? RelikarioCatalog.Yuno.Id;
+        Editor = new DeckEditor { DeckName = name, Relikario = _editingRelikario, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen };
         Editor.Closed += ShowList;
         Editor.SaveRequested += (deckName, main, trapDeck, bench) =>
         {
             if (Connection.DeckPending) return;
             _savesBeforeEdit = Connection.DeckSaves; _saving = true;
-            Connection.SaveDeck(_editingId, deckName, RelikarioCatalog.Yuno.Id, main, trapDeck, bench);
+            Connection.SaveDeck(_editingId, deckName, _editingRelikario, main, trapDeck, bench);
             // Without a connection the request is not sent at all.
             if (!Connection.DeckPending) { _saving = false; Editor.Notify("No hay conexión con el servidor. Inténtalo de nuevo al reconectar."); }
         };

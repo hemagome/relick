@@ -54,8 +54,48 @@ public partial class OnlineLobby
             }
             await Capture("deck-list");
 
-            screen.Edit(0, "Mazo nuevo", Enumerable.Repeat(CardCatalog.Attack.Id, 12).ToList(), []); await Frames();
+            // A new deck starts by choosing its Relikario.
+            ((Button)screen.FindChild("NewDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            var picker = screen.Picker!;
+            Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 1 && picker.Selected.Id == "yuno",
+                "el selector no lista los 18 Relikarios con Yuno elegido.");
+            Expect(picker.Tiles["yuno"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
+                picker.Tiles["osamu"].FindChild("Soon", true, false) != null, "Yuno no muestra su retrato o un Relikario sin programar no se marca como próximamente.");
+            foreach (var name in new[] { "PickerBack", "RosterGallery", "RelikarioDetail", "CreateDeck", "CardButton" })
+                Inside((Control)picker.FindChild(name, true, false), name);
+            var gallery = (Control)picker.FindChild("RosterGallery", true, false);
+            foreach (var tile in picker.Tiles.Values.Where(tile => tile.IsVisibleInTree() && tile.GetGlobalRect().Position.Y < gallery.GetGlobalRect().End.Y))
+            {
+                Expect(tile.GetGlobalRect().End.X <= gallery.GetGlobalRect().End.X + 1 && tile.Size.Y >= 44, $"una ficha se sale de la cuadrícula en {size.X}x{size.Y}.");
+                var art = tile.FindChild("Portrait", true, false) as Control ?? tile;
+                Expect(art == tile || Math.Abs(art.Size.X - art.Size.Y) <= 1, "el retrato de la ficha no es cuadrado.");
+            }
+            picker.Tiles["osamu"].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: true, Text: "Próximamente" } && picker.FindChild("ComingSoonNote", true, false) != null,
+                "un Relikario sin programar permite crear un mazo.");
+            if (picker.FindChild("FilterAvailable", true, false) is Button { Visible: true } available)
+            {
+                available.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+                Expect(picker.Tiles.Values.Count(tile => tile.Visible) == 1 && picker.Selected.Id == "yuno", "el filtro Disponibles no deja solo a Yuno.");
+                ((Button)picker.FindChild("FilterAll", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            }
+            else picker.Tiles["yuno"].EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames();
+            Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: false } create && create.Text.Contains("Yuno"), "no se ofrece crear el mazo de Yuno.");
+            ((Button)picker.FindChild("CardButton", true, false)).EmitSignal(BaseButton.SignalName.Pressed);
+            await ToSignal(GetTree().CreateTimer(0.6), SceneTreeTimer.SignalName.Timeout);
+            Expect(picker.Level == 2 && ((TextureRect)picker.FindChild("RelikarioCard", true, false)).Texture == RelikarioPicker.Card("yuno", 2) &&
+                ((Button)picker.FindChild("Level2", true, false)).ButtonPressed, "tocar la carta no la gira al nivel 2.");
+            Expect(RelikarioPicker.Monogram("Yuno 8 bits") == "Y8B" && RelikarioPicker.Monogram("Zii Jay") == "ZJ", "las iniciales de los Relikarios sin retrato son incorrectas.");
+            foreach (var button in picker.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree() && b.GetGlobalRect().Position.Y < size.Y))
+                Expect(button.Size.Y >= 40, "un botón del selector es demasiado bajo para tocarlo.");
+            await Capture("relikario-picker");
+            ((Button)picker.FindChild("PickerBack", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(screen.Picker == null && screen.FindChild("DeckRows", true, false) != null, "volver desde el selector no regresa a la lista de mazos.");
+            ((Button)screen.FindChild("NewDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            ((Button)screen.Picker!.FindChild("CreateDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             var editor = screen.Editor!;
+            Expect(editor.Relikario == "yuno" && editor.Main.Count == 12, "elegir a Yuno no abre el editor con sus 12 Ataques.");
             Expect(!editor.Dirty && editor.Problems.Count > 0 && ((Button)editor.FindChild("SaveDeck", true, false)).Text == "Guardar borrador",
                 "un mazo nuevo debe empezar como borrador sin cambios.");
             Expect(editor.AddBlocked(CardCatalog.Attack) != null, "se permite un Ataque de más.");
