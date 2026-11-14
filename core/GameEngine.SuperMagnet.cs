@@ -1,6 +1,14 @@
 namespace Relick.Core;
 
-public sealed record TrapCraft(int Actor, string CardId);
+/// <summary>
+/// A pending Trap creation. <see cref="CardId"/> is the first choice; <see cref="Choices"/> lists every
+/// recipe the two exchanged cards meet (rulebook § 5.3: if they meet several, the player chooses one), and
+/// <see cref="Ingredients"/> the two public cards that met it. Older saves carry only the first two fields.
+/// </summary>
+public sealed record TrapCraft(int Actor, string CardId, string[]? Choices = null, string[]? Ingredients = null)
+{
+    public IReadOnlyList<string> Options => Choices is { Length: > 0 } choices ? choices : [CardId];
+}
 
 public sealed partial class GameEngine
 {
@@ -22,12 +30,16 @@ public sealed partial class GameEngine
         var player = State.Players[actor];
         var exchanged = player.Exchange.Take(2).Select(CardCatalog.Get).ToArray();
         // Every current path into these exchange slots places the card for its owner.
+        // At most one Trap per exchange, but every recipe it meets is offered (rulebook § 5.3).
+        var choices = new List<string>();
         if (player.SuperMagnetCopies > 0 && exchanged.Any(card => card.Kind == CardKind.Equipment))
-            (State.TrapCraftQueue ??= []).Add(new(actor, CardCatalog.SuperMagnet.Id));
-        else if (player.ZahiraAvailable && FreeZahiraSlot(player) >= 0 && exchanged.All(card => card.CodeType == CodeType.Character))
-            (State.TrapCraftQueue ??= []).Add(new(actor, CardCatalog.ZahiraFlair.Id));
-        else if (player.SuperAttackAvailable && exchanged.All(card => card.Kind == CardKind.Attack))
-            (State.TrapCraftQueue ??= []).Add(new(actor, CardCatalog.SuperAttack.Id));
+            choices.Add(CardCatalog.SuperMagnet.Id);
+        if (player.ZahiraAvailable && FreeZahiraSlot(player) >= 0 && exchanged.All(card => card.CodeType == CodeType.Character))
+            choices.Add(CardCatalog.ZahiraFlair.Id);
+        if (player.SuperAttackAvailable && exchanged.All(card => card.Kind == CardKind.Attack))
+            choices.Add(CardCatalog.SuperAttack.Id);
+        if (choices.Count > 0)
+            (State.TrapCraftQueue ??= []).Add(new(actor, choices[0], choices.ToArray(), exchanged.Select(card => card.Id).ToArray()));
     }
 
     private bool TryPresentTrapCraft()
@@ -37,7 +49,13 @@ public sealed partial class GameEngine
             return false;
 
         var queue = State.TrapCraftQueue;
-        while (queue.Count > 0 && !HasTrapCopy(queue[0])) queue.RemoveAt(0);
+        while (queue.Count > 0)
+        {
+            // A copy may have been used or a Zahira slot filled while the creation waited.
+            var available = queue[0].Options.Where(id => HasTrapCopy(queue[0] with { CardId = id })).ToArray();
+            if (available.Length > 0) { queue[0] = queue[0] with { CardId = available[0], Choices = available }; break; }
+            queue.RemoveAt(0);
+        }
         if (queue.Count == 0)
         {
             State.TrapCraftQueue = null;
@@ -60,14 +78,18 @@ public sealed partial class GameEngine
         };
     }
 
-    public CommandResult ResolveTrapCraft(int actor, bool create)
+    /// <param name="choice">Which of the offered recipes to create, in <see cref="TrapCraft.Options"/> order.</param>
+    public CommandResult ResolveTrapCraft(int actor, bool create, int choice = 0)
     {
         if (State.Phase != Phase.TrapCraftChoice || actor != State.DecisionPlayer)
             return CommandResult.Fail("No te corresponde decidir si creas un Código Trampa.");
+        var pending = State.TrapCraftQueue![0];
+        if (create && (choice < 0 || choice >= pending.Options.Count))
+            return CommandResult.Fail("Ese Código Trampa no está disponible para este canje.");
 
         var player = State.Players[actor];
         var queue = State.TrapCraftQueue!;
-        var recipe = queue[0];
+        var recipe = create ? pending with { CardId = pending.Options[choice] } : pending;
         queue.RemoveAt(0);
         if (queue.Count == 0) State.TrapCraftQueue = null;
         State.Phase = State.TrapCraftResumePhase!.Value;

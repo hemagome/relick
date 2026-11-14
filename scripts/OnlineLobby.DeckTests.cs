@@ -109,7 +109,7 @@ public partial class OnlineLobby
             Expect(editor.AddBlocked(CardCatalog.SuperAttack)!.Contains("hasta 3") && editor.Traps.Count == 3, "se permite una cuarta Trampa.");
             await Frames();
             Expect(editor.Dirty && editor.Problems.Count == 0 && ((Button)editor.FindChild("SaveDeck", true, false)).Text == "Guardar" &&
-                ((Label)editor.FindChild("DeckTotals", true, false)).Text.Contains("42/42") &&
+                ((Button)editor.FindChild("DeckTab", true, false)).Text.Contains("42/42") &&
                 ((Label)editor.FindChild("DeckProblems", true, false)).Text.Contains("listo"), "un mazo legal no se presenta como listo.");
             Expect(((Label)editor.FindChild("Catalog_" + playable[0].Id, true, false)!.GetNode("Copies")).Text == "×2", "el catálogo no muestra las copias incluidas.");
             foreach (var name in new[] { "SaveDeck", "EditorBack", "DeckName", "DeckPanel", "ListTabs", "CatalogGallery" })
@@ -123,7 +123,8 @@ public partial class OnlineLobby
             Expect(editor.EditingSide && editor.FindChild("SideHelp", true, false) != null, "la pestaña Banquillo no muestra el banquillo.");
             ((HandCard)editor.FindChild("Catalog_" + benchable[0].Id, true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
             Expect(editor.Side.SequenceEqual([benchable[0].Id]) && editor.Main.Count == 42, "pulsar el catálogo en la pestaña Banquillo no lo añade al banquillo.");
-            Expect(((Label)editor.FindChild("Catalog_" + benchable[0].Id, true, false)!.GetNode("Copies")).Text == "B1", "el catálogo no distingue las copias del banquillo.");
+            Expect(editor.FindChild("Catalog_" + benchable[0].Id, true, false)! is var benched && !((Label)benched.GetNode("Copies")).Visible &&
+                ((Control)benched.GetNode("Bench")).Visible && ((Label)benched.FindChild("BenchCount", true, false)!).Text == "1", "el catálogo no distingue las copias del banquillo.");
             foreach (var card in benchable.Skip(1).Take(9)) editor.Add(card, toSide: true);
             Expect(editor.Side.Count == 10 && editor.AddBlocked(benchable[0], toSide: true)!.Contains("hasta 10"), "el banquillo pasa de diez cartas.");
             Expect(editor.FindChild("Row_" + benchable[0].Id, true, false)?.FindChild("Move", true, false) != null, "las filas del banquillo no ofrecen pasar al mazo.");
@@ -138,7 +139,7 @@ public partial class OnlineLobby
             editor.Remove(benchable[0]); editor.Move(playable[1], toSide: false); editor.Add(benchable[0], toSide: true);
             Expect(editor.Side.Count == 10 && editor.Main.Count(id => id == playable[1].Id) == 2, "deshacer el intercambio no restaura el mazo.");
             ((Button)editor.FindChild("DeckTab", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-            Expect(!editor.EditingSide && editor.Problems.Count == 0 && ((Label)editor.FindChild("DeckTotals", true, false)).Text.Contains("Banquillo 10/10"),
+            Expect(!editor.EditingSide && editor.Problems.Count == 0 && ((Button)editor.FindChild("SideTab", true, false)).Text.Contains("10/10"),
                 "volver al mazo pierde el banquillo o los totales.");
 
             var saved = (name: "", main: 0, traps: 0, side: 0);

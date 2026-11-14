@@ -28,6 +28,32 @@ static class SuperAttackTests
             Trade(game, CardCatalog.Attack, CardCatalog.Attack);
             Check(game.State.Phase == Phase.Actions && !game.State.Active.SuperAttackAvailable);
         }),
+        ("Códigos Trampa: se ofrece cada receta cumplida, se crea la elegida y se publican las cartas canjeadas", () =>
+        {
+            var (game, random) = Fixture();
+            Trade(game, CardCatalog.Attack, CardCatalog.Attack);
+            var pending = game.State.TrapCraftQueue![0];
+            Check(game.State.Phase == Phase.TrapCraftChoice && pending.Options.SequenceEqual([CardCatalog.SuperAttack.Id]) &&
+                pending.Ingredients!.SequenceEqual([CardCatalog.Attack.Id, CardCatalog.Attack.Id]));
+            Check(DuelSnapshot.For(game, 1, 1).TrapIngredients!.SequenceEqual([CardCatalog.Attack.Id, CardCatalog.Attack.Id]));
+            // No two current recipes overlap, so offer a second one by hand to exercise the choice (rulebook § 5.3).
+            game.State.TrapCraftQueue[0] = pending with { Choices = [CardCatalog.SuperAttack.Id, CardCatalog.SuperMagnet.Id] };
+            game.State.Active.SuperMagnetCopies = 1;
+            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+            var creates = DuelOptions.For(game, 0).Where(option => option.Move.Kind == DuelMoveKind.TrapCraft && option.Move.Flag).ToArray();
+            Check(creates.Select(option => option.Move.Value).SequenceEqual([0, 1]) && creates[1].Label.Contains(CardCatalog.SuperMagnet.Name));
+            Check(!game.ResolveTrapCraft(0, true, 2).Success && game.State.Phase == Phase.TrapCraftChoice);
+            Check(creates[1].Move.Apply(game, 0).Success);
+            var player = game.State.Active;
+            Check(player.Equipment == CardCatalog.SuperMagnet.Id && player.SuperAttackAvailable && !player.Hand.Contains(CardCatalog.SuperAttack.Id));
+            Check(game.State.Phase != Phase.TrapCraftChoice && DuelSnapshot.For(game, 0, 2).TrapIngredients == null);
+
+            // An older client sends no recipe index: it creates the first offered recipe, as before.
+            (game, _) = Fixture();
+            Trade(game, CardCatalog.Attack, CardCatalog.Attack);
+            Check(new DuelMove { Kind = DuelMoveKind.TrapCraft, Flag = true }.Apply(game, 0).Success &&
+                game.State.Active.Hand.Last() == CardCatalog.SuperAttack.Id);
+        }),
         ("Súper Ataque: aplica el tope al D6, conserva el crítico y añade daño a los aciertos", () =>
         {
             int[] dice = [3, 4, 5, 5, 5, 6];

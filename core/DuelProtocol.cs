@@ -92,7 +92,7 @@ public sealed class DuelMove
         DuelMoveKind.EffectDamage => game.ResolveEffectDamage(actor),
         DuelMoveKind.Totem => game.ResolveTotem(actor, Flag),
         DuelMoveKind.GoldenTotem => game.ResolveGoldenTotem(actor, Discards),
-        DuelMoveKind.TrapCraft => game.ResolveTrapCraft(actor, Flag),
+        DuelMoveKind.TrapCraft => game.ResolveTrapCraft(actor, Flag, Flag ? Math.Max(0, Value) : 0),
         DuelMoveKind.ZahiraTarget => game.ResolveZahiraTarget(actor, Target, (FieldZone)Value, Index),
         DuelMoveKind.ComboResponses => game.SetComboResponses(actor, Flag),
         _ => CommandResult.Fail("Jugada desconocida.")

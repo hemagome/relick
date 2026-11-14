@@ -110,16 +110,20 @@ public partial class OnlineArena : Control
         AddChild(_diceOverlay); _diceOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var panel = ArenaPresentation.Panel(_diceOverlay, "111f2c", new("927b54"));
         var column = new VBoxContainer(); panel.AddChild(column);
-        column.AddChild(ArenaPresentation.Text("LANZANDO EL DADO", 12, BoardArt.Gold)); column.AddChild(_die);
+        // The rolling die needs no title; the caption below says whose roll it is and what modifies it.
+        column.AddChild(_die);
         _diceCaption = ArenaPresentation.Text("", 13); _diceCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(_diceCaption);
         _die.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
         BuildStageBanner();
+        BuildResultOverlay();
         _cardActions.AddThemeConstantOverride("separation", 4);
         AddChild(_cardActions);
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
+        // Refusals from before this arena existed belong to another screen.
+        _seenRejectionSerial = Connection?.PlayRejectionSerial ?? 0;
     }
 
     private void PlaySound(SoundCue cue) => GetNodeOrNull<SoundDirector>("/root/SoundDirector")?.Play(cue);
@@ -172,6 +176,7 @@ public partial class OnlineArena : Control
             _needsBaseline = false; Render(animate || openingFlights != null, previous);
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins, placement);
+            if (animate) { FlashPlayedCard(previous!, snapshot); SummonCreatedTrap(previous!, snapshot); }
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
         if (_root == null) return;
@@ -184,9 +189,9 @@ public partial class OnlineArena : Control
         UpdateResolutionPresentation();
         if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
         UpdateRelikiaPreview();
-        UpdateEnabled(); RefreshRuntimeGuidance();
+        UpdateEnabled(); RefreshRuntimeGuidance(); RefreshDecisionFeedback();
         PositionCardActions();
-        UpdateResultPresentation();
+        UpdateResultPresentation(); PositionResultOverlay();
         PresentPlaymat();
         foreach (var target in _pulsingTargets)
             if (IsInstanceValid(target)) target.QueueRedraw();
@@ -210,6 +215,7 @@ public partial class OnlineArena : Control
     {
         _relikiaMenu = null;
         _inspectorPreview = null;
+        ClearStageStatus();
         _fieldPress = null;
         var handPosition = _hand?.ScrollHorizontal ?? 0;
         var handVerticalPosition = _hand?.ScrollVertical ?? 0;
@@ -272,6 +278,7 @@ public partial class OnlineArena : Control
                     else SelectSkill(slot);
                 },
                 InspectSkill = slot => ShowCards("Habilidad", [player.Skills[slot]]),
+                CanLearn = relative == 0 && !_preparing && s.Winner == null && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Learn),
                 Evolve = () => SendKind(DuelMoveKind.Evolve), CanEvolve = s.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve) && !Connection.PlayPending && !IsAnimating,
                 Relikia = relative == 0 && !_preparing && s.Winner == null ? OpenRelikiaMenu : null
             };
@@ -291,9 +298,11 @@ public partial class OnlineArena : Control
 
             var brand = new HBoxContainer { Name = "RivalStrip", MouseFilter = MouseFilterEnum.Ignore };
             brand.AddThemeConstantOverride("separation", 10);
-            brand.AddChild(RelickVisuals.Logo(true));
-            _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;
-            _status.ClipText = true; _status.SizeFlagsHorizontal = SizeFlags.ExpandFill; _status.VerticalAlignment = VerticalAlignment.Center;
+            // The status cell of the phase bar and the inspector already say what the connection is doing;
+            // the room code stays on the logo's tooltip.
+            var logo = RelickVisuals.Logo(true); logo.MouseFilter = MouseFilterEnum.Pass; logo.TooltipText = "Sala " + RoomCode;
+            brand.AddChild(logo);
+            _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.Visible = false;
             brand.AddChild(_status);
             canvas.Place(brand, new Rect2(10, 4, 330, 34), BoardAnchor.Top);
 
@@ -325,6 +334,7 @@ public partial class OnlineArena : Control
             var (lane, bar) = ArenaPresentation.PhaseBar(canvas, stage, barDetail, turnAccent);
             _combatCenter = lane;
             BuildAdvanceControl(bar);
+            BindStageStatus(bar);
 
             // Choices among cards outside the hand open over the board; the hand itself stays low.
             choiceGallery = _choosingOpeningSkill || ChoosingRecycling || ChoosingEffectCards;
@@ -474,13 +484,15 @@ public partial class OnlineArena : Control
         var opponent = _snapshot!.Players[1 - _snapshot.MySeat];
         var hand = opponent.Hand;
         var strip = parent is HBoxContainer;
-        ArenaPresentation.HandCounter(parent, opponent.HandCount, enemy: true);
+        // The board fan carries its own count beside its cards; the stacked layouts keep it first in the strip.
+        if (boardFace == null) ArenaPresentation.HandCounter(parent, opponent.HandCount, enemy: true);
         var face = boardFace ?? (strip ? new Vector2(43, 60.8f) : new Vector2(54, 76.4f));
         Control row;
         if (boardFace != null)
         {
             // The rival's hand mirrors ours: same card size, tilt and visible band, hanging from the top edge.
             row = new HandFan { Name = "OpponentHandFan", Mirrored = true, Headroom = 0, MaximumAngle = 3, Spread = true,
+                VisibleBand = ArenaPresentation.DesktopHandVisible,
                 SizeFlagsVertical = SizeFlags.Fill };
         }
         else
@@ -503,11 +515,10 @@ public partial class OnlineArena : Control
             card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);
         }
         if (boardFace == null) return;
+        // Only the band below the top edge is on screen: the count sits in it, past the last card.
+        ((HandFan)row).Counter = ArenaPresentation.HandCounter(row, opponent.HandCount, enemy: true);
         // The fan lays its cards out on entering the tree, so it joins the board once it holds them.
         parent.AddChild(row);
-        // Only the band below the top edge is on screen: the count sits in it, beside the cards.
-        if (parent.FindChild("OpponentHandCounter", false, false) is Control counter) counter.SizeFlagsVertical = SizeFlags.ShrinkEnd;
-        parent.AddChild(new Control { CustomMinimumSize = new(44, 0), MouseFilter = MouseFilterEnum.Ignore });
     }
 
     private CardOwner? OwnHandCardOwner(int index)
@@ -558,7 +569,7 @@ public partial class OnlineArena : Control
         {
             BuildPreparationMoves(); RefreshInspector(); return;
         }
-        RefreshBoardTargets(); BuildContextMoves();
+        RefreshBoardTargets(); BuildContextMoves(); RefreshPlayableHand();
         _lastDisabled = null; UpdateEnabled();
     }
 
@@ -606,6 +617,7 @@ public partial class OnlineArena : Control
     private void PlayOption(int index, DuelSnapshot state)
     {
         if (!Connection.Ready || Connection.PlayPending || IsAnimating) return;
+        ClearRejection(); RememberPlayAnchor();
         if (state.Options[index].Move.Kind == DuelMoveKind.Concede) ConfirmConcede(index, state);
         else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode, state);
     }
@@ -651,7 +663,7 @@ public partial class OnlineArena : Control
     {
         Phase.Preparation => "PREPARACIÓN", Phase.Draw => "ROBO", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
-        Phase.TrapCraftChoice => "CÓDIGO TRAMPA",
+        Phase.TrapCraftChoice => "TRAMPA",
         Phase.ZahiraTarget => "ZAHIRA FLAIR",
         Phase.CodeResponse or Phase.ErrorResponse or Phase.EffectDamageChoice => "RESPUESTA", Phase.GoldenTotemChoice or Phase.GoldenTotemResolving => "TÓTEM DE ORO", Phase.TotemChoice => "TÓTEM DE SALVACIÓN", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MemoryRecoveryChoice => "DISQUETE", Phase.TurnBuffDiscard => "DESCARTAR COSTE", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", Phase.BlueEggDrawChoice => "ROBO OPCIONAL", _ => "RESOLVER EFECTO"
     };

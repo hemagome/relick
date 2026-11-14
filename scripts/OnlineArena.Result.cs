@@ -53,8 +53,9 @@ public partial class OnlineArena
 
     private void UpdateResultPresentation()
     {
-        if (_resultPanel == null) return;
+        if (_resultPanel == null) { HideResultOverlay(); return; }
         var visible = !_resultDismissed && ResultSettled;
+        UpdateResultOverlay(visible);
         _resultPanel.Visible = visible; _actionDock.Visible = !visible;
         var closing = Connection.PendingRoomRequest == RoomRequest.Leave;
         _resultReturn!.Disabled = !Connection.Ready || Connection.PendingRoomRequest != RoomRequest.None || !ResultSettled;

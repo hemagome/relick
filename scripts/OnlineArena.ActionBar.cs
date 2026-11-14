@@ -134,7 +134,13 @@ public partial class OnlineArena
         _advanceButton = null;
         if (_preparing) return;
         var advance = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Advance);
-        if (advance < 0) return;
+        if (advance < 0)
+        {
+            // On the board the bar keeps the button's room, so it does not shrink and shift on the rival's turn.
+            if (header.Name == "TurnDock" && s.Winner == null)
+                header.AddChild(new Control { Name = "AdvancePlaceholder", CustomMinimumSize = new(192, 48), MouseFilter = MouseFilterEnum.Ignore });
+            return;
+        }
         _advanceButton = (AdvancePhaseButton)AddOption(header, advance);
         _advanceButton.Name = "AdvanceStage";
         _advanceButton.TooltipText = AdvanceSuggested(s)
@@ -298,17 +304,25 @@ public partial class OnlineArena
                 control.GuiInput += ClearContextOnFieldClick;
             if (card == null && control is not OpponentHandCard) continue;
             int? counters = control is SkillTile skill ? skill.Counters : null;
+            var owner = SkillTileOwner(control);
             var tooltip = control.TooltipText;
             control.MouseEntered += () =>
             {
-                if (IsAnimating || HasContextSelection || InspectorActivationId() != null) return;
+                // Choosing the skill of an Attack is exactly when its damage table is worth reading.
+                var choosingSkill = _choosingAttackSkill && control is SkillTile;
+                if (IsAnimating || HasContextSelection && !choosingSkill || InspectorActivationId() != null) return;
                 if (card != null) control.TooltipText = "";
                 (CardDefinition, int?)? preview = card == null ? null : (card, counters);
-                if (_inspectorPreview == preview) return;
-                _inspectorPreview = preview;
+                if (_inspectorPreview == preview && _inspectorPreviewOwner == owner) return;
+                _inspectorPreview = preview; _inspectorPreviewOwner = owner;
                 RefreshInspector();
             };
-            if (card != null) control.MouseExited += () => control.TooltipText = tooltip;
+            if (card != null) control.MouseExited += () =>
+            {
+                control.TooltipText = tooltip;
+                if (!_choosingAttackSkill || _inspectorPreview == null) return;
+                _inspectorPreview = null; RefreshInspector();
+            };
         }
     }
 
@@ -350,10 +364,12 @@ public partial class OnlineArena
             counters = s.Players[s.MySeat].Counters.ElementAtOrDefault(_selectedSkill);
         var title = _preparing ? card?.Name ?? (_choosingOpeningSkill ? "Elige una habilidad" : "Mano inicial") : ContextTitle();
         var cost = _preparing ? "" : s.Phase == Phase.TrapCraftChoice && activation != null ? ArenaActionText.CardCost(card!) : _selectionCost;
+        var fromPreview = false;
         if (activation == null && _inspectorPreview is { } preview && (preview.Card != card || preview.Counters != counters))
         {
-            card = preview.Card; title = card.Name; counters = preview.Counters;
-            cost = _preparing ? "" : ArenaActionText.CardCost(card);
+            card = preview.Card; title = card.Name; counters = preview.Counters; fromPreview = true;
+            // While an Attack waits for its skill, the skill being read is what the Attack would use.
+            cost = _preparing ? "" : _choosingAttackSkill ? ArenaActionText.CardCost(CardCatalog.Attack) : ArenaActionText.CardCost(card);
         }
         var relikia = _showcase != null && activation == null ? _relikiaPreview : null;
         if (relikia is { } effectId)
@@ -366,7 +382,10 @@ public partial class OnlineArena
         }
         else
         {
-            _inspector.Present(card, title, cost, _selection.Text, counters);
+            var owner = card?.Kind == CardKind.Skill ? InspectorSkillOwner(fromPreview) : null;
+            // Deciding a Trap shows the two exchanged cards that met its recipe.
+            var recipe = activation != null && s.Phase == Phase.TrapCraftChoice ? s.TrapIngredients : null;
+            _inspector.Present(card, title, cost, _selection.Text, counters, InspectorOutlook(card, counters, owner), recipe);
             _showcase?.Present(card);
         }
         _contextCost.TooltipText = cost;

@@ -22,8 +22,10 @@ public static class DuelOptions
             switch (s.Phase)
             {
                 case Phase.TrapCraftChoice:
-                    var trap = s.TrapCraftQueue![0].CardId;
-                    Add(DuelMoveKind.TrapCraft, $"Crear {Card(trap)}", flag: true);
+                    // One option per recipe the exchange met; the value is the recipe's position.
+                    var recipes = s.TrapCraftQueue![0].Options;
+                    for (var choice = 0; choice < recipes.Count; choice++)
+                        Add(DuelMoveKind.TrapCraft, $"Crear {Card(recipes[choice])}", value: choice, flag: true);
                     Add(DuelMoveKind.TrapCraft, "Pasar sin crear");
                     break;
                 case Phase.ZahiraTarget:

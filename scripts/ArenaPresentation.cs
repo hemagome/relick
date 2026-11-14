@@ -16,6 +16,8 @@ public sealed class ArenaPlayerActions
     public Action<int> InspectSkill { get; init; } = _ => { };
     public Action Evolve { get; init; } = () => { };
     public bool CanEvolve { get; init; }
+    /// <summary>The server offers teaching a skill now; the next free space is lit.</summary>
+    public bool CanLearn { get; init; }
     public string EvolutionHint { get; init; } = "Evolucionar cuesta 1800 PR y requiere un 6 natural.";
     public Action<ResourceBadge>? Relikia { get; init; }
 }
@@ -109,12 +111,14 @@ public static class ArenaPresentation
         portrait.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         portrait.CustomMinimumSize = new(0, 96);
         stand.AddChild(portrait);
-        var ownerName = Heading(active ? $"» {owner.Name}" : owner.Name, 17, accent);
+        // Whose turn it is lives in the phase bar's status cell; the name is only the name.
+        var ownerName = Heading(owner.Name, 17, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; info.AddChild(ownerName);
         var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", 11, BoardArt.Muted);
         name.ClipText = true; name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · {RelikarioCatalog.Yuno.Name} · Vida máxima: {owner.MaxHealth}";
         info.AddChild(name);
         life.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        life.ReachedZero = owner.HasReachedZero;
         life.SetHealth(owner.Health, owner.MaxHealth);
         info.AddChild(life);
         var stats = new HBoxContainer(); stats.AddThemeConstantOverride("separation", 6); info.AddChild(stats);
@@ -157,7 +161,7 @@ public static class ArenaPresentation
             _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
             _ => ""
         };
-        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : "EQUIPO", StatusText = equipmentStatus,
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W };
         equipment.Pressed += actions.Equipment; Put(equipment, 306, bottom, W, H);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, SlotWidth = W, Board = true };
@@ -172,11 +176,12 @@ public static class ArenaPresentation
 
         // Skills: 500 and 1000 PR above, 0 and 300 PR below.
         var skills = new (int Slot, float X, float Y)[] { (2, 596, 76), (3, 596 + H + 10, 76), (0, 596, 76 + W + 10), (1, 596 + H + 10, 76 + W + 10) };
+        var nextLesson = NextLessonSlot(owner, !enemy && actions.CanLearn);
         foreach (var (slot, x, y) in skills)
         {
             var learnedIndex = owner.SkillIndexAtPosition(slot);
             var learned = learnedIndex >= 0;
-            var skill = new SkillTile { Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[learnedIndex]) : null,
+            var skill = new SkillTile { Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[learnedIndex]) : null, NextLesson = slot == nextLesson,
                 Slot = slot, SkillIndex = learnedIndex, Counters = learnedIndex >= 0 && learnedIndex < owner.Counters.Length ? owner.Counters[learnedIndex] : 0,
                 Chosen = !enemy && learned && selectedSkill == learnedIndex, Accent = accent, Disabled = enemy && !learned,
                 PresentationScale = H / SkillTile.CardSize.X };
@@ -219,10 +224,20 @@ public static class ArenaPresentation
             label.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter; return label;
         }
         // Every cell keeps its width from stage to stage, so the advance button never moves.
+        // The status cell says in words whose turn or decision it is; colour only repeats it.
+        var status = new HBoxContainer { Name = "StageStatusCell", CustomMinimumSize = new(StatusCellWidth, 0),
+            MouseFilter = Control.MouseFilterEnum.Pass, TooltipText = detail };
+        status.AddThemeConstantOverride("separation", 7); row.AddChild(status);
+        status.AddChild(new IconView { Name = "StageStatusIcon", Icon = GameIcon.Bolt, Color = accent,
+            CustomMinimumSize = new(20, 20), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+        var lines = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center,
+            MouseFilter = Control.MouseFilterEnum.Ignore };
+        lines.AddThemeConstantOverride("separation", -2); status.AddChild(lines);
+        var headline = Still(Heading("", 15, accent));
+        headline.Name = "StageStatus"; headline.ClipText = true; lines.AddChild(headline);
         var context = Still(Text(detail, 12, BoardArt.Ink));
-        context.Name = "StageDetail"; context.CustomMinimumSize = new(150, 0); context.ClipText = true; context.TooltipText = detail;
-        context.MouseFilter = Control.MouseFilterEnum.Pass;
-        row.AddChild(context);
+        context.Name = "StageDetail"; context.ClipText = true; context.TooltipText = detail;
+        lines.AddChild(context);
         var stages = new[] { Phase.Draw, Phase.Combat, Phase.Actions, Phase.Final };
         var widths = new[] { 66f, 112, 116, 70 };
         var current = Array.IndexOf(stages, stage);
@@ -243,12 +258,14 @@ public static class ArenaPresentation
             else if (i > current) cell.AddChild(Still(Text(title, 12, BoardArt.Tint(BoardArt.Muted, 0.6f))));
             else
             {
-                cell.AddChild(Still(Heading("»", 16, accent)));
                 var now = Still(Heading(title, 16, accent)); now.Name = "CurrentStageTitle"; cell.AddChild(now);
             }
         }
         return (lane, row);
     }
+
+    /// <summary>Width of the desktop status cell; the bar must still fit its 828-unit lane.</summary>
+    internal const float StatusCellWidth = 180;
 
     public static BoxContainer Arena(VBoxContainer root, bool compact)
     {
@@ -289,7 +306,7 @@ public static class ArenaPresentation
         var header = new HBoxContainer(); column.AddChild(header);
         var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         names.AddThemeConstantOverride("separation", 0);
-        var ownerName = Text(active ? $"» {owner.Name}" : owner.Name, 9, accent);
+        var ownerName = Text(owner.Name, 9, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = compact; ownerName.TooltipText = owner.Name; names.AddChild(ownerName);
         var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", compact ? 15 : 18);
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -316,6 +333,7 @@ public static class ArenaPresentation
         var meters = new HBoxContainer();
         meters.AddThemeConstantOverride("separation", 10);
         life.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        life.ReachedZero = owner.HasReachedZero;
         life.SetHealth(owner.Health, owner.MaxHealth);
         crystals.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         meters.AddChild(life);
@@ -354,7 +372,7 @@ public static class ArenaPresentation
             _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
             _ => ""
         };
-        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : "EQUIPO", StatusText = equipmentStatus,
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("81c8ef"),
             Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
@@ -374,11 +392,12 @@ public static class ArenaPresentation
         }
         var skills = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         skills.AddThemeConstantOverride("h_separation", 6); skills.AddThemeConstantOverride("v_separation", 6);
+        var nextLesson = NextLessonSlot(owner, !enemy && actions.CanLearn);
         foreach (var slot in new[] { 2, 3, 0, 1 })
         {
             var learnedIndex = owner.SkillIndexAtPosition(slot);
             var learned = learnedIndex >= 0;
-            var skill = new SkillTile { Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[learnedIndex]) : null,
+            var skill = new SkillTile { Name = $"Skill{index}_{slot}", Skill = learned ? CardCatalog.Get(owner.Skills[learnedIndex]) : null, NextLesson = slot == nextLesson,
                 Slot = slot, SkillIndex = learnedIndex, Counters = learnedIndex >= 0 && learnedIndex < owner.Counters.Length ? owner.Counters[learnedIndex] : 0,
                 Chosen = !enemy && learned && selectedSkill == learnedIndex, Accent = accent, Disabled = enemy && !learned,
                 PresentationScale = compact ? 0.7f : 1 };
@@ -391,6 +410,10 @@ public static class ArenaPresentation
         }
         column.AddChild(skills);
     }
+
+    /// <summary>Skills are taught in the first free space, in cost order; -1 when teaching is not offered.</summary>
+    internal static int NextLessonSlot(DuelPlayerView owner, bool canLearn) =>
+        canLearn ? Enumerable.Range(0, GameEngine.MaxSkills).FirstOrDefault(slot => owner.SkillIndexAtPosition(slot) < 0, -1) : -1;
 
     public static PanelContainer Combat(Node arena, bool preparing, bool over, string message,
         DuelPlayerView[] players, Action<VBoxContainer> opponentHand, Action<int> bonusPressed,
@@ -466,27 +489,30 @@ public static class ArenaPresentation
         bool desktop = false, IReadOnlyList<HandSection>? sections = null, Func<int, CardOwner?>? ownerOf = null,
         int viewerSeat = -1, int stackColumns = 0)
     {
+        var grouped = sections is { Count: > 0 };
+        var fanned = useFan && !grouped && railColumns == 0 && hand.Count > 0;
+        var raised = desktop && fanned;
         Control? balance = null;
-        if (desktop && title == null)
+        if (desktop && title == null && !raised)
         {
-            // On the board the count sits beside the fan, leaving its full height to the cards.
+            // An empty board hand keeps the count beside its note, leaving the full height to the band.
             var row = new HBoxContainer { Name = "HandRow", SizeFlagsVertical = Control.SizeFlags.ExpandFill };
             row.AddThemeConstantOverride("separation", 8); parent.AddChild(row);
             parent = row; row.MouseFilter = Control.MouseFilterEnum.Ignore;
             balance = new Control { CustomMinimumSize = new(44, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
         }
-        if (title == null) HandCounter(parent, hand.Count, enemy: false);
-        else
+        // On the board the fan carries its own count beside its last card.
+        if (title == null && !raised) HandCounter(parent, hand.Count, enemy: false);
+        else if (title != null)
         {
-            var heading = HandHeading(title, hand.Count, railColumns);
+            // Labelled memory blocks carry their own counts; the total would only repeat their sum.
+            var heading = grouped ? Text(title, 10) : HandHeading(title, hand.Count, railColumns);
+            heading.TooltipText = title;
             if (desktop) { heading.AddThemeFontSizeOverride("font_size", 16); heading.AddThemeFontOverride("font", RelickVisuals.Display); heading.AddThemeColorOverride("font_color", BoardArt.Gold); }
             parent.AddChild(heading);
         }
         var scroll = CardGallery("HandScroll", shortScreen, railColumns);
-        var grouped = sections is { Count: > 0 };
-        var fanned = useFan && !grouped && railColumns == 0 && hand.Count > 0;
         scroll.FollowFocus = fanned;
-        var raised = desktop && fanned;
         Control cards;
         if (grouped)
         {
@@ -509,6 +535,7 @@ public static class ArenaPresentation
                 };
                 card.Pressed += () => pressed(slot); cards.AddChild(card);
             }
+            if (raised && title == null && cards is HandFan fan) fan.Counter = HandCounter(fan, hand.Count, enemy: false);
         }
         if (hand.Count == 0 && railColumns == 0)
         {
@@ -569,7 +596,7 @@ public static class ArenaPresentation
     internal const float DesktopHandLift = 58;
     internal const float DesktopHandHeadroom = 88;
 
-    public static void HandCounter(Node parent, int count, bool enemy)
+    public static Control HandCounter(Node parent, int count, bool enemy)
     {
         var description = $"{(enemy ? "Mano rival" : "Tu mano")} · {count} {(count == 1 ? "carta" : "cartas")}";
         var row = new HBoxContainer
@@ -587,6 +614,7 @@ public static class ArenaPresentation
         amount.MouseFilter = Control.MouseFilterEnum.Ignore;
         row.AddChild(amount);
         parent.AddChild(row);
+        return row;
     }
 
     private static Label HandHeading(string title, int count, int railColumns)

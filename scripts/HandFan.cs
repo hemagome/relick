@@ -11,6 +11,17 @@ public partial class HandFan : Control
     internal bool Spread { get; init; }
     /// <summary>The rival's fan: it hangs from the top edge, so the arc and the tilt are mirrored.</summary>
     internal bool Mirrored { get; init; }
+    /// <summary>
+    /// The hand's card count, kept beside the cards it counts: past the last card, inside the band the
+    /// screen edge leaves visible. A fan that spreads across the board would otherwise leave it far away,
+    /// over another zone of the field.
+    /// </summary>
+    internal Control? Counter { get; set; }
+    /// <summary>
+    /// For the rival's fan: how much of it shows below the top edge. The count sits at the top of that
+    /// band, above the rival's field, whose first row the hanging cards already overlap.
+    /// </summary>
+    internal float VisibleBand { get; init; }
 
     public override void _Ready()
     {
@@ -23,7 +34,7 @@ public partial class HandFan : Control
     private void ArrangeCards()
     {
         var cards = GetChildren().OfType<Button>().ToArray();
-        if (cards.Length == 0) return;
+        if (cards.Length == 0) { PlaceCounter(null); return; }
 
         var face = cards[0].CustomMinimumSize;
         var pivot = face / 2;
@@ -63,5 +74,23 @@ public partial class HandFan : Control
             card.Rotation = poses[i].Rotation;
             card.Position = offset + poses[i].Origin - pivot;
         }
+        PlaceCounter(new Rect2(bounds.Position + offset, bounds.Size));
+    }
+
+    private void PlaceCounter(Rect2? cards)
+    {
+        if (Counter is not { } counter || !IsInstanceValid(counter)) return;
+        var size = counter.GetCombinedMinimumSize();
+        var area = Size.X > 0 ? Size : CustomMinimumSize;
+        const float gap = 10, inset = 18, edge = 8;
+        var x = cards is { } placed ? placed.End.X + gap : (area.X - size.X) / 2;
+        // The own fan shows its top band. The rival's hangs from the top edge: its count sits just under
+        // that edge, clear of the rival's first row of zones.
+        var bottom = cards is { } shown ? shown.End.Y : area.Y;
+        var y = Mirrored
+            ? VisibleBand > 0 ? bottom - VisibleBand + edge : bottom - inset - size.Y
+            : (cards?.Position.Y ?? Headroom) + inset;
+        counter.Size = size;
+        counter.Position = new Vector2(Math.Clamp(x, 0, Math.Max(0, area.X - size.X)), y).Round();
     }
 }

@@ -8,7 +8,7 @@ La cabecera muestra el logotipo original de Relick. Marcos con esquinas recortad
 
 `RelickVisuals` centraliza marcos, controles, logotipo y señales de interacción. `RelickPlaymat` define fondo, superficies, borde y circuitos, con una textura opcional para el tapete. Es una base para temas futuros, todavía sin selector, persistencia ni cambio en caliente. El arte de un tapete se dibuja bajo las superficies legibles de la interfaz.
 
-Los significados de `RelickVisuals.State` son independientes del tapete: selección dorada con confirmación, objetivo cian con escuadras y foco de teclado blanco. La prioridad es selección > objetivo > hover; el foco añade un borde interior. Vida baja conserva su señal de peligro. Las zonas vacías mantienen su tamaño y posición con contornos tenues y costes discretos. Las fases futuras quedan atenuadas, las completadas llevan confirmación y la actual se indica con `»`.
+Los significados de `RelickVisuals.State` son independientes del tapete: selección dorada con confirmación, objetivo cian con escuadras y foco de teclado blanco. La prioridad es selección > objetivo > hover; el foco añade un borde interior. Vida baja conserva su señal de peligro. Las zonas vacías mantienen su tamaño y posición con contornos tenues y costes discretos. Las fases futuras quedan atenuadas, las completadas llevan confirmación y la actual se destaca con tamaño y color; la celda de estado dice con texto de quién es el turno.
 
 ## Tablero de escritorio
 
@@ -189,6 +189,69 @@ El inspector prioriza una instrucción concreta en descartes, objetivos, respues
 `AdvancePhaseButton` invita con un pulso dorado de 1,8 segundos, sin mover ni escalar el objetivo táctil. Se detiene al enviar, desconectar, ocultar el control, entrar en una resolución o recuperar una jugada disponible; fuera de la invitación no procesa fotogramas. El botón conserva el destino y el índice del servidor, incluyendo fases repetidas. Avanzar siempre requiere pulsarlo.
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. Con `--ui-screenshot-dir=/tmp/relick-guidance` y renderizado habilitado genera capturas de la invitación en cuatro resoluciones.
+
+## Estado de la decisión, rechazos, cartas jugables y tabla de ataque
+
+Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas: todas leen el snapshot autorizado y la conexión.
+
+- **Estado en la barra de fase.** En el tablero de escritorio, la primera celda de la barra (`StageStatusCell`) dice con texto e icono qué ocurre. Los estados posibles son «TU TURNO», «RESPONDE» (decides durante el turno rival), «RIVAL RESPONDE», «TURNO RIVAL», «ENVIANDO…», «RESOLVIENDO…», «JUGADA RECHAZADA» y «SIN CONEXIÓN». Debajo aparecen el turno y la fase especial (por ejemplo, «TURNO 02 · DEFENSA»). El color solo repite el mensaje. La celda se actualiza en cada fotograma sin reconstruir la arena. Cuando no se puede avanzar, un hueco del tamaño del botón de avance mantiene el ancho de la barra en el turno rival. Las composiciones compactas conservan su indicador propio, que ya incluía «TÚ/RIVAL».
+- **Jugada rechazada.** `LobbyConnection` publica `PlayRejection` y `PlayRejectionSerial` cuando el servidor rechaza una jugada o una preferencia COMBO, o cuando la partida cambió antes de enviarla. Una entrega incierta no cuenta como rechazo: conserva su orden para la reconexión. El inspector muestra el motivo en un recuadro de peligro durante seis segundos o hasta la siguiente jugada. El recuadro sobrevive a la reconstrucción del tablero. Los rechazos anteriores a abrir la arena se ignoran.
+- **Cartas jugables.** Una carta de la mano con al menos una opción autorizada de enseñar, atacar, jugar o activar, equipar o canjear lleva un borde menta fijo y un rayo en la esquina superior izquierda, que el abanico nunca tapa. La señal no late, para no competir con los objetivos, y queda atenuada mientras la mano está bloqueada. Los COMBO legales durante el turno rival también se marcan. No se marca nada en la preparación, las galerías de elección ni el resultado.
+- **Tabla de ataque.** Al leer una habilidad, el inspector muestra el resultado por cara final del D6, en el orden del manual: 1–3 fallo, 4 reducido (mitad redondeada hacia arriba, con `GameEngine.DamageFor`), 5 normal y 6 crítico.
+  - Usa los aumentos de esa copia y avisa de Lv 2 (+1 al dado salvo con 1) y de Estrella del Fontanero (daño multiplicado), que son públicos.
+  - Magnet muestra «½·1D6» y «1D6».
+  - Una habilidad en la mano muestra los valores base.
+  - Un Ataque seleccionado muestra la tabla de la habilidad que usaría. Al elegir entre varias, pasar el cursor por una habilidad iluminada muestra la suya, con el coste «Consume 1 Ataque».
+  - Súper Ataque no tiene tabla, porque modifica el dado.
+  - La nota final recuerda que no incluye respuestas, defensas ni el bonus de equipo.
+
+- **Contadores de mano.** En el tablero de escritorio, cada abanico lleva su propio contador junto a la última carta. El propio queda en la franja visible de la mano. El rival queda justo bajo el borde superior, porque las cartas colgantes ya se solapan con la primera fila de su campo. Así ningún contador cae sobre Corruptas, Memoria, Equipo u otra zona, ni siquiera con el lienzo de 16:10 o el panorámico. Una mano rival vacía centra su contador. Las composiciones compactas conservan el contador al principio de su franja.
+- **Golpe final y segunda caída.** Con 0 vidas, el medidor apilado del escritorio rotula «GOLPE FINAL» sobre la barra vacía, igual que ya hacía la versión compacta. Si el jugador ya llegó a 0 y se curó, la barra conserva un borde rojo, porque volver a 0 termina el duelo. El tooltip explica ambas reglas, que usan `HasReachedZero` del snapshot.
+- **Habilidades por enseñar.** Las ranuras vacías muestran su coste pequeño y atenuado. Solo cuando el servidor ofrece enseñar, la primera ranura libre (donde se enseña la siguiente habilidad) se ilumina con el color del jugador y el rótulo «ENSEÑAR AQUÍ».
+
+Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque. `--board-reading-only` comprueba los contadores (sin solapes con ninguna zona, en cinco tamaños y ambos asientos), el golpe final, la segunda caída y la ranura por enseñar.
+
+## Toques de animación
+
+Cuatro efectos cosméticos. Ninguno forma parte de `IsAnimating`: no bloquean jugadas ni decisiones. Todos se apagan con la preferencia de movimiento reducido del sistema o con `relick/accessibility/reduced_motion`.
+
+- **Jugada rechazada.** Además del aviso del inspector, la carta o zona cuya acción se envió se sacude 0,2 s. Lo que se desplaza es su posición dibujada, que vuelve exactamente a su sitio.
+- **Golpe final.** Con 0 vidas, el brillo rojo del corazón late en un ciclo de 1,6 s. Con movimiento reducido el brillo queda fijo.
+- **Resultado central.** Cuando el duelo termina y ya acabaron el dado, los vuelos y el último impacto, aparece un momento central sobre el tapete. Muestra el resultado, la causa pública y las vidas y PR finales, y entra con una escala breve. Nunca toma el puntero y no tapa el riel, que conserva «Volver al lobby», «Revisar tablero» y el historial. Pasados 1,5 s, cualquier clic o tecla lo retira sin consumir el evento. «Revisar tablero» también lo cierra, y no reaparece para el mismo duelo.
+- **Código jugado.** Cuando el historial público registra la activación de un código nuevo, de cualquiera de los dos jugadores, su ilustración aparece 0,8 s sobre el centro del tablero con el color del jugador. Una decisión dentro de la misma resolución, como elegir la carta de Disquete, no repite el destello.
+
+- **Creación de un Código Trampa.** Respeta el orden del reglamento (§ 4.6 y § 5.3): primero el canje se completa, con las dos cartas a Memoria, el Bonus a la mano y la reposición; después se decide si crear la trampa.
+  - Al decidir, el inspector muestra la trampa y las dos cartas canjeadas que cumplieron su receta, en miniatura junto a «Canjeaste X y Y». Ese dato viene de `DuelSnapshot.TrapIngredients`, que los servidores anteriores dejan vacío.
+  - Si se elige «Crear», dos ecos translúcidos de esas cartas salen de la Memoria, convergen sobre el canje e invocan la trampa. Las cartas reales no se mueven.
+  - Luego la trampa vuela a su lugar: la mano para Súper Ataque y la zona de equipo para Súper Imán. Zahira Flair aparece y se desvanece sobre el canje, porque su anfitrión se elige a continuación.
+  - «Pasar sin crear» no muestra nada. Funciona igual cuando la creación espera a que termine una cadena, porque en ambos casos las cartas ya están en Memoria.
+  - Un código trampa creado no repite además el destello genérico de código jugado.
+
+Pruebas enfocadas: `--polish-only` y `--trap-recipe-only`. Ambas forman parte de la matriz completa, y con `--ui-screenshot-dir` guardan el resultado, el código jugado, la decisión con su receta y los momentos de la invocación.
+
+## Textos de interfaz
+
+Un texto visible solo se mantiene si aporta algo que no dicen ya la forma, la posición, otro texto o el propio recuento de cartas. Cuando se sustituye por un icono, su texto sigue en el tooltip y en el nombre accesible. Las reglas, los costes, los nombres de cartas y los verbos de acción no se recortan.
+
+- **Duelo.**
+  - Sin «»» ante el jugador activo ni ante la etapa actual.
+  - «EQUIPO» y «CANJE» sin «0/1» ni numeración.
+  - En escritorio no hay mensaje de conexión junto al logotipo; el código de sala está en su tooltip.
+  - El dado no lleva título y la iniciativa no narra la tirada.
+  - La cabecera de resolución solo aparece cuando hay algo que resolver, y su mensaje no repite «jugador · carta».
+  - Con la tabla del D6 visible, el inspector deja de repetir el daño normal y el crítico.
+  - Las galerías por memoria no suman un total.
+- **Sala.**
+  - Las tarjetas no repiten con una frase lo que dicen sus botones.
+  - El botón del mazo dice «Mazo · nombre».
+  - La sala muestra solo su código, sin «Sala ·» ni el número de asiento.
+- **Mazos.**
+  - Un mazo legal muestra ✓ en lugar de «42 cartas · Listo para jugar».
+  - El mazo activo no repite «En uso» en un botón desactivado.
+  - Editar, Duplicar y Borrar son iconos con tooltip (`FramedIconButton`).
+  - Los totales del editor no repiten los de las pestañas.
+  - Las copias del banquillo llevan su propio distintivo con el icono del banquillo, en lugar de «B1».
+- **Selector de Relikario.** Sin «Disponible», «Aún no jugable», «Toca la carta para girarla» ni «Cambio automático»; el subtítulo es más corto.
 
 ## Actualizaciones y animaciones
 

@@ -27,7 +27,7 @@ public partial class DeckEditor : VBoxContainer
 
     private readonly Dictionary<string, int> _counts = [];
     private readonly Dictionary<string, int> _side = [];
-    private readonly Dictionary<string, (HandCard Card, Label Badge)> _catalog = [];
+    private readonly Dictionary<string, (HandCard Card, Label Badge, Control Bench, Label BenchCount)> _catalog = [];
     private LineEdit _name = null!;
     private LineEdit _search = null!;
     private Label _totals = null!;
@@ -155,10 +155,21 @@ public partial class DeckEditor : VBoxContainer
         plate.ContentMarginLeft = plate.ContentMarginRight = 7; plate.ContentMarginTop = plate.ContentMarginBottom = 1;
         badge.AddThemeStyleboxOverride("normal", plate);
         face.AddChild(badge); badge.Position = new(4, 4);
+        // Side-deck copies get their own badge with the bench symbol, instead of a cryptic "B1".
+        var bench = new PanelContainer { Name = "Bench", MouseFilter = MouseFilterEnum.Ignore, Visible = false };
+        var benchPlate = RelickVisuals.Frame(new Color("c0acf7"), new Color("c0acf7").Lightened(0.4f), 6);
+        benchPlate.ContentMarginLeft = benchPlate.ContentMarginRight = 6; benchPlate.ContentMarginTop = benchPlate.ContentMarginBottom = 1;
+        bench.AddThemeStyleboxOverride("panel", benchPlate);
+        var benchRow = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; benchRow.AddThemeConstantOverride("separation", 3); bench.AddChild(benchRow);
+        benchRow.AddChild(new IconView { Icon = GameIcon.Bench, Color = new Color("06141a"), CustomMinimumSize = new(14, 14), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+        var benchCount = ArenaPresentation.Text("", ShortScreen ? 13 : 16, new Color("06141a"));
+        benchCount.Name = "BenchCount"; benchCount.MouseFilter = MouseFilterEnum.Ignore; benchCount.AddThemeFontOverride("font", RelickVisuals.Strong);
+        benchRow.AddChild(benchCount);
+        face.AddChild(bench);
         face.Pressed += () => { Inspect(card); Add(card, _editingSide); };
         face.MouseEntered += () => Inspect(card);
         face.FocusEntered += () => Inspect(card);
-        _catalog[card.Id] = (face, badge);
+        _catalog[card.Id] = (face, badge, bench, benchCount);
         _grid.AddChild(face);
     }
 
@@ -293,9 +304,9 @@ public partial class DeckEditor : VBoxContainer
     {
         var problems = Problems;
         var skills = Count(card => card.Kind == CardKind.Skill);
-        _totals.Text = $"Mazo {MainCount}/{DeckRules.MainDeckSize}  ·  Ataques {Count(DeckRules.IsAttack)}/{DeckRules.AttackCount}  ·  " +
-            $"Habilidades {skills} (mín. {DeckRules.MinSkills})  ·  Códigos Trampa {Count(DeckRules.IsTrap)}/{DeckRules.MaxTraps}  ·  " +
-            $"Banquillo {SideCount}/{DeckRules.MaxSide}";
+        // The Mazo and Banquillo tabs carry their own totals; this line keeps the composition rules.
+        _totals.Text = $"Ataques {Count(DeckRules.IsAttack)}/{DeckRules.AttackCount}  ·  " +
+            $"Habilidades {skills} (mín. {DeckRules.MinSkills})  ·  Códigos Trampa {Count(DeckRules.IsTrap)}/{DeckRules.MaxTraps}";
         _deckTab.Text = $"Mazo · {MainCount}/{DeckRules.MainDeckSize}";
         _sideTab.Text = $"Banquillo · {SideCount}/{DeckRules.MaxSide}";
         _problems.Text = problems.Count == 0 ? "Mazo listo para jugar." : "Para poder jugarlo:\n• " + string.Join("\n• ", problems);
@@ -304,8 +315,15 @@ public partial class DeckEditor : VBoxContainer
         foreach (var (id, entry) in _catalog)
         {
             var copies = _counts.GetValueOrDefault(id); var benched = _side.GetValueOrDefault(id);
-            entry.Badge.Text = copies == 0 ? $"B{benched}" : benched == 0 ? $"×{copies}" : $"×{copies} · B{benched}";
-            entry.Badge.Visible = copies + benched > 0;
+            entry.Badge.Text = $"×{copies}";
+            entry.Badge.Visible = copies > 0;
+            entry.BenchCount.Text = benched.ToString();
+            entry.Bench.Visible = benched > 0;
+            // Right after the main-deck badge, or in its corner when the card is only on the bench.
+            entry.Bench.Position = new(copies > 0 ? 4 + entry.Badge.GetCombinedMinimumSize().X + 4 : 4, 4);
+            var card = CardCatalog.Get(id);
+            entry.Card.TooltipText = copies + benched == 0 ? card.Name
+                : $"{card.Name}\n{copies} en el mazo · {benched} en el banquillo";
             // Dim only what has reached its own limit; a full deck would otherwise grey out the whole catalogue.
             entry.Card.SelfModulate = AtOwnLimit(CardCatalog.Get(id)) ? new Color(1, 1, 1, 0.45f) : Colors.White;
         }

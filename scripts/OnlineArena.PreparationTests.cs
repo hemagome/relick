@@ -130,7 +130,7 @@ public partial class OnlineArena
             Check(_initiativeOverlay.Visible && _initiativeDice.All(d => d.IsRolling) && PlayedInitiativeRolls == initiativeCount + 1,
                 "No se lanzan los dos dados de iniciativa a la vez.");
             Check(_initiativeNames[seat].Text.Contains("TÚ") && _initiativeNames[1 - seat].Text.Contains("RIVAL") &&
-                _initiativeValues.All(v => v.Text == "Rodando…") && !_initiativeWinner.Text.Contains("Empieza"),
+                _initiativeValues.All(v => string.IsNullOrWhiteSpace(v.Text)) && !_initiativeWinner.Text.Contains("Empieza"),
                 "La iniciativa confunde al dueño de un dado o revela el ganador antes de aterrizar.");
             UpdateEnabled(); Check(_handCards.All(c => c.Disabled), "Se puede jugar durante la iniciativa.");
             Check(_openingTurnDraw != null && _flights.Count == 0, "El robo inicial se adelanta a los dados.");

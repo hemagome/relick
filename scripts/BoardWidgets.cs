@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass, Check, Pencil, Copy, Trash, Bench }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -209,6 +209,40 @@ public static class BoardArt
                 Shape(new(-8, -13), new(-2, -11), new(4, -13), new(9, -14), new(14, -12), new(14, 2),
                     new(9, 0), new(4, 1), new(-2, 3), new(-8, 1));
                 break;
+            case GameIcon.Alert:
+                // Warning sign: a solid triangle with a cut-out exclamation mark.
+                Shape(new(0, -14), new(15, 13), new(-15, 13));
+                c.DrawRect(new(-2, -5, 4, 10), RelickVisuals.Playmat.Surface);
+                c.DrawRect(new(-2, 7, 4, 3.5f), RelickVisuals.Playmat.Surface);
+                break;
+            case GameIcon.Check:
+                c.DrawPolyline(new Vector2[] { new(-12, 1), new(-4, 10), new(13, -9) }, color, 5, true);
+                break;
+            case GameIcon.Pencil:
+                // Edit: a slanted pencil with its tip at the lower left.
+                Shape(new(6, -14), new(14, -6), new(-5, 13), new(-13, 5));
+                Shape(new(-13, 7), new(-7, 13), new(-15, 15));
+                break;
+            case GameIcon.Copy:
+                // Duplicate: a sheet behind another.
+                Stroke(new(-6, -8), new(-6, -14), new(13, -14), new(13, 6), new(7, 6));
+                Shape(new(-13, -7), new(5, -7), new(5, 14), new(-13, 14));
+                break;
+            case GameIcon.Trash:
+                Block(-13, -11, 26, 3); Block(-4, -15, 8, 4);
+                Shape(new(-10, -6), new(10, -6), new(8, 14), new(-8, 14));
+                break;
+            case GameIcon.Bench:
+                // Side deck: a bench seen from the front.
+                Block(-14, -6, 28, 5); Block(-14, 2, 28, 4);
+                Block(-12, 6, 3, 8); Block(9, 6, 3, 8);
+                break;
+            case GameIcon.Hourglass:
+                // Waiting: two glass bulbs between a top and a bottom bar.
+                Block(-11, -14, 22, 3); Block(-11, 11, 22, 3);
+                Shape(new(-8, -11), new(8, -11), new(1.5f, 0), new(-1.5f, 0));
+                Shape(new(-1.5f, 0), new(1.5f, 0), new(8, 11), new(-8, 11));
+                break;
         }
         c.DrawSetTransform(Vector2.Zero, 0, Vector2.One * canvasScale);
     }
@@ -383,6 +417,24 @@ public partial class LifeMeter : Control
         set { _stacked = value; CustomMinimumSize = value ? new(104, 56) : new(190, 44); QueueRedraw(); }
     }
     private bool _stacked;
+    /// <summary>
+    /// The player already fell to 0 once. Relick then ends the duel on the next damage at 0, and a healed
+    /// player who drops back to 0 loses as well; both are decisive, so the meter says so in words.
+    /// </summary>
+    public bool ReachedZero
+    {
+        get => _reachedZero;
+        set { if (_reachedZero == value) return; _reachedZero = value; Describe(); QueueRedraw(); }
+    }
+    private bool _reachedZero;
+    /// <summary>At 0 lives the next damage ends the duel; the drained bar becomes the warning.</summary>
+    public bool FinalBlow => Health == 0 && _initialized;
+    internal const string FinalBlowCaption = "GOLPE FINAL";
+    /// <summary>Set from the system preference or the project setting; a final blow then keeps a steady glow.</summary>
+    internal bool ReducedMotion { get; set; }
+    /// <summary>The heart breathes red while one more damage would end the duel.</summary>
+    internal bool Pulsing => FinalBlow && !ReducedMotion;
+    private const float PulseSeconds = 1.6f;
     private bool _initialized;
     private float _fromRatio;
     private float _targetRatio;
@@ -398,7 +450,7 @@ public partial class LifeMeter : Control
         if (_initialized && health == Health && maximum == Maximum && (animate || !IsAnimating)) return;
         Health = health;
         Maximum = maximum;
-        TooltipText = $"{Health} de {Maximum} vidas";
+        Describe();
         _targetRatio = (float)Health / Maximum;
         _fromRatio = DisplayedRatio;
         _elapsed = 0;
@@ -408,13 +460,23 @@ public partial class LifeMeter : Control
         QueueRedraw();
     }
 
+    private void Describe() => TooltipText = $"{Health} de {Maximum} vidas" + (Health == 0
+        ? "\nGolpe final: sigues en juego, pero el próximo daño termina el duelo."
+        : _reachedZero ? "\nYa llegó a 0 vidas: si vuelve a 0, pierde el duelo." : "");
+
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Pass;
         Resized += QueueRedraw;
+        ReducedMotion = DisplayServer.AccessibilityShouldReduceAnimation() == 1 ||
+            ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool();
     }
 
-    public override void _Process(double delta) => AdvancePlayback(delta);
+    public override void _Process(double delta)
+    {
+        AdvancePlayback(delta);
+        if (Pulsing && !IsAnimating) QueueRedraw();
+    }
 
     public void AdvancePlayback(double delta)
     {
@@ -431,7 +493,13 @@ public partial class LifeMeter : Control
     {
         var color = FillColor;
         var danger = Health > 0 && Health * 5 <= Maximum;
-        RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(color, danger ? 0.55f : 0.32f), 9, 9);
+        if (Health == 0)
+        {
+            // At 0 lives the glow is the warning colour; it breathes unless motion is reduced.
+            var pulse = Pulsing ? 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 1000f * Mathf.Tau / PulseSeconds) : 1;
+            RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(RelickVisuals.State.Danger, 0.3f + 0.45f * pulse), (int)(8 + 8 * pulse), 9);
+        }
+        else RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(color, danger ? 0.55f : 0.32f), 9, 9);
         BoardArt.Icon(this, GameIcon.Heart, new(17, 23), 23, color);
         var value = Health.ToString();
         var max = $"/ {Maximum}";
@@ -445,9 +513,23 @@ public partial class LifeMeter : Control
         var maxStart = 36 + StrongWidth(value, fontSize) + 6;
         BoardArt.Text(this, max, new(maxStart, 33), Math.Max(10, fontSize / 2), BoardArt.Muted);
         var start = Stacked ? 0 : Math.Max(112, maxStart + Width(max, Math.Max(10, fontSize / 2)) + 14);
-        if (!Stacked) BoardArt.Text(this, Health == 0 ? "GOLPE FINAL" : "VIDAS", new(start, 15), 9, color);
+        if (!Stacked) BoardArt.Text(this, Health == 0 ? FinalBlowCaption : "VIDAS", new(start, 15), 9, color);
         var track = Stacked ? new Rect2(0, 40, Math.Max(1, Size.X), 16) : new Rect2(start, 22, Math.Max(1, Size.X - start), 16);
-        BoardArt.Plate(this, track, new Color("060911"), new Color("3d4a6b"), 8);
+        var alarm = RelickVisuals.State.Danger;
+        // Having fallen to 0 once, the bar keeps a red edge: dropping to 0 again ends the duel.
+        BoardArt.Plate(this, track, new Color("060911"), _reachedZero && Health > 0 ? BoardArt.Tint(alarm, 0.85f) : new Color("3d4a6b"), 8, _reachedZero && Health > 0 ? 2 : 1);
+        if (Stacked && Health == 0 && !IsAnimating)
+        {
+            // The board stacks the count over the bar and has no caption line: the empty bar carries the warning.
+            BoardArt.Plate(this, track, BoardArt.Tint(alarm, 0.28f), alarm, 6, 2);
+            var font = RelickVisuals.Strong;
+            var size = 12;
+            while (size > 9 && font.GetStringSize(FinalBlowCaption, fontSize: size).X > track.Size.X - 10) size--;
+            var width = font.GetStringSize(FinalBlowCaption, fontSize: size).X;
+            var baseline = track.GetCenter().Y + (font.GetAscent(size) - font.GetDescent(size)) / 2;
+            DrawString(font, new(track.GetCenter().X - width / 2, baseline), FinalBlowCaption, HorizontalAlignment.Left, -1, size, BoardArt.Ink);
+            return;
+        }
         var inner = new Rect2(track.Position + new Vector2(3, 3), new Vector2(Math.Max(0, track.Size.X - 6), 10));
         // The lost stretch lingers in white while the bar drains: damage reads at a glance.
         if (IsAnimating && _fromRatio > DisplayedRatio)
@@ -475,6 +557,7 @@ public partial class SkillTile : Button
 {
     // The hand card canvas is 126 × 184; rotating it gives this exact footprint.
     public static readonly Vector2 CardSize = new(184, 126);
+    internal const string LessonCaption = "ENSEÑAR AQUÍ";
     public CardDefinition? Skill { get; set; }
     public float PresentationScale { get; set; } = 1;
     public int Slot { get; set; }
@@ -482,6 +565,8 @@ public partial class SkillTile : Button
     public bool Chosen { get; set; }
     public bool Targetable { get; set; }
     public int Counters { get; set; }
+    /// <summary>The empty space the next skill would be taught in, lit only while teaching is authorized.</summary>
+    public bool NextLesson { get; set; }
     public bool HasSkillArtwork => _skillArt != null;
     internal bool AwaitingLesson { get; private set; }
     private Texture2D? _skillArt;
@@ -512,12 +597,19 @@ public partial class SkillTile : Button
         var bounds = new Rect2(0, 0, size.X, size.Y);
         if (Skill == null || AwaitingLesson)
         {
-            BoardArt.Socket(this, bounds, Accent, AwaitingLesson ? 1.6f : 1);
-            // The cost is the only thing an empty space has to say: once, large and centred.
+            // An empty space only says its cost, and quietly: occupied cards, lives and decisions come first.
+            // The space a skill can be taught in right now is lit in its owner's colour instead.
+            var invite = NextLesson || AwaitingLesson;
+            BoardArt.Socket(this, bounds, Accent, invite ? 1.6f : 0.8f);
             var cost = $"{GameEngine.SkillSlotCosts[Slot]} PR";
-            const int costSize = 30;
+            var costSize = invite ? 24 : 18;
             var baseline = size.Y / 2 + (RelickVisuals.Display.GetAscent(costSize) - RelickVisuals.Display.GetDescent(costSize)) / 2;
-            BoardArt.Title(this, cost, new(size.X / 2, baseline), costSize, BoardArt.Tint(AwaitingLesson ? Accent : BoardArt.Gold, AwaitingLesson ? 0.9f : 0.62f), centered: true);
+            if (NextLesson && !AwaitingLesson)
+            {
+                baseline += 8;
+                BoardArt.Title(this, LessonCaption, new(size.X / 2, baseline - costSize - 4), 13, BoardArt.Tint(Accent, 0.9f), centered: true);
+            }
+            BoardArt.Title(this, cost, new(size.X / 2, baseline), costSize, invite ? BoardArt.Tint(Accent, 0.95f) : BoardArt.Tint(BoardArt.Gold, 0.36f), centered: true);
         }
         else if (_skillArt != null)
         {
@@ -612,7 +704,7 @@ public partial class ExchangeTrack : VBoxContainer
             var index = slot;
             var button = new ZoneCardButton
             {
-                Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent, Compact = Compact,
+                Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = "CANJE", Accent = Accent, Compact = Compact,
                 Layout = ZoneCardLayout.Landscape, EffectUsed = ExchangeEffectsUsed.Contains(slot), SizeFlagsStretchRatio = 1.25f,
                 CustomMinimumSize = new(0, TrackWidth > 0 ? 86 : 0),
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null
@@ -839,6 +931,8 @@ public partial class HandCard : Button
     /// <summary>How far above its resting place the card is drawn, in its own units.</summary>
     internal float DrawnLift => (_hover * (InFan ? Lift : 5) + 175 * (Zoom - 1)) * PresentationScale;
     public bool Mulligan { get; set; }
+    /// <summary>The card has at least one play authorized by the server in the current snapshot.</summary>
+    public bool Playable { get; set; }
     public CardOwner? OriginalOwner { get; set; }
     public int? ViewerSeat { get; set; }
     /// <summary>False when the surrounding section already names the owner.</summary>
@@ -959,7 +1053,9 @@ public partial class HandCard : Button
     private void DrawSelection(float y, Color accent)
     {
         var face = Face;
-        RelickVisuals.Interaction(this, new Rect2(new Vector2(1, y), face), Chosen, false, !Disabled && IsHovered(), HasFocus());
+        var rect = new Rect2(new Vector2(1, y), face);
+        if (Playable && !Chosen && !Mulligan) RelickVisuals.Playable(this, rect, Disabled);
+        RelickVisuals.Interaction(this, rect, Chosen, false, !Disabled && IsHovered(), HasFocus());
         if (Chosen && Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(1 + face.X / 2, y + face.Y * 0.57f), 9, RelickVisuals.State.Selected);
     }
 
@@ -1049,6 +1145,24 @@ public partial class ComboToggle : Button
         var ring = Geometry2D.OffsetPolygon(outline, 2.5f, Geometry2D.PolyJoinType.Round).MaxBy(Area);
         if (ring != null) DrawPolyline([.. ring, ring[0]], BoardArt.Gold, 2, true);
     }
+}
+
+/// <summary>
+/// A framed button that says its action with a symbol. Its name stays in the tooltip and for screen
+/// readers; use it for repeated secondary actions whose symbol is unambiguous (edit, duplicate, delete).
+/// </summary>
+public partial class FramedIconButton : Button
+{
+    public GameIcon Symbol { get; init; }
+
+    public override void _Ready()
+    {
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+    }
+
+    public override void _Draw() => BoardArt.Icon(this, Symbol, Size / 2, Math.Min(22, Math.Min(Size.X, Size.Y) - 20),
+        GetThemeColor(Disabled ? "font_disabled_color" : IsHovered() ? "font_hover_color" : "font_color"));
 }
 
 /// <summary>A toolbar action shown as a symbol; its name stays available to tooltips and screen readers.</summary>

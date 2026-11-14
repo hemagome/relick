@@ -46,6 +46,10 @@ public sealed partial class LobbyConnection : IDisposable
     public long GamePayloadBytes { get; private set; }
     public double LastPlayLatencyMs { get; private set; }
     public bool LastPlayAccepted { get; private set; }
+    /// <summary>Why this client's latest play or COMBO preference was not applied; the arena shows it beside the decision.</summary>
+    public string PlayRejection { get; private set; } = "";
+    /// <summary>Grows with every rejection, so two identical reasons in a row are still two events.</summary>
+    public ulong PlayRejectionSerial { get; private set; }
     public event Action<string>? TokenReceived;
     public bool Ready { get; private set; }
     public bool Connecting { get; private set; }
@@ -196,9 +200,9 @@ public sealed partial class LobbyConnection : IDisposable
                 case Status.Committed:
                     ResolvePlayResult(); break;
                 case Status.Failed(var reason):
-                    _playId = null; Message = reason; break;
+                    _playId = null; RejectPlay(reason); break;
                 case Status.OutOfEnergy:
-                    _playId = null; Message = "El servidor no pudo ejecutar la jugada. Inténtalo de nuevo."; break;
+                    _playId = null; RejectPlay("El servidor no pudo ejecutar la jugada. Inténtalo de nuevo."); break;
                 default:
                     Message = "No se recibió la confirmación. Pulsa Reconectar para comprobarla."; break;
             }
@@ -208,8 +212,8 @@ public sealed partial class LobbyConnection : IDisposable
             switch (context.Event.Status)
             {
                 case Status.Committed: ResolvePlayResult(); break;
-                case Status.Failed(var reason): _comboId = null; Message = reason; break;
-                case Status.OutOfEnergy: _comboId = null; Message = "No se pudo cambiar las respuestas COMBO. Inténtalo de nuevo."; break;
+                case Status.Failed(var reason): _comboId = null; RejectPlay(reason); break;
+                case Status.OutOfEnergy: _comboId = null; RejectPlay("No se pudo cambiar las respuestas COMBO. Inténtalo de nuevo."); break;
                 default: Message = "No se recibió la preferencia. Pulsa Reconectar para comprobarla."; break;
             }
         };
@@ -257,13 +261,21 @@ public sealed partial class LobbyConnection : IDisposable
         if (_comboId != null && result?.CommandId == _comboId)
         {
             _comboId = null;
-            Message = result.Accepted ? "Respuestas COMBO actualizadas" : result.Error;
+            if (result.Accepted) Message = "Respuestas COMBO actualizadas"; else RejectPlay(result.Error);
             return;
         }
         if (_playId == null || result?.CommandId != _playId) return;
         LastPlayLatencyMs = Stopwatch.GetElapsedTime(_playStarted).TotalMilliseconds;
         LastPlayAccepted = result.Accepted;
-        _playId = null; Message = result.Accepted ? "Jugada confirmada" : result.Error;
+        _playId = null;
+        if (result.Accepted) Message = "Jugada confirmada"; else RejectPlay(result.Error);
+    }
+
+    /// <summary>Records a refused play. Uncertain deliveries are not rejections: they keep their command for reconnection.</summary>
+    internal void RejectPlay(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) reason = "El servidor rechazó la jugada. Revisa el tablero e inténtalo de nuevo.";
+        Message = reason; PlayRejection = reason; PlayRejectionSerial++;
     }
     public void Tick()
     {
@@ -420,7 +432,7 @@ public sealed partial class LobbyConnection : IDisposable
         if ((expectedRevision != null && expectedRevision != duel.Revision) || (expectedRoom != null && expectedRoom != Room.Code) ||
             (expectedSnapshot != null && !ReferenceEquals(expectedSnapshot, duel)))
         {
-            Message = "La partida cambió. Revisa el tablero antes de volver a jugar.";
+            RejectPlay("La partida cambió. Revisa el tablero antes de volver a jugar.");
             return;
         }
         _playId = Guid.NewGuid().ToString("N");

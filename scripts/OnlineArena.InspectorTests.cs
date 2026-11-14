@@ -44,7 +44,7 @@ public partial class OnlineArena
             Check(equipment.CardRect.IsEqualApprox(BoardArt.FitArtwork(BoardArt.LoadCardArtwork(CardCatalog.Pc)!, equipmentArea)) &&
                 equipment.StatusText == "D6: 4",
                 "El equipo pierde espacio o su dado guardado.");
-            Check(emptyEquipment.Disabled && emptyEquipment.Caption == "EQUIPO 0/1" && emptyAttached.Disabled,
+            Check(emptyEquipment.Disabled && emptyEquipment.Caption == "EQUIPO" && emptyAttached.Disabled,
                 "Una zona vacía permite consultar una carta inexistente.");
             var before = game.SaveSnapshot();
             var cardSizes = _handCards.Select(card => card.Size).ToArray();

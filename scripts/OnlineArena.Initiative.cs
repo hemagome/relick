@@ -77,10 +77,11 @@ public partial class OnlineArena
                 _initiativeNames[seat].TooltipText = opening.Names[seat];
                 _initiativeNames[seat].AddThemeColorOverride("font_color", own ? ArenaPresentation.Mint : ArenaPresentation.Coral);
                 _initiativeDice[seat].CustomMinimumSize = Short ? new(192, 148) : new(242, 200);
-                _initiativeValues[seat].Text = "Rodando…";
+                // The dice are seen rolling: the value stays blank (one line tall) until they land.
+                _initiativeValues[seat].Text = "\u00A0";
                 _initiativeDice[seat].RollTo(seat == 0 ? opening.RollOne : opening.RollTwo);
             }
-            _initiativeWinner.Text = "Lanzando los dos dados…";
+            _initiativeWinner.Text = "\u00A0";
             _initiativeOverlay.Show();
             return;
         }
