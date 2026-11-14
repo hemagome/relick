@@ -353,3 +353,29 @@ Godot independientes con entrada real en 844×390, incluidos resultado, cierre
 desde un jugador y retorno de ambos al lobby. El módulo WASM compila. La causa
 del resultado quedó publicada en Maincloud el 10 de noviembre de 2026 junto con
 la actualización de partida rápida casual, sin eliminar tablas ni datos.
+
+## Recetas de Códigos Trampa con elección
+
+Publicado el 14 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud
+con `--delete-data=never`. El plan de migración quedó vacío: no cambió ninguna
+tabla, no se borró nada y no hizo falta desconectar a los clientes. Las trampas
+pendientes viajan dentro del estado guardado del duelo.
+
+`TrapCraft` guarda todas las recetas que cumple un canje y las dos cartas
+canjeadas. La decisión ofrece una opción por receta, como exige el reglamento
+(§ 5.3), y la proyección publica esas cartas en `TrapIngredients`.
+
+Es compatible en ambos sentidos:
+
+- Un cliente anterior, que no envía la posición de la receta, crea la primera.
+- Los estados guardados antes de esta versión se cargan sin cambios.
+- Un cliente anterior ignora el campo nuevo.
+
+Validación previa en una base local aislada con `tests/server/dev`:
+
+- 470 comprobaciones del motor.
+- Todas las comprobaciones PvP de red.
+- La matriz completa de interfaz.
+
+No se ejecutó la batería PvP contra Maincloud: el módulo real exige iniciar
+sesión con SpacetimeAuth y esas pruebas usan identidades anónimas.
