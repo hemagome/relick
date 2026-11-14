@@ -24,6 +24,8 @@ namespace Relick.Network.Types
         public System.Collections.Generic.List<string> Cards;
         [DataMember(Name = "traps")]
         public System.Collections.Generic.List<string> Traps;
+        [DataMember(Name = "side")]
+        public System.Collections.Generic.List<string> Side;
         [DataMember(Name = "valid")]
         public bool Valid;
         [DataMember(Name = "active")]
@@ -35,6 +37,7 @@ namespace Relick.Network.Types
             string Relikario,
             System.Collections.Generic.List<string> Cards,
             System.Collections.Generic.List<string> Traps,
+            System.Collections.Generic.List<string> Side,
             bool Valid,
             bool Active
         )
@@ -44,6 +47,7 @@ namespace Relick.Network.Types
             this.Relikario = Relikario;
             this.Cards = Cards;
             this.Traps = Traps;
+            this.Side = Side;
             this.Valid = Valid;
             this.Active = Active;
         }
@@ -54,6 +58,7 @@ namespace Relick.Network.Types
             this.Relikario = "";
             this.Cards = new();
             this.Traps = new();
+            this.Side = new();
         }
     }
 }

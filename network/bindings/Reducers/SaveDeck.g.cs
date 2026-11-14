@@ -13,12 +13,12 @@ namespace Relick.Network.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void SaveDeckHandler(ReducerEventContext ctx, ulong id, string name, string relikario, System.Collections.Generic.List<string> cards, System.Collections.Generic.List<string> traps, string commandId);
+        public delegate void SaveDeckHandler(ReducerEventContext ctx, ulong id, string name, string relikario, System.Collections.Generic.List<string> cards, System.Collections.Generic.List<string> traps, System.Collections.Generic.List<string> side, string commandId);
         public event SaveDeckHandler? OnSaveDeck;
 
-        public void SaveDeck(ulong id, string name, string relikario, System.Collections.Generic.List<string> cards, System.Collections.Generic.List<string> traps, string commandId)
+        public void SaveDeck(ulong id, string name, string relikario, System.Collections.Generic.List<string> cards, System.Collections.Generic.List<string> traps, System.Collections.Generic.List<string> side, string commandId)
         {
-            conn.InternalCallReducer(new Reducer.SaveDeck(id, name, relikario, cards, traps, commandId));
+            conn.InternalCallReducer(new Reducer.SaveDeck(id, name, relikario, cards, traps, side, commandId));
         }
 
         public bool InvokeSaveDeck(ReducerEventContext ctx, Reducer.SaveDeck args)
@@ -43,6 +43,7 @@ namespace Relick.Network.Types
                 args.Relikario,
                 args.Cards,
                 args.Traps,
+                args.Side,
                 args.CommandId
             );
             return true;
@@ -65,6 +66,8 @@ namespace Relick.Network.Types
             public System.Collections.Generic.List<string> Cards;
             [DataMember(Name = "traps")]
             public System.Collections.Generic.List<string> Traps;
+            [DataMember(Name = "side")]
+            public System.Collections.Generic.List<string> Side;
             [DataMember(Name = "command_id")]
             public string CommandId;
 
@@ -74,6 +77,7 @@ namespace Relick.Network.Types
                 string Relikario,
                 System.Collections.Generic.List<string> Cards,
                 System.Collections.Generic.List<string> Traps,
+                System.Collections.Generic.List<string> Side,
                 string CommandId
             )
             {
@@ -82,6 +86,7 @@ namespace Relick.Network.Types
                 this.Relikario = Relikario;
                 this.Cards = Cards;
                 this.Traps = Traps;
+                this.Side = Side;
                 this.CommandId = CommandId;
             }
 
@@ -91,6 +96,7 @@ namespace Relick.Network.Types
                 this.Relikario = "";
                 this.Cards = new();
                 this.Traps = new();
+                this.Side = new();
                 this.CommandId = "";
             }
 

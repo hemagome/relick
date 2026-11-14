@@ -45,6 +45,7 @@ namespace Relick.Network.Types
         public global::SpacetimeDB.Col<DeckInfo, string> Relikario { get; }
         public global::SpacetimeDB.Col<DeckInfo, System.Collections.Generic.List<string>> Cards { get; }
         public global::SpacetimeDB.Col<DeckInfo, System.Collections.Generic.List<string>> Traps { get; }
+        public global::SpacetimeDB.Col<DeckInfo, System.Collections.Generic.List<string>> Side { get; }
         public global::SpacetimeDB.Col<DeckInfo, bool> Valid { get; }
         public global::SpacetimeDB.Col<DeckInfo, bool> Active { get; }
 
@@ -55,6 +56,7 @@ namespace Relick.Network.Types
             Relikario = new global::SpacetimeDB.Col<DeckInfo, string>(tableName, "relikario");
             Cards = new global::SpacetimeDB.Col<DeckInfo, System.Collections.Generic.List<string>>(tableName, "cards");
             Traps = new global::SpacetimeDB.Col<DeckInfo, System.Collections.Generic.List<string>>(tableName, "traps");
+            Side = new global::SpacetimeDB.Col<DeckInfo, System.Collections.Generic.List<string>>(tableName, "side");
             Valid = new global::SpacetimeDB.Col<DeckInfo, bool>(tableName, "valid");
             Active = new global::SpacetimeDB.Col<DeckInfo, bool>(tableName, "active");
         }

@@ -9,6 +9,7 @@ public static class DeckRules
     public const int MaxCopies = 2;
     public const int MaxTraps = 3;
     public const int MaxTrapCopies = 2;
+    public const int MaxSide = 10;
 
     public static bool IsTrap(CardDefinition card) => card.CodeType == CodeType.Trap;
 
@@ -17,14 +18,19 @@ public static class DeckRules
 
     public static bool Compatible(CardDefinition card, string relikario) => card.Relikario == null || card.Relikario == relikario;
 
-    /// <summary>Returns every broken rule in Spanish; an empty list means the deck is legal.</summary>
-    public static List<string> Validate(string relikario, IReadOnlyList<string> cards, IReadOnlyList<string> traps)
+    /// <summary>Whether a card may wait in the side deck: anything but an Attack.</summary>
+    public static bool AllowedInSide(CardDefinition card) => !IsAttack(card);
+
+    /// <summary>Returns every broken rule in Spanish; an empty list means the deck is legal.
+    /// Copy limits count the side deck together with the deck its cards would be swapped into.</summary>
+    public static List<string> Validate(string relikario, IReadOnlyList<string> cards, IReadOnlyList<string> traps, IReadOnlyList<string>? side = null)
     {
+        side ??= [];
         var errors = new List<string>();
         var relikarioName = RelikarioCatalog.Playable.FirstOrDefault(r => r.Id == relikario)?.Name;
         if (relikarioName == null) errors.Add("El Relikario del mazo no existe.");
 
-        var unknown = cards.Concat(traps).Where(id => !CardCatalog.All.ContainsKey(id)).Distinct().ToArray();
+        var unknown = cards.Concat(traps).Concat(side).Where(id => !CardCatalog.All.ContainsKey(id)).Distinct().ToArray();
         if (unknown.Length > 0)
         {
             errors.Add("Cartas desconocidas: " + string.Join(", ", unknown) + ".");
@@ -32,6 +38,8 @@ public static class DeckRules
         }
         var main = cards.Select(CardCatalog.Get).ToArray();
         var extra = traps.Select(CardCatalog.Get).ToArray();
+        var bench = side.Select(CardCatalog.Get).ToArray();
+        bool Benched(string name) => bench.Any(card => card.Name == name);
 
         if (main.Length != MainDeckSize)
             errors.Add($"El mazo principal debe tener exactamente {MainDeckSize} cartas (tiene {main.Length}).");
@@ -49,15 +57,23 @@ public static class DeckRules
             errors.Add($"Debe incluir al menos {MinSkills} habilidades compatibles (tiene {skills}).");
 
         // Copies are counted by printed name so alternate art of one card shares the limit.
-        foreach (var group in main.Where(card => !IsAttack(card) && !IsTrap(card)).GroupBy(card => card.Name).Where(group => group.Count() > MaxCopies))
-            errors.Add($"Máximo {MaxCopies} copias de {group.Key} (tiene {group.Count()}).");
+        foreach (var group in main.Concat(bench).Where(card => !IsAttack(card) && !IsTrap(card)).GroupBy(card => card.Name).Where(group => group.Count() > MaxCopies))
+            errors.Add($"Máximo {MaxCopies} copias de {group.Key}{(Benched(group.Key) ? " entre el mazo y el banquillo" : "")} (tiene {group.Count()}).");
 
         if (extra.Any(card => !IsTrap(card)))
             errors.Add("El mazo de Códigos Trampa solo admite Códigos Trampa.");
         if (extra.Length > MaxTraps)
             errors.Add($"El mazo de Códigos Trampa admite hasta {MaxTraps} cartas (tiene {extra.Length}).");
-        foreach (var group in extra.GroupBy(card => card.Name).Where(group => group.Count() > MaxTrapCopies))
-            errors.Add($"Máximo {MaxTrapCopies} copias de {group.Key} en el mazo de Códigos Trampa (tiene {group.Count()}).");
+        foreach (var group in extra.Concat(bench.Where(IsTrap)).GroupBy(card => card.Name).Where(group => group.Count() > MaxTrapCopies))
+            errors.Add($"Máximo {MaxTrapCopies} copias de {group.Key} {(Benched(group.Key) ? "entre el mazo de Códigos Trampa y el banquillo" : "en el mazo de Códigos Trampa")} (tiene {group.Count()}).");
+
+        if (bench.Length > MaxSide)
+            errors.Add($"El banquillo admite hasta {MaxSide} cartas (tiene {bench.Length}).");
+        if (bench.Any(IsAttack))
+            errors.Add("El banquillo no admite cartas de Ataque.");
+        var benchIncompatible = bench.Where(card => !Compatible(card, relikario)).Select(card => card.Name).Distinct().ToArray();
+        if (benchIncompatible.Length > 0)
+            errors.Add($"El banquillo tiene cartas no compatibles con {relikarioName ?? "este Relikario"}: " + string.Join(", ", benchIncompatible) + ".");
         return errors;
     }
 }
