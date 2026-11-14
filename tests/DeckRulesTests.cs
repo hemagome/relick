@@ -83,6 +83,29 @@ static class DeckRulesTests
             var none = Open([]);
             TradeAttacks(none); Check(none.State.Phase == Phase.Actions && !none.State.Players[0].ZahiraAvailable);
         }),
+        ("Banquillo: hasta diez cartas, sin Ataques y solo compatibles", () =>
+        {
+            var deck = CardCatalog.TrainingDeck(); var traps = CardCatalog.TrainingTraps();
+            // Each of these is in the training deck once, so a second copy on the bench stays within the limit.
+            List<string> ten = ["senshuni", "dodge", "bonfire", "time-bomb", "mind-swap", "reroll", "blue-egg", "quick-load", "sniper-scope", "pc-8bits"];
+            Legal(deck, traps, ten);
+            Broken(deck, traps, ten.Append("plumber-star").ToList(), "hasta 10 cartas");
+            Broken(deck, traps, ["attack"], "no admite cartas de Ataque");
+            // Triple Ataque Cruzado is a Code, so it may wait in the side deck.
+            Legal(deck, traps, ["triple-cross-attack"]);
+            Check(DeckRules.Validate("otro", [], [], ["magnet-shuffle"]).Any(error => error.Contains("banquillo tiene cartas no compatibles")));
+            Broken(deck, traps, ["no-existe"], "desconocidas: no-existe");
+        }),
+        ("Banquillo: los límites de copias cuentan mazo y banquillo juntos", () =>
+        {
+            var deck = CardCatalog.TrainingDeck();
+            Legal(deck, [], ["senshuni"]);
+            Broken(deck, [], ["senshuni", "senshuni"], "Máximo 2 copias de Senshuni entre el mazo y el banquillo");
+            Broken(Swap(deck, "pc-8bits", "senshuni"), [], ["senshuni"], "Máximo 2 copias de Senshuni entre el mazo y el banquillo");
+            // Trap Codes may wait in the side deck too; their limit adds the Trap deck.
+            Legal(deck, ["super-magnet"], ["super-magnet", "zahira-flair"]);
+            Broken(deck, ["super-magnet", "super-magnet"], ["super-magnet"], "Máximo 2 copias de Súper Imán entre el mazo de Códigos Trampa y el banquillo");
+        }),
         ("Mazo: cartas y Relikarios desconocidos se rechazan sin lanzar", () =>
         {
             Broken(Swap(CardCatalog.TrainingDeck(), "pc-8bits", "no-existe"), [], "desconocidas: no-existe");
@@ -99,15 +122,17 @@ static class DeckRulesTests
         return copy;
     }
 
-    private static void Legal(List<string> deck, List<string> traps)
+    private static void Legal(List<string> deck, List<string> traps, List<string>? side = null)
     {
-        var errors = DeckRules.Validate(Yuno, deck, traps);
+        var errors = DeckRules.Validate(Yuno, deck, traps, side);
         if (errors.Count > 0) throw new Exception("Se esperaba un mazo legal: " + string.Join(" | ", errors));
     }
 
-    private static void Broken(List<string> deck, List<string> traps, params string[] expected)
+    private static void Broken(List<string> deck, List<string> traps, params string[] expected) => Broken(deck, traps, [], expected);
+
+    private static void Broken(List<string> deck, List<string> traps, List<string> side, params string[] expected)
     {
-        var errors = DeckRules.Validate(Yuno, deck, traps);
+        var errors = DeckRules.Validate(Yuno, deck, traps, side);
         if (errors.Count != expected.Length || expected.Any(text => !errors.Any(error => error.Contains(text))))
             throw new Exception($"Se esperaba [{string.Join(" | ", expected)}] y se obtuvo [{string.Join(" | ", errors)}]");
     }

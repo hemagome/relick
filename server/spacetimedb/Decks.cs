@@ -18,6 +18,22 @@ public static partial class Module
         public long UpdatedAt;
     }
 
+    // A deck's side deck. Kept in its own table so decks saved before it existed need no migration.
+    [Table(Accessor = "DeckSide")]
+    public partial struct DeckSide
+    {
+        [PrimaryKey] public ulong Deck;
+        public List<string> Cards;
+    }
+
+    private static List<string> SideOf(ReducerContext ctx, ulong deck) => ctx.Db.DeckSide.Deck.Find(deck)?.Cards ?? [];
+
+    private static void StoreSide(ReducerContext ctx, ulong deck, List<string> side)
+    {
+        ctx.Db.DeckSide.Deck.Delete(deck);
+        if (side.Count > 0) ctx.Db.DeckSide.Insert(new DeckSide { Deck = deck, Cards = side });
+    }
+
     // The Trap deck a player brought into a room, kept apart from the main cards dealt as Card rows.
     [Table(Accessor = "Loadout")]
     public partial struct Loadout
@@ -35,6 +51,7 @@ public static partial class Module
         public string Relikario;
         public List<string> Cards;
         public List<string> Traps;
+        public List<string> Side;
         public bool Valid;
         public bool Active;
     }
@@ -43,17 +60,21 @@ public static partial class Module
     public static IEnumerable<DeckInfo> MyDecks(ViewContext ctx)
     {
         var active = ctx.Db.Account.Player.Find(ctx.Sender)?.ActiveDeck ?? 0;
-        return ctx.Db.Deck.Owner.Filter(ctx.Sender).Select(deck => new DeckInfo
+        return ctx.Db.Deck.Owner.Filter(ctx.Sender).Select(deck =>
         {
-            Id = deck.Id, Name = deck.Name, Relikario = deck.Relikario, Cards = deck.Cards, Traps = deck.Traps,
-            Valid = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps).Count == 0, Active = deck.Id == active
+            var side = ctx.Db.DeckSide.Deck.Find(deck.Id)?.Cards ?? [];
+            return new DeckInfo
+            {
+                Id = deck.Id, Name = deck.Name, Relikario = deck.Relikario, Cards = deck.Cards, Traps = deck.Traps, Side = side,
+                Valid = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, side).Count == 0, Active = deck.Id == active
+            };
         }).ToList();
     }
 
     /// <summary>Creates a deck when <paramref name="id"/> is zero, otherwise replaces the caller's deck.
     /// An illegal deck is kept as a draft; it cannot be made active or dealt.</summary>
     [Reducer]
-    public static void SaveDeck(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, string commandId)
+    public static void SaveDeck(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side, string commandId)
     {
         if (RequireAccount(ctx).Guest) throw new Exception(GuestsKeepNoDecks);
         if (!Guid.TryParseExact(commandId, "N", out _)) throw new Exception("Solicitud de mazo inválida.");
@@ -61,8 +82,8 @@ public static partial class Module
         name = name.Trim();
         if (name.Length is < 1 or > 32 || name.Any(char.IsControl)) throw new Exception("Usa un nombre de mazo de 1 a 32 caracteres.");
         // Drafts may break the rules, but never grow without bound or reference cards that do not exist.
-        if (cards.Count > DeckRules.MainDeckSize * 2 || traps.Count > DeckRules.MaxTraps * 2 ||
-            RelikarioCatalog.Playable.All(r => r.Id != relikario) || cards.Concat(traps).Any(card => !CardCatalog.All.ContainsKey(card)))
+        if (cards.Count > DeckRules.MainDeckSize * 2 || traps.Count > DeckRules.MaxTraps * 2 || side.Count > DeckRules.MaxSide * 2 ||
+            RelikarioCatalog.Playable.All(r => r.Id != relikario) || cards.Concat(traps).Concat(side).Any(card => !CardCatalog.All.ContainsKey(card)))
             throw new Exception("El mazo contiene cartas o un Relikario que no existen.");
 
         var mine = ctx.Db.Deck.Owner.Filter(ctx.Sender).ToList();
@@ -72,16 +93,18 @@ public static partial class Module
             // Retrying after a lost acknowledgement does not create a second deck.
             if (mine.Any(deck => deck.CommandId == commandId)) return;
             if (mine.Count >= MaxDecksPerPlayer) throw new Exception($"Puedes guardar hasta {MaxDecksPerPlayer} mazos.");
-            ctx.Db.Deck.Insert(new Deck { Owner = ctx.Sender, Name = name, Relikario = relikario, Cards = cards, Traps = traps, CommandId = commandId, UpdatedAt = now });
+            var created = ctx.Db.Deck.Insert(new Deck { Owner = ctx.Sender, Name = name, Relikario = relikario, Cards = cards, Traps = traps, CommandId = commandId, UpdatedAt = now });
+            StoreSide(ctx, created.Id, side);
             return;
         }
         if (mine.FirstOrDefault(deck => deck.Id == id) is not { Id: > 0 } current) throw new Exception("No se encontró el mazo.");
         current.Name = name; current.Relikario = relikario; current.Cards = cards; current.Traps = traps;
         current.CommandId = commandId; current.UpdatedAt = now;
         ctx.Db.Deck.Id.Update(current);
+        StoreSide(ctx, id, side);
         // A deck edited into a draft stops being the one dealt.
         if (ctx.Db.Account.Player.Find(ctx.Sender) is Account account && account.ActiveDeck == id &&
-            DeckRules.Validate(relikario, cards, traps).Count > 0) SetActive(ctx, account, 0);
+            DeckRules.Validate(relikario, cards, traps, side).Count > 0) SetActive(ctx, account, 0);
     }
 
     [Reducer]
@@ -90,6 +113,7 @@ public static partial class Module
         if (ctx.Db.Deck.Id.Find(id) is not Deck deck) return;
         if (deck.Owner != ctx.Sender) throw new Exception("No se encontró el mazo.");
         ctx.Db.Deck.Id.Delete(id);
+        ctx.Db.DeckSide.Deck.Delete(id);
         if (ctx.Db.Account.Player.Find(ctx.Sender) is Account account && account.ActiveDeck == id) SetActive(ctx, account, 0);
     }
 
@@ -100,7 +124,7 @@ public static partial class Module
         {
             if (RequireAccount(ctx).Guest) throw new Exception(GuestsKeepNoDecks);
             if (ctx.Db.Deck.Id.Find(id) is not Deck deck || deck.Owner != ctx.Sender) throw new Exception("No se encontró el mazo.");
-            var errors = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps);
+            var errors = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, SideOf(ctx, id));
             if (errors.Count > 0) throw new Exception("Este mazo no cumple las reglas: " + errors[0]);
         }
         SetActive(ctx, RequireAccount(ctx), id);
@@ -116,7 +140,7 @@ public static partial class Module
     private static (List<string> Cards, List<string> Traps) DeckFor(ReducerContext ctx, Identity player)
     {
         if (ctx.Db.Account.Player.Find(player) is Account { ActiveDeck: > 0, Guest: false } account && ctx.Db.Deck.Id.Find(account.ActiveDeck) is Deck deck &&
-            deck.Owner == player && DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps).Count == 0)
+            deck.Owner == player && DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, SideOf(ctx, deck.Id)).Count == 0)
             return (deck.Cards, deck.Traps);
         return (CardCatalog.TrainingDeck(), CardCatalog.TrainingTraps());
     }

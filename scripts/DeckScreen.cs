@@ -108,13 +108,14 @@ public partial class DeckScreen : Control
             delete: null);
         foreach (var deck in decks)
         {
-            var problems = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps);
-            var summary = $"{deck.Cards.Count} cartas · {deck.Traps.Count} Códigos Trampa · " + (problems.Count == 0 ? "Listo para jugar" : "Borrador: " + problems[0]);
+            var problems = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, deck.Side);
+            var summary = $"{deck.Cards.Count} cartas · {deck.Traps.Count} Códigos Trampa · " + (deck.Side.Count > 0 ? $"{deck.Side.Count} en banquillo · " : "") +
+                (problems.Count == 0 ? "Listo para jugar" : "Borrador: " + problems[0]);
             var saved = deck;
             AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, summary, deck.Active, problems.Count == 0, busy,
                 use: () => Connection.SetActiveDeck(saved.Id),
-                edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps),
-                copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps),
+                edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps, saved.Side),
+                copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps, saved.Side),
                 delete: () => ConfirmDelete(saved));
         }
     }
@@ -171,17 +172,17 @@ public partial class DeckScreen : Control
         dialog.PopupCentered();
     }
 
-    internal void Edit(ulong id, string name, IReadOnlyList<string> cards, IReadOnlyList<string> traps)
+    internal void Edit(ulong id, string name, IReadOnlyList<string> cards, IReadOnlyList<string> traps, IReadOnlyList<string>? side = null)
     {
         Clear();
         _editingId = id; _saving = false;
-        Editor = new DeckEditor { DeckName = name, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), ShortScreen = ShortScreen };
+        Editor = new DeckEditor { DeckName = name, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen };
         Editor.Closed += ShowList;
-        Editor.SaveRequested += (deckName, main, trapDeck) =>
+        Editor.SaveRequested += (deckName, main, trapDeck, bench) =>
         {
             if (Connection.DeckPending) return;
             _savesBeforeEdit = Connection.DeckSaves; _saving = true;
-            Connection.SaveDeck(_editingId, deckName, RelikarioCatalog.Yuno.Id, main, trapDeck);
+            Connection.SaveDeck(_editingId, deckName, RelikarioCatalog.Yuno.Id, main, trapDeck, bench);
             // Without a connection the request is not sent at all.
             if (!Connection.DeckPending) { _saving = false; Editor.Notify("No hay conexión con el servidor. Inténtalo de nuevo al reconectar."); }
         };
