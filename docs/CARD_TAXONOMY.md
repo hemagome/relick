@@ -55,6 +55,8 @@ Bonus por el procedimiento habitual. La creación espera a que termine cualquier
 cadena en resolución y coloca la trampa en el lugar que indica su carta. Una
 trampa que abandona el campo queda fuera del juego. [Reglamento oficial, §§ 4.6 y 5.3](https://sites.google.com/view/relickjuegodecartas/reglas/nuevo-manual-de-juego#h.byyxqj2ib44c_l).
 
+Si las dos cartas cumplen varias recetas, el jugador elige cuál crear. El motor guarda en `TrapCraft` todas las recetas cumplidas (`Choices`) y las dos cartas canjeadas (`Ingredients`). Ofrece una opción «Crear X» por receta, con su posición en `DuelMove.Value`, más «Pasar sin crear». Un cliente que no envía posición crea la primera receta. Con las recetas actuales (Súper Imán, Zahira Flair y Súper Ataque) no hay solapes; Súper Error de Carga (Error de Carga + un COMBO) tampoco se solaparía con ellas. Las cartas que el adversario coloque en tu canje aún no se distinguen, porque ningún efecto implementado lo hace.
+
 ## Distinciones para el modelo
 
 Separar los siguientes conceptos para que el deckbuilding y los efectos puedan consultarlos sin interpretar el texto de las cartas:

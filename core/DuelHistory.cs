@@ -176,7 +176,8 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.FieldCode => m.Value == (int)FieldZone.Bonus ? p.Bonus : p.Exchange.ElementAtOrDefault(m.Index),
             DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse when m.Flag => CardCatalog.CardboardBox.Id,
             DuelMoveKind.Pc => CardCatalog.Pc.Id, DuelMoveKind.Pendant => CardCatalog.Pendant.Id,
-            DuelMoveKind.TrapCraft when m.Flag => g.State.TrapCraftQueue?.FirstOrDefault()?.CardId,
+            DuelMoveKind.TrapCraft when m.Flag => g.State.TrapCraftQueue?.FirstOrDefault() is { } craft
+                ? craft.Options.ElementAtOrDefault(m.Value) ?? craft.CardId : null,
             DuelMoveKind.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
             _ => null
         };

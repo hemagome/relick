@@ -64,6 +64,9 @@ public sealed class DuelSnapshot
     public Phase? Stage { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? TrapCardId { get; set; }
+    /// <summary>The two public cards whose exchange met the pending Trap recipe; older servers leave it empty.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? TrapIngredients { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int DiscardsRemaining { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -126,6 +129,7 @@ public sealed class DuelSnapshot
             LegacyBlueEgg = game.LegacyBlueEgg,
             AutoPassCombos = seat >= 0 && s.Players[seat].AutoPassCombos,
             TrapCardId = s.Phase == Phase.TrapCraftChoice ? s.TrapCraftQueue![0].CardId : null,
+            TrapIngredients = s.Phase == Phase.TrapCraftChoice ? s.TrapCraftQueue![0].Ingredients : null,
             Revision = revision, MySeat = seat, CurrentPlayer = s.CurrentPlayer, DecisionPlayer = s.DecisionPlayer,
             DiscardsRemaining = s.DiscardsRemaining,
             ExtraDrawStages = s.ExtraDrawStages, ExtraCombatStages = s.ExtraCombatStages,
