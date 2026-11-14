@@ -176,7 +176,7 @@ public partial class OnlineArena : Control
             _needsBaseline = false; Render(animate || openingFlights != null, previous);
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins, placement);
-            if (animate) FlashPlayedCard(previous!, snapshot);
+            if (animate) { FlashPlayedCard(previous!, snapshot); SummonCreatedTrap(previous!, snapshot); }
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
         if (_root == null) return;
@@ -663,7 +663,7 @@ public partial class OnlineArena : Control
     {
         Phase.Preparation => "PREPARACIÓN", Phase.Draw => "ROBO", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
-        Phase.TrapCraftChoice => "CÓDIGO TRAMPA",
+        Phase.TrapCraftChoice => "TRAMPA",
         Phase.ZahiraTarget => "ZAHIRA FLAIR",
         Phase.CodeResponse or Phase.ErrorResponse or Phase.EffectDamageChoice => "RESPUESTA", Phase.GoldenTotemChoice or Phase.GoldenTotemResolving => "TÓTEM DE ORO", Phase.TotemChoice => "TÓTEM DE SALVACIÓN", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.DeckSearchChoice => "BUSCAR EN EL MAZO", Phase.MemoryRecoveryChoice => "DISQUETE", Phase.TurnBuffDiscard => "DESCARTAR COSTE", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", Phase.BlueEggDrawChoice => "ROBO OPCIONAL", _ => "RESOLVER EFECTO"
     };

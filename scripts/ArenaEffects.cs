@@ -87,7 +87,18 @@ public partial class ImpactLayer : Control
     private (Texture2D Art, Vector2 Center, Color Accent, double Age)? _card;
     /// <summary>A code just played by either duelist is shown for a moment over the middle of the board.</summary>
     internal bool ShowingCard => _card != null;
-    internal int ActiveCount => _numbers.Count + _rings.Count + _beams.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0);
+    private const double SummonGather = 0.45, SummonPop = 0.3, SummonFly = 0.45, SummonFade = 0.2;
+    private sealed record Summon(Texture2D[] Ingredients, Vector2 From, Vector2 Meet, Texture2D Trap, Rect2? To, Color Accent)
+    {
+        public double Age { get; set; }
+        public double Duration => SummonGather + SummonPop + (To != null ? SummonFly : 0.35) + SummonFade;
+    }
+    private Summon? _summon;
+    /// <summary>A Trap being created: echoes of its recipe meet and the card appears, then goes to its place.</summary>
+    internal bool ShowingSummon => _summon != null;
+    internal Rect2? SummonTarget => _summon?.To;
+    internal int SummonEchoes => _summon?.Ingredients.Length ?? 0;
+    internal int ActiveCount => _numbers.Count + _rings.Count + _beams.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0) + (_summon != null ? 1 : 0);
     internal Vector2? LastNumberAt => _numbers.Count == 0 ? null : _numbers[^1].At;
 
     public override void _Ready()
@@ -135,9 +146,21 @@ public partial class ImpactLayer : Control
         SetProcess(true); QueueRedraw();
     }
 
+    /// <summary>
+    /// Echoes of the two exchanged cards rise from the memory they went to, meet over the exchange and
+    /// call the Trap from its own deck; the Trap then flies to <paramref name="to"/>, or stays and fades
+    /// when its place is chosen next (Zahira Flair). The real cards never move: they are only echoes.
+    /// </summary>
+    internal void TrapSummon(Texture2D[] ingredients, Vector2 from, Vector2 meet, Texture2D trap, Rect2? to, Color accent)
+    {
+        if (ReducedMotion) return;
+        _summon = new Summon(ingredients, from, meet, trap, to, accent);
+        SetProcess(true); QueueRedraw();
+    }
+
     internal void Clear()
     {
-        _numbers.Clear(); _rings.Clear(); _beams.Clear(); _flash = FlashSeconds; _card = null;
+        _numbers.Clear(); _rings.Clear(); _beams.Clear(); _flash = FlashSeconds; _card = null; _summon = null;
         SetProcess(false); QueueRedraw();
     }
 
@@ -161,8 +184,55 @@ public partial class ImpactLayer : Control
         }
         if (_flash < FlashSeconds) _flash = Math.Min(FlashSeconds, _flash + step);
         if (_card is { } card) _card = card.Age + step >= CardSeconds ? null : card with { Age = card.Age + step };
+        if (_summon is { } summon) { summon.Age += step; if (summon.Age >= summon.Duration) _summon = null; }
         if (ActiveCount == 0) SetProcess(false);
         QueueRedraw();
+    }
+
+    private void DrawSummon(Summon s, Vector2 origin)
+    {
+        var age = (float)s.Age;
+        var meet = s.Meet - origin;
+        var echo = new Vector2(92, 128);
+        // Gather: the recipe's echoes travel from memory to either side of the meeting point, then close in.
+        if (age < SummonGather + SummonPop)
+        {
+            var travel = Mathf.SmoothStep(0, 1, Math.Min(1, age / (float)SummonGather));
+            var close = Math.Clamp((age - (float)SummonGather) / (float)SummonPop, 0, 1);
+            var alpha = 0.6f * (1 - close);
+            for (var i = 0; i < s.Ingredients.Length; i++)
+            {
+                var side = s.Ingredients.Length == 1 ? 0 : i == 0 ? -1 : 1;
+                var target = meet + new Vector2(side * 58 * (1 - close), 0);
+                var at = (s.From - origin).Lerp(target, travel);
+                var rect = new Rect2(at - echo * (1 - 0.4f * close) / 2, echo * (1 - 0.4f * close));
+                DrawLine(at, meet, BoardArt.Tint(s.Accent, 0.5f * alpha * travel), 3, true);
+                RelickVisuals.Shadow(this, rect, BoardArt.Tint(s.Accent, 0.45f * alpha), 12, 8);
+                DrawTextureRect(s.Ingredients[i], rect, false, new Color(1, 1, 1, alpha));
+            }
+        }
+        if (age < SummonGather) return;
+        // Appear, then fly to the Trap's place or hold and fade.
+        var pop = Math.Clamp((age - (float)SummonGather) / (float)SummonPop, 0, 1);
+        var scale = pop < 0.6f ? Mathf.Lerp(0.55f, 1.06f, pop / 0.6f) : Mathf.Lerp(1.06f, 1, (pop - 0.6f) / 0.4f);
+        var height = 210f * scale;
+        var center = meet;
+        var hold = s.To != null ? SummonFly : 0.35;
+        var fly = Math.Clamp((age - (float)(SummonGather + SummonPop)) / (float)hold, 0, 1);
+        if (s.To is { } to && fly > 0)
+        {
+            var eased = Mathf.SmoothStep(0, 1, fly);
+            center = meet.Lerp(to.GetCenter() - origin, eased);
+            height = Mathf.Lerp(210, Math.Max(80, to.Size.Y), eased);
+        }
+        var fade = Math.Clamp((age - (float)(SummonGather + SummonPop + hold)) / (float)SummonFade, 0, 1);
+        var alphaCard = Math.Min(1, pop * 3) * (1 - fade);
+        var size = new Vector2(height * s.Trap.GetWidth() / s.Trap.GetHeight(), height);
+        var trapRect = new Rect2(center - size / 2, size);
+        if (pop < 1) RelickVisuals.Shadow(this, trapRect.Grow(10 * (1 - pop)), BoardArt.Tint(Colors.White, 0.5f * (1 - pop)), 24, 12);
+        RelickVisuals.Shadow(this, trapRect.Grow(-4), BoardArt.Tint(s.Accent, 0.6f * alphaCard), 20, 10);
+        DrawTextureRect(s.Trap, trapRect, false, new Color(1, 1, 1, alphaCard));
+        BoardArt.Outline(this, trapRect, BoardArt.Tint(s.Accent, alphaCard), 8, 2);
     }
 
     public override void _Draw()
@@ -170,6 +240,7 @@ public partial class ImpactLayer : Control
         var origin = GlobalPosition;
         if (_flash < FlashSeconds)
             DrawRect(new Rect2(Vector2.Zero, Size), BoardArt.Tint(_flashColor, 0.20f * (1 - (float)(_flash / FlashSeconds))));
+        if (_summon is { } s) DrawSummon(s, origin);
         if (_card is { } played)
         {
             // Pop in, hold, then rise slightly while fading: long enough to recognise, short enough not to wait for.

@@ -383,7 +383,9 @@ public partial class OnlineArena
         else
         {
             var owner = card?.Kind == CardKind.Skill ? InspectorSkillOwner(fromPreview) : null;
-            _inspector.Present(card, title, cost, _selection.Text, counters, InspectorOutlook(card, counters, owner));
+            // Deciding a Trap shows the two exchanged cards that met its recipe.
+            var recipe = activation != null && s.Phase == Phase.TrapCraftChoice ? s.TrapIngredients : null;
+            _inspector.Present(card, title, cost, _selection.Text, counters, InspectorOutlook(card, counters, owner), recipe);
             _showcase?.Present(card);
         }
         _contextCost.TooltipText = cost;

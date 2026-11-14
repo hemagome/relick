@@ -44,11 +44,48 @@ public partial class OnlineArena
         var entry = current.History?.LastOrDefault(e => e.Id > seen && e.CardId.Length > 0 &&
             e.Status is DuelResolutionStatus.Response or DuelResolutionStatus.Resolving);
         if (entry == null || previous.Resolution?.CardId == entry.CardId) return;
-        if (!CardCatalog.All.TryGetValue(entry.CardId, out var card) || card.Kind != CardKind.Code) return;
+        // A created Trap gets its own recipe animation instead (SummonCreatedTrap).
+        if (!CardCatalog.All.TryGetValue(entry.CardId, out var card) || card.Kind != CardKind.Code || card.CodeType == CodeType.Trap) return;
         if (BoardArt.LoadCardArtwork(card) is not { } art) return;
         var lane = _combatCenter != null && IsInstanceValid(_combatCenter) ? _combatCenter.GetGlobalRect() : GetGlobalRect();
         var center = new Vector2(lane.GetCenter().X, Math.Max(lane.GetCenter().Y - 150, GlobalPosition.Y + 150));
         _impacts.PlayedCard(art, center, entry.SourceActor == current.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral);
+    }
+
+    /// <summary>
+    /// After a «Crear» decision, the public history names the Trap. Its two exchanged cards are already in
+    /// memory (rulebook § 4.6), so echoes of them rise from there, meet over the exchange and call the Trap,
+    /// which then flies to its place: the hand for Súper Ataque, the equipment zone for Súper Imán. Zahira
+    /// Flair's host is chosen next, so its card appears and fades over the exchange.
+    /// </summary>
+    internal void SummonCreatedTrap(DuelSnapshot previous, DuelSnapshot current)
+    {
+        if (previous.Phase != Phase.TrapCraftChoice) return;
+        var seen = previous.History?.Select(e => e.Id).DefaultIfEmpty(0UL).Max() ?? 0;
+        var entry = current.History?.LastOrDefault(e => e.Id > seen && e.CardId.Length > 0 &&
+            CardCatalog.All.TryGetValue(e.CardId, out var trap) && trap.CodeType == CodeType.Trap);
+        if (entry == null || _root == null || BoardArt.LoadCardArtwork(CardCatalog.Get(entry.CardId)) is not { } art) return;
+        var relative = entry.Actor == current.MySeat ? 0 : 1;
+        Rect2? Find(string name) => _root.FindChild(name, true, false) is Control { } node && node.IsVisibleInTree() ? node.GetGlobalRect() : null;
+        var memory = Find("MemoryButton" + relative);
+        var exchange = _exchangeTracks[relative] is { } track && IsInstanceValid(track)
+            ? track.ExchangeButtons.Where(IsInstanceValid).Select(b => b.GetGlobalRect()).Aggregate((a, b) => a.Merge(b)) : (Rect2?)null;
+        if (memory == null || exchange == null) return;
+        var ingredients = (previous.TrapIngredients ?? []).Where(CardCatalog.All.ContainsKey)
+            .Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id))).OfType<Texture2D>().ToArray();
+        Rect2? destination = entry.CardId == CardCatalog.SuperMagnet.Id ? Find("EquipmentZone" + relative)
+            : entry.CardId == CardCatalog.SuperAttack.Id ? relative == 0 ? HandLanding() : Find("OpponentHandFan") ?? Find("OpponentHandScroll") : null;
+        _impacts.TrapSummon(ingredients, memory.Value.GetCenter(), exchange.Value.GetCenter(), art, destination,
+            relative == 0 ? ArenaPresentation.Mint : ArenaPresentation.Coral);
+    }
+
+    /// <summary>Where a card joining the own hand lands: the visible band of the fan, at board card size.</summary>
+    private Rect2? HandLanding()
+    {
+        if (_hand == null || !IsInstanceValid(_hand) || !_hand.IsVisibleInTree()) return null;
+        var hand = _hand.GetGlobalRect();
+        var top = Math.Min(hand.Position.Y + 20, GlobalPosition.Y + Size.Y - 160);
+        return new Rect2(hand.GetCenter().X - 60, top, 120, 160);
     }
 
     private void BuildResultOverlay()

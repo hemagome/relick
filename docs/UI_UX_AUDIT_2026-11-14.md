@@ -17,7 +17,7 @@ Del paquete de lectura del tablero también están implementados:
 - UX-07: golpe final y segunda caída.
 - UX-06: ranuras vacías discretas y siguiente ranura enseñable.
 
-Se describen en `docs/UI.md` («Estado de la decisión…») y se comprueban con `--feedback-only` y `--board-reading-only`. Los demás hallazgos siguen pendientes. También se revisaron los textos visibles de duelo, sala, mazos y selector («Textos de interfaz» en `docs/UI.md`). Eso resuelve en parte UX-13: la cabecera vacía de resolución y su línea repetida. También están los toques de animación opcionales: la sacudida del rechazo (UX-01), el latido del golpe final (UX-07), el resultado central (UX-15) y el destello del código jugado (IV).
+Se describen en `docs/UI.md` («Estado de la decisión…») y se comprueban con `--feedback-only` y `--board-reading-only`. Los demás hallazgos siguen pendientes. También se revisaron los textos visibles de duelo, sala, mazos y selector («Textos de interfaz» en `docs/UI.md`). Eso resuelve en parte UX-13: la cabecera vacía de resolución y su línea repetida. También están los toques de animación opcionales: la sacudida del rechazo (UX-01), el latido del golpe final (UX-07), el resultado central (UX-15) y el destello del código jugado (IV). Y la creación de Códigos Trampa con el «eco de la receta», ajustada al reglamento.
 
 Sustituye como referencia vigente a `docs/UI_EVALUATION_2026-11-09.md`. Varios de sus hallazgos ya están resueltos: contador de acciones, inspector lateral, historial, guía de bloqueos y tablero unificado. Este informe parte del estado actual.
 

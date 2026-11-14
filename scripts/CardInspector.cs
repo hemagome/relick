@@ -83,6 +83,9 @@ public partial class CardInspector : PanelContainer
     internal HBoxContainer Attributes { get; private set; } = null!;
     internal Label AlertLabel { get; private set; } = null!;
     internal VBoxContainer Outlook { get; private set; } = null!;
+    internal HBoxContainer Recipe { get; private set; } = null!;
+    internal Label RecipeNames { get; private set; } = null!;
+    private readonly List<TextureRect> _recipeCards = [];
     internal Label OutlookCaption { get; private set; } = null!;
     internal Label OutlookNotes { get; private set; } = null!;
     private PanelContainer _alert = null!;
@@ -132,6 +135,7 @@ public partial class CardInspector : PanelContainer
             attribute.AddChild(value); _attributeValues.Add(value);
         }
         CounterLabel = Wrapped("InspectorCounters", 12, BoardArt.Gold); header.AddChild(CounterLabel);
+        BuildRecipe(header);
         BuildOutlook(header);
         _reading = new ScrollContainer { Name = "InspectorReading",
             CustomMinimumSize = new(0, ReadingHeight > 0 ? ReadingHeight : ShortScreen ? 40 : 64),
@@ -166,6 +170,31 @@ public partial class CardInspector : PanelContainer
         }
         OutlookNotes = ArenaPresentation.Text("", 12, BoardArt.Muted); OutlookNotes.Name = "AttackOutlookNotes";
         OutlookNotes.AutowrapMode = TextServer.AutowrapMode.WordSmart; Outlook.AddChild(OutlookNotes);
+    }
+
+    /// <summary>The two exchanged cards that met a Trap recipe, side by side: the creation's visible cause.</summary>
+    private void BuildRecipe(VBoxContainer header)
+    {
+        Recipe = new HBoxContainer { Name = "TrapRecipe", Visible = false }; Recipe.AddThemeConstantOverride("separation", 6); header.AddChild(Recipe);
+        for (var i = 0; i < 2; i++)
+        {
+            if (i == 1) Recipe.AddChild(ArenaPresentation.Text("+", 18, BoardArt.Muted));
+            var card = new TextureRect { Name = "TrapIngredient" + i, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new(40, 56), MouseFilter = MouseFilterEnum.Pass };
+            Recipe.AddChild(card); _recipeCards.Add(card);
+        }
+        RecipeNames = ArenaPresentation.Text("", 13, BoardArt.Muted); RecipeNames.Name = "TrapRecipeNames";
+        RecipeNames.AutowrapMode = TextServer.AutowrapMode.WordSmart; RecipeNames.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        RecipeNames.VerticalAlignment = VerticalAlignment.Center; Recipe.AddChild(RecipeNames);
+    }
+
+    internal void PresentRecipe(IReadOnlyList<string>? ingredients)
+    {
+        var cards = ingredients?.Where(CardCatalog.All.ContainsKey).Select(CardCatalog.Get).Take(2).ToArray() ?? [];
+        Recipe.Visible = cards.Length == 2;
+        if (!Recipe.Visible) return;
+        for (var i = 0; i < 2; i++) { _recipeCards[i].Texture = BoardArt.LoadCardArtwork(cards[i]); _recipeCards[i].TooltipText = cards[i].Name; }
+        RecipeNames.Text = $"Canjeaste {cards[0].Name} y {cards[1].Name}.";
     }
 
     internal void PresentOutlook(AttackOutlook? outlook)
@@ -203,9 +232,11 @@ public partial class CardInspector : PanelContainer
         TitleLabel.Visible = TitleLabel.Text.Length > 0 && (HasCard || hint.Length == 0);
     }
 
-    internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null, AttackOutlook? outlook = null)
+    internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null, AttackOutlook? outlook = null,
+        IReadOnlyList<string>? recipe = null)
     {
         PresentOutlook(outlook);
+        PresentRecipe(recipe);
         if (_cardId != card?.Id) _reading.ScrollVertical = 0;
         _cardId = card?.Id; HasCard = card != null;
         _reading.Visible = HasCard;

@@ -220,7 +220,14 @@ Cuatro efectos cosméticos. Ninguno forma parte de `IsAnimating`: no bloquean ju
 - **Resultado central.** Cuando el duelo termina y ya acabaron el dado, los vuelos y el último impacto, aparece un momento central sobre el tapete. Muestra el resultado, la causa pública y las vidas y PR finales, y entra con una escala breve. Nunca toma el puntero y no tapa el riel, que conserva «Volver al lobby», «Revisar tablero» y el historial. Pasados 1,5 s, cualquier clic o tecla lo retira sin consumir el evento. «Revisar tablero» también lo cierra, y no reaparece para el mismo duelo.
 - **Código jugado.** Cuando el historial público registra la activación de un código nuevo, de cualquiera de los dos jugadores, su ilustración aparece 0,8 s sobre el centro del tablero con el color del jugador. Una decisión dentro de la misma resolución, como elegir la carta de Disquete, no repite el destello.
 
-Prueba enfocada: `--polish-only`. También forma parte de la matriz completa, y con `--ui-screenshot-dir` guarda el resultado y el código jugado.
+- **Creación de un Código Trampa.** Respeta el orden del reglamento (§ 4.6 y § 5.3): primero el canje se completa, con las dos cartas a Memoria, el Bonus a la mano y la reposición; después se decide si crear la trampa.
+  - Al decidir, el inspector muestra la trampa y las dos cartas canjeadas que cumplieron su receta, en miniatura junto a «Canjeaste X y Y». Ese dato viene de `DuelSnapshot.TrapIngredients`, que los servidores anteriores dejan vacío.
+  - Si se elige «Crear», dos ecos translúcidos de esas cartas salen de la Memoria, convergen sobre el canje e invocan la trampa. Las cartas reales no se mueven.
+  - Luego la trampa vuela a su lugar: la mano para Súper Ataque y la zona de equipo para Súper Imán. Zahira Flair aparece y se desvanece sobre el canje, porque su anfitrión se elige a continuación.
+  - «Pasar sin crear» no muestra nada. Funciona igual cuando la creación espera a que termine una cadena, porque en ambos casos las cartas ya están en Memoria.
+  - Un código trampa creado no repite además el destello genérico de código jugado.
+
+Pruebas enfocadas: `--polish-only` y `--trap-recipe-only`. Ambas forman parte de la matriz completa, y con `--ui-screenshot-dir` guardan el resultado, el código jugado, la decisión con su receta y los momentos de la invocación.
 
 ## Textos de interfaz
 
