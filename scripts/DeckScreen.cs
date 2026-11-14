@@ -101,7 +101,7 @@ public partial class DeckScreen : Control
         _create.TooltipText = decks.Count >= 20 ? "Puedes guardar hasta 20 mazos." : "";
 
         var training = CardCatalog.TrainingDeck(); var trainingTraps = CardCatalog.TrainingTraps();
-        AddRow("Training", "Mazo de entrenamiento", "42 cartas · 3 Códigos Trampa · Listo para jugar", decks.All(deck => !deck.Active), true, busy,
+        AddRow("Training", RelikarioCatalog.Yuno.Id, "Mazo de entrenamiento", "42 cartas · 3 Códigos Trampa · Listo para jugar", decks.All(deck => !deck.Active), true, busy,
             use: () => Connection.SetActiveDeck(0),
             edit: null,
             copy: Guest ? null : () => Edit(0, "Copia de entrenamiento", training, trainingTraps),
@@ -111,7 +111,7 @@ public partial class DeckScreen : Control
             var problems = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps);
             var summary = $"{deck.Cards.Count} cartas · {deck.Traps.Count} Códigos Trampa · " + (problems.Count == 0 ? "Listo para jugar" : "Borrador: " + problems[0]);
             var saved = deck;
-            AddRow("Deck" + deck.Id, deck.Name, summary, deck.Active, problems.Count == 0, busy,
+            AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, summary, deck.Active, problems.Count == 0, busy,
                 use: () => Connection.SetActiveDeck(saved.Id),
                 edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps),
                 copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps),
@@ -121,13 +121,25 @@ public partial class DeckScreen : Control
 
     private static string Shorten(string name) => name.Length <= 32 ? name : name[..32].Trim();
 
-    private void AddRow(string key, string name, string summary, bool active, bool valid, bool busy, Action use, Action? edit, Action? copy, Action? delete)
+    /// <summary>The Relikario's portrait cut from its skill cards, or null when it has none yet.</summary>
+    internal static Texture2D? Thumbnail(string relikario) =>
+        relikario == RelikarioCatalog.Yuno.Id ? GD.Load<Texture2D>("res://assets/characters/yuno/thumbnail.png") : null;
+
+    private void AddRow(string key, string relikario, string name, string summary, bool active, bool valid, bool busy, Action use, Action? edit, Action? copy, Action? delete)
     {
         var panel = new PanelContainer { Name = key, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var style = RelickVisuals.Frame(RelickVisuals.Playmat.Surface, active ? ArenaPresentation.Mint : RelickVisuals.Playmat.Frame, 8, active ? 2 : 1);
         style.ContentMarginLeft = style.ContentMarginRight = ShortScreen ? 12 : 18; style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 8 : 14;
         panel.AddThemeStyleboxOverride("panel", style); _rows!.AddChild(panel);
-        var row = new HFlowContainer(); row.AddThemeConstantOverride("h_separation", 12); row.AddThemeConstantOverride("v_separation", 8); panel.AddChild(row);
+        var body = new HBoxContainer(); body.AddThemeConstantOverride("separation", ShortScreen ? 10 : 16); panel.AddChild(body);
+        if (Thumbnail(relikario) is { } portrait)
+        {
+            var height = ShortScreen ? 52 : 72;
+            body.AddChild(new TextureRect { Name = "RelikarioThumbnail", Texture = portrait, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new(height * portrait.GetWidth() / (float)portrait.GetHeight(), height),
+                SizeFlagsVertical = SizeFlags.ShrinkCenter, MouseFilter = MouseFilterEnum.Ignore });
+        }
+        var row = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; row.AddThemeConstantOverride("h_separation", 12); row.AddThemeConstantOverride("v_separation", 8); body.AddChild(row);
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new(260, 0) };
         titles.AddThemeConstantOverride("separation", 2); row.AddChild(titles);
         var heading = new HBoxContainer(); heading.AddThemeConstantOverride("separation", 10); titles.AddChild(heading);

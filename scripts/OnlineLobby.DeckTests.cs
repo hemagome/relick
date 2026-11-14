@@ -43,6 +43,9 @@ public partial class OnlineLobby
                 !((Button)builtIn.FindChild("Use", true, false)).Disabled, "Usar debe ofrecerse solo en mazos legales que no están en uso.");
             Expect(((Label)draft.FindChild("DeckSummary", true, false)).Text.Contains("Borrador") && builtIn.FindChild("Delete", true, false) == null &&
                 builtIn.FindChild("Edit", true, false) == null, "el borrador o el mazo de entrenamiento se presentan mal.");
+            Expect(new[] { builtIn, active, draft }.All(row => row.FindChild("RelikarioThumbnail", true, false) is TextureRect { Texture: not null } thumb &&
+                thumb.GetGlobalRect().Position.X >= row.GetGlobalRect().Position.X && thumb.GetGlobalRect().End.X <= row.GetGlobalRect().End.X),
+                "los mazos de Yuno deben mostrar su miniatura dentro de la fila.");
             foreach (var button in screen.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
             {
                 Inside(button, "Un botón de la lista");
