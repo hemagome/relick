@@ -89,6 +89,7 @@ public partial class CardInspector : PanelContainer
     private readonly List<Label> _outlookValues = [];
     internal IReadOnlyList<Label> OutlookValues => _outlookValues;
     private readonly List<Label> _attributeValues = [];
+    private readonly List<Control> _attributeColumns = [];
     private ScrollContainer _reading = null!;
     private HBoxContainer _cost = null!;
     private string? _cardId;
@@ -125,7 +126,7 @@ public partial class CardInspector : PanelContainer
         foreach (var caption in new[] { "Daño normal", "Daño crítico", "Premio" })
         {
             var attribute = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            attribute.AddThemeConstantOverride("separation", 2); Attributes.AddChild(attribute);
+            attribute.AddThemeConstantOverride("separation", 2); Attributes.AddChild(attribute); _attributeColumns.Add(attribute);
             attribute.AddChild(ArenaPresentation.Text(caption, 11, BoardArt.Muted));
             var value = ArenaPresentation.Text("", ShortScreen ? 17 : 23, BoardArt.Gold);
             attribute.AddChild(value); _attributeValues.Add(value);
@@ -172,6 +173,8 @@ public partial class CardInspector : PanelContainer
         // Short screens keep their room for the decision buttons; the attributes row already gives normal and critical.
         if (ShortScreen) outlook = null;
         Outlook.Visible = outlook != null;
+        // The D6 table already gives normal (5) and critical (6) damage: the attributes keep only the reward.
+        _attributeColumns[0].Visible = _attributeColumns[1].Visible = outlook == null;
         if (outlook == null) return;
         OutlookCaption.Text = outlook.Caption ?? "Resultado del ataque según el dado";
         for (var face = 0; face < _outlookValues.Count; face++) _outlookValues[face].Text = outlook.Damage(face + 3);

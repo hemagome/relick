@@ -111,7 +111,8 @@ public static class ArenaPresentation
         portrait.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         portrait.CustomMinimumSize = new(0, 96);
         stand.AddChild(portrait);
-        var ownerName = Heading(active ? $"» {owner.Name}" : owner.Name, 17, accent);
+        // Whose turn it is lives in the phase bar's status cell; the name is only the name.
+        var ownerName = Heading(owner.Name, 17, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; info.AddChild(ownerName);
         var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", 11, BoardArt.Muted);
         name.ClipText = true; name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · {RelikarioCatalog.Yuno.Name} · Vida máxima: {owner.MaxHealth}";
@@ -160,7 +161,7 @@ public static class ArenaPresentation
             _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
             _ => ""
         };
-        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : "EQUIPO", StatusText = equipmentStatus,
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W };
         equipment.Pressed += actions.Equipment; Put(equipment, 306, bottom, W, H);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, SlotWidth = W, Board = true };
@@ -257,7 +258,6 @@ public static class ArenaPresentation
             else if (i > current) cell.AddChild(Still(Text(title, 12, BoardArt.Tint(BoardArt.Muted, 0.6f))));
             else
             {
-                cell.AddChild(Still(Heading("»", 16, accent)));
                 var now = Still(Heading(title, 16, accent)); now.Name = "CurrentStageTitle"; cell.AddChild(now);
             }
         }
@@ -306,7 +306,7 @@ public static class ArenaPresentation
         var header = new HBoxContainer(); column.AddChild(header);
         var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         names.AddThemeConstantOverride("separation", 0);
-        var ownerName = Text(active ? $"» {owner.Name}" : owner.Name, 9, accent);
+        var ownerName = Text(owner.Name, 9, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = compact; ownerName.TooltipText = owner.Name; names.AddChild(ownerName);
         var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", compact ? 15 : 18);
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -372,7 +372,7 @@ public static class ArenaPresentation
             _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
             _ => ""
         };
-        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = owner.Equipment == null ? "EQUIPO 0/1" : "EQUIPO", StatusText = equipmentStatus,
+        var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("81c8ef"),
             Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
@@ -505,7 +505,9 @@ public static class ArenaPresentation
         if (title == null && !raised) HandCounter(parent, hand.Count, enemy: false);
         else if (title != null)
         {
-            var heading = HandHeading(title, hand.Count, railColumns);
+            // Labelled memory blocks carry their own counts; the total would only repeat their sum.
+            var heading = grouped ? Text(title, 10) : HandHeading(title, hand.Count, railColumns);
+            heading.TooltipText = title;
             if (desktop) { heading.AddThemeFontSizeOverride("font_size", 16); heading.AddThemeFontOverride("font", RelickVisuals.Display); heading.AddThemeColorOverride("font_color", BoardArt.Gold); }
             parent.AddChild(heading);
         }

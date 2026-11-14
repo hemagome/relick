@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass, Check, Pencil, Copy, Trash, Bench }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -214,6 +214,28 @@ public static class BoardArt
                 Shape(new(0, -14), new(15, 13), new(-15, 13));
                 c.DrawRect(new(-2, -5, 4, 10), RelickVisuals.Playmat.Surface);
                 c.DrawRect(new(-2, 7, 4, 3.5f), RelickVisuals.Playmat.Surface);
+                break;
+            case GameIcon.Check:
+                c.DrawPolyline(new Vector2[] { new(-12, 1), new(-4, 10), new(13, -9) }, color, 5, true);
+                break;
+            case GameIcon.Pencil:
+                // Edit: a slanted pencil with its tip at the lower left.
+                Shape(new(6, -14), new(14, -6), new(-5, 13), new(-13, 5));
+                Shape(new(-13, 7), new(-7, 13), new(-15, 15));
+                break;
+            case GameIcon.Copy:
+                // Duplicate: a sheet behind another.
+                Stroke(new(-6, -8), new(-6, -14), new(13, -14), new(13, 6), new(7, 6));
+                Shape(new(-13, -7), new(5, -7), new(5, 14), new(-13, 14));
+                break;
+            case GameIcon.Trash:
+                Block(-13, -11, 26, 3); Block(-4, -15, 8, 4);
+                Shape(new(-10, -6), new(10, -6), new(8, 14), new(-8, 14));
+                break;
+            case GameIcon.Bench:
+                // Side deck: a bench seen from the front.
+                Block(-14, -6, 28, 5); Block(-14, 2, 28, 4);
+                Block(-12, 6, 3, 8); Block(9, 6, 3, 8);
                 break;
             case GameIcon.Hourglass:
                 // Waiting: two glass bulbs between a top and a bottom bar.
@@ -665,7 +687,7 @@ public partial class ExchangeTrack : VBoxContainer
             var index = slot;
             var button = new ZoneCardButton
             {
-                Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = $"CANJE {slot + 1}", Accent = Accent, Compact = Compact,
+                Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = "CANJE", Accent = Accent, Compact = Compact,
                 Layout = ZoneCardLayout.Landscape, EffectUsed = ExchangeEffectsUsed.Contains(slot), SizeFlagsStretchRatio = 1.25f,
                 CustomMinimumSize = new(0, TrackWidth > 0 ? 86 : 0),
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null
@@ -1106,6 +1128,24 @@ public partial class ComboToggle : Button
         var ring = Geometry2D.OffsetPolygon(outline, 2.5f, Geometry2D.PolyJoinType.Round).MaxBy(Area);
         if (ring != null) DrawPolyline([.. ring, ring[0]], BoardArt.Gold, 2, true);
     }
+}
+
+/// <summary>
+/// A framed button that says its action with a symbol. Its name stays in the tooltip and for screen
+/// readers; use it for repeated secondary actions whose symbol is unambiguous (edit, duplicate, delete).
+/// </summary>
+public partial class FramedIconButton : Button
+{
+    public GameIcon Symbol { get; init; }
+
+    public override void _Ready()
+    {
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+    }
+
+    public override void _Draw() => BoardArt.Icon(this, Symbol, Size / 2, Math.Min(22, Math.Min(Size.X, Size.Y) - 20),
+        GetThemeColor(Disabled ? "font_disabled_color" : IsHovered() ? "font_hover_color" : "font_color"));
 }
 
 /// <summary>A toolbar action shown as a symbol; its name stays available to tooltips and screen readers.</summary>

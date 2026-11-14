@@ -8,7 +8,7 @@ La cabecera muestra el logotipo original de Relick. Marcos con esquinas recortad
 
 `RelickVisuals` centraliza marcos, controles, logotipo y señales de interacción. `RelickPlaymat` define fondo, superficies, borde y circuitos, con una textura opcional para el tapete. Es una base para temas futuros, todavía sin selector, persistencia ni cambio en caliente. El arte de un tapete se dibuja bajo las superficies legibles de la interfaz.
 
-Los significados de `RelickVisuals.State` son independientes del tapete: selección dorada con confirmación, objetivo cian con escuadras y foco de teclado blanco. La prioridad es selección > objetivo > hover; el foco añade un borde interior. Vida baja conserva su señal de peligro. Las zonas vacías mantienen su tamaño y posición con contornos tenues y costes discretos. Las fases futuras quedan atenuadas, las completadas llevan confirmación y la actual se indica con `»`.
+Los significados de `RelickVisuals.State` son independientes del tapete: selección dorada con confirmación, objetivo cian con escuadras y foco de teclado blanco. La prioridad es selección > objetivo > hover; el foco añade un borde interior. Vida baja conserva su señal de peligro. Las zonas vacías mantienen su tamaño y posición con contornos tenues y costes discretos. Las fases futuras quedan atenuadas, las completadas llevan confirmación y la actual se destaca con tamaño y color; la celda de estado dice con texto de quién es el turno.
 
 ## Tablero de escritorio
 
@@ -210,6 +210,30 @@ Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas
 - **Habilidades por enseñar.** Las ranuras vacías muestran su coste pequeño y atenuado. Solo cuando el servidor ofrece enseñar, la primera ranura libre (donde se enseña la siguiente habilidad) se ilumina con el color del jugador y el rótulo «ENSEÑAR AQUÍ».
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque. `--board-reading-only` comprueba los contadores (sin solapes con ninguna zona, en cinco tamaños y ambos asientos), el golpe final, la segunda caída y la ranura por enseñar.
+
+## Textos de interfaz
+
+Un texto visible solo se mantiene si aporta algo que no dicen ya la forma, la posición, otro texto o el propio recuento de cartas. Cuando se sustituye por un icono, su texto sigue en el tooltip y en el nombre accesible. Las reglas, los costes, los nombres de cartas y los verbos de acción no se recortan.
+
+- **Duelo.**
+  - Sin «»» ante el jugador activo ni ante la etapa actual.
+  - «EQUIPO» y «CANJE» sin «0/1» ni numeración.
+  - En escritorio no hay mensaje de conexión junto al logotipo; el código de sala está en su tooltip.
+  - El dado no lleva título y la iniciativa no narra la tirada.
+  - La cabecera de resolución solo aparece cuando hay algo que resolver, y su mensaje no repite «jugador · carta».
+  - Con la tabla del D6 visible, el inspector deja de repetir el daño normal y el crítico.
+  - Las galerías por memoria no suman un total.
+- **Sala.**
+  - Las tarjetas no repiten con una frase lo que dicen sus botones.
+  - El botón del mazo dice «Mazo · nombre».
+  - La sala muestra solo su código, sin «Sala ·» ni el número de asiento.
+- **Mazos.**
+  - Un mazo legal muestra ✓ en lugar de «42 cartas · Listo para jugar».
+  - El mazo activo no repite «En uso» en un botón desactivado.
+  - Editar, Duplicar y Borrar son iconos con tooltip (`FramedIconButton`).
+  - Los totales del editor no repiten los de las pestañas.
+  - Las copias del banquillo llevan su propio distintivo con el icono del banquillo, en lugar de «B1».
+- **Selector de Relikario.** Sin «Disponible», «Aún no jugable», «Toca la carta para girarla» ni «Cambio automático»; el subtítulo es más corto.
 
 ## Actualizaciones y animaciones
 

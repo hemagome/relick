@@ -73,7 +73,7 @@ public partial class OnlineLobby
         _name = new LineEdit { Name = "PlayerName", PlaceholderText = "¿Cómo te llamas?", Text = "Jugador", MaxLength = 24,
             CustomMinimumSize = new(0, 48), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         identityRow.AddChild(_name);
-        _decks = AddButton(identityRow, "Entrenamiento", OpenDecks);
+        _decks = AddButton(identityRow, DeckButtonText("Entrenamiento"), OpenDecks);
         _decks.Name = "OpenDecks"; _decks.ClipText = true; _decks.CustomMinimumSize = new(240, 48);
         _decks.Icon = DeckScreen.Thumbnail(RelikarioCatalog.Yuno.Id); _decks.ExpandIcon = true; _decks.AddThemeConstantOverride("icon_max_width", 40); _decks.AddThemeConstantOverride("h_separation", 10);
         _decks.TooltipText = "Elige el mazo con el que juegas o arma uno nuevo.";
@@ -83,8 +83,8 @@ public partial class OnlineLobby
         var cards = new HBoxContainer { Name = "RoomEntryCards" }; cards.AddThemeConstantOverride("separation", 18);
         column.AddChild(cards); _entryCards = cards;
         var quick = EntryCard(cards, GameIcon.Sword, LobbyMint, "Partida rápida", "Casual · Sin clasificación");
-        var explanation = Description("Busca un rival y comienza un duelo sin compartir códigos.");
-        quick.AddChild(explanation); _entryDescriptions.Add(explanation); _quickExplanation = explanation;
+        // «Buscar rival» and the subtitle already say what this card does; the slot stays for layout toggles.
+        _quickExplanation = new Control { Name = "QuickExplanation", MouseFilter = MouseFilterEnum.Ignore }; quick.AddChild(_quickExplanation);
         _matchFeedback = new HBoxContainer { Name = "MatchmakingFeedback", Visible = false, SizeFlagsVertical = SizeFlags.ExpandFill };
         _matchFeedback.AddThemeConstantOverride("separation", 10); quick.AddChild(_matchFeedback);
         _matchLink = new MatchmakingLink { Name = "MatchmakingLink", SizeFlagsVertical = SizeFlags.ShrinkCenter,
@@ -96,7 +96,8 @@ public partial class OnlineLobby
         _quickMatch = AddButton(quick, "Buscar rival", QuickMatch);
         _quickMatch.Name = "QuickMatch"; AccentButton(_quickMatch, LobbyMint);
 
-        var join = EntryCard(cards, GameIcon.Flag, LobbyBlue, "Sala privada", "Crea una sala o entra con un código.");
+        // The code field and «Crear sala» / «Unirse» explain this card on their own.
+        var join = EntryCard(cards, GameIcon.Flag, LobbyBlue, "Sala privada", "");
         _code = new LineEdit { Name = "RoomCode", PlaceholderText = "Código de 8 caracteres", MaxLength = 8,
             CustomMinimumSize = new(0, 48), Alignment = HorizontalAlignment.Center };
         _code.AddThemeFontSizeOverride("font_size", 20); join.AddChild(_code);
@@ -207,7 +208,7 @@ public partial class OnlineLobby
         PresentAccountName(_name.Editable);
         _decks.Disabled = !ready || busy || searching || room != null;
         var activeDeck = _lobby.Decks.FirstOrDefault(deck => deck.Active);
-        _decks.Text = activeDeck?.Name ?? "Entrenamiento";
+        _decks.Text = DeckButtonText(activeDeck?.Name ?? "Entrenamiento");
         _decks.Icon = DeckScreen.Thumbnail(activeDeck?.Relikario ?? RelikarioCatalog.Yuno.Id);
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;
@@ -215,8 +216,9 @@ public partial class OnlineLobby
         _leave.Disabled = !ready || busy;
         _leave.Text = pending == RoomRequest.Leave ? "Cerrando…" : "Cerrar sala";
         PresentConnectionNotice(ready, connecting);
-        _room.Text = room == null ? "Sin sala" : $"Sala · {room.Code}";
-        _players.Text = room == null ? "" : $"{room.PlayerOne}  vs  {(room.PlayerTwo.Length > 0 ? room.PlayerTwo : "Esperando rival…")}\nTu lugar: jugador {room.MySeat + 1}";
+        // The caption above already says it is your room; the seat number tells the player nothing.
+        _room.Text = room == null ? "Sin sala" : room.Code;
+        _players.Text = room == null ? "" : $"{room.PlayerOne}  vs  {(room.PlayerTwo.Length > 0 ? room.PlayerTwo : "Esperando rival…")}";
         _preparation.Text = "Comparte el código con tu rival. Entraréis al tablero cuando se una.";
         var problem = failed.Length > 0 ? failed : !ready && !connecting ? "desconectado" : "";
         if (problem != _shownLobbyProblem)
@@ -230,6 +232,9 @@ public partial class OnlineLobby
     {
         if (_shownLobbyProblem.Length > 0 && _status.IsVisibleInTree()) _lobbyPage.EnsureControlVisible(_status);
     }
+
+    /// <summary>The active deck's name alone did not read as the deck selector.</summary>
+    internal static string DeckButtonText(string deck) => $"Mazo · {deck}";
 
     private static Label Caption(string text, Color color)
     {
@@ -260,7 +265,8 @@ public partial class OnlineLobby
         header.AddChild(new LobbySymbol { Icon = icon, Accent = accent, CustomMinimumSize = new(48, 48) });
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; titles.AddThemeConstantOverride("separation", 2); header.AddChild(titles);
         var label = Text(title, 24); label.AddThemeColorOverride("font_color", BoardArt.Ink); titles.AddChild(label); _entryTitles.Add(label);
-        var description = Description(subtitle); titles.AddChild(description); _entryDescriptions.Add(description);
+        titles.Alignment = BoxContainer.AlignmentMode.Center;
+        if (subtitle.Length > 0) { var description = Description(subtitle); titles.AddChild(description); _entryDescriptions.Add(description); }
         return column;
     }
 

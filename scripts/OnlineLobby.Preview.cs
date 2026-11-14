@@ -37,8 +37,8 @@ public partial class OnlineLobby
                     GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory, $"lobby-{size.X}x{size.Y}.png"));
                 }
                 UpdateLobbyPresentation(true);
-                _room.Text = "Sala · AB12CD34";
-                _players.Text = "Jugador  vs  Esperando rival…\nTu lugar: jugador 1";
+                _room.Text = "AB12CD34";
+                _players.Text = "Jugador  vs  Esperando rival…";
                 _preparation.Text = "Comparte el código con tu rival para preparar las manos.";
                 await Layout();
                 if (_entryCards.Visible || !_roomPanel.Visible)

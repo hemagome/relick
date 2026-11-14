@@ -103,7 +103,7 @@ public partial class DeckScreen : Control
         _create.TooltipText = decks.Count >= 20 ? "Puedes guardar hasta 20 mazos." : "";
 
         var training = CardCatalog.TrainingDeck(); var trainingTraps = CardCatalog.TrainingTraps();
-        AddRow("Training", RelikarioCatalog.Yuno.Id, "Mazo de entrenamiento", "42 cartas · 3 Códigos Trampa · Listo para jugar", decks.All(deck => !deck.Active), true, busy,
+        AddRow("Training", RelikarioCatalog.Yuno.Id, "Mazo de entrenamiento", $"{trainingTraps.Count} Códigos Trampa", decks.All(deck => !deck.Active), true, busy,
             use: () => Connection.SetActiveDeck(0),
             edit: null,
             copy: Guest ? null : () => Edit(0, "Copia de entrenamiento", training, trainingTraps),
@@ -111,8 +111,10 @@ public partial class DeckScreen : Control
         foreach (var deck in decks)
         {
             var problems = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, deck.Side);
-            var summary = $"{deck.Cards.Count} cartas · {deck.Traps.Count} Códigos Trampa · " + (deck.Side.Count > 0 ? $"{deck.Side.Count} en banquillo · " : "") +
-                (problems.Count == 0 ? "Listo para jugar" : "Borrador: " + problems[0]);
+            // A legal deck always has its full count, and the check mark says it is ready; a draft keeps its numbers and its problem.
+            var summary = problems.Count == 0
+                ? $"{deck.Traps.Count} Códigos Trampa" + (deck.Side.Count > 0 ? $" · {deck.Side.Count} en banquillo" : "")
+                : $"{deck.Cards.Count} cartas · {deck.Traps.Count} Códigos Trampa · " + (deck.Side.Count > 0 ? $"{deck.Side.Count} en banquillo · " : "") + "Borrador: " + problems[0];
             var saved = deck;
             AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, summary, deck.Active, problems.Count == 0, busy,
                 use: () => Connection.SetActiveDeck(saved.Id),
@@ -152,16 +154,32 @@ public partial class DeckScreen : Control
             var badge = ArenaPresentation.Text("EN USO", 12, ArenaPresentation.Mint); badge.Name = "ActiveBadge";
             badge.SizeFlagsVertical = SizeFlags.ShrinkCenter; heading.AddChild(badge);
         }
+        var summaryRow = new HBoxContainer(); summaryRow.AddThemeConstantOverride("separation", 6); titles.AddChild(summaryRow);
+        if (valid)
+            summaryRow.AddChild(new IconView { Name = "ReadyMark", Icon = GameIcon.Check, Color = ArenaPresentation.Mint,
+                CustomMinimumSize = new(16, 16), SizeFlagsVertical = SizeFlags.ShrinkCenter });
         var detail = ArenaPresentation.Text(summary, 14, valid ? BoardArt.Muted : ArenaPresentation.Coral);
-        detail.Name = "DeckSummary"; detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; titles.AddChild(detail);
+        detail.Name = "DeckSummary"; detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; detail.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        if (valid) { detail.MouseFilter = MouseFilterEnum.Pass; detail.TooltipText = "Listo para jugar"; detail.AccessibilityName = summary + " · Listo para jugar"; }
+        summaryRow.AddChild(detail);
         var actions = new HBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter }; actions.AddThemeConstantOverride("separation", 8); row.AddChild(actions);
-        var useButton = ArenaPresentation.Button(actions, active ? "En uso" : "Usar", use, busy || active || !valid);
+        var useButton = ArenaPresentation.Button(actions, "Usar", use, busy || active || !valid);
         useButton.Name = "Use"; useButton.CustomMinimumSize = new(96, 44);
         useButton.TooltipText = valid ? "" : "Completa el mazo para poder jugarlo.";
+        // The active deck already says so with its badge and its frame; a disabled «En uso» would repeat it.
+        useButton.Visible = !active;
         if (!active && valid) RelickVisuals.Primary(useButton);
-        if (edit != null) { var b = ArenaPresentation.Button(actions, "Editar", edit, busy); b.Name = "Edit"; b.CustomMinimumSize = new(88, 44); }
-        if (copy != null) { var b = ArenaPresentation.Button(actions, "Duplicar", copy, busy); b.Name = "Copy"; b.CustomMinimumSize = new(96, 44); }
-        if (delete != null) { var b = ArenaPresentation.Button(actions, "Borrar", delete, busy); b.Name = "Delete"; b.CustomMinimumSize = new(88, 44); }
+        // Secondary actions repeat on every row: a symbol each, with the name in the tooltip.
+        void Secondary(string name, string caption, GameIcon symbol, Action? pressed)
+        {
+            if (pressed == null) return;
+            var button = new FramedIconButton { Name = name, Symbol = symbol, TooltipText = caption, AccessibilityName = caption,
+                CustomMinimumSize = new(48, 44), Disabled = busy };
+            button.Pressed += pressed; actions.AddChild(button);
+        }
+        Secondary("Edit", "Editar", GameIcon.Pencil, edit);
+        Secondary("Copy", "Duplicar", GameIcon.Copy, copy);
+        Secondary("Delete", "Borrar", GameIcon.Trash, delete);
     }
 
     private void ConfirmDelete(DeckInfo deck)

@@ -76,8 +76,16 @@ public partial class OnlineArena
                 _resolutionMessage.CustomMinimumSize = Vector2.Zero;
             }
         }
+        // A message that restates the source line ("Ana · Disquete · …") only keeps what it adds.
+        if (_resolutionSource.Visible && _resolutionSource.Text.Length > 0 && _resolutionMessage.Text.Contains(_resolutionSource.Text + " · "))
+        {
+            var prefix = _resolutionSource.Text + " · ";
+            _resolutionMessage.Text = string.Join("\n", _resolutionMessage.Text.Split('\n').Select(line => line.StartsWith(prefix) ? line[prefix.Length..] : line));
+        }
         // Preserve legacy-server and preparation messages, including the initiative presentation.
         _resolutionMessage.Visible = !IsAnimating && _resolutionMessage.Text.Length > 0;
+        // The heading only appears with something to head: an idle duel shows no empty "resolution".
+        _resolutionStage!.Visible = !_preparing && (hasPublicResolution || _resolutionMessage.Visible);
         if (_resolutionPanel != null)
             _resolutionPanel.Visible = _resolutionStage!.Visible || _resolutionSource.Visible || _resolutionResponses.Visible || _resolutionMessage.Visible;
     }
@@ -119,7 +127,7 @@ public partial class OnlineArena
         var entries = _preparing ? [] : s.History?.OrderByDescending(e => e.Id).Take(DuelHistory.Capacity).ToArray() ?? [];
         if (entries.Length == 0)
         {
-            var empty = ArenaPresentation.Text("Las jugadas públicas aparecerán aquí.", 13, BoardArt.Muted);
+            var empty = ArenaPresentation.Text("Aún no hay jugadas.", 13, BoardArt.Muted);
             empty.AutowrapMode = TextServer.AutowrapMode.WordSmart; list.AddChild(empty);
         }
         var turn = -1;

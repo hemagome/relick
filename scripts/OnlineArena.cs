@@ -110,7 +110,8 @@ public partial class OnlineArena : Control
         AddChild(_diceOverlay); _diceOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var panel = ArenaPresentation.Panel(_diceOverlay, "111f2c", new("927b54"));
         var column = new VBoxContainer(); panel.AddChild(column);
-        column.AddChild(ArenaPresentation.Text("LANZANDO EL DADO", 12, BoardArt.Gold)); column.AddChild(_die);
+        // The rolling die needs no title; the caption below says whose roll it is and what modifies it.
+        column.AddChild(_die);
         _diceCaption = ArenaPresentation.Text("", 13); _diceCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(_diceCaption);
         _die.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
@@ -295,9 +296,11 @@ public partial class OnlineArena : Control
 
             var brand = new HBoxContainer { Name = "RivalStrip", MouseFilter = MouseFilterEnum.Ignore };
             brand.AddThemeConstantOverride("separation", 10);
-            brand.AddChild(RelickVisuals.Logo(true));
-            _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;
-            _status.ClipText = true; _status.SizeFlagsHorizontal = SizeFlags.ExpandFill; _status.VerticalAlignment = VerticalAlignment.Center;
+            // The status cell of the phase bar and the inspector already say what the connection is doing;
+            // the room code stays on the logo's tooltip.
+            var logo = RelickVisuals.Logo(true); logo.MouseFilter = MouseFilterEnum.Pass; logo.TooltipText = "Sala " + RoomCode;
+            brand.AddChild(logo);
+            _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.Visible = false;
             brand.AddChild(_status);
             canvas.Place(brand, new Rect2(10, 4, 330, 34), BoardAnchor.Top);
 

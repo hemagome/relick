@@ -65,7 +65,7 @@ public partial class RelikarioPicker : VBoxContainer
         var title = ArenaPresentation.Text("Nuevo mazo", ShortScreen ? 26 : 36); title.AddThemeFontOverride("font", RelickVisuals.Display); titles.AddChild(title);
         if (!ShortScreen)
         {
-            var subtitle = ArenaPresentation.Text("Elige el Relikario para el que vas a construir el mazo. Sus habilidades específicas solo funcionan con él.", 15, BoardArt.Muted);
+            var subtitle = ArenaPresentation.Text("Elige el Relikario del mazo. Sus habilidades específicas solo funcionan con él.", 15, BoardArt.Muted);
             subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart; titles.AddChild(subtitle);
         }
 
@@ -144,12 +144,8 @@ public partial class RelikarioPicker : VBoxContainer
         var labels = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
         labels.AddThemeConstantOverride("margin_left", 8); labels.AddThemeConstantOverride("margin_right", 8); labels.AddThemeConstantOverride("margin_bottom", 6);
         var stack = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; stack.AddThemeConstantOverride("separation", 0); labels.AddChild(stack);
+        // «Próximamente» on the art, the filter and the «1 de 18 disponibles» count already tell each tile's state.
         stack.AddChild(name);
-        if (!ShortScreen)
-        {
-            var state = ArenaPresentation.Text(entry.Playable ? "Disponible" : "Aún no jugable", 12, entry.Playable ? ArenaPresentation.Mint : BoardArt.Muted);
-            state.MouseFilter = MouseFilterEnum.Ignore; stack.AddChild(state);
-        }
         content.AddChild(labels);
         // A button does not measure its children: the art is a square as wide as the tile, with the labels below it.
         void Fit()
@@ -257,13 +253,12 @@ public partial class RelikarioPicker : VBoxContainer
             if (!ShortScreen)
             {
                 var auto = new HBoxContainer { Alignment = AlignmentMode.Center }; auto.AddThemeConstantOverride("separation", 8); side.AddChild(auto);
-                auto.AddChild(ArenaPresentation.Text("Cambio automático", 12, BoardArt.Muted));
-                _progress = new ProgressBar { Name = "AutoProgress", MaxValue = AutoSeconds, ShowPercentage = false, CustomMinimumSize = new(80, 4), SizeFlagsVertical = SizeFlags.ShrinkCenter };
+                // The level buttons and the card's own tooltip say how to turn it; the bar only times the next turn.
+                _progress = new ProgressBar { Name = "AutoProgress", MaxValue = AutoSeconds, ShowPercentage = false, CustomMinimumSize = new(80, 4), SizeFlagsVertical = SizeFlags.ShrinkCenter,
+                    MouseFilter = MouseFilterEnum.Pass, TooltipText = "La carta cambia de nivel sola cada pocos segundos." };
                 _progress.AddThemeStyleboxOverride("background", new StyleBoxFlat { BgColor = RelickVisuals.Playmat.Frame });
                 _progress.AddThemeStyleboxOverride("fill", new StyleBoxFlat { BgColor = RelickVisuals.State.Selected });
                 auto.AddChild(_progress);
-                var help = ArenaPresentation.Text("Toca la carta para girarla.", 13, BoardArt.Muted);
-                help.HorizontalAlignment = HorizontalAlignment.Center; side.AddChild(help);
             }
         }
 
