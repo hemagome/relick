@@ -11,7 +11,13 @@ Alcance: experiencia de **escritorio (Windows/Linux, ratón y teclado)** dentro 
 - UX-03: halo de carta jugable.
 - UX-19: tabla de ataque.
 
-Se describen en `docs/UI.md` («Estado de la decisión…») y se comprueban con `--feedback-only`. Los demás hallazgos siguen pendientes.
+Del paquete de lectura del tablero también están implementados:
+
+- UX-02: contadores de mano junto a su abanico. El rival, bajo el borde superior.
+- UX-07: golpe final y segunda caída.
+- UX-06: ranuras vacías discretas y siguiente ranura enseñable.
+
+Se describen en `docs/UI.md` («Estado de la decisión…») y se comprueban con `--feedback-only` y `--board-reading-only`. Los demás hallazgos siguen pendientes.
 
 Sustituye como referencia vigente a `docs/UI_EVALUATION_2026-11-09.md`. Varios de sus hallazgos ya están resueltos: contador de acciones, inspector lateral, historial, guía de bloqueos y tablero unificado. Este informe parte del estado actual.
 

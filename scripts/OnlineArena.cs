@@ -275,6 +275,7 @@ public partial class OnlineArena : Control
                     else SelectSkill(slot);
                 },
                 InspectSkill = slot => ShowCards("Habilidad", [player.Skills[slot]]),
+                CanLearn = relative == 0 && !_preparing && s.Winner == null && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Learn),
                 Evolve = () => SendKind(DuelMoveKind.Evolve), CanEvolve = s.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve) && !Connection.PlayPending && !IsAnimating,
                 Relikia = relative == 0 && !_preparing && s.Winner == null ? OpenRelikiaMenu : null
             };
@@ -478,13 +479,15 @@ public partial class OnlineArena : Control
         var opponent = _snapshot!.Players[1 - _snapshot.MySeat];
         var hand = opponent.Hand;
         var strip = parent is HBoxContainer;
-        ArenaPresentation.HandCounter(parent, opponent.HandCount, enemy: true);
+        // The board fan carries its own count beside its cards; the stacked layouts keep it first in the strip.
+        if (boardFace == null) ArenaPresentation.HandCounter(parent, opponent.HandCount, enemy: true);
         var face = boardFace ?? (strip ? new Vector2(43, 60.8f) : new Vector2(54, 76.4f));
         Control row;
         if (boardFace != null)
         {
             // The rival's hand mirrors ours: same card size, tilt and visible band, hanging from the top edge.
             row = new HandFan { Name = "OpponentHandFan", Mirrored = true, Headroom = 0, MaximumAngle = 3, Spread = true,
+                VisibleBand = ArenaPresentation.DesktopHandVisible,
                 SizeFlagsVertical = SizeFlags.Fill };
         }
         else
@@ -507,11 +510,10 @@ public partial class OnlineArena : Control
             card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);
         }
         if (boardFace == null) return;
+        // Only the band below the top edge is on screen: the count sits in it, past the last card.
+        ((HandFan)row).Counter = ArenaPresentation.HandCounter(row, opponent.HandCount, enemy: true);
         // The fan lays its cards out on entering the tree, so it joins the board once it holds them.
         parent.AddChild(row);
-        // Only the band below the top edge is on screen: the count sits in it, beside the cards.
-        if (parent.FindChild("OpponentHandCounter", false, false) is Control counter) counter.SizeFlagsVertical = SizeFlags.ShrinkEnd;
-        parent.AddChild(new Control { CustomMinimumSize = new(44, 0), MouseFilter = MouseFilterEnum.Ignore });
     }
 
     private CardOwner? OwnHandCardOwner(int index)

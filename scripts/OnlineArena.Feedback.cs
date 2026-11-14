@@ -29,6 +29,8 @@ public partial class OnlineArena
         _stageDetail = bar.FindChild("StageDetail", true, false) as Label;
         _stageStatusIcon = bar.FindChild("StageStatusIcon", true, false) as IconView;
         _stageStatusKey = null;
+        // Filled while building, so a rebuilt bar never shows an empty headline for a frame.
+        if (_snapshot != null) RefreshStageStatus(_snapshot);
     }
 
     private void ClearStageStatus()

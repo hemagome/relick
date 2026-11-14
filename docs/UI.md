@@ -205,7 +205,11 @@ Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas
   - Súper Ataque no tiene tabla, porque modifica el dado.
   - La nota final recuerda que no incluye respuestas, defensas ni el bonus de equipo.
 
-Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque.
+- **Contadores de mano.** En el tablero de escritorio, cada abanico lleva su propio contador junto a la última carta. El propio queda en la franja visible de la mano. El rival queda justo bajo el borde superior, porque las cartas colgantes ya se solapan con la primera fila de su campo. Así ningún contador cae sobre Corruptas, Memoria, Equipo u otra zona, ni siquiera con el lienzo de 16:10 o el panorámico. Una mano rival vacía centra su contador. Las composiciones compactas conservan el contador al principio de su franja.
+- **Golpe final y segunda caída.** Con 0 vidas, el medidor apilado del escritorio rotula «GOLPE FINAL» sobre la barra vacía, igual que ya hacía la versión compacta. Si el jugador ya llegó a 0 y se curó, la barra conserva un borde rojo, porque volver a 0 termina el duelo. El tooltip explica ambas reglas, que usan `HasReachedZero` del snapshot.
+- **Habilidades por enseñar.** Las ranuras vacías muestran su coste pequeño y atenuado. Solo cuando el servidor ofrece enseñar, la primera ranura libre (donde se enseña la siguiente habilidad) se ilumina con el color del jugador y el rótulo «ENSEÑAR AQUÍ».
+
+Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque. `--board-reading-only` comprueba los contadores (sin solapes con ninguna zona, en cinco tamaños y ambos asientos), el golpe final, la segunda caída y la ranura por enseñar.
 
 ## Actualizaciones y animaciones
 

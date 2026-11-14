@@ -395,6 +395,19 @@ public partial class LifeMeter : Control
         set { _stacked = value; CustomMinimumSize = value ? new(104, 56) : new(190, 44); QueueRedraw(); }
     }
     private bool _stacked;
+    /// <summary>
+    /// The player already fell to 0 once. Relick then ends the duel on the next damage at 0, and a healed
+    /// player who drops back to 0 loses as well; both are decisive, so the meter says so in words.
+    /// </summary>
+    public bool ReachedZero
+    {
+        get => _reachedZero;
+        set { if (_reachedZero == value) return; _reachedZero = value; Describe(); QueueRedraw(); }
+    }
+    private bool _reachedZero;
+    /// <summary>At 0 lives the next damage ends the duel; the drained bar becomes the warning.</summary>
+    public bool FinalBlow => Health == 0 && _initialized;
+    internal const string FinalBlowCaption = "GOLPE FINAL";
     private bool _initialized;
     private float _fromRatio;
     private float _targetRatio;
@@ -410,7 +423,7 @@ public partial class LifeMeter : Control
         if (_initialized && health == Health && maximum == Maximum && (animate || !IsAnimating)) return;
         Health = health;
         Maximum = maximum;
-        TooltipText = $"{Health} de {Maximum} vidas";
+        Describe();
         _targetRatio = (float)Health / Maximum;
         _fromRatio = DisplayedRatio;
         _elapsed = 0;
@@ -419,6 +432,10 @@ public partial class LifeMeter : Control
         if (_duration == 0) DisplayedRatio = _targetRatio;
         QueueRedraw();
     }
+
+    private void Describe() => TooltipText = $"{Health} de {Maximum} vidas" + (Health == 0
+        ? "\nGolpe final: sigues en juego, pero el próximo daño termina el duelo."
+        : _reachedZero ? "\nYa llegó a 0 vidas: si vuelve a 0, pierde el duelo." : "");
 
     public override void _Ready()
     {
@@ -457,9 +474,23 @@ public partial class LifeMeter : Control
         var maxStart = 36 + StrongWidth(value, fontSize) + 6;
         BoardArt.Text(this, max, new(maxStart, 33), Math.Max(10, fontSize / 2), BoardArt.Muted);
         var start = Stacked ? 0 : Math.Max(112, maxStart + Width(max, Math.Max(10, fontSize / 2)) + 14);
-        if (!Stacked) BoardArt.Text(this, Health == 0 ? "GOLPE FINAL" : "VIDAS", new(start, 15), 9, color);
+        if (!Stacked) BoardArt.Text(this, Health == 0 ? FinalBlowCaption : "VIDAS", new(start, 15), 9, color);
         var track = Stacked ? new Rect2(0, 40, Math.Max(1, Size.X), 16) : new Rect2(start, 22, Math.Max(1, Size.X - start), 16);
-        BoardArt.Plate(this, track, new Color("060911"), new Color("3d4a6b"), 8);
+        var alarm = RelickVisuals.State.Danger;
+        // Having fallen to 0 once, the bar keeps a red edge: dropping to 0 again ends the duel.
+        BoardArt.Plate(this, track, new Color("060911"), _reachedZero && Health > 0 ? BoardArt.Tint(alarm, 0.85f) : new Color("3d4a6b"), 8, _reachedZero && Health > 0 ? 2 : 1);
+        if (Stacked && Health == 0 && !IsAnimating)
+        {
+            // The board stacks the count over the bar and has no caption line: the empty bar carries the warning.
+            BoardArt.Plate(this, track, BoardArt.Tint(alarm, 0.28f), alarm, 6, 2);
+            var font = RelickVisuals.Strong;
+            var size = 12;
+            while (size > 9 && font.GetStringSize(FinalBlowCaption, fontSize: size).X > track.Size.X - 10) size--;
+            var width = font.GetStringSize(FinalBlowCaption, fontSize: size).X;
+            var baseline = track.GetCenter().Y + (font.GetAscent(size) - font.GetDescent(size)) / 2;
+            DrawString(font, new(track.GetCenter().X - width / 2, baseline), FinalBlowCaption, HorizontalAlignment.Left, -1, size, BoardArt.Ink);
+            return;
+        }
         var inner = new Rect2(track.Position + new Vector2(3, 3), new Vector2(Math.Max(0, track.Size.X - 6), 10));
         // The lost stretch lingers in white while the bar drains: damage reads at a glance.
         if (IsAnimating && _fromRatio > DisplayedRatio)
@@ -487,6 +518,7 @@ public partial class SkillTile : Button
 {
     // The hand card canvas is 126 × 184; rotating it gives this exact footprint.
     public static readonly Vector2 CardSize = new(184, 126);
+    internal const string LessonCaption = "ENSEÑAR AQUÍ";
     public CardDefinition? Skill { get; set; }
     public float PresentationScale { get; set; } = 1;
     public int Slot { get; set; }
@@ -494,6 +526,8 @@ public partial class SkillTile : Button
     public bool Chosen { get; set; }
     public bool Targetable { get; set; }
     public int Counters { get; set; }
+    /// <summary>The empty space the next skill would be taught in, lit only while teaching is authorized.</summary>
+    public bool NextLesson { get; set; }
     public bool HasSkillArtwork => _skillArt != null;
     internal bool AwaitingLesson { get; private set; }
     private Texture2D? _skillArt;
@@ -524,12 +558,19 @@ public partial class SkillTile : Button
         var bounds = new Rect2(0, 0, size.X, size.Y);
         if (Skill == null || AwaitingLesson)
         {
-            BoardArt.Socket(this, bounds, Accent, AwaitingLesson ? 1.6f : 1);
-            // The cost is the only thing an empty space has to say: once, large and centred.
+            // An empty space only says its cost, and quietly: occupied cards, lives and decisions come first.
+            // The space a skill can be taught in right now is lit in its owner's colour instead.
+            var invite = NextLesson || AwaitingLesson;
+            BoardArt.Socket(this, bounds, Accent, invite ? 1.6f : 0.8f);
             var cost = $"{GameEngine.SkillSlotCosts[Slot]} PR";
-            const int costSize = 30;
+            var costSize = invite ? 24 : 18;
             var baseline = size.Y / 2 + (RelickVisuals.Display.GetAscent(costSize) - RelickVisuals.Display.GetDescent(costSize)) / 2;
-            BoardArt.Title(this, cost, new(size.X / 2, baseline), costSize, BoardArt.Tint(AwaitingLesson ? Accent : BoardArt.Gold, AwaitingLesson ? 0.9f : 0.62f), centered: true);
+            if (NextLesson && !AwaitingLesson)
+            {
+                baseline += 8;
+                BoardArt.Title(this, LessonCaption, new(size.X / 2, baseline - costSize - 4), 13, BoardArt.Tint(Accent, 0.9f), centered: true);
+            }
+            BoardArt.Title(this, cost, new(size.X / 2, baseline), costSize, invite ? BoardArt.Tint(Accent, 0.95f) : BoardArt.Tint(BoardArt.Gold, 0.36f), centered: true);
         }
         else if (_skillArt != null)
         {
