@@ -190,6 +190,23 @@ El inspector prioriza una instrucción concreta en descartes, objetivos, respues
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. Con `--ui-screenshot-dir=/tmp/relick-guidance` y renderizado habilitado genera capturas de la invitación en cuatro resoluciones.
 
+## Estado de la decisión, rechazos, cartas jugables y tabla de ataque
+
+Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas: todas leen el snapshot autorizado y la conexión.
+
+- **Estado en la barra de fase.** En el tablero de escritorio, la primera celda de la barra (`StageStatusCell`) dice con texto e icono qué ocurre. Los estados posibles son «TU TURNO», «RESPONDE» (decides durante el turno rival), «RIVAL RESPONDE», «TURNO RIVAL», «ENVIANDO…», «RESOLVIENDO…», «JUGADA RECHAZADA» y «SIN CONEXIÓN». Debajo aparecen el turno y la fase especial (por ejemplo, «TURNO 02 · DEFENSA»). El color solo repite el mensaje. La celda se actualiza en cada fotograma sin reconstruir la arena. Cuando no se puede avanzar, un hueco del tamaño del botón de avance mantiene el ancho de la barra en el turno rival. Las composiciones compactas conservan su indicador propio, que ya incluía «TÚ/RIVAL».
+- **Jugada rechazada.** `LobbyConnection` publica `PlayRejection` y `PlayRejectionSerial` cuando el servidor rechaza una jugada o una preferencia COMBO, o cuando la partida cambió antes de enviarla. Una entrega incierta no cuenta como rechazo: conserva su orden para la reconexión. El inspector muestra el motivo en un recuadro de peligro durante seis segundos o hasta la siguiente jugada. El recuadro sobrevive a la reconstrucción del tablero. Los rechazos anteriores a abrir la arena se ignoran.
+- **Cartas jugables.** Una carta de la mano con al menos una opción autorizada de enseñar, atacar, jugar o activar, equipar o canjear lleva un borde menta fijo y un rayo en la esquina superior izquierda, que el abanico nunca tapa. La señal no late, para no competir con los objetivos, y queda atenuada mientras la mano está bloqueada. Los COMBO legales durante el turno rival también se marcan. No se marca nada en la preparación, las galerías de elección ni el resultado.
+- **Tabla de ataque.** Al leer una habilidad, el inspector muestra el resultado por cara final del D6, en el orden del manual: 1–3 fallo, 4 reducido (mitad redondeada hacia arriba, con `GameEngine.DamageFor`), 5 normal y 6 crítico.
+  - Usa los aumentos de esa copia y avisa de Lv 2 (+1 al dado salvo con 1) y de Estrella del Fontanero (daño multiplicado), que son públicos.
+  - Magnet muestra «½·1D6» y «1D6».
+  - Una habilidad en la mano muestra los valores base.
+  - Un Ataque seleccionado muestra la tabla de la habilidad que usaría. Al elegir entre varias, pasar el cursor por una habilidad iluminada muestra la suya, con el coste «Consume 1 Ataque».
+  - Súper Ataque no tiene tabla, porque modifica el dado.
+  - La nota final recuerda que no incluye respuestas, defensas ni el bonus de equipo.
+
+Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque.
+
 ## Actualizaciones y animaciones
 
 - La selección de habilidad inicial actualiza las cartas y el botón existentes: no reconstruye la arena.

@@ -220,6 +220,25 @@ public static class RelickVisuals
         SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin, MouseFilter = Control.MouseFilterEnum.Ignore
     };
 
+    /// <summary>
+    /// Steady mint edge and corner badge for a card with an authorized play. It never pulses, so
+    /// targets keep their invitation; once the card is chosen the selection check takes over.
+    /// Drawn in the caller's current transform, so it is safe inside scaled card drawing.
+    /// </summary>
+    public static void Playable(CanvasItem canvas, Rect2 rect, bool dimmed = false)
+    {
+        var alpha = dimmed ? 0.45f : 1f;
+        Shadow(canvas, rect, BoardArt.Tint(State.Own, 0.30f * alpha), 9);
+        BoardArt.Outline(canvas, rect, BoardArt.Tint(State.Own, 0.95f * alpha), 5, 3);
+        // Top-left: in the fan each card covers its left neighbour's right edge, never this corner.
+        var center = rect.Position + new Vector2(12, 12);
+        canvas.DrawCircle(center, 10.5f, BoardArt.Tint(new Color("0b1020"), 0.9f * alpha));
+        canvas.DrawCircle(center, 9, BoardArt.Tint(State.Own, alpha));
+        // The bolt of the "play" actions, small enough to read as a mark rather than a button.
+        Vector2[] bolt = [new(0, -14), new(-11, 3), new(-2, 3), new(-5, 14), new(12, -5), new(3, -5), new(7, -14)];
+        canvas.DrawColoredPolygon(bolt.Select(p => center + p * 0.42f).ToArray(), BoardArt.Tint(new Color("06141a"), alpha));
+    }
+
     public static void Interaction(CanvasItem canvas, Rect2 rect, bool selected, bool target, bool hover, bool focus)
     {
         if (!selected && !target && !hover && !focus) return;

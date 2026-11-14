@@ -101,6 +101,11 @@ public partial class OnlineLobby
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
                 GD.Print("PVP_GUIDANCE_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--feedback-only"))
+            {
+                await online.CheckDecisionFeedback(); online.QueueFree(); await Layout();
+                GD.Print("PVP_FEEDBACK_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--inspector-only"))
             {
                 await online.CheckCardInspector(); online.QueueFree(); await Layout();
@@ -247,6 +252,7 @@ public partial class OnlineLobby
             await online.CheckComboResponseToggle();
             await online.CheckContextActionBar();
             await online.CheckDecisionGuidance();
+            await online.CheckDecisionFeedback();
             await online.CheckActionCounters();
             await online.CheckMemoryInspection();
             await online.CheckPublicHistory();

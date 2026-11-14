@@ -37,6 +37,39 @@ internal static class CardInspectorText
     }
 }
 
+/// <summary>
+/// What an attack with one skill copy can do, read from public card data. Responses, defences and
+/// equipment bonuses are left out on purpose: they depend on information the viewer may not have.
+/// </summary>
+internal sealed record AttackOutlook(int Normal, int Critical, bool RandomNormal = false, int DieBonus = 0,
+    int DamageMultiplier = 1, string? Caption = null)
+{
+    public static AttackOutlook For(CardDefinition skill, int counters, int dieBonus = 0, int multiplier = 1, string? caption = null) =>
+        new(skill.NormalDamageAt(counters), skill.CriticalDamageAt(counters), skill.Id == CardCatalog.Magnet.Id, dieBonus,
+            Math.Max(1, multiplier), caption);
+
+    /// <summary>Damage for each final D6 face, using the engine's own formula.</summary>
+    public string Damage(int die)
+    {
+        if (die < 4) return "—";
+        if (RandomNormal && die < 6) return die == 4 ? "½·1D6" : "1D6";
+        var amount = GameEngine.DamageFor(die, Normal, Critical) * DamageMultiplier;
+        return amount.ToString();
+    }
+
+    public string Notes
+    {
+        get
+        {
+            var notes = new List<string>();
+            if (DieBonus > 0) notes.Add($"Lv 2: +{DieBonus} al dado salvo con 1.");
+            if (DamageMultiplier > 1) notes.Add($"Estrella del Fontanero: daño ×{DamageMultiplier}.");
+            notes.Add("Antes de respuestas, defensas y bonus de equipo.");
+            return string.Join(" ", notes);
+        }
+    }
+}
+
 public partial class CardInspector : PanelContainer
 {
     public bool ShortScreen { get; init; }
@@ -48,6 +81,13 @@ public partial class CardInspector : PanelContainer
     internal Label DescriptionLabel { get; private set; } = null!;
     internal Label CounterLabel { get; private set; } = null!;
     internal HBoxContainer Attributes { get; private set; } = null!;
+    internal Label AlertLabel { get; private set; } = null!;
+    internal VBoxContainer Outlook { get; private set; } = null!;
+    internal Label OutlookCaption { get; private set; } = null!;
+    internal Label OutlookNotes { get; private set; } = null!;
+    private PanelContainer _alert = null!;
+    private readonly List<Label> _outlookValues = [];
+    internal IReadOnlyList<Label> OutlookValues => _outlookValues;
     private readonly List<Label> _attributeValues = [];
     private ScrollContainer _reading = null!;
     private HBoxContainer _cost = null!;
@@ -65,6 +105,15 @@ public partial class CardInspector : PanelContainer
         style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 4 : 8;
         AddThemeStyleboxOverride("panel", style);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", ShortScreen ? 3 : 6); AddChild(column);
+        // A refused play is told here, where the player is already looking, not in the header status line.
+        _alert = new PanelContainer { Name = "PlayRejection", Visible = false };
+        var alertStyle = RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.State.Danger, 0.16f), BoardArt.Tint(RelickVisuals.State.Danger, 0.85f), 6, 2);
+        alertStyle.ContentMarginTop = alertStyle.ContentMarginBottom = 6; alertStyle.ContentMarginLeft = 8;
+        _alert.AddThemeStyleboxOverride("panel", alertStyle); column.AddChild(_alert);
+        var alertRow = new HBoxContainer(); alertRow.AddThemeConstantOverride("separation", 8); _alert.AddChild(alertRow);
+        alertRow.AddChild(new IconView { Icon = GameIcon.Alert, Color = RelickVisuals.State.Danger,
+            CustomMinimumSize = new(20, 20), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+        AlertLabel = Wrapped("PlayRejectionText", ShortScreen ? 13 : 14, BoardArt.Ink); alertRow.AddChild(AlertLabel);
         // Decisions and card identity remain visible while only the description scrolls.
         HintLabel = Wrapped("ContextHint", ShortScreen ? 13 : 14, BoardArt.Ink); column.AddChild(HintLabel);
         var header = new VBoxContainer { Name = "InspectorHeader" };
@@ -82,6 +131,7 @@ public partial class CardInspector : PanelContainer
             attribute.AddChild(value); _attributeValues.Add(value);
         }
         CounterLabel = Wrapped("InspectorCounters", 12, BoardArt.Gold); header.AddChild(CounterLabel);
+        BuildOutlook(header);
         _reading = new ScrollContainer { Name = "InspectorReading",
             CustomMinimumSize = new(0, ReadingHeight > 0 ? ReadingHeight : ShortScreen ? 40 : 64),
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true, SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -91,6 +141,48 @@ public partial class CardInspector : PanelContainer
         _cost.AddChild(ArenaPresentation.Text("Coste", 12, BoardArt.Muted));
         CostLabel = Wrapped("ContextCost", 13, BoardArt.Gold); CostLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         CostLabel.HorizontalAlignment = HorizontalAlignment.Right; _cost.AddChild(CostLabel);
+    }
+
+    /// <summary>Final D6 face → result, in the order printed by the rulebook: 1–3 miss, 4 reduced, 5 normal, 6 critical.</summary>
+    private void BuildOutlook(VBoxContainer header)
+    {
+        Outlook = new VBoxContainer { Name = "AttackOutlook", Visible = false };
+        Outlook.AddThemeConstantOverride("separation", 2); header.AddChild(Outlook);
+        OutlookCaption = ArenaPresentation.Text("", 12, BoardArt.Muted); OutlookCaption.Name = "AttackOutlookCaption";
+        OutlookCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; Outlook.AddChild(OutlookCaption);
+        var faces = new HBoxContainer { Name = "AttackOutlookFaces" }; faces.AddThemeConstantOverride("separation", 4); Outlook.AddChild(faces);
+        foreach (var (die, result, color) in new[] { ("1–3", "Fallo", BoardArt.Muted), ("4", "Reducido", BoardArt.Ink), ("5", "Normal", BoardArt.Ink), ("6", "Crítico", BoardArt.Gold) })
+        {
+            var cell = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var style = RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.Playmat.Background, 0.55f), BoardArt.Tint(color, 0.45f), 4);
+            style.ContentMarginLeft = style.ContentMarginRight = 4; style.ContentMarginTop = style.ContentMarginBottom = 3;
+            cell.AddThemeStyleboxOverride("panel", style); faces.AddChild(cell);
+            var stack = new VBoxContainer(); stack.AddThemeConstantOverride("separation", 0); cell.AddChild(stack);
+            var face = ArenaPresentation.Text($"D6 {die}", 12, BoardArt.Muted); face.HorizontalAlignment = HorizontalAlignment.Center; stack.AddChild(face);
+            var value = ArenaPresentation.Text("", ShortScreen ? 15 : 18, color); value.HorizontalAlignment = HorizontalAlignment.Center;
+            value.AddThemeFontOverride("font", RelickVisuals.Strong); stack.AddChild(value); _outlookValues.Add(value);
+            var name = ArenaPresentation.Text(result, 12, BoardArt.Tint(color, 0.85f)); name.HorizontalAlignment = HorizontalAlignment.Center; stack.AddChild(name);
+        }
+        OutlookNotes = ArenaPresentation.Text("", 12, BoardArt.Muted); OutlookNotes.Name = "AttackOutlookNotes";
+        OutlookNotes.AutowrapMode = TextServer.AutowrapMode.WordSmart; Outlook.AddChild(OutlookNotes);
+    }
+
+    internal void PresentOutlook(AttackOutlook? outlook)
+    {
+        // Short screens keep their room for the decision buttons; the attributes row already gives normal and critical.
+        if (ShortScreen) outlook = null;
+        Outlook.Visible = outlook != null;
+        if (outlook == null) return;
+        OutlookCaption.Text = outlook.Caption ?? "Resultado del ataque según el dado";
+        for (var face = 0; face < _outlookValues.Count; face++) _outlookValues[face].Text = outlook.Damage(face + 3);
+        OutlookNotes.Text = outlook.Notes;
+    }
+
+    /// <summary>Shows or clears the refused-play notice; unchanged text does no work, so it may be called every frame.</summary>
+    internal void SetAlert(string text)
+    {
+        if (AlertLabel.Text == text && _alert.Visible == text.Length > 0) return;
+        AlertLabel.Text = text; AlertLabel.TooltipText = text; _alert.Visible = text.Length > 0;
     }
 
     private static Label Wrapped(string name, int size, Color? color = null)
@@ -108,8 +200,9 @@ public partial class CardInspector : PanelContainer
         TitleLabel.Visible = TitleLabel.Text.Length > 0 && (HasCard || hint.Length == 0);
     }
 
-    internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null)
+    internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null, AttackOutlook? outlook = null)
     {
+        PresentOutlook(outlook);
         if (_cardId != card?.Id) _reading.ScrollVertical = 0;
         _cardId = card?.Id; HasCard = card != null;
         _reading.Visible = HasCard;

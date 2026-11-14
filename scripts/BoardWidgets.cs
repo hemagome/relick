@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -208,6 +208,18 @@ public static class BoardArt
                 Block(-12, -14, 3.5f, 29);
                 Shape(new(-8, -13), new(-2, -11), new(4, -13), new(9, -14), new(14, -12), new(14, 2),
                     new(9, 0), new(4, 1), new(-2, 3), new(-8, 1));
+                break;
+            case GameIcon.Alert:
+                // Warning sign: a solid triangle with a cut-out exclamation mark.
+                Shape(new(0, -14), new(15, 13), new(-15, 13));
+                c.DrawRect(new(-2, -5, 4, 10), RelickVisuals.Playmat.Surface);
+                c.DrawRect(new(-2, 7, 4, 3.5f), RelickVisuals.Playmat.Surface);
+                break;
+            case GameIcon.Hourglass:
+                // Waiting: two glass bulbs between a top and a bottom bar.
+                Block(-11, -14, 22, 3); Block(-11, 11, 22, 3);
+                Shape(new(-8, -11), new(8, -11), new(1.5f, 0), new(-1.5f, 0));
+                Shape(new(-1.5f, 0), new(1.5f, 0), new(8, 11), new(-8, 11));
                 break;
         }
         c.DrawSetTransform(Vector2.Zero, 0, Vector2.One * canvasScale);
@@ -839,6 +851,8 @@ public partial class HandCard : Button
     /// <summary>How far above its resting place the card is drawn, in its own units.</summary>
     internal float DrawnLift => (_hover * (InFan ? Lift : 5) + 175 * (Zoom - 1)) * PresentationScale;
     public bool Mulligan { get; set; }
+    /// <summary>The card has at least one play authorized by the server in the current snapshot.</summary>
+    public bool Playable { get; set; }
     public CardOwner? OriginalOwner { get; set; }
     public int? ViewerSeat { get; set; }
     /// <summary>False when the surrounding section already names the owner.</summary>
@@ -959,7 +973,9 @@ public partial class HandCard : Button
     private void DrawSelection(float y, Color accent)
     {
         var face = Face;
-        RelickVisuals.Interaction(this, new Rect2(new Vector2(1, y), face), Chosen, false, !Disabled && IsHovered(), HasFocus());
+        var rect = new Rect2(new Vector2(1, y), face);
+        if (Playable && !Chosen && !Mulligan) RelickVisuals.Playable(this, rect, Disabled);
+        RelickVisuals.Interaction(this, rect, Chosen, false, !Disabled && IsHovered(), HasFocus());
         if (Chosen && Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(1 + face.X / 2, y + face.Y * 0.57f), 9, RelickVisuals.State.Selected);
     }
 

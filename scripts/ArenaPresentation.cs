@@ -219,10 +219,20 @@ public static class ArenaPresentation
             label.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter; return label;
         }
         // Every cell keeps its width from stage to stage, so the advance button never moves.
+        // The status cell says in words whose turn or decision it is; colour only repeats it.
+        var status = new HBoxContainer { Name = "StageStatusCell", CustomMinimumSize = new(StatusCellWidth, 0),
+            MouseFilter = Control.MouseFilterEnum.Pass, TooltipText = detail };
+        status.AddThemeConstantOverride("separation", 7); row.AddChild(status);
+        status.AddChild(new IconView { Name = "StageStatusIcon", Icon = GameIcon.Bolt, Color = accent,
+            CustomMinimumSize = new(20, 20), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+        var lines = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center,
+            MouseFilter = Control.MouseFilterEnum.Ignore };
+        lines.AddThemeConstantOverride("separation", -2); status.AddChild(lines);
+        var headline = Still(Heading("", 15, accent));
+        headline.Name = "StageStatus"; headline.ClipText = true; lines.AddChild(headline);
         var context = Still(Text(detail, 12, BoardArt.Ink));
-        context.Name = "StageDetail"; context.CustomMinimumSize = new(150, 0); context.ClipText = true; context.TooltipText = detail;
-        context.MouseFilter = Control.MouseFilterEnum.Pass;
-        row.AddChild(context);
+        context.Name = "StageDetail"; context.ClipText = true; context.TooltipText = detail;
+        lines.AddChild(context);
         var stages = new[] { Phase.Draw, Phase.Combat, Phase.Actions, Phase.Final };
         var widths = new[] { 66f, 112, 116, 70 };
         var current = Array.IndexOf(stages, stage);
@@ -249,6 +259,9 @@ public static class ArenaPresentation
         }
         return (lane, row);
     }
+
+    /// <summary>Width of the desktop status cell; the bar must still fit its 828-unit lane.</summary>
+    internal const float StatusCellWidth = 180;
 
     public static BoxContainer Arena(VBoxContainer root, bool compact)
     {

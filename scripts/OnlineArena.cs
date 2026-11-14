@@ -120,6 +120,8 @@ public partial class OnlineArena : Control
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
+        // Refusals from before this arena existed belong to another screen.
+        _seenRejectionSerial = Connection?.PlayRejectionSerial ?? 0;
     }
 
     private void PlaySound(SoundCue cue) => GetNodeOrNull<SoundDirector>("/root/SoundDirector")?.Play(cue);
@@ -184,7 +186,7 @@ public partial class OnlineArena : Control
         UpdateResolutionPresentation();
         if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
         UpdateRelikiaPreview();
-        UpdateEnabled(); RefreshRuntimeGuidance();
+        UpdateEnabled(); RefreshRuntimeGuidance(); RefreshDecisionFeedback();
         PositionCardActions();
         UpdateResultPresentation();
         PresentPlaymat();
@@ -210,6 +212,7 @@ public partial class OnlineArena : Control
     {
         _relikiaMenu = null;
         _inspectorPreview = null;
+        ClearStageStatus();
         _fieldPress = null;
         var handPosition = _hand?.ScrollHorizontal ?? 0;
         var handVerticalPosition = _hand?.ScrollVertical ?? 0;
@@ -325,6 +328,7 @@ public partial class OnlineArena : Control
             var (lane, bar) = ArenaPresentation.PhaseBar(canvas, stage, barDetail, turnAccent);
             _combatCenter = lane;
             BuildAdvanceControl(bar);
+            BindStageStatus(bar);
 
             // Choices among cards outside the hand open over the board; the hand itself stays low.
             choiceGallery = _choosingOpeningSkill || ChoosingRecycling || ChoosingEffectCards;
@@ -558,7 +562,7 @@ public partial class OnlineArena : Control
         {
             BuildPreparationMoves(); RefreshInspector(); return;
         }
-        RefreshBoardTargets(); BuildContextMoves();
+        RefreshBoardTargets(); BuildContextMoves(); RefreshPlayableHand();
         _lastDisabled = null; UpdateEnabled();
     }
 
@@ -606,6 +610,7 @@ public partial class OnlineArena : Control
     private void PlayOption(int index, DuelSnapshot state)
     {
         if (!Connection.Ready || Connection.PlayPending || IsAnimating) return;
+        ClearRejection();
         if (state.Options[index].Move.Kind == DuelMoveKind.Concede) ConfirmConcede(index, state);
         else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode, state);
     }
