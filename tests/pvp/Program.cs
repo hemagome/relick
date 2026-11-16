@@ -431,7 +431,8 @@ try
         if (!isRecycling)
         {
             choice = before.Phase == Phase.ErrorResponse ? options.First(o => o.Option.Move.Kind == DuelMoveKind.PassError) :
-                before.Phase == Phase.DeckSearchChoice || before.Decision?.Kind == DecisionKind.ChooseCard ? options.First(o => IsDeckSearch(before, o.Option)) :
+                before.Phase == Phase.DeckSearchChoice ? options.First(o => IsDeckSearch(before, o.Option)) :
+                before.Decision?.Kind == DecisionKind.ChooseCard ? options.First(o => o.Option.Move.Kind == DuelMoveKind.Choose) :
                 before.Phase == Phase.DieRerollChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.EffectDie) :
                 options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.PlayCode &&
                     (before.Players[before.MySeat].Hand[o.Option.Move.Index] == CardCatalog.KonamyCode.Id ||
@@ -485,7 +486,8 @@ finally
 
 // A deck search answered through the generic card decision, or the earlier search command.
 static bool IsDeckSearch(DuelSnapshot snapshot, DuelOption option) => option.Move.Kind == DuelMoveKind.SearchDeck ||
-    option.Move.Kind == DuelMoveKind.Choose && snapshot.Decision?.Kind == DecisionKind.ChooseCard;
+    // Other galleries (Disquete, Resetear la Mente) pick from memories or a hand, not from the deck.
+    option.Move.Kind == DuelMoveKind.Choose && snapshot.Decision is { Kind: DecisionKind.ChooseCard } decision && decision.Source == CardCatalog.KonamyCode.Id;
 
 sealed class Client
 {

@@ -52,6 +52,15 @@ public sealed class PendingDecision
     /// <summary>A number the effect needs to list its choices, such as the PR a die decided.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int Value { get; set; }
+    /// <summary>What the effect chose in earlier steps of a multi-step decision, such as memory cards already picked.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<int>? Picks { get; set; }
+    /// <summary>A hand only the decider may see while this decision waits, as Resetear la Mente lets its player look at one.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ShowsHandOf { get; set; }
+    /// <summary>The decision a COMBO interrupted; it waits underneath and comes back once this one is answered.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PendingDecision? Suspended { get; set; }
 }
 
 /// <summary>What both players see about the pending decision; its choices only reach the decider, as options.</summary>
@@ -84,7 +93,8 @@ internal static class CardEffects
 {
     private static readonly IReadOnlyDictionary<string, ICardEffect> Registered =
         new ICardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
-            new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect() }.ToDictionary(e => e.CardId);
+            new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
+            new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect() }.ToDictionary(e => e.CardId);
 
     public static ICardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
@@ -112,10 +122,13 @@ public sealed partial class GameEngine
         public void Announce(string text) { State.LastCombat = text; _engine.Log(text); }
 
         /// <summary>Opens a decision for <see cref="Actor"/>; the card's <c>Choices</c> and <c>Choose</c> handle <paramref name="step"/>.</summary>
-        public void Ask(string step, DecisionKind kind, string instruction, bool allowsCombos = false, bool announce = true, int value = 0)
+        public void Ask(string step, DecisionKind kind, string instruction, bool allowsCombos = false, bool announce = true, int value = 0,
+            List<int>? picks = null, int? showsHandOf = null)
         {
+            // A COMBO that asks while another decision waits keeps that decision underneath.
             State.PendingDecision = new PendingDecision { Source = Card.Id, Step = step, Decider = Actor, Kind = kind,
-                Instruction = instruction, AllowsCombos = allowsCombos, ResumePhase = State.Phase, Value = value };
+                Instruction = instruction, AllowsCombos = allowsCombos, ResumePhase = State.Phase, Value = value, Picks = picks,
+                ShowsHandOf = showsHandOf, Suspended = State.Phase == Phase.Decision ? State.PendingDecision : null };
             State.Phase = Phase.Decision;
             if (announce) State.LastCombat = $"{Player.Name} · {Card.Name} · {instruction}";
         }
@@ -134,6 +147,10 @@ public sealed partial class GameEngine
 
         public void Draw(int count, EngineContinuation? then = null) => _engine.DrawCards(Player, count, then);
         public int Heal(int amount) => _engine.Heal(Player, amount);
+        /// <summary>Swaps the whole hands of both players; each copy keeps its owner and whether it was revealed.</summary>
+        public void SwapHands() => _engine.SwapHands(Actor);
+        /// <summary>Both players discard their hands and draw this card's <c>Draw</c>, with Mira de Sniper triggers in between.</summary>
+        public void ReloadBothHands() => _engine.BeginReloadHands(Actor);
 
         /// <summary>
         /// Rolls a D6 through the shared die window (Relikario rerolls, Colgante, PC, destreza, COMBO), then continues the
@@ -153,6 +170,14 @@ public sealed partial class GameEngine
         }
 
         public IEnumerable<MemorySelection> RecoverableMemoryCards() => _engine.RecoverableMemoryCards();
+        /// <summary>Memory cards Resetear la Mente may return: all but a memory code waiting on its responses.</summary>
+        public IEnumerable<MemorySelection> ResettableMemoryCards() => _engine.MindResetMemories();
+        public string? MindResetUnavailable(int excludedHand) => _engine.MindResetUnavailable(Actor, excludedHand);
+        /// <summary>Returns the chosen cards to their owners' decks, shuffles them and lets the target draw; ends this activation first.</summary>
+        public void ReturnMindResetCards(int target, IReadOnlyList<MemorySelection> memories, int handIndex, Phase resumePhase) =>
+            _engine.ReturnMindResetCards(Actor, target, memories, handIndex, resumePhase, _engine.EndMindResetActivation);
+        /// <summary>Ends Resetear la Mente without returning cards; the turn may end now if it was waiting for it.</summary>
+        public void EndMindReset() { _engine.EndMindResetActivation(); _engine.CompleteEndTurnIfReady(); }
         /// <summary>Moves a memory card to this player's hand; a card from the rival's memory stays marked as foreign.</summary>
         public string TakeFromMemory(int owner, int index) => _engine.TakeFromMemory(Actor, owner, index);
         /// <summary>Once the effect commits to a result, Error de Carga can no longer cancel it.</summary>
@@ -188,7 +213,7 @@ public sealed partial class GameEngine
         var context = EffectFor(actor, decision.Source);
         var choices = effect.Choices(context, decision);
         if (choice < 0 || choice >= choices.Count) return CommandResult.Fail("Esa opción ya no está disponible.");
-        State.PendingDecision = null;
+        State.PendingDecision = decision.Suspended;
         State.Phase = decision.ResumePhase;
         effect.Choose(context, decision, choices[choice]);
         CompleteActivationIfFinished();
@@ -220,7 +245,7 @@ public sealed partial class GameEngine
     {
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || DecisionChoices(decision.Decider).Count > 0) return;
         Log($"{CardCatalog.Get(decision.Source).Name} se resuelve sin opciones disponibles después de las respuestas.");
-        State.PendingDecision = null; State.Phase = decision.ResumePhase;
+        State.PendingDecision = decision.Suspended; State.Phase = decision.ResumePhase;
         CompleteActivationIfFinished();
     }
 

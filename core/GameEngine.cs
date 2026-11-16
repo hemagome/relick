@@ -211,7 +211,8 @@ public sealed partial class GameEngine
         if (error != null) return CommandResult.Fail(error);
         var p = State.Players[actor];
         var card = CardCatalog.Get(p.Hand[handIndex]);
-        if (card.ResetMind) return PlayMindReset(actor, handIndex);
+        // Resetear la Mente keeps its own activation: no PR cost and no "juega" line, as before it became a module.
+        if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
         var played = SendHandToMemory(p, handIndex);
@@ -227,22 +228,9 @@ public sealed partial class GameEngine
         if (TryResolveWithEffect(p, card)) return;
         if (card.DeployTotems) { BeginGoldenTotem(Array.IndexOf(State.Players, p)); return; }
         if (card.RepeatStage) { ResolveRepeatedStage(); return; }
-        if (card.ReloadBothHands) { BeginReloadHands(Array.IndexOf(State.Players, p)); return; }
         if (card.DiscardForTurnBuff) { ResolveTurnBuff(); return; }
         if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p), SkillId = card.Id }); return; }
-        if (card.ResetMind) { BeginMindReset(Array.IndexOf(State.Players, p)); return; }
-        if (card.SwapHands) { SwapHands(Array.IndexOf(State.Players, p)); return; }
-        if (card.SearchAttacks > 0)
-        {
-            var count = Math.Min(card.SearchAttacks, p.Deck.Count(id => CardCatalog.Get(id).Kind == CardKind.Attack));
-            if (_activeActivation != null) _activeActivation.CanInterrupt = false;
-            Log($"{p.Name} añade {count} ataque(s) de su mazo a su mano con {card.Name}.");
-            // All current Attack cards are identical. Choose their first copies in deck order.
-            // Freeze the count so recycling cannot add further targets to this effect.
-            for (var i = 0; i < count; i++)
-                MoveDeckCard(p, p.Deck.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Attack), false);
-            return;
-        }
+        // Plain heal and draw data, used by the test fixtures; every real code has its own rules.
         if (card.Heal > 0) Heal(p, card.Heal);
         if (_activeActivation != null) _activeActivation.CanInterrupt = false;
         DrawCards(p, card.Draw);

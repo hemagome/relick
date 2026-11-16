@@ -15,9 +15,9 @@ public sealed record CardDefinition(
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, int PrCost = 0, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
     int DamageReduction = 0, bool DestroyOnAttackOne = false,
-    bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false, int SearchAttacks = 0,
+    int EarliestTurn = 0, int SetOwnDie = 0, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false,
     int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
-    bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false, bool ReloadBothHands = false,
+    bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false,
     int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false, bool DeployTotems = false,
     // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
     string? Relikario = null, bool Special = false)
@@ -48,7 +48,7 @@ public static class CardCatalog
         CodeType: CodeType.Object, IsCombo: true, DiscardCost: 2, RepeatStage: true);
     public static readonly CardDefinition ReloadCartridge = new("reload-cartridge", "Cartucho de Re-carga", CardKind.Code,
         "No puedes usar esta carta en el primer turno del juego. Ambos jugadores descartan sus manos (mín. 1) y roban 4 cartas.",
-        Draw: 4, CodeType: CodeType.Play, EarliestTurn: 2, ReloadBothHands: true);
+        Draw: 4, CodeType: CodeType.Play, EarliestTurn: 2);
     public static readonly CardDefinition QuickLoad = new("quick-load", "Carga Rápida", CardKind.Code,
         "Roba 2 cartas. Luego lanza 1D6: 1–2: descarta 2 cartas; 3–4: descarta 1 carta; 5: roba 1 carta; 6: roba 2 cartas.",
         Draw: 2, CodeType: CodeType.Play);
@@ -67,7 +67,7 @@ public static class CardCatalog
         "Al relanzar un dado propio: +1 al daño normal (máx. 5) y crítico de esta copia. Si una carta propia va a ser destruida, puedes destruir esta habilidad enseñada en su lugar, incluidos costes de equipos. Al enseñarla en el espacio de 500 o 1000 PR: lanza D6, puedes relanzarlo hasta dos veces y roba la mitad del resultado final, redondeada hacia arriba.",
         NormalDamage: 2, CriticalDamage: 4, Reward: 600, DamagePerReroll: 1, MaxNormalDamage: 5, ProtectOwnCard: true, DrawOnExpensiveLearn: true, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition TripleAttack = new("triple-cross-attack", "Triple Ataque Cruzado", CardKind.Code,
-        "Busca 3 ataques de tu mazo a tu mano.", CodeType: CodeType.Play, SearchAttacks: 3);
+        "Busca 3 ataques de tu mazo a tu mano.", CodeType: CodeType.Play);
     public static readonly CardDefinition Sniper = new("sniper-scope", "Mira de Sniper", CardKind.Equipment,
         "Si esta carta es descartada: equipa esta carta gratis o coloca en canje. Equipada: +1 a los daños. Si recibes daño coloca 1 contador en esta carta; con 3 contadores se destruye.", DamageBonus: 1, DamageCounterLimit: 3, EquipOnDiscard: true);
     public static readonly CardDefinition Pc = new("pc-8bits", "PC 8BITS", CardKind.Equipment,
@@ -77,13 +77,13 @@ public static class CardCatalog
         CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, DodgeAttack: true);
     public static readonly CardDefinition MindReset = new("mind-reset", "Resetear la Mente", CardKind.Code,
         "COMBO. Selecciona 2 cartas de cualquier memoria y 1 no-habilidad de la mano (mira la mano) de un jugador objetivo. Envía esas cartas al mazo de su respectivo dueño, baraja y luego el jugador objetivo roba una carta.",
-        CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, ResetMind: true);
+        CodeType: CodeType.Play, IsCombo: true, ActionCost: 1);
     public static readonly CardDefinition Agility = new("agility-100", "Agilidad al 100%", CardKind.Code,
         "COMBO. Cambia el resultado de uno de tus dados a 5.",
         CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, SetOwnDie: 5);
     public static readonly CardDefinition MindSwap = new("mind-swap", "Cambio de Mentes", CardKind.Code,
         "No puedes activar esta carta en el primer turno del juego. Cambia todas las cartas de tu mano (mín. 0) por las de tu oponente.",
-        CodeType: CodeType.Play, SwapHands: true, EarliestTurn: 2);
+        CodeType: CodeType.Play, EarliestTurn: 2);
     public static readonly CardDefinition KonamyCode = new("konamy-code", "Código Konamy", CardKind.Code,
         "Busca en tu mazo una no-habilidad y añádela a tu mano.", CodeType: CodeType.Play);
     public static readonly CardDefinition TimeBomb = new("time-bomb", "Bomba de Tiempo", CardKind.Code,
