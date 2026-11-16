@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer, DieAdjustment, MemoryClaim, HandDiscard, HandSteal }
+public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer, DieAdjustment, MemoryClaim, HandDiscard, HandSteal, Chain }
 
 // Public presentation cues for ONE accepted revision. Never include card identities,
 // deck order, random tapes or hidden state. Clients discard cues on recovery/gaps.
@@ -22,6 +22,10 @@ public sealed class DuelVisualEvent
     // Pile cues only: the card lands in the memory of Player's rival, its original owner.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool ToRivalMemory { get; set; }
+    // Chain cues only: the resolved Error de Carga chain, in activation order. Every card in it was already announced
+    // publicly (DuelResolutionView), so this repeats no hidden identity; it only adds which links ended canceled.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<PublicChainLink>? Chain { get; set; }
 }
 
 public static class DuelVisualEvents
@@ -53,6 +57,8 @@ public static class DuelVisualEvents
             { Kind = DuelVisualKind.HandSteal, Player = owner, Target = recipient, SourceIndex = sourceIndex, Value = slot, Source = CardZone.Hand, Destination = CardZone.Hand });
         game.CardMovedToPile += movement => events.Add(new() { Kind = DuelVisualKind.Pile, Player = movement.Owner,
             Source = movement.Source, Destination = movement.Destination, Value = movement.Index, ToRivalMemory = movement.ToRivalMemory });
+        game.ChainResolved += chain => events.Add(new()
+            { Kind = DuelVisualKind.Chain, Player = chain[0].Actor, Value = chain.Count, Chain = chain });
         return events;
     }
 }

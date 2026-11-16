@@ -70,6 +70,24 @@ static class PlumberStarTests
                 Check(g.ResolveAttackReroll(actor, false).Success && g.State.Players[1 - actor].Health == 5);
             }
         }),
+        ("Estrella: la cadena pública empieza por el ataque pendiente y lo conserva al anular la Estrella", () =>
+        {
+            foreach (var actor in new[] { 0, 1 })
+            {
+                var (g, rng) = Fixture(actor); rng.EnqueueDie(5);
+                Check(g.Attack(actor, 2, 0).Success);
+                g.State.Players[1 - actor].Hand.Add(CardCatalog.LoadError.Id);
+                Check(g.PlayCode(actor, 0).Success && g.State.Phase == Phase.ErrorResponse);
+                var live = DuelSnapshot.For(g, 1 - actor, 1).Resolution!;
+                Check(live.CardId == CardCatalog.PlumberStar.Id && live.Attack is { } attack && attack.Actor == actor && attack.CardId == CardCatalog.Destiny.Id);
+                var visuals = DuelVisualEvents.Capture(g);
+                Check(g.PlayCode(1 - actor, g.State.Players[1 - actor].Hand.IndexOf(CardCatalog.LoadError.Id)).Success);
+                var links = visuals.Single(v => v.Kind == DuelVisualKind.Chain).Chain!;
+                Check(links.Select(l => l.CardId).SequenceEqual([CardCatalog.Destiny.Id, CardCatalog.PlumberStar.Id, CardCatalog.LoadError.Id]));
+                Check(links.Select(l => l.Actor).SequenceEqual([actor, actor, 1 - actor]) && links[0].Attack && !links[0].Canceled);
+                Check(links[1].Canceled && !links[2].Canceled && DuelSnapshot.For(g, actor, 2).Resolution?.Attack == null);
+            }
+        }),
         ("Estrella: Caja conserva el descarte en memoria al cancelar; dejar resolver activa los efectos", () =>
         {
             foreach (var cancel in new[] { false, true })

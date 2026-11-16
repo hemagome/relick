@@ -28,6 +28,33 @@ static class LoadErrorTests
             Check(g.PlayCode(0, 0).Success && g.PlayCode(1, 0).Success && g.PlayCode(0, 0).Success && g.PlayCode(1, 0).Success);
             Check(a.ActionsLeft == 2 && b.ActionsLeft == 0 && a.Relikia == 200 && b.Equipment != null && g.State.ActivationChain.Count == 0);
         }),
+        ("Cadena visual: cuatro eslabones resueltos en orden de activación marcan los anulados una sola vez", () =>
+        {
+            var g = Fixture(); var a = g.State.Players[0]; var b = g.State.Players[1];
+            a.Hand.AddRange(new[] { "blue-egg", "load-error" }); b.Hand.AddRange(new[] { "load-error", "load-error" }); a.Relikia = 200; b.Equipment = "lucky-pendant";
+            var visuals = DuelVisualEvents.Capture(g);
+            Check(g.PlayCode(0, 0).Success && g.PlayCode(1, 0).Success && g.PlayCode(0, 0).Success);
+            Check(!visuals.Any(v => v.Kind == DuelVisualKind.Chain) && DuelSnapshot.For(g, 1, 3).Resolution!.Attack == null);
+            Check(g.PlayCode(1, 0).Success);
+            var chain = visuals.Single(v => v.Kind == DuelVisualKind.Chain);
+            Check(chain.Player == 0 && chain.Value == 4 && chain.Chain!.Select(l => l.CardId).SequenceEqual(new[] { "blue-egg", "load-error", "load-error", "load-error" }));
+            Check(chain.Chain.Select(l => l.Actor).SequenceEqual(new[] { 0, 1, 0, 1 }) && chain.Chain.Select(l => l.Canceled).SequenceEqual(new[] { true, false, true, false }));
+            Check(chain.Chain.All(l => !l.Attack));
+            var json = System.Text.Json.JsonSerializer.Serialize(new DuelSnapshot { Visuals = visuals }, DuelJson.Default.DuelSnapshot);
+            var back = System.Text.Json.JsonSerializer.Deserialize(json, DuelJson.Default.DuelSnapshot)!.Visuals.Single(v => v.Kind == DuelVisualKind.Chain);
+            Check(back.Chain!.Select(l => l.Canceled).SequenceEqual(new[] { true, false, true, false }) && !json.Contains("\"Attack\":false"));
+        }),
+        ("Cadena visual: pasar sin respuestas resuelve un único eslabón y no se publica en otras jugadas", () =>
+        {
+            var g = Fixture(); var a = g.State.Players[0]; var b = g.State.Players[1];
+            a.Hand.Add("senshuni"); b.Hand.Add("load-error");
+            var visuals = DuelVisualEvents.Capture(g);
+            Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success);
+            var chain = visuals.Single(v => v.Kind == DuelVisualKind.Chain);
+            Check(chain.Chain!.Single().CardId == "senshuni" && !chain.Chain.Single().Canceled);
+            var plain = Fixture(); plain.State.Players[0].Hand.Add("senshuni"); var none = DuelVisualEvents.Capture(plain);
+            Check(plain.PlayCode(0, 0).Success && !none.Any(v => v.Kind == DuelVisualKind.Chain));
+        }),
         ("Error cancela equipo nuevo conservando el anterior; un contraerror equipa y destruye el viejo", () =>
         {
             foreach (var counter in new[] { false, true })

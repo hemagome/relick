@@ -4,6 +4,17 @@ public sealed partial class GameEngine
     private readonly List<EngineActivation> _activationChain = new();
     private EngineActivation? _activeActivation;
     private Phase _errorResumePhase;
+    /// <summary>Raised once per resolved Error de Carga chain with every link in activation order and its outcome.</summary>
+    public event Action<List<PublicChainLink>>? ChainResolved;
+    // The attack still pending under an open chain: its skill is public on the field and the chain cannot cancel it.
+    private PublicChainLink? ChainAttack()
+    {
+        var root = _activationChain.FirstOrDefault();
+        if (root == null) return null;
+        if (State.PendingAttack is { } attack) return new() { Actor = attack.Attacker, CardId = attack.SkillId, Attack = true };
+        if ((State.PendingAttackRoll ?? State.PendingTurnBuff?.AttackRoll) is { } roll) return new() { Actor = roll.Attacker, CardId = roll.SkillId, Attack = true };
+        return null;
+    }
     private bool HasLoadError(int actor) => ComboResponsesEnabled(actor) && State.Players[actor].ActionsLeft > 0 && !HandReservedForActivation(actor) &&
         State.Players[actor].Hand.Any(id => CardCatalog.Get(id).CancelActivation);
     public bool CanPlayLoadError(int actor)
@@ -50,6 +61,13 @@ public sealed partial class GameEngine
             var frame = _activationChain[i];
             if (frame.Canceled) { RefundActivation(frame.Actor, frame.Actions, frame.Pr); continue; }
             if (i > 0) _activationChain[i - 1].Canceled = true;
+        }
+        if (ChainResolved != null)
+        {
+            var links = new List<PublicChainLink>();
+            if (ChainAttack() is { } attack) links.Add(attack);
+            links.AddRange(_activationChain.Select(f => new PublicChainLink { Actor = f.Actor, CardId = f.CardId, Canceled = f.Canceled }));
+            ChainResolved(links);
         }
         var root = _activationChain[0]; _activationChain.Clear(); State.ActivationChain.Clear(); State.Phase = _errorResumePhase;
         if (State.ErrorAfterDie) { ResolveErrorAfterDie(root); return; }

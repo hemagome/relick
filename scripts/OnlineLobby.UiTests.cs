@@ -161,6 +161,11 @@ public partial class OnlineLobby
                 await online.CheckSuperMagnetLayout(); online.QueueFree(); await Layout();
                 QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--response-chain-only"))
+            {
+                await online.CheckResponseChain(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--zahira-only"))
             {
                 await online.CheckZahiraLayout(); online.QueueFree(); await Layout();
@@ -280,6 +285,7 @@ public partial class OnlineLobby
             await online.CheckActionCounters();
             await online.CheckMemoryInspection();
             await online.CheckPublicHistory();
+            await online.CheckResponseChain();
             await online.CheckTripleAttackDraws();
             await online.CheckSkillLessonAnimation();
             await online.CheckEquipmentAnimation();
