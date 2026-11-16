@@ -16,7 +16,8 @@ public static class DuelOptions
         for (var i = 0; i < p.Hand.Count; i++)
             if (game.CodeUnavailableReason(actor, i) == null)
                 Add(DuelMoveKind.PlayCode, $"Jugar {Card(p.Hand[i])} · carta {i + 1}", i);
-        if (game.CanEvolve(actor)) Add(DuelMoveKind.Evolve, "Evolucionar a Yuno Lv 2 · 1800 PR");
+        if (game.CanEvolve(actor) && RelikarioCatalog.EvolutionFor(p.Relikario) is { } next)
+            Add(DuelMoveKind.Evolve, $"Evolucionar a {next.DisplayName} Lv {next.Level} · {next.EvolutionCost} PR");
         if (s.DecisionPlayer == actor)
         {
             switch (s.Phase)
@@ -169,7 +170,7 @@ public static class DuelOptions
                     if (game.CanRerollLearningDie(actor)) Add(DuelMoveKind.LearningDie, $"Relanzar por Reverse Shuffle · {2 - s.PendingDieRoll!.LearningRerolls} restantes");
                     if (game.CanUseDexterity(actor)) Add(DuelMoveKind.Dexterity, "Usar destreza · +1 al dado · 1 ficha");
                     if (game.CanUsePc(actor)) Add(DuelMoveKind.Pc, $"Destruir PC 8BITS · valor guardado {p.EquipmentDie}");
-                    if (game.CanUseYunoOnPendingDie(actor)) Add(kind, "Relanzar con Yuno", flag: true);
+                    if (game.CanUseRelikarioOnPendingDie(actor)) Add(kind, $"Relanzar con {p.Relikario.DisplayName}", flag: true);
                     foreach (var effect in Enum.GetValues<PendantEffect>().Where(e => game.CanUsePendant(actor, e)))
                         Add(DuelMoveKind.Pendant, "Usar Colgante: " + (effect == PendantEffect.Reroll ? "relanzar" : effect == PendantEffect.AddOne ? "+1" : "+2"), value: (int)effect);
                     break;
@@ -216,7 +217,7 @@ public static class DuelOptions
                             Add(DuelMoveKind.Destroy, place, t.Index, (int)t.Zone, t.Owner);
                             continue;
                         }
-                        var zone = t.Zone switch { FieldZone.Equipment or FieldZone.EquipmentCover => "equipo", FieldZone.Attached => "sobre Yuno", FieldZone.Bonus => "Bonus", _ => "canje" };
+                        var zone = t.Zone switch { FieldZone.Equipment or FieldZone.EquipmentCover => "equipo", FieldZone.Attached => $"sobre {s.Players[t.Owner].Relikario.DisplayName}", FieldZone.Bonus => "Bonus", _ => "canje" };
                         Add(DuelMoveKind.Destroy, $"Destruir {Card(t.CardId)} de {s.Players[t.Owner].Name} · {zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : ""), t.Index, (int)t.Zone, t.Owner);
                     }
                     break;

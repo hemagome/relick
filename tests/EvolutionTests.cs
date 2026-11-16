@@ -23,7 +23,7 @@ static class EvolutionTests
                 Check(p.HasNaturalSix == (die == 6) && cues.Count(c => c.Kind == DuelVisualKind.Die) == 1);
                 Check(cues.Where(c => c.Kind == DuelVisualKind.Die).Single().Value == die);
                 Check(cues.Count(c => c.Kind == DuelVisualKind.DieAdjustment) == (die is >= 2 and <= 5 ? 1 : 0));
-                Check(!g.CanUseYunoOnPendingDie(actor));
+                Check(!g.CanUseRelikarioOnPendingDie(actor));
             }
         }),
         ("Nivel 2 ajeno a Yuno no hereda su modificador de ataque", () =>

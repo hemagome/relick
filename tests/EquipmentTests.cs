@@ -29,7 +29,7 @@ static class EquipmentTests
         {
             var (g, rng) = Fixture(); var p = g.State.Active; p.Equipment = CardCatalog.Pendant.Id;
             rng.EnqueueDie(1); Check(g.Attack(0, 0, 0).Success && g.State.Phase == Phase.AttackRerollChoice);
-            Check(!g.CanUseYunoOnPendingDie(0) && g.CanUsePendant(0, PendantEffect.Reroll));
+            Check(!g.CanUseRelikarioOnPendingDie(0) && g.CanUsePendant(0, PendantEffect.Reroll));
             var count = Count(g); rng.EnqueueDie(6); Check(g.UsePendant(0, PendantEffect.Reroll).Success);
             Check(p.Equipment == null && p.Memory.Count == 2 && !p.AttackRerollUsedThisTurn && !p.HasNaturalSix && Count(g) == count);
             Check(g.ResolveAttackReroll(0, false).Success && g.State.LastAttackDie == 6 && g.State.Players[1].Health == 3 && !p.HasNaturalSix);
@@ -55,7 +55,7 @@ static class EquipmentTests
         {
             var (g, rng) = Fixture(); var p = g.State.Active; p.Relikario = RelikarioCatalog.YunoLv2; p.Equipment = CardCatalog.Pendant.Id;
             rng.EnqueueDie(3); rng.EnqueueDie(1); Check(g.Attack(0, 0, 0).Success && g.ResolveAttackReroll(0, true).Success);
-            Check(!g.CanUseYunoOnPendingDie(0) && g.CanUsePendant(0, PendantEffect.AddTwo));
+            Check(!g.CanUseRelikarioOnPendingDie(0) && g.CanUsePendant(0, PendantEffect.AddTwo));
             Check(g.UsePendant(0, PendantEffect.AddTwo).Success && g.State.LastAttackDie == 3 && g.State.Phase == Phase.Combat);
         }),
         ("Colgante: otro dado puede subir a 6; no cuenta como 6 natural", () =>

@@ -85,7 +85,7 @@ public partial class OnlineArena
         var ids = zone == FieldZone.EquipmentCover ? _snapshot!.Players[owner].EquipmentCovers ?? [] : _snapshot!.Players[owner].Attached;
         var targetable = _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)zone);
         if (ids.Length == 1 && targetable) { SelectField(owner, zone, 0); return; }
-        ShowCards(zone == FieldZone.EquipmentCover ? "Sobre el equipo" : "Sobre Yuno", ids, select: targetable ? index => SelectField(owner, zone, index) : null);
+        ShowCards(zone == FieldZone.EquipmentCover ? "Sobre el equipo" : $"Sobre {RelikarioCatalog.DisplayNameOf(_snapshot.Players[owner].RelikarioId)}", ids, select: targetable ? index => SelectField(owner, zone, index) : null);
     }
 
     private void SelectSkill(int index)

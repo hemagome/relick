@@ -78,23 +78,23 @@ public sealed partial class GameEngine
         else DestroyEquipment(p, next);
     }
 
-    public bool CanUseYunoOnPendingDie(int actor)
+    public bool CanUseRelikarioOnPendingDie(int actor)
     {
         if (actor < 0 || actor >= State.Players.Length || actor != State.DecisionPlayer) return false;
         if (EffectsSuppressed(actor, FieldZone.Relikario)) return false;
         var p = State.Players[actor];
         if (State.Phase == Phase.AttackRerollChoice && State.PendingAttackRoll is { } attack)
-            return p.Relikario.CanRerollAttack && attack.Die != 1 && !attack.YunoStopped && attack.Rerolls < p.Relikario.MaxRerolls &&
+            return p.Relikario.CanRerollAttack && attack.Die != 1 && !attack.RerollStopped && attack.Rerolls < p.Relikario.MaxRerolls &&
                 (attack.Rerolls > 0 || !p.AttackRerollUsedThisTurn);
         if (State.Phase == Phase.DieRerollChoice && State.PendingDieRoll is { } effect)
-            return p.Relikario.CanRerollAnyDie && effect.Die != 1 && !effect.YunoStopped && effect.Rerolls < p.Relikario.MaxRerolls &&
+            return p.Relikario.CanRerollAnyDie && effect.Die != 1 && !effect.RerollStopped && effect.Rerolls < p.Relikario.MaxRerolls &&
                 (effect.Rerolls > 0 || !p.AttackRerollUsedThisTurn);
         return false;
     }
 
-    private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || CanUseYunoOnPendingDie(State.CurrentPlayer) ||
+    private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || CanUseRelikarioOnPendingDie(State.CurrentPlayer) ||
         ActiveEquipment(State.CurrentPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
-    private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || CanUseYunoOnPendingDie(State.DecisionPlayer) ||
+    private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || CanUseRelikarioOnPendingDie(State.DecisionPlayer) ||
         ActiveEquipment(State.DecisionPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)

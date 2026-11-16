@@ -122,7 +122,7 @@ public partial class OnlineArena
     {
         var s = _snapshot;
         if (s == null || card == null) return null;
-        int DieBonus(int? seat) => seat is int owner && s.Players[owner].Level >= 2 ? RelikarioCatalog.YunoLv2.AttackDieBonusExceptOne : 0;
+        int DieBonus(int? seat) => seat is int owner ? RelikarioCatalog.Find(s.Players[owner].RelikarioId)?.AttackDieBonusExceptOne ?? 0 : 0;
         int Multiplier(int? seat) => seat is int owner && s.Players[owner].StarEffects > 0 ? 1 << s.Players[owner].StarEffects : 1;
         if (card.Kind == CardKind.Skill)
             return AttackOutlook.For(card, counters ?? 0, DieBonus(ownerSeat), Multiplier(ownerSeat),

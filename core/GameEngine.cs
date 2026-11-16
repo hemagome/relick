@@ -192,7 +192,7 @@ public sealed partial class GameEngine
             CriticalDamage: skill.DamagePerReroll > 0 && !suppressed ? skill.CriticalDamageAt(p.CountersOnSkill(skillIndex)) : null,
             EffectsSuppressed: suppressed, SuperAttack: superAttack);
         State.Phase = Phase.AttackRerollChoice;
-        State.LastCombat = $"{p.Name} · Dado de ataque {die} · Decide si relanza con Yuno";
+        State.LastCombat = $"{p.Name} · Dado de ataque {die} · Decide si relanza con {p.Relikario.DisplayName}";
         ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
         return CommandResult.Ok();
     }
@@ -626,7 +626,7 @@ public sealed partial class GameEngine
         CurrentDieRoller = roller >= 0 ? roller : State.CurrentPlayer;
         var value = _random.Next(6) + 1;
         State.LastDie = value;
-        CurrentDieCaption = convertSix && value == 6 ? "Yuno · 6 se convierte en 5" : caption;
+        CurrentDieCaption = convertSix && value == 6 ? $"{State.Players[CurrentDieRoller].Relikario.DisplayName} · 6 se convierte en 5" : caption;
         DieRolled?.Invoke(value);
         return value;
     }

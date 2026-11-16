@@ -37,11 +37,11 @@ public partial class RelikarioPicker : VBoxContainer
 
     /// <summary>The square portrait shown on a Relikario's tile, or null while it has no art.</summary>
     internal static Texture2D? Portrait(string relikario) =>
-        relikario == RelikarioCatalog.Yuno.Id ? GD.Load<Texture2D>("res://assets/characters/yuno/portrait.png") : null;
+        RelikarioArt.Portrait(relikario);
 
     /// <summary>The printed Relikario card at a level, or null when it has none.</summary>
     internal static Texture2D? Card(string relikario, int level) =>
-        relikario == RelikarioCatalog.Yuno.Id && level is 1 or 2 ? GD.Load<Texture2D>($"res://assets/characters/yuno/card-lv{level}.png") : null;
+        RelikarioArt.Card(relikario, level);
 
     /// <summary>Initials that stand in for a portrait: "Yuno 8 bits" is Y8B, "Zii Jay" is ZJ.</summary>
     internal static string Monogram(string name)

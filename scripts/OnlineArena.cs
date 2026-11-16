@@ -18,10 +18,10 @@ public partial class OnlineArena : Control
     private Label _combatMessage = null!;
     private readonly HashSet<int> _selected = [];
     private readonly List<Button> _moveButtons = [];
-    private readonly YunoPortrait[] _portraits =
+    private readonly RelikarioPortrait[] _portraits =
     [
-        new() { Name = "YunoPortrait", PortraitHeight = 150, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill },
-        new() { Name = "EnemyYunoPortrait", PortraitHeight = 150, FlipHorizontal = true, AccentColor = ArenaPresentation.Coral,
+        new() { Name = "RelikarioPortrait", PortraitHeight = 150, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill },
+        new() { Name = "EnemyRelikarioPortrait", PortraitHeight = 150, FlipHorizontal = true, AccentColor = ArenaPresentation.Coral,
             SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill }
     ];
     private readonly LifeMeter[] _life = [new(), new()];
@@ -255,13 +255,14 @@ public partial class OnlineArena : Control
             var actionsLabel = relative == 0 ? "Tus acciones" : "Acciones del rival";
             crystals.Present(player.Actions, $"{actionsLabel} · {player.Name}", animateActions, rechargeActions);
             crystals.Visible = !_preparing && s.Phase != Phase.Preparation;
+            _portraits[relative].SetRelikario(player.RelikarioId);
             _portraits[relative].SetHealth(player.Health);
             var zahiras = new List<(string, Action)>();
             for (var slot = 0; slot < PlayerState.ZahiraSlots; slot++)
             {
                 if (player.Zahira(slot) is not { } host) continue;
                 var index = GameEngine.ZahiraIndex(slot);
-                zahiras.Add(($"Zahira Flair sobre {(host.Zone == FieldZone.Relikario ? RelikarioCatalog.Yuno.Name : CardCatalog.Get(host.CardId).Name)} · {s.Players[host.Owner].Name}",
+                zahiras.Add(($"Zahira Flair sobre {(host.Zone == FieldZone.Relikario ? RelikarioCatalog.NameOf(s.Players[host.Owner].RelikarioId) : CardCatalog.Get(host.CardId).Name)} · {s.Players[host.Owner].Name}",
                     () => SelectField(seat, FieldZone.Zahira, index)));
             }
             return new ArenaPlayerActions

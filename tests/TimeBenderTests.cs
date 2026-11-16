@@ -38,7 +38,7 @@ static class TimeBenderTests
                 Check(g.State.Turn == 2 && g.State.CurrentPlayer == actor && p.ActionsLeft == 1 && p.AttackRerollUsedThisTurn && p.StarEffects == 1 && p.Deck.Count == deck);
                 Check(g.Learn(actor, p.Hand.IndexOf(CardCatalog.Magnet.Id)).Success);
                 rng.EnqueueDie(5); Check(g.Attack(actor, p.Hand.IndexOf(CardCatalog.Attack.Id), 0).Success && g.State.Phase == Phase.Combat);
-                Check(!g.CanUseYunoOnPendingDie(actor) && g.State.Players[1 - actor].Health == 2);
+                Check(!g.CanUseRelikarioOnPendingDie(actor) && g.State.Players[1 - actor].Health == 2);
             }
         }),
         ("Doblador: la etapa de Combate repetida renueva a Jessica sin volver a enseñarla", () =>

@@ -199,7 +199,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.CodeResponse => m.Flag ? $"{name} responde con Caja de Cartón." : $"{name} deja resolver el código.",
             DuelMoveKind.PassDefense or DuelMoveKind.EffectDamage => $"{name} confirma recibir el daño.",
             DuelMoveKind.BoxDefense => $"{name} cancela el daño con Caja de Cartón.", DuelMoveKind.DestinyDefense => $"{name} se defiende con {card}.",
-            DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => m.Flag ? $"{name} relanza con Yuno." : $"{name} confirma el resultado del dado.",
+            DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => m.Flag ? $"{name} relanza con {(actor is 0 or 1 ? g.State.Players[actor].Relikario.DisplayName : "su Relikario")}." : $"{name} confirma el resultado del dado.",
             DuelMoveKind.Pc or DuelMoveKind.Pendant => $"{name} modifica el dado con {card}.",
             DuelMoveKind.Dexterity => $"{name} usa una ficha de destreza.", DuelMoveKind.LearningDie => $"{name} relanza por Reverse Shuffle.",
             DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => $"{name} descarta una carta.",

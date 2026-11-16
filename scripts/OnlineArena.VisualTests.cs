@@ -1467,7 +1467,7 @@ public partial class OnlineArena
                 ResetAnimations(); PresentTestSnapshot(snapshot);
                 var relative = exhaustedPlayer == seat ? 0 : 1;
                 var portrait = _portraits[relative];
-                Check(_portraits.All(p => p.AssetsReady), "No se cargan todos los clips de Yuno.");
+                Check(_portraits.All(p => p.AssetsReady), "No se cargan todos los clips del Relikario.");
                 Check(portrait.Motion == PortraitMotion.ExhaustedIdle && !portrait.IsActionPlaying &&
                     _portraits[1 - relative].Motion == PortraitMotion.Idle,
                     "La vista a cero vidas no selecciona el reposo correcto para cada jugador.");
@@ -1491,7 +1491,7 @@ public partial class OnlineArena
                         GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory,
                             $"impact-{die}-seat{seat}-player{exhaustedPlayer}.png"));
                     }
-                    portrait.AdvancePlayback(YunoPortrait.DurationFor(motion));
+                    portrait.AdvancePlayback(RelikarioPortrait.DurationFor(motion));
                     Check(portrait.Motion == PortraitMotion.ExhaustedIdle, "El último golpe vuelve al reposo sano.");
                 }
                 portrait.AdvancePlayback(portrait.DurationSeconds * 2.5);

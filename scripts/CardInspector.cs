@@ -10,7 +10,7 @@ internal static class CardInspectorText
     {
         var type = card.Kind switch
         {
-            CardKind.Skill => card.Id == CardCatalog.Magnet.Id || card.Id == CardCatalog.Destiny.Id ? "Habilidad · Yuno" : "Habilidad",
+            CardKind.Skill => RelikarioCatalog.Find(card.Relikario) is { } affinity ? $"Habilidad · {affinity.DisplayName}" : "Habilidad",
             CardKind.Code => card.CodeType switch
             {
                 CodeType.Character => "Código Personaje", CodeType.Object => "Código Objeto", CodeType.Play => "Código Jugada",

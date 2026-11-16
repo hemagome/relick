@@ -20,7 +20,7 @@ internal static class ArenaActionText
             Phase.Actions => s.ExtraActionStages > 0 ? "Repetir acciones" : "Finalizar turno",
             _ => s.ExtraFinalStages > 0 ? "Repetir final" : "Finalizar turno"
         },
-        DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => option.Move.Flag ? "Relanzar con Yuno" : "Conservar",
+        DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => option.Move.Flag ? $"Relanzar con {RelikarioCatalog.DisplayNameOf(s.Players.ElementAtOrDefault(s.MySeat)?.RelikarioId)}" : "Conservar",
         DuelMoveKind.LearningDie => "Relanzar con Reverse",
         DuelMoveKind.Dexterity => "Destreza · +1",
         DuelMoveKind.Pc => "Usar PC",

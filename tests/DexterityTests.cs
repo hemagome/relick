@@ -119,7 +119,7 @@ static class DexterityTests
         ("Destreza: relanzar después de gastar no restaura la ficha ni convierte una modificación en seis natural", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; p.AttackRerollUsedThisTurn = false;
-            StartAttack(g, rng, 3); Check(g.UseDexterity(0).Success && g.CanUseYunoOnPendingDie(0));
+            StartAttack(g, rng, 3); Check(g.UseDexterity(0).Success && g.CanUseRelikarioOnPendingDie(0));
             rng.EnqueueDie(6); Check(g.ResolveAttackReroll(0, true).Success);
             Check(p.Dexterity == 0 && !p.HasNaturalSix && g.State.LastAttackDie == 5);
         })

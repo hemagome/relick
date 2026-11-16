@@ -121,7 +121,7 @@ static class ComboResponseTests
             p.Relikario = RelikarioCatalog.YunoLv2; p.AttackRerollUsedThisTurn = false;
             p.Hand.Add(CardCatalog.ExtraLife.Id); p.Health = 1; rng.EnqueueDie(4);
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DieRerollChoice);
-            Check(g.SetComboResponses(0, false, out var resumed).Success && !resumed && g.CanUseYunoOnPendingDie(0));
+            Check(g.SetComboResponses(0, false, out var resumed).Success && !resumed && g.CanUseRelikarioOnPendingDie(0));
             Check(g.ResolveDieReroll(0, false).Success && p.Health == 4);
             p.Hand.Add(CardCatalog.FloppyDisk.Id); g.State.Players[1].Memory.Add(CardCatalog.Attack.Id);
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.MemoryRecoveryChoice);

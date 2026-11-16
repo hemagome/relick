@@ -1,11 +1,16 @@
 using Godot;
+using Relick.Core;
 
 namespace Relick;
 
 public enum PortraitMotion { Idle, Attack, Hit, ExhaustedIdle, Heal, HitNormal, HitCritical }
 
-/// <summary>One fixed canvas shared by all clips. UI rebuilds reparent this node, preserving playback.</summary>
-public partial class YunoPortrait : Control
+/// <summary>
+/// A Relikario's animated figure: one fixed canvas shared by all clips, read from that Relikario's art folder
+/// (<see cref="RelikarioArt"/>). UI rebuilds reparent this node, preserving playback. A Relikario without clips
+/// draws an empty stand instead of failing.
+/// </summary>
+public partial class RelikarioPortrait : Control
 {
     // A still clip is one drawing moved by a shader instead of a sheet of frames.
     private sealed record Clip(string File, int Frames, double Seconds, bool Loops, bool Still = false);
@@ -44,6 +49,8 @@ public partial class YunoPortrait : Control
     // Stabilize exact frame boundaries reached through repeated 60/120 Hz delta additions.
     public int CurrentFrame => Math.Min(FrameCount - 1, (int)(_elapsed / DurationSeconds * FrameCount + 1e-9));
     public bool AssetsReady => _sheets.Count == Clips.Count;
+    /// <summary>Any form's Id; forms of one Relikario share their clips.</summary>
+    public string RelikarioId { get; private set; } = RelikarioCatalog.Yuno.Id;
 
     public override void _Ready()
     {
@@ -53,24 +60,7 @@ public partial class YunoPortrait : Control
         if (CustomMinimumSize.Y <= 0) CustomMinimumSize = new Vector2(0, PortraitHeight);
         ReducedMotion = DisplayServer.AccessibilityShouldReduceAnimation() == 1 ||
             ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool();
-        foreach (var (motion, clip) in Clips)
-        {
-            var file = clip.File;
-            var texture = GD.Load<Texture2D>($"res://assets/characters/yuno/{file}.png");
-            if (clip.Still)
-            {
-                // Imported at half size like the sheets; only the padded canvas proportion matters.
-                if (texture == null || texture.GetWidth() * (FrameHeight + StillPadding * 2) != texture.GetHeight() * (FrameWidth + StillPadding * 2))
-                    throw new InvalidOperationException($"Imagen de reposo de Yuno inválida: {file}. Debe conservar la proporción {FrameWidth + StillPadding * 2} × {FrameHeight + StillPadding * 2}.");
-                _sheets.Add(motion, texture);
-                continue;
-            }
-            var rows = clip.Frames / Columns;
-            if (texture == null || texture.GetWidth() % Columns != 0 || texture.GetHeight() % rows != 0 ||
-                texture.GetWidth() / Columns * FrameHeight != texture.GetHeight() / rows * FrameWidth)
-                throw new InvalidOperationException($"Hoja de Yuno inválida: {file}. Debe conservar la cuadrícula {Columns} × {rows} y la proporción de cada fotograma.");
-            _sheets.Add(motion, texture);
-        }
+        LoadClips();
         _restMaterial = new ShaderMaterial { Shader = GD.Load<Shader>("res://scripts/yuno_idle.gdshader") };
         _restMaterial.SetShaderParameter("phase", FlipHorizontal ? 1.7f : 0f);
         _restMaterial.SetShaderParameter("strength", ReducedMotion ? 0.35f : 1f);
@@ -80,6 +70,41 @@ public partial class YunoPortrait : Control
         _sprite.Draw += DrawFigure;
         Resized += Refresh;
         Refresh();
+    }
+
+    /// <summary>Shows another Relikario; a new form of the same Relikario keeps the clips and the playback.</summary>
+    public void SetRelikario(string relikario)
+    {
+        if (RelikarioArt.Family(relikario) == RelikarioArt.Family(RelikarioId)) { RelikarioId = relikario; return; }
+        RelikarioId = relikario;
+        if (_sprite == null) return;
+        LoadClips();
+        Refresh();
+    }
+
+    private void LoadClips()
+    {
+        _sheets.Clear();
+        var name = RelikarioCatalog.NameOf(RelikarioId);
+        foreach (var (motion, clip) in Clips)
+        {
+            var file = clip.File;
+            // A missing clip leaves the stand empty; a malformed one is an art error worth stopping for.
+            if (RelikarioArt.Load(RelikarioId, file) is not { } texture) continue;
+            if (clip.Still)
+            {
+                // Imported at half size like the sheets; only the padded canvas proportion matters.
+                if (texture.GetWidth() * (FrameHeight + StillPadding * 2) != texture.GetHeight() * (FrameWidth + StillPadding * 2))
+                    throw new InvalidOperationException($"Imagen de reposo de {name} inválida: {file}. Debe conservar la proporción {FrameWidth + StillPadding * 2} × {FrameHeight + StillPadding * 2}.");
+                _sheets.Add(motion, texture);
+                continue;
+            }
+            var rows = clip.Frames / Columns;
+            if (texture.GetWidth() % Columns != 0 || texture.GetHeight() % rows != 0 ||
+                texture.GetWidth() / Columns * FrameHeight != texture.GetHeight() / rows * FrameWidth)
+                throw new InvalidOperationException($"Hoja de {name} inválida: {file}. Debe conservar la cuadrícula {Columns} × {rows} y la proporción de cada fotograma.");
+            _sheets.Add(motion, texture);
+        }
     }
 
     private void Refresh()

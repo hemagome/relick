@@ -128,7 +128,7 @@ public partial class DeckScreen : Control
 
     /// <summary>The Relikario's portrait cut from its skill cards, or null when it has none yet.</summary>
     internal static Texture2D? Thumbnail(string relikario) =>
-        relikario == RelikarioCatalog.Yuno.Id ? GD.Load<Texture2D>("res://assets/characters/yuno/thumbnail.png") : null;
+        RelikarioArt.Thumbnail(relikario);
 
     private void AddRow(string key, string relikario, string name, string summary, bool active, bool valid, bool busy, Action use, Action? edit, Action? copy, Action? delete)
     {

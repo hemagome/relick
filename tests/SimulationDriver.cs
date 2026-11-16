@@ -53,7 +53,7 @@ static class SimulationDriver
             if (die < 5 && combo >= 0 && game.CodeUnavailableReason(actor, combo) == null) return game.PlayCode(actor, combo);
             combo = p.Hand.FindIndex(id => CardCatalog.Get(id).RerollOwnDie);
             if (die < 4 && combo >= 0 && game.CodeUnavailableReason(actor, combo) == null) return game.PlayCode(actor, combo);
-            if (die < 5 && game.CanUseYunoOnPendingDie(actor))
+            if (die < 5 && game.CanUseRelikarioOnPendingDie(actor))
                 return attack ? game.ResolveAttackReroll(actor, true) : game.ResolveDieReroll(actor, true);
             if (die < 5 && game.CanUsePendant(actor, PendantEffect.AddTwo)) return game.UsePendant(actor, PendantEffect.AddTwo);
             if (die < 5 && game.CanUsePendant(actor, PendantEffect.AddOne)) return game.UsePendant(actor, PendantEffect.AddOne);
