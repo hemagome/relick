@@ -8,6 +8,14 @@ public sealed class PlayerState
 {
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool AutoPassCombos { get; internal set; }
+    /// <summary>
+    /// Cosmetic sleeve and die from the player's deck; no rule reads them. Null means the classic ones, which keeps
+    /// the saved state of every duel without a style byte-for-byte as before.
+    /// </summary>
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Sleeve { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Dice { get; internal set; }
     public PlayerState(RelikarioDefinition? relikario = null)
     {
         Relikario = relikario ?? RelikarioCatalog.Yuno;

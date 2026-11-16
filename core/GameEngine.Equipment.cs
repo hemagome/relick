@@ -124,7 +124,7 @@ public sealed partial class GameEngine
         if (effect == PendantEffect.Reroll) OnOwnDieRerolled(actor);
         var die = attack ? State.PendingAttackRoll!.Die : State.PendingDieRoll!.Die;
         die = effect switch { PendantEffect.AddOne => die + 1, PendantEffect.AddTwo => die + 2,
-            _ => attack ? RollAttack(out _, "Colgante · Relanzamiento", superAttack: State.PendingAttackRoll!.SuperAttack) : Roll("Colgante · Relanzamiento") };
+            _ => attack ? RollAttack(out _, "Colgante · Relanzamiento", superAttack: State.PendingAttackRoll!.SuperAttack) : Roll("Colgante · Relanzamiento", roller: actor) };
         Log($"{p.Name} usa Colgante de la Suerte ({effect}): el dado queda en {die}.");
         if (attack)
         {

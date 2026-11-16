@@ -19,6 +19,11 @@ public sealed class DuelOpening
     // Each seat's Trap deck. When present it replaces the three training fields above.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>[]? Traps { get; set; }
+    // Each seat's cosmetic sleeve and die (CosmeticCatalog ids). Older openings carry none and use the classic ones.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? Sleeves { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? Dice { get; set; }
 }
 
 public enum DuelMoveKind

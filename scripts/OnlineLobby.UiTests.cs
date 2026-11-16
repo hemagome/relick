@@ -101,6 +101,11 @@ public partial class OnlineLobby
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
                 GD.Print("PVP_GUIDANCE_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--cosmetics-only"))
+            {
+                await online.CheckCosmetics(); online.QueueFree(); await Layout();
+                GD.Print("PVP_COSMETICS_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--trap-recipe-only"))
             {
                 await online.CheckTrapRecipe(); online.QueueFree(); await Layout();
@@ -271,6 +276,7 @@ public partial class OnlineLobby
             await online.CheckBoardReading();
             await online.CheckPolishEffects();
             await online.CheckTrapRecipe();
+            await online.CheckCosmetics();
             await online.CheckActionCounters();
             await online.CheckMemoryInspection();
             await online.CheckPublicHistory();

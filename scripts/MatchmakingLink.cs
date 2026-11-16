@@ -7,6 +7,13 @@ public enum MatchmakingLinkState { Idle, Starting, Searching, Canceling, Matched
 // Decorative only: queue membership and matched rooms always come from the server.
 public partial class MatchmakingLink : Control
 {
+    private string? _sleeve;
+    /// <summary>The player's active-deck sleeve on their own card; the rival's silhouette stays classic until known.</summary>
+    public string? Sleeve
+    {
+        get => _sleeve;
+        set { if (_sleeve == value) return; _sleeve = value; if (IsInsideTree()) { _back = SleeveArt.Back(value); QueueRedraw(); } }
+    }
     public const double CycleSeconds = 2;
     public const double ConfirmationSeconds = 0.35;
     private Texture2D _back = null!;
@@ -28,7 +35,7 @@ public partial class MatchmakingLink : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Ignore;
-        _back = GD.Load<Texture2D>("res://assets/cards/card-back.png");
+        _back = SleeveArt.Back(Sleeve);
         Resized += QueueRedraw; VisibilityChanged += UpdateProcessing;
         Compact = _compact; UpdateProcessing();
     }

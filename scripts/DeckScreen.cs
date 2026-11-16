@@ -118,8 +118,8 @@ public partial class DeckScreen : Control
             var saved = deck;
             AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, summary, deck.Active, problems.Count == 0, busy,
                 use: () => Connection.SetActiveDeck(saved.Id),
-                edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps, saved.Side, saved.Relikario),
-                copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps, saved.Side, saved.Relikario),
+                edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps, saved.Side, saved.Relikario, saved.Sleeve, saved.Dice),
+                copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps, saved.Side, saved.Relikario, saved.Sleeve, saved.Dice),
                 delete: () => ConfirmDelete(saved));
         }
     }
@@ -202,17 +202,19 @@ public partial class DeckScreen : Control
         _margin.AddChild(Picker);
     }
 
-    internal void Edit(ulong id, string name, IReadOnlyList<string> cards, IReadOnlyList<string> traps, IReadOnlyList<string>? side = null, string? relikario = null)
+    internal void Edit(ulong id, string name, IReadOnlyList<string> cards, IReadOnlyList<string> traps, IReadOnlyList<string>? side = null, string? relikario = null,
+        string? sleeve = null, string? dice = null)
     {
         Clear();
         _editingId = id; _saving = false; _editingRelikario = relikario ?? RelikarioCatalog.Yuno.Id;
-        Editor = new DeckEditor { DeckName = name, Relikario = _editingRelikario, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen };
+        Editor = new DeckEditor { DeckName = name, Relikario = _editingRelikario, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen,
+            InitialSleeve = sleeve ?? CosmeticCatalog.DefaultSleeve, InitialDice = dice ?? CosmeticCatalog.DefaultDice };
         Editor.Closed += ShowList;
-        Editor.SaveRequested += (deckName, main, trapDeck, bench) =>
+        Editor.SaveRequested += (deckName, main, trapDeck, bench, deckSleeve, deckDice) =>
         {
             if (Connection.DeckPending) return;
             _savesBeforeEdit = Connection.DeckSaves; _saving = true;
-            Connection.SaveDeck(_editingId, deckName, _editingRelikario, main, trapDeck, bench);
+            Connection.SaveDeck(_editingId, deckName, _editingRelikario, main, trapDeck, bench, deckSleeve, deckDice);
             // Without a connection the request is not sent at all.
             if (!Connection.DeckPending) { _saving = false; Editor.Notify("No hay conexión con el servidor. Inténtalo de nuevo al reconectar."); }
         };

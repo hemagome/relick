@@ -211,6 +211,28 @@ Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque. `--board-reading-only` comprueba los contadores (sin solapes con ninguna zona, en cinco tamaños y ambos asientos), el golpe final, la segunda caída y la ranura por enseñar.
 
+## Personalización de mazos: micas y dados
+
+Cada mazo guardado tiene una mica y un dado. Son solo cosméticos y no cambian ninguna regla. El catálogo está en `core/CosmeticCatalog.cs`:
+
+- **Micas:** Clásica, Menta, Coral, Oro, Violeta y Medianoche.
+- **Dados:** Clásico, Menta, Coral, Oro, Violeta y Obsidiana.
+
+Funcionamiento:
+
+- **Editor.** La pestaña «Estilo», junto a Mazo y Banquillo, muestra una ficha por opción, con la elegida enmarcada en dorado. Mientras está abierta, pulsar el catálogo solo consulta la carta. Cambiar la mica o el dado marca el mazo como modificado, y guardar los envía con él. Duplicar un mazo copia su estilo. El mazo de entrenamiento usa la mica y el dado clásicos.
+- **Micas.** `SleeveArt` recolorea en bitono el reverso impreso: los negros toman el tono oscuro de la mica y los blancos el claro, y se añade un borde con su color de canto. Cada reverso se genera una vez, a 512 px de alto, y se conserva durante la sesión. La Clásica es el reverso impreso sin cambios.
+  - Se ve en el mazo y en las cartas corruptas de cada jugador, en la mano oculta del rival y en las cartas que vuelan.
+  - En la sala, la tarjeta de búsqueda muestra la mica del mazo activo.
+- **Dados.** `DiceFace.ApplyStyle` recolorea el cuerpo y los puntos del dado 3D. Cada tirada muestra el dado de quien tira, también cuando lanza el defensor (por ejemplo, con Esquivar), porque el evento visual del dado ahora indica quién tiró. Los dados de iniciativa conservan el estilo clásico, porque la preparación aún no conoce los estilos.
+- **Visibilidad.** Ambos jugadores ven la mica y el dado del otro: viajan en la apertura del duelo y en la vista pública de cada jugador (`DuelPlayerView.Sleeve` y `Dice`). Una partida anterior a esta versión usa los clásicos.
+
+Pruebas:
+
+- `--cosmetics-only`: la mica del dueño en el mazo, las corruptas y la mano rival, y el dado de quien tira.
+- `--decks-only`: la pestaña Estilo y el guardado.
+- Ambas forman parte de la matriz completa.
+
 ## Toques de animación
 
 Cuatro efectos cosméticos. Ninguno forma parte de `IsAnimating`: no bloquean jugadas ni decisiones. Todos se apagan con la preferencia de movimiento reducido del sistema o con `relick/accessibility/reduced_motion`.

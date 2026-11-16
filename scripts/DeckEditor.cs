@@ -11,9 +11,13 @@ public partial class DeckEditor : VBoxContainer
     public IReadOnlyList<string> InitialCards { get; init; } = [];
     public IReadOnlyList<string> InitialTraps { get; init; } = [];
     public IReadOnlyList<string> InitialSide { get; init; } = [];
+    /// <summary>The deck's cosmetic sleeve and die (CosmeticCatalog ids) when the editor opens.</summary>
+    public string InitialSleeve { get; init; } = CosmeticCatalog.DefaultSleeve;
+    public string InitialDice { get; init; } = CosmeticCatalog.DefaultDice;
     public bool ShortScreen { get; init; }
     /// <summary>Name, main deck, Trap deck and side deck as they should be stored.</summary>
-    public event Action<string, List<string>, List<string>, List<string>>? SaveRequested;
+    /// <summary>Name, main deck, Trap deck, side deck, sleeve and die.</summary>
+    public event Action<string, List<string>, List<string>, List<string>, string, string>? SaveRequested;
     public event Action? Closed;
 
     private static readonly (string Title, Func<CardDefinition, bool> Match)[] Groups =
@@ -44,6 +48,12 @@ public partial class DeckEditor : VBoxContainer
     private string _saved = "";
     /// <summary>The list on show, and where catalogue picks go: the deck (with its Trap deck) or the side deck.</summary>
     private bool _editingSide;
+    /// <summary>The style tab is on show: catalogue picks only inspect, and the list becomes the sleeve and die pickers.</summary>
+    private bool _editingStyle;
+    private string _sleeve = CosmeticCatalog.DefaultSleeve, _dice = CosmeticCatalog.DefaultDice;
+    private Button _styleTab = null!;
+    internal string Sleeve => _sleeve;
+    internal string Dice => _dice;
     private float CardScale => ShortScreen ? 0.6f : 0.8f;
 
     internal IReadOnlyDictionary<string, int> Counts => _counts;
@@ -56,7 +66,26 @@ public partial class DeckEditor : VBoxContainer
     internal bool EditingSide
     {
         get => _editingSide;
-        set { _editingSide = value; _deckTab.SetPressedNoSignal(!value); _sideTab.SetPressedNoSignal(value); Notify(""); Refresh(); }
+        set { _editingSide = value; _editingStyle = false; _deckTab.SetPressedNoSignal(!value); _sideTab.SetPressedNoSignal(value); _styleTab.SetPressedNoSignal(false); Notify(""); Refresh(); }
+    }
+
+    internal bool EditingStyle
+    {
+        get => _editingStyle;
+        set
+        {
+            if (!value) { EditingSide = _editingSide; return; }
+            _editingStyle = true; _deckTab.SetPressedNoSignal(false); _sideTab.SetPressedNoSignal(false); _styleTab.SetPressedNoSignal(true);
+            Notify(""); Refresh();
+        }
+    }
+
+    /// <summary>Chooses the deck's sleeve or die; an unknown id is ignored.</summary>
+    internal void ChooseStyle(string? sleeve = null, string? dice = null)
+    {
+        if (CosmeticCatalog.IsSleeve(sleeve)) _sleeve = sleeve!;
+        if (CosmeticCatalog.IsDice(dice)) _dice = dice!;
+        Refresh();
     }
 
     public override void _Ready()
@@ -68,6 +97,7 @@ public partial class DeckEditor : VBoxContainer
             if (CardCatalog.All.ContainsKey(id)) _counts[id] = _counts.GetValueOrDefault(id) + 1;
         foreach (var id in InitialSide)
             if (CardCatalog.All.ContainsKey(id)) _side[id] = _side.GetValueOrDefault(id) + 1;
+        _sleeve = CosmeticCatalog.Sleeve(InitialSleeve).Id; _dice = CosmeticCatalog.DiceFor(InitialDice).Id;
 
         var header = new HBoxContainer(); header.AddThemeConstantOverride("separation", 12); AddChild(header);
         var back = ArenaPresentation.Button(header, "← Mazos", RequestClose);
@@ -120,6 +150,9 @@ public partial class DeckEditor : VBoxContainer
         _sideTab = new Button { Name = "SideTab", ToggleMode = true, ButtonGroup = tabGroup, CustomMinimumSize = new(0, 44),
             SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "Ver el banquillo; las cartas del catálogo se añaden aquí." };
         _sideTab.Pressed += () => EditingSide = true; tabs.AddChild(_sideTab);
+        _styleTab = new Button { Name = "StyleTab", Text = "Estilo", ToggleMode = true, ButtonGroup = tabGroup, CustomMinimumSize = new(0, 44),
+            TooltipText = "Mica y dado de este mazo. Tu rival también los ve." };
+        _styleTab.Pressed += () => EditingStyle = true; tabs.AddChild(_styleTab);
         var listPanel = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         var frame = RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 8);
         frame.ContentMarginLeft = frame.ContentMarginRight = 12; frame.ContentMarginTop = frame.ContentMarginBottom = 10;
@@ -166,7 +199,7 @@ public partial class DeckEditor : VBoxContainer
         benchCount.Name = "BenchCount"; benchCount.MouseFilter = MouseFilterEnum.Ignore; benchCount.AddThemeFontOverride("font", RelickVisuals.Strong);
         benchRow.AddChild(benchCount);
         face.AddChild(bench);
-        face.Pressed += () => { Inspect(card); Add(card, _editingSide); };
+        face.Pressed += () => { Inspect(card); if (!_editingStyle) Add(card, _editingSide); };
         face.MouseEntered += () => Inspect(card);
         face.FocusEntered += () => Inspect(card);
         _catalog[card.Id] = (face, badge, bench, benchCount);
@@ -277,7 +310,7 @@ public partial class DeckEditor : VBoxContainer
     private void Save()
     {
         if (_name.Text.Trim().Length == 0) { Notify("Ponle un nombre al mazo antes de guardarlo."); _name.GrabFocus(); return; }
-        SaveRequested?.Invoke(_name.Text.Trim(), Main, Traps, Side);
+        SaveRequested?.Invoke(_name.Text.Trim(), Main, Traps, Side, _sleeve, _dice);
     }
 
     private void RequestClose()
@@ -291,7 +324,40 @@ public partial class DeckEditor : VBoxContainer
         dialog.PopupCentered();
     }
 
-    private string Fingerprint() => _name.Text.Trim() + "\n" + Tally(_counts) + "\n" + Tally(_side);
+    private string Fingerprint() => _name.Text.Trim() + "\n" + Tally(_counts) + "\n" + Tally(_side) + "\n" + _sleeve + "/" + _dice;
+
+    /// <summary>The sleeve and die pickers: one tile per option, the chosen one framed in gold.</summary>
+    private void BuildStyleRows()
+    {
+        var help = ArenaPresentation.Text("Solo cambian el aspecto: tu rival verá esta mica en tus cartas boca abajo y este dado en tus tiradas.", 13, BoardArt.Muted);
+        help.Name = "StyleHelp"; help.AutowrapMode = TextServer.AutowrapMode.WordSmart; _rows.AddChild(help);
+        void Section(string title, IEnumerable<(string Id, string Name)> options, string chosen, Func<string, Control> picture, Action<string> choose, string prefix)
+        {
+            _rows.AddChild(ArenaPresentation.Text(title, 12, BoardArt.Muted));
+            var grid = new HFlowContainer { Name = prefix + "Options" };
+            grid.AddThemeConstantOverride("h_separation", 8); grid.AddThemeConstantOverride("v_separation", 8); _rows.AddChild(grid);
+            foreach (var (id, name) in options)
+            {
+                var selected = id == chosen;
+                var tile = new Button { Name = prefix + "_" + id, CustomMinimumSize = new(ShortScreen ? 76 : 88, ShortScreen ? 112 : 132),
+                    TooltipText = name, AccessibilityName = $"{title.ToLowerInvariant()} {name}", MouseDefaultCursorShape = CursorShape.PointingHand };
+                if (selected) tile.AddThemeStyleboxOverride("normal", RelickVisuals.Frame(BoardArt.Tint(BoardArt.Gold, 0.14f), BoardArt.Gold, 8, 2));
+                var column = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+                column.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); column.OffsetTop = 6; column.OffsetBottom = -4;
+                tile.AddChild(column);
+                var art = picture(id); art.MouseFilter = MouseFilterEnum.Ignore; art.SizeFlagsVertical = SizeFlags.ExpandFill; column.AddChild(art);
+                var label = ArenaPresentation.Text(name, 12, selected ? BoardArt.Gold : BoardArt.Ink);
+                label.HorizontalAlignment = HorizontalAlignment.Center; label.MouseFilter = MouseFilterEnum.Ignore; column.AddChild(label);
+                tile.Pressed += () => choose(id);
+                grid.AddChild(tile);
+            }
+        }
+        Section("MICA", CosmeticCatalog.Sleeves.Select(s => (s.Id, s.Name)), _sleeve,
+            id => new TextureRect { Texture = SleeveArt.Back(id), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered }, id => ChooseStyle(sleeve: id), "Sleeve");
+        Section("DADO", CosmeticCatalog.Dice.Select(d => (d.Id, d.Name)), _dice,
+            id => new DiceSwatch { Style = id }, id => ChooseStyle(dice: id), "Dice");
+    }
 
     private static string Tally(Dictionary<string, int> counts) =>
         string.Join(",", counts.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => pair.Key + "×" + pair.Value));
@@ -328,6 +394,7 @@ public partial class DeckEditor : VBoxContainer
             entry.Card.SelfModulate = AtOwnLimit(CardCatalog.Get(id)) ? new Color(1, 1, 1, 0.45f) : Colors.White;
         }
         foreach (var child in _rows.GetChildren()) { _rows.RemoveChild(child); child.QueueFree(); }
+        if (_editingStyle) { BuildStyleRows(); return; }
         var shown = _editingSide ? _side : _counts;
         var toSide = !_editingSide;
         if (_editingSide)

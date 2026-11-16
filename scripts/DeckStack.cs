@@ -5,6 +5,9 @@ namespace Relick;
 /// <summary>Face-down deck; only its size is public.</summary>
 public partial class DeckStack : Control
 {
+    /// <summary>The owner's cosmetic sleeve (CosmeticCatalog id).</summary>
+    public string? Sleeve { get; init; }
+    internal Texture2D? BackTexture => _back;
     public int Amount { get; set; }
     public Color Accent { get; set; }
     private Texture2D? _back;
@@ -15,7 +18,7 @@ public partial class DeckStack : Control
         CustomMinimumSize = new(Math.Max(70, CustomMinimumSize.X), 116);
         MouseFilter = MouseFilterEnum.Pass;
         TooltipText = $"Mazo: {Amount} cartas restantes";
-        _back = GD.Load<Texture2D>("res://assets/cards/card-back.png");
+        _back = SleeveArt.Back(Sleeve);
         Resized += QueueRedraw;
     }
 

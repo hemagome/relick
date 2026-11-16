@@ -6,6 +6,9 @@ namespace Relick;
 /// <summary>Separate, inspectable memory piles. Corrupted cards expose no identity.</summary>
 public partial class MemoryZoneButton : Button
 {
+    /// <summary>The owner's cosmetic sleeve, shown on face-down corrupted cards.</summary>
+    public string? Sleeve { get; init; }
+    internal Texture2D? BackTexture => _back;
     public int Amount { get; init; }
     public bool Corrupted { get; init; }
     public CardDefinition? TopCard { get; init; }
@@ -44,7 +47,7 @@ public partial class MemoryZoneButton : Button
         TooltipText = Corrupted ? $"Cartas corruptas: {Amount}. Boca abajo. Pulsa para consultar esta zona."
             : $"Memoria: {Amount} carta(s) boca arriba. Pulsa para ver las cartas y sus efectos.";
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
-        if (Corrupted && Amount > 0) _back = GD.Load<Texture2D>("res://assets/cards/card-back.png");
+        if (Corrupted && Amount > 0) _back = SleeveArt.Back(Sleeve);
         if (!Corrupted && TopCard != null)
         {
             var preview = new HandCard { Name = "MemoryTopCard", Card = TopCard, Disabled = true, ShowBehindParent = Board,

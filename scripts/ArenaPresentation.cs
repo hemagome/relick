@@ -196,10 +196,10 @@ public static class ArenaPresentation
         var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Length, Accent = accent, Board = true,
             TopCard = owner.Memory.Length == 0 ? null : CardCatalog.Get(owner.Memory[^1]) };
         memory.Pressed += () => actions.Memory(false); Put(memory, 996, top, W, H);
-        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true, Board = true };
+        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true, Board = true, Sleeve = owner.Sleeve };
         corrupted.Pressed += () => actions.Memory(true); Put(corrupted, 996, bottom, W, H);
         // The space beside the deck stays free for a Relikario that plays with two decks.
-        Put(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, Board = true }, BoardCanvas.DesignWidth - W, bottom, W, H);
+        Put(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, Board = true, Sleeve = owner.Sleeve }, BoardCanvas.DesignWidth - W, bottom, W, H);
     }
 
     /// <summary>
@@ -344,12 +344,12 @@ public static class ArenaPresentation
         var zones = new VBoxContainer { CustomMinimumSize = new(70, 0),
             SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.ShrinkBegin };
         zones.AddThemeConstantOverride("separation", 6);
-        zones.AddChild(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter });
+        zones.AddChild(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter, Sleeve = owner.Sleeve });
         var memories = new HBoxContainer(); memories.AddThemeConstantOverride("separation", 6);
         var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Length, Accent = accent,
             TopCard = owner.Memory.Length == 0 ? null : CardCatalog.Get(owner.Memory[^1]) };
         memory.Pressed += () => actions.Memory(false); memories.AddChild(memory);
-        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true };
+        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true, Sleeve = owner.Sleeve };
         corrupted.Pressed += () => actions.Memory(true); memories.AddChild(corrupted);
         if (!narrow) zones.AddChild(memories);
         var permanent = new VBoxContainer { CustomMinimumSize = new(92, 0),

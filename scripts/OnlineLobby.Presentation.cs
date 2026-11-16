@@ -209,6 +209,8 @@ public partial class OnlineLobby
         _decks.Disabled = !ready || busy || searching || room != null;
         var activeDeck = _lobby.Decks.FirstOrDefault(deck => deck.Active);
         _decks.Text = DeckButtonText(activeDeck?.Name ?? "Entrenamiento");
+        // The searching card shows the sleeve the player will bring; the training deck keeps the classic one.
+        _matchLink.Sleeve = activeDeck?.Sleeve;
         _decks.Icon = DeckScreen.Thumbnail(activeDeck?.Relikario ?? RelikarioCatalog.Yuno.Id);
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;

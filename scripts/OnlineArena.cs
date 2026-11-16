@@ -509,7 +509,7 @@ public partial class OnlineArena : Control
             var id = hand[i];
             var owner = opponent.HandOwners is { } owners && i < owners.Length && owners[i] is int seat
                 ? new CardOwner(seat, _snapshot!.Players[seat].Name) : null;
-            var card = new OpponentHandCard { Name = $"OpponentHandCard{i}", PublicCard = id == null ? null : CardCatalog.Get(id),
+            var card = new OpponentHandCard { Name = $"OpponentHandCard{i}", PublicCard = id == null ? null : CardCatalog.Get(id), Sleeve = opponent.Sleeve,
                 OriginalOwner = owner, ViewerSeat = _snapshot.MySeat, FaceSize = face };
             var index = i;
             card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);

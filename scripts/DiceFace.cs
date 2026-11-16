@@ -1,4 +1,5 @@
 using Godot;
+using Relick.Core;
 
 namespace Relick;
 
@@ -11,7 +12,10 @@ public partial class DiceFace : Control
     private const float HalfSize = 0.68f;
     private static readonly Vector3[] FaceNormals =
         { Vector3.Zero, Vector3.Back, Vector3.Up, Vector3.Right, Vector3.Left, Vector3.Down, Vector3.Forward };
-    private readonly Queue<(int Value, string Caption, bool Adjusted)> _queuedRolls = new();
+    private readonly Queue<(int Value, string Caption, bool Adjusted, string? Style)> _queuedRolls = new();
+    private StandardMaterial3D? _bodyMaterial, _pipMaterial;
+    /// <summary>The cosmetic die on show (CosmeticCatalog id); each roll may bring its roller's.</summary>
+    public string Style { get; private set; } = CosmeticCatalog.DefaultDice;
     internal int LatestResult => _queuedRolls.Count > 0 ? _queuedRolls.Last().Value : Value;
     public string RollCaption { get; private set; } = "";
     public bool HasPendingRolls => _queuedRolls.Count > 0;
@@ -63,7 +67,7 @@ public partial class DiceFace : Control
     }
     internal void ShowAdjustedResult(int value, string caption)
     {
-        if (IsBusy) { _queuedRolls.Enqueue((value, caption, true)); return; }
+        if (IsBusy) { _queuedRolls.Enqueue((value, caption, true, null)); return; }
         ApplyAdjustedResult(value, caption);
     }
     private void ApplyAdjustedResult(int value, string caption)
@@ -143,18 +147,19 @@ public partial class DiceFace : Control
         _cube.AddChild(new MeshInstance3D
         {
             Mesh = RoundedCube(),
-            MaterialOverride = new StandardMaterial3D
+            MaterialOverride = _bodyMaterial = new StandardMaterial3D
             {
                 AlbedoColor = new Color("eee4d1"), Metallic = 0.05f, Roughness = 0.28f,
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled
             }
         });
         var pipMesh = new SphereMesh { Radius = 0.087f, Height = 0.174f, RadialSegments = 16, Rings = 8 };
-        var pipMaterial = new StandardMaterial3D
+        var pipMaterial = _pipMaterial = new StandardMaterial3D
         {
             AlbedoColor = new Color("172438"), Roughness = 0.8f,
             SpecularMode = BaseMaterial3D.SpecularModeEnum.Disabled
         };
+        ApplyStyle(Style);
         for (var face = 1; face <= 6; face++)
         {
             var normal = FaceNormals[face];
@@ -220,11 +225,21 @@ public partial class DiceFace : Control
         _ => Quaternion.Identity
     });
 
-    public void QueueRoll(int result, string caption = "")
+    /// <param name="style">The roller's cosmetic die; null keeps the one on show.</param>
+    public void QueueRoll(int result, string caption = "", string? style = null)
     {
         if (result is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(result));
-        if (IsBusy) _queuedRolls.Enqueue((result, caption, false));
-        else StartRoll(result, caption);
+        if (IsBusy) _queuedRolls.Enqueue((result, caption, false, style));
+        else StartRoll(result, caption, style);
+    }
+
+    /// <summary>Recolours the die's body and pips; an unknown id shows the classic die.</summary>
+    public void ApplyStyle(string? style)
+    {
+        var chosen = CosmeticCatalog.DiceFor(style);
+        Style = chosen.Id;
+        if (_bodyMaterial != null) _bodyMaterial.AlbedoColor = new Color(chosen.Body);
+        if (_pipMaterial != null) _pipMaterial.AlbedoColor = new Color(chosen.Pips);
     }
 
     public void RollTo(int result)
@@ -233,9 +248,10 @@ public partial class DiceFace : Control
         StartRoll(result);
     }
 
-    private void StartRoll(int result, string caption = "")
+    private void StartRoll(int result, string caption = "", string? style = null)
     {
         if (result < 1 || result > 6) throw new ArgumentOutOfRangeException(nameof(result));
+        if (style != null) ApplyStyle(style);
         RollCaption = caption;
         _launchCount++;
         _start = Quaternion.FromEuler(new Vector3(0.7f, _launchCount * 0.83f, -0.4f));
@@ -257,7 +273,7 @@ public partial class DiceFace : Control
         {
             var next = _queuedRolls.Dequeue();
             if (next.Adjusted) { ApplyAdjustedResult(next.Value, next.Caption); RollFinished?.Invoke(); }
-            else StartRoll(next.Value, next.Caption);
+            else StartRoll(next.Value, next.Caption, next.Style);
         }
         if (!IsRolling && _resultRemaining <= 0 && _glow <= 0) return;
         delta = Math.Max(0, delta);

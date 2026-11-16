@@ -142,10 +142,27 @@ public partial class OnlineLobby
             Expect(!editor.EditingSide && editor.Problems.Count == 0 && ((Button)editor.FindChild("SideTab", true, false)).Text.Contains("10/10"),
                 "volver al mazo pierde el banquillo o los totales.");
 
-            var saved = (name: "", main: 0, traps: 0, side: 0);
-            editor.SaveRequested += (name, main, traps, side) => saved = (name, main.Count, traps.Count, side.Count);
+            // Style: a tab of its own; picking only changes the look, and the save carries it.
+            var cardsBefore = editor.Main.Count;
+            ((Button)editor.FindChild("StyleTab", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(editor.EditingStyle && editor.FindChild("SleeveOptions", true, false) is HFlowContainer sleeves &&
+                sleeves.GetChildCount() == CosmeticCatalog.Sleeves.Count && editor.FindChild("DiceOptions", true, false) is HFlowContainer dice &&
+                dice.GetChildCount() == CosmeticCatalog.Dice.Count, "la pestaña Estilo no ofrece todas las micas y dados.");
+            ((Button)editor.FindChild("Catalog_" + playable[0].Id, true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(editor.Main.Count == cardsBefore, "pulsar el catálogo en la pestaña Estilo añade cartas.");
+            ((Button)editor.FindChild("Sleeve_oro", true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            ((Button)editor.FindChild("Dice_obsidiana", true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(editor.Sleeve == "oro" && editor.Dice == "obsidiana" && editor.Dirty, "elegir mica y dado no cambia el mazo editado.");
+            foreach (var button in editor.FindChild("DeckList", true, false)!.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
+                Inside(button, "Una opción de estilo");
+            await Capture("deck-style");
+            ((Button)editor.FindChild("DeckTab", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(!editor.EditingStyle && !editor.EditingSide, "volver al mazo deja abierta la pestaña Estilo.");
+
+            var saved = (name: "", main: 0, traps: 0, side: 0, sleeve: "", dice: "");
+            editor.SaveRequested += (name, main, traps, side, sleeve, die) => saved = (name, main.Count, traps.Count, side.Count, sleeve, die);
             ((Button)editor.FindChild("SaveDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed);
-            Expect(saved == ("Mazo nuevo", 42, 3, 10), "guardar no entrega el nombre, las 42 cartas, las 3 Trampas y el banquillo.");
+            Expect(saved == ("Mazo nuevo", 42, 3, 10, "oro", "obsidiana"), "guardar no entrega el nombre, las cartas, las Trampas, el banquillo y el estilo.");
             editor.Remove(playable[0]);
             Expect(editor.Problems.Count > 0 && editor.Main.Count == 41, "quitar una carta no actualiza el mazo.");
             editor.Add(playable[0]);

@@ -32,7 +32,8 @@ public static partial class Module
         public string Json;
     }
 
-    private static DuelOpening InitialDuel(Opening opening, IEnumerable<Member> members, IEnumerable<Card> roomCards, Func<Identity, List<string>?> trapsOf)
+    private static DuelOpening InitialDuel(Opening opening, IEnumerable<Member> members, IEnumerable<Card> roomCards, Func<Identity, List<string>?> trapsOf,
+        Func<Identity, (string Sleeve, string Dice)?>? styleOf = null)
     {
         var players = members.OrderBy(m => m.Seat).ToArray();
         var cards = roomCards.ToList();
@@ -44,7 +45,10 @@ public static partial class Module
             Decks = players.Select(p => cards.Where(c => c.Owner == p.Player && !c.InHand && c.Id != bonuses[p.Seat]).OrderBy(c => c.Position).Select(c => c.Definition).ToList()).ToArray(),
             Bonuses = bonuses.Select(id => (string?)cards.Single(c => c.Id == id).Definition).ToArray(),
             // Rooms dealt before Trap decks existed have no loadout and keep the training Traps.
-            Traps = players.Select(p => trapsOf(p.Player) ?? CardCatalog.TrainingTraps()).ToArray()
+            Traps = players.Select(p => trapsOf(p.Player) ?? CardCatalog.TrainingTraps()).ToArray(),
+            // Cosmetic only: each seat's sleeve and die, classic when the room was dealt before styles existed.
+            Sleeves = players.Select(p => styleOf?.Invoke(p.Player)?.Sleeve ?? CosmeticCatalog.DefaultSleeve).ToArray(),
+            Dice = players.Select(p => styleOf?.Invoke(p.Player)?.Dice ?? CosmeticCatalog.DefaultDice).ToArray()
         };
     }
 

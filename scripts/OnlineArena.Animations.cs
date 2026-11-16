@@ -338,7 +338,9 @@ public partial class OnlineArena
 
     private void PresentDieCue(DuelVisualEvent cue)
     {
-        if (cue.Kind == DuelVisualKind.Die) _die.QueueRoll(cue.Value, cue.Caption);
+        // Each roll shows the roller's cosmetic die; older servers do not say who rolled, so the turn's player's is shown.
+        if (cue.Kind == DuelVisualKind.Die)
+            _die.QueueRoll(cue.Value, cue.Caption, _snapshot?.Players.ElementAtOrDefault(cue.Player is 0 or 1 ? cue.Player : _snapshot.CurrentPlayer)?.Dice);
         else _die.ShowAdjustedResult(cue.Value, cue.Caption);
     }
 
@@ -462,7 +464,9 @@ public partial class OnlineArena
             _activeFlight = next; _flightTarget = target;
             SetDestinationPending(next, target, true);
             _flight = new Control { Name = "NetworkCardFlight", Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore, ZIndex = 20 }; AddChild(_flight);
-            static TextureRect Back() => FlightBack();
+            // Cards in flight show their owner's sleeve.
+            var sleeve = SleeveArt.Of(_snapshot, next.Event.Player);
+            TextureRect Back() => FlightBack(sleeve);
             if (kind == DuelVisualKind.Shuffle)
             {
                 for (var i = 0; i < 4; i++) { var back = Back(); _flight.AddChild(back); _shuffleBacks.Add(back); }
@@ -521,7 +525,7 @@ public partial class OnlineArena
         }
         PlayPendingPortraits();
     }
-    private static TextureRect FlightBack() => new() { Texture = GD.Load<Texture2D>("res://assets/cards/card-back.png"),
+    private static TextureRect FlightBack(string? sleeve = null) => new() { Texture = SleeveArt.Back(sleeve),
         ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         Position = new(1, 7), Size = new(124, 175), MouseFilter = MouseFilterEnum.Ignore };
 
@@ -545,7 +549,7 @@ public partial class OnlineArena
         { SetDestinationPending(pair, target, false); return; }
         SetDestinationPending(pair, target, true);
         var node = new Control { Name = "NetworkCardFlightPair", Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore, ZIndex = 20 }; AddChild(node);
-        var back = FlightBack(); node.AddChild(back);
+        var back = FlightBack(SleeveArt.Of(_snapshot, pair.Event.Player)); node.AddChild(back);
         var hand = _snapshot.Players[_snapshot.MySeat].Hand;
         HandCard? front = null;
         if (!discard && own && pair.Event.Value < hand.Length)
