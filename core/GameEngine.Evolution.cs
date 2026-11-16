@@ -70,7 +70,7 @@ public sealed partial class GameEngine
             return CommandResult.Fail("No te corresponde decidir esta tirada.");
         var pending = State.PendingDieRoll!;
         var p = State.Players[actor];
-        if (reroll && !CanUseYunoOnPendingDie(actor))
+        if (reroll && !CanUseRelikarioOnPendingDie(actor))
             return CommandResult.Fail("No puedes volver a relanzar este dado.");
         var die = pending.Die;
         var count = pending.Rerolls;
@@ -78,9 +78,9 @@ public sealed partial class GameEngine
         {
             OnOwnDieRerolled(actor);
             p.AttackRerollUsedThisTurn = true;
-            die = Roll("Yuno Lv 2 · Relanzamiento", roller: actor); count++;
-            Log($"{p.Name} usa Yuno Lv 2: relanzamiento {count}/2 de {pending.Purpose}, resultado {die}.");
-            State.PendingDieRoll = pending with { Die = die, Rerolls = count, WasRerolled = true, Modified = true, YunoStopped = die == 1 };
+            die = Roll($"{p.Relikario.DisplayName} Lv {p.Level} · Relanzamiento", roller: actor); count++;
+            Log($"{p.Name} usa {p.Relikario.DisplayName} Lv {p.Level}: relanzamiento {count}/{p.Relikario.MaxRerolls} de {pending.Purpose}, resultado {die}.");
+            State.PendingDieRoll = pending with { Die = die, Rerolls = count, WasRerolled = true, Modified = true, RerollStopped = die == 1 };
             if (CanRespondToEffectDie()) return CommandResult.Ok();
         }
         if (!State.PendingDieRoll!.Modified) RegisterNaturalSix(p, die);

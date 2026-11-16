@@ -75,7 +75,7 @@ public static class ArenaPresentation
     /// half is the same field turned around.
     /// </summary>
     public static void Field(BoardCanvas canvas, DuelPlayerView owner, int index, bool enemy, bool active, bool preparing,
-        int selectedSkill, YunoPortrait portrait, LifeMeter life, ActionCrystalPool crystals, ArenaPlayerActions actions,
+        int selectedSkill, RelikarioPortrait portrait, LifeMeter life, ActionCrystalPool crystals, ArenaPlayerActions actions,
         Action bonusPressed, Action<int> exchangePressed)
     {
         const float W = BoardCanvas.CardWidth, H = BoardCanvas.CardHeight;
@@ -114,8 +114,8 @@ public static class ArenaPresentation
         // Whose turn it is lives in the phase bar's status cell; the name is only the name.
         var ownerName = Heading(owner.Name, 17, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; info.AddChild(ownerName);
-        var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", 11, BoardArt.Muted);
-        name.ClipText = true; name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · {RelikarioCatalog.Yuno.Name} · Vida máxima: {owner.MaxHealth}";
+        var name = Text($"{RelikarioCatalog.NameOf(owner.RelikarioId)} · Lv {owner.Level}", 11, BoardArt.Muted);
+        name.ClipText = true; name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · {RelikarioCatalog.NameOf(owner.RelikarioId)} · Vida máxima: {owner.MaxHealth}";
         info.AddChild(name);
         life.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         life.ReachedZero = owner.HasReachedZero;
@@ -294,7 +294,7 @@ public static class ArenaPresentation
     }
 
     public static void Player(Node arena, DuelPlayerView owner, int index, bool enemy, bool active,
-        int selectedSkill, YunoPortrait portrait, LifeMeter life, ActionCrystalPool crystals, ArenaPlayerActions actions,
+        int selectedSkill, RelikarioPortrait portrait, LifeMeter life, ActionCrystalPool crystals, ArenaPlayerActions actions,
         bool compact, bool narrow = false)
     {
         var accent = enemy ? Coral : Mint;
@@ -308,7 +308,7 @@ public static class ArenaPresentation
         names.AddThemeConstantOverride("separation", 0);
         var ownerName = Text(owner.Name, 9, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = compact; ownerName.TooltipText = owner.Name; names.AddChild(ownerName);
-        var name = Text($"{RelikarioCatalog.Yuno.Name} · Lv {owner.Level}", compact ? 15 : 18);
+        var name = Text($"{RelikarioCatalog.NameOf(owner.RelikarioId)} · Lv {owner.Level}", compact ? 15 : 18);
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · Vida máxima: {owner.MaxHealth}";
         names.AddChild(name); header.AddChild(names);

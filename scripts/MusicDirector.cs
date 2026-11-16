@@ -9,10 +9,8 @@ public enum MusicPhase { Menu, Combat, Climax }
 public partial class MusicDirector : AudioStreamPlayer
 {
     [Export] public string DefaultEnemyTheme { get; set; } = "yuno";
-    [Export] public Godot.Collections.Dictionary<string, string> ThemeAliases { get; set; } = new()
-    {
-        ["yuno-lv2"] = "yuno"
-    };
+    /// <summary>Overrides for a Relikario whose theme is not its own; every form already shares its base form's theme.</summary>
+    [Export] public Godot.Collections.Dictionary<string, string> ThemeAliases { get; set; } = new();
     public MusicPhase DesiredPhase { get; private set; } = MusicPhase.Menu;
     public string EnemyTheme { get; private set; } = "yuno";
     public int DesiredClipIndex { get; private set; } = -1;
@@ -53,7 +51,7 @@ public partial class MusicDirector : AudioStreamPlayer
         if (snapshot.Players.Length != 2 || snapshot.MySeat is < 0 or > 1) return;
         // A player's soundtrack is determined exclusively by the opposing Relikario.
         var enemy = snapshot.Players[1 - snapshot.MySeat].RelikarioId;
-        EnemyTheme = ThemeAliases.TryGetValue(enemy, out var theme) ? theme : enemy;
+        EnemyTheme = ThemeAliases.TryGetValue(enemy, out var theme) ? theme : RelikarioArt.Family(enemy);
         // Latch the first zero, including a recovered duel whose players healed later.
         _climax |= snapshot.Players.Any(p => p.Health <= 0 || p.HasReachedZero);
         Request(_climax ? MusicPhase.Climax : MusicPhase.Combat);

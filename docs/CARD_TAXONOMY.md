@@ -6,7 +6,7 @@ Especificación proporcionada por el usuario el 7 de noviembre de 2026. Es la re
 
 | Categoría | Clasificación y datos necesarios | Comportamiento indicado |
 |---|---|---|
-| Relikario | Puntos de vida, habilidad propia, requisito de evolución, evolución y personaje animado asociado. | El Relikario determina su representación animada. Actualmente solo está codificado Yuno Gyambura, con su evolución. |
+| Relikario | Puntos de vida, habilidad propia, requisito de evolución, evolución y personaje animado asociado. | El Relikario determina su representación animada. Actualmente solo está codificado Yuno Gyambura, con su evolución. Cómo añadir otro: [Añadir un Relikario](#añadir-un-relikario). |
 | Habilidad | Genérica o específica de un Relikario. | La afinidad es un dato de la carta que debe poder consultar el deckbuilding y los efectos. Magnet Shuffle y Destiny Shuffle son específicas de Yuno; no son genéricas. |
 | Ataque | Carta de ataque con ilustración asociada al Relikario. | La representación gráfica depende del Relikario. Esto no implica por sí mismo cambiar el efecto o crear una definición mecánica distinta por cada ilustración. |
 | Equipo | Equipo normal o equipo ligero. | Como máximo un equipo normal equipado. Los equipos ligeros no tienen límite de cantidad y equiparlos no exige destruir el equipo normal ni los otros ligeros. |
@@ -75,11 +75,22 @@ Separar los siguientes conceptos para que el deckbuilding y los efectos puedan c
 
 No se establecen aquí tamaños de mazo/extradeck, límites de copias ni nuevas restricciones de afinidad para ataques o equipos. Esos requisitos no fueron especificados en esta clasificación.
 
+## Añadir un Relikario
+
+El motor y el cliente ya no suponen que el Relikario es Yuno:
+
+- **Catálogo.** `RelikarioCatalog.All` reúne cada forma, evoluciones incluidas. `EvolvesTo` indica la forma siguiente y `BaseForm` la forma base de una evolución. `ShortName` es el nombre de los mensajes («Relanzar con Yuno»). Ninguno de estos datos se guarda en el duelo: al cargar, el Relikario se vuelve a leer del catálogo por su identificador.
+- **Jugable.** Añade la forma base a `Playable` y su `Definition` en `Roster`.
+- **Arte.** Coloca los archivos en `assets/characters/<forma base>/` con los mismos nombres que Yuno (`thumbnail`, `portrait`, `card-lv1`, `card-lv2`, los clips del retrato). `RelikarioArt` los busca ahí; si falta un archivo, se usan las iniciales o el retrato queda vacío. Todas las formas comparten la carpeta de su forma base.
+- **Música.** El tema del rival es la forma base de su Relikario; `MusicDirector.ThemeAliases` solo hace falta para una excepción.
+- **Habilidad.** Sigue pendiente (ver la tabla siguiente).
+
 ## Diferencias con el código actual
 
 | Modelo del MVP | Adaptación pendiente |
 |---|---|
-| `RelikarioDefinition` y evolución codificada para Yuno; retratos e ilustración de ataque vinculados directamente a recursos de Yuno. | Hacer explícitas las relaciones de evolución y el perfil visual por Relikario al ampliar personajes. |
+| La habilidad del Relikario se expresa con los indicadores de relanzamiento de Yuno (`CanRerollAttack`, `MaxRerolls`, `CanRerollAnyDie`, `ConvertRerolledSix`, `AttackDieBonusExceptOne`). | Diseñar el punto de extensión de habilidades con el texto real del segundo Relikario, en lugar de añadir otro indicador. La evolución, los nombres y el arte ya no dependen de Yuno. |
+| La preparación (elección de habilidad y mulligan) muestra a ambos jugadores con los datos de Yuno, porque el servidor todavía no publica el Relikario del mazo antes del duelo. | Publicar el Relikario de cada jugador en la preparación cuando exista un segundo Relikario jugable. |
 | Las habilidades solo tienen `CardKind.Skill`; Magnet y Destiny no incluyen metadatos de afinidad. | Declarar que ambas son específicas de Yuno y admitir habilidades genéricas. Aplicar esa información al deckbuilding y a las validaciones correspondientes. |
 | `PlayerState.Equipment` contiene una sola carta y equipar otra sustituye la anterior. | Diferenciar equipo normal y colección de ligeros, con sus límites y objetivos correctos. |
 | No hay categoría ni estado de área. | Añadir categoría, dos efectos, dueño, orientación y relación con la zona Bonus. |

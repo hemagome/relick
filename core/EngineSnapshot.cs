@@ -62,11 +62,13 @@ public sealed partial class GameEngine
             saved.State.TrapCraftQueue ??= oldCrafts.Select(actor => new TrapCraft(actor, CardCatalog.SuperMagnet.Id)).ToList();
             saved.State.PendingTrapCrafts = null;
         }
-        // Earlier saves stored Yuno Lv 2 with ten maximum lives. Restore its corrected cap.
+        // The saved Relikario is only an Id plus a copy of its numbers: take the catalog's current definition, which
+        // also carries what is never saved (evolution, display name). Earlier saves stored Yuno Lv 2 with ten maximum
+        // lives; the catalog restores its corrected cap.
         foreach (var player in saved.State.Players)
-            if (player.Relikario.Id == RelikarioCatalog.YunoLv2.Id)
+            if (RelikarioCatalog.Find(player.Relikario.Id) is { } current)
             {
-                player.Relikario = RelikarioCatalog.YunoLv2;
+                player.Relikario = current;
                 player.Health = Math.Min(player.Health, player.MaxHealth);
             }
         EngineActivation? Frame(int index) => index == -1 ? null : index >= 0 && index < saved.Frames.Count ? saved.Frames[index].Frame :

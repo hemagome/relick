@@ -9,7 +9,7 @@ public sealed partial class GameEngine
         var pending = State.PendingAttackRoll;
         if (pending == null || pending.Attacker != actor) return CommandResult.Fail("No hay una tirada de ataque pendiente.");
         var p = State.Active;
-        if (reroll && !CanUseYunoOnPendingDie(actor))
+        if (reroll && !CanUseRelikarioOnPendingDie(actor))
             return CommandResult.Fail("No puedes relanzar este dado con la habilidad del Relikario.");
         if (!reroll)
         {
@@ -21,12 +21,12 @@ public sealed partial class GameEngine
         p.AttackRerollUsedThisTurn = true;
         OnOwnDieRerolled(actor);
         pending = State.PendingAttackRoll!;
-        var rolled = RollAttack(out _, $"Yuno Lv {p.Level} · Relanzamiento", p.Relikario.ConvertRerolledSix, pending.SuperAttack);
+        var rolled = RollAttack(out _, $"{p.Relikario.DisplayName} Lv {p.Level} · Relanzamiento", p.Relikario.ConvertRerolledSix, pending.SuperAttack);
         var die = rolled == 6 && p.Relikario.ConvertRerolledSix ? 5 : rolled;
         var count = pending.Rerolls + 1;
-        Log($"{p.Name} activa Yuno Lv {p.Level}: relanza {pending.Die} y obtiene {rolled}." +
+        Log($"{p.Name} activa {p.Relikario.DisplayName} Lv {p.Level}: relanza {pending.Die} y obtiene {rolled}." +
             (rolled != die ? " El 6 se convierte en 5; no es crítico." : ""));
-        State.PendingAttackRoll = pending with { Die = die, Rerolls = count, WasRerolled = true, Modified = true, YunoStopped = die == 1 };
+        State.PendingAttackRoll = pending with { Die = die, Rerolls = count, WasRerolled = true, Modified = true, RerollStopped = die == 1 };
         State.LastAttackDie = die;
         State.LastCombat = $"{p.Name} · Dado {die} · Elige si conservas el resultado";
         ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
