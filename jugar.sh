@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
+# Compila y abre Relick. Uso: ./jugar.sh [--headless] [opciones del juego]
+# Las opciones del juego (--pvp-ui-test, --pvp-profile=...) no necesitan `--`;
+# si escribes `--`, lo anterior va a Godot y lo posterior al juego, como antes.
 set -euo pipefail
 relick_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$relick_root"
 
-# Optional local paths, never needed when Godot and the .NET SDK are on PATH.
-if [[ -f .runtime.env ]]; then
-  source .runtime.env
-fi
-relick_godot="${RELICK_GODOT:-}"
-if [[ -z "$relick_godot" ]]; then
-  relick_godot="$(command -v godot || command -v godot4 || true)"
-fi
-if [[ -z "$relick_godot" || ! -x "$relick_godot" ]]; then
-  echo "Necesitas Godot .NET 4.7.2 o posterior. Consulta README.md."
+# Rutas locales opcionales (no versionado), igual que en export-*.sh.
+[[ -f .runtime.env ]] && source .runtime.env
+relick_godot="${RELICK_GODOT:-$(command -v godot || command -v godot4 || true)}"
+if [[ -z "$relick_godot" || ! -x "$relick_godot" ]] || ! command -v dotnet >/dev/null; then
+  echo "Necesitas Godot .NET 4.7.2 o posterior y el SDK de .NET 8. Consulta README.md."
   exit 1
 fi
-if ! command -v dotnet >/dev/null || [[ -z "$(dotnet --list-sdks)" ]]; then
-  echo "Necesitas el SDK de .NET 8 (el runtime no basta). Consulta README.md."
-  exit 1
-fi
-# Android y escritorio comparten la caché de NuGet, pero usan frameworks distintos.
-# La restauración incremental comprueba el destino antes de reutilizarla.
+
+# Sin `--`, solo --headless es de Godot; el resto pasa al juego.
+godot_args=() game_args=()
+for arg in "$@"; do
+  if [[ "$arg" == -- ]]; then godot_args=("$@") game_args=(); break; fi
+  if [[ "$arg" == --headless ]]; then godot_args+=("$arg"); else game_args+=("$arg"); fi
+done
+if [[ ${#game_args[@]} -gt 0 ]]; then game_args=(-- "${game_args[@]}"); fi
+
 dotnet build Relick.csproj --nologo
-exec "$relick_godot" --path "$relick_root" "$@"
+exec "$relick_godot" --path "$relick_root" "${godot_args[@]}" "${game_args[@]}"
