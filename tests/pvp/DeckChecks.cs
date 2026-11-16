@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Relick.Core;
+using Relick.Network;
 using Relick.Network.Types;
 using SpacetimeDB;
 
@@ -36,7 +37,7 @@ static class DeckChecks
             peer.Connection = DbConnection.Builder().WithUri(server).WithDatabaseName(database)
                 .OnConnect((connection, _, _) => connection.SubscriptionBuilder().OnApplied(_ => peer.Ready = true)
                     .OnError((_, e) => peer.Fatal = e.Message)
-                    .Subscribe(["SELECT * FROM my_decks", "SELECT * FROM my_account", "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel"]))
+                    .Subscribe(["SELECT * FROM my_decks", "SELECT * FROM my_deck_styles", "SELECT * FROM my_account", "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel"]))
                 .OnConnectError(e => peer.Fatal = e.Message).Build();
             void Reply(ReducerEventContext ctx)
             {
@@ -298,7 +299,7 @@ static class DeckChecks
         public bool Ready;
         public string? Fatal, Error;
         public int Replies;
-        public List<DeckInfo> Decks => Connection.Db.MyDecks.Iter().ToList();
+        public List<DeckInfo> Decks => LobbyConnection.WithStyles(Connection.Db);
         public RoomInfo? Room => Connection.Db.MyRoom.Iter().SingleOrDefault();
         public List<string> Hand => Connection.Db.MyHand.Iter().OrderBy(card => card.Position).Select(card => card.Definition).ToList();
         public DuelSnapshot? Duel => Connection.Db.MyDuel.Iter().SingleOrDefault() is { } row ? JsonSerializer.Deserialize(row.Json, DuelJson.Default.DuelSnapshot) : null;

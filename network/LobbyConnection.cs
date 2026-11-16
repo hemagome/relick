@@ -142,6 +142,8 @@ public sealed partial class LobbyConnection : IDisposable
                     QuickMatchAvailable = true;
                     if (Ready) RecoverQuickMatch();
                 }).OnError((_, _) => QuickMatchAvailable = false).Subscribe(["SELECT * FROM my_quick_search"]);
+                // Apart, like the quick search: a server without deck styles still syncs the room and the decks.
+                connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_deck_styles"]);
             })
             .OnConnectError(error => { Ready = Connecting = false; Message = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; })
             .OnDisconnect((_, error) => { Ready = Connecting = false; Message = "Se perdió la conexión. Pulsa Reconectar para recuperar tu sala."; });

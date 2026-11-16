@@ -1,3 +1,4 @@
+using Relick.Core;
 using Relick.Network.Types;
 using SpacetimeDB;
 
@@ -16,7 +17,16 @@ public sealed partial class LobbyConnection
     /// <summary>Counts accepted saves, so an editor knows its own save went through.</summary>
     public int DeckSaves { get; private set; }
 
-    public IReadOnlyList<DeckInfo> Decks => _decks ??= _connection?.Db.MyDecks.Iter().OrderBy(deck => deck.Id).ToList() ?? [];
+    public IReadOnlyList<DeckInfo> Decks => _decks ??= _connection is { } connection ? WithStyles(connection.Db) : [];
+
+    /// <summary>The saved decks with the sleeve and die of my_deck_styles; a deck without a style row uses the classic ones.</summary>
+    public static List<DeckInfo> WithStyles(RemoteTables db) => db.MyDecks.Iter().OrderBy(deck => deck.Id).Select(deck =>
+    {
+        var style = db.MyDeckStyles.Deck.Find(deck.Id);
+        deck.Sleeve = style?.Sleeve ?? CosmeticCatalog.DefaultSleeve;
+        deck.Dice = style?.Dice ?? CosmeticCatalog.DefaultDice;
+        return deck;
+    }).ToList();
 
     public void SaveDeck(ulong id, string name, string relikario, IEnumerable<string> cards, IEnumerable<string> traps, IEnumerable<string> side,
         string sleeve, string dice) =>
@@ -65,6 +75,9 @@ public sealed partial class LobbyConnection
         _connection!.Db.MyDecks.OnInsert += (_, _) => Changed();
         _connection.Db.MyDecks.OnUpdate += (_, _, _) => Changed();
         _connection.Db.MyDecks.OnDelete += (_, _) => Changed();
+        _connection.Db.MyDeckStyles.OnInsert += (_, _) => Changed();
+        _connection.Db.MyDeckStyles.OnUpdate += (_, _, _) => Changed();
+        _connection.Db.MyDeckStyles.OnDelete += (_, _) => Changed();
         _connection.Reducers.OnSaveDeck += (context, _, _, _, _, _, _, _) => Reply(context, save: true);
         _connection.Reducers.OnSaveDeckV2 += (context, _, _, _, _, _, _, _, _, _) => Reply(context, save: true);
         _connection.Reducers.OnDeleteDeck += (context, _) => Reply(context);
