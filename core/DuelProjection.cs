@@ -93,6 +93,9 @@ public sealed class DuelSnapshot
     public List<DuelVisualEvent> Visuals { get; set; } = [];
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public DuelResolutionView? Resolution { get; set; }
+    /// <summary>The pending card decision as both players may see it; its choices reach the decider as options.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DecisionView? Decision { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public List<DuelHistoryEntry>? History { get; set; }
     public DuelPlayerView[] Players { get; set; } = [];
@@ -141,11 +144,15 @@ public sealed class DuelSnapshot
             ActivationDiscardsRemaining = s.PendingTurnBuff is { Completed: false } cost ? cost.RequiredDiscards - cost.DiscardsPaid : 0,
             Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.PendingTurnBuff?.AttackRoll?.Die ?? s.PendingTurnBuff?.DieRoll?.Die ?? s.LastDie,
             Stage = stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
+                stagePhase == Phase.Decision ? (s.PendingDecision ?? s.PendingTurnBuff?.Decision)!.ResumePhase :
                 stagePhase == Phase.MemoryRecoveryChoice ? Phase.Actions :
                 stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
                 stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase,
             DieCaption = game.CurrentDieCaption,
-            LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(), History = game.PublicHistory?.Entries.ToList(),
+            LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(),
+            Decision = s.Phase == Phase.Decision && s.PendingDecision is { } decision ? new DecisionView { Source = decision.Source, Decider = decision.Decider,
+                Kind = decision.Kind, Title = CardCatalog.Get(decision.Source).Name, Instruction = decision.Instruction } : null,
+            History = game.PublicHistory?.Entries.ToList(),
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
             Players = s.Players.Select((p, index) => new DuelPlayerView
             {

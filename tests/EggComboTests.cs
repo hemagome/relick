@@ -18,7 +18,7 @@ static class EggComboTests
                 var before = Snapshot(g);
                 Check(!g.ResolveDestruction(0, owner, FieldZone.Exchange, 99).Success && Snapshot(g) == before);
                 Check(g.ResolveDestruction(0, owner, zone, 0).Success && target.Memory.Contains("senshuni") && CardCount(g) == total);
-                Check(p.Relikia == 200 && p.ActionsLeft == 1 && g.State.Phase == Phase.BlueEggDrawChoice);
+                Check(p.Relikia == 200 && p.ActionsLeft == 1 && (g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm));
                 Check(g.ResolveBlueEggDraw(0, false).Success && p.Relikia == 200 && p.Hand.Count == 0 && g.State.Phase == Phase.Actions);
                 if (zone == FieldZone.Bonus) Check(target.Bonus == "attack" && target.Deck.Count == deck - 1 && placements == 1);
                 else Check(target.Exchange.Count == 0 && target.Deck.Count == deck && placements == 0);
@@ -45,7 +45,7 @@ static class EggComboTests
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Clear(); p.Hand.Add("blue-egg"); g.State.Phase = Phase.Actions;
             var before = Snapshot(g); Check(!g.PlayCode(0, 0).Success && before == Snapshot(g));
             g.State.Players[1].Equipment = "lucky-pendant";
-            Check(g.PlayCode(0, 0).Success && p.Relikia == 0 && g.State.ActionsLeft == 1 && g.State.Phase == Phase.DestroyChoice);
+            Check(g.PlayCode(0, 0).Success && p.Relikia == 0 && g.State.ActionsLeft == 1 && g.State.Phase == Phase.Decision);
             before = Snapshot(g); Check(!g.ResolveDestruction(1, 1, true).Success && !g.ResolveDestruction(0, 2, true).Success && !g.Advance(0).Success && before == Snapshot(g));
             Check(g.ResolveDestruction(0, 1, true).Success && g.State.Players[1].Equipment == null && g.State.Players[1].Memory.Single() == "lucky-pendant");
             Check(g.State.Phase == Phase.Actions && !g.ResolveBlueEggDraw(0, true).Success);
@@ -57,7 +57,7 @@ static class EggComboTests
         {
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Clear(); p.Hand.Add("blue-egg"); p.Relikia = 200; g.State.Phase = Phase.Actions;
             g.State.Players[1].Equipment = "cardboard-box";
-            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.CodeResponse && g.ResolveCodeResponse(1, true).Success && p.Relikia == 200 && g.State.DestroyActor == null);
+            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.CodeResponse && g.ResolveCodeResponse(1, true).Success && p.Relikia == 200 && g.State.PendingDecision == null);
             Check(g.State.Phase == Phase.Actions && p.ActionsLeft == 2 && p.Hand.Count == 0);
             p.Memory.Clear(); p.Memory.Add("blue-egg"); p.Equipment = "lucky-pendant"; p.Relikia = 399;
             var before = Snapshot(g); Check(!g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && before == Snapshot(g));
@@ -72,9 +72,9 @@ static class EggComboTests
             Check(g.PlayCode(0, 0).Success && p.Relikia == 200);
             Check(g.ResolveDestruction(0, 1, true).Success && p.Relikia == 200 && p.Hand.Count == 0);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
-            var choices = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.BlueEggDraw).ToArray();
-            Check(choices.Length == 2 && !DuelOptions.For(g, 1).Any(o => o.Move.Kind == DuelMoveKind.BlueEggDraw));
-            var draw = choices.Single(o => o.Move.Flag).Move;
+            var choices = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
+            Check(choices.Length == 2 && !DuelOptions.For(g, 1).Any(o => o.Move.Kind == DuelMoveKind.Choose));
+            var draw = choices.Single(o => o.Primary).Move;
             var before = g.SaveSnapshot();
             Check(!draw.Apply(g, 1).Success && !g.Advance(0).Success && g.SaveSnapshot() == before);
             var deckCount = p.Deck.Count;
@@ -91,7 +91,7 @@ static class EggComboTests
             Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 1, FieldZone.Bonus).Success);
             Check(g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1 && rival.Bonus == CardCatalog.Attack.Id);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
-            Check(g.ResolveRecycling(1, [0]).Success && g.State.Phase == Phase.BlueEggDrawChoice);
+            Check(g.ResolveRecycling(1, [0]).Success && (g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm));
             Check(g.ResolveBlueEggDraw(0, true).Success && p.Relikia == 0 && p.Hand.Count == 1 && g.State.Phase == Phase.Actions);
         }),
         ("Huevo: robar la última carta abre el reciclaje y cobra una sola vez", () =>

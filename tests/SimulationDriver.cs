@@ -14,7 +14,12 @@ static class SimulationDriver
         if (s.Phase == Phase.GoldenTotemChoice)
             return game.ResolveGoldenTotem(actor, p.Hand.Select((id, index) => (id, index)).Where(c => c.id == CardCatalog.Totem.Id).Take(2).Select(c => c.index));
         if (s.Phase == Phase.TotemChoice) return game.ResolveTotem(actor, true);
-        if (s.Phase == Phase.BlueEggDrawChoice) return game.ResolveBlueEggDraw(actor, false);
+        if (s.Phase == Phase.Decision)
+        {
+            // Prefer the rival's cards and declining optional payments, as the former per-card choices did.
+            var choices = game.DecisionChoices(actor);
+            return game.ResolveDecision(actor, Enumerable.Range(0, choices.Count).OrderBy(i => choices[i].Field?.Owner == actor).ThenBy(i => choices[i].Primary).First());
+        }
         if (s.Phase == Phase.Draw) return game.Advance(actor);
         if (s.Phase == Phase.TurnBuffDiscard) return game.ResolveTurnBuffDiscard(actor, 0);
         if (s.Phase == Phase.EffectDamageChoice)

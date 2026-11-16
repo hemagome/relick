@@ -127,8 +127,8 @@ static class GoldenTotemTests
                 var (g, _) = Fixture(); var target = g.State.Players[1]; Stack(target, 2, 2); var p = g.State.Active;
                 p.Relikia = 200; p.Hand[0] = direct ? CardCatalog.TimeBomb.Id : CardCatalog.BlueEgg.Id;
                 Check(g.PlayCode(0, 0).Success);
-                var choice = DuelOptions.For(g, 0).Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == 1 &&
-                    o.Move.Value == (int)(direct ? FieldZone.EquipmentCover : FieldZone.Equipment) && o.Move.Index == (direct ? 1 : -1));
+                var choice = DuelOptions.For(g, 0).Single(o => o.Move.Kind == DuelMoveKind.Choose && o.Field is { Owner: 1 } field &&
+                    field.Zone == (direct ? FieldZone.EquipmentCover : FieldZone.Equipment) && field.Index == (direct ? 1 : -1));
                 Check(choice.Move.Apply(g, 0).Success && target.EquipmentStackedCopies == 1 && target.EquipmentCovers!.Count == 1 && target.Memory.Single() == CardCatalog.GoldenTotem.Id);
             }
         }),
@@ -162,7 +162,7 @@ static class GoldenTotemTests
             Check(!g.CanPlayLoadError(1) && g.ResolveDestructionProtection(1, 0).Success);
             Check(target.EquipmentCovers!.Count == 1 && target.EquipmentStackedCopies == 1 && target.Skills.Count == 0);
             Check(p.ActionsLeft == 1 && p.Relikia == 200 && g.State.PendingDestruction == null &&
-                g.State.Phase == Phase.BlueEggDrawChoice);
+                (g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm));
         }),
         ("Oro: varias coberturas absorben intentos sucesivos, una por intento", () =>
         {

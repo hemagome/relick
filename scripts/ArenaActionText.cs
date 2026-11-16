@@ -35,6 +35,7 @@ internal static class ArenaActionText
         DuelMoveKind.PassError => "Dejar resolver",
         DuelMoveKind.Points => option.Move.Flag ? "Aumentar PR" : "Restar PR",
         DuelMoveKind.Destroy => "Destruir",
+        DuelMoveKind.Choose => option.Button ?? option.Label,
         DuelMoveKind.BlueEggDraw => option.Move.Flag ? $"Robar 1 carta · {GameEngine.BlueEggDrawCost} PR" : "Continuar sin robar",
         DuelMoveKind.Placement => option.Move.Value == (int)CardDestination.Exchange ? "Canjear" : "Al mazo",
         DuelMoveKind.Reward => option.Move.Value == (int)RelikiaReward.OpponentDiscards ? "Provocar descartes" : "Corromper códigos",

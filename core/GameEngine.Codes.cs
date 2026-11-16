@@ -12,7 +12,7 @@ public sealed partial class GameEngine
     private int CodePrCost(CardDefinition card) => CodePrCost(card, LegacyBlueEgg);
 
     public bool IsZoneDestruction => State.Phase == Phase.DestroyChoice && _activeActivation is { Kind: ActivationKind.Code } frame &&
-        CardCatalog.Get(frame.CardId).DestroyChosenZone;
+        frame.CardId == CardCatalog.TimeBomb.Id;
 
     private IEnumerable<FieldTarget> TimeBombTargets(int excludedOwner = -1, int excludedHand = -1)
     {
@@ -38,6 +38,11 @@ public sealed partial class GameEngine
             foreach (var target in TimeBombTargets()) yield return target;
             yield break;
         }
+        foreach (var target in NonSkillFieldCards()) yield return target;
+    }
+
+    private IEnumerable<FieldTarget> NonSkillFieldCards()
+    {
         for (var owner = 0; owner < 2; owner++)
         {
             var p = State.Players[owner];
@@ -84,12 +89,10 @@ public sealed partial class GameEngine
         if (card.ReloadBothHands && (p.Hand.Count <= (excludedHand < 0 ? 0 : 1) || State.Players[1 - Array.IndexOf(State.Players, p)].Hand.Count == 0))
             return "Ambos jugadores necesitan al menos una carta que descartar, además del Cartucho que se activa.";
         if (card.SearchAttacks > 0 && !p.Deck.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack)) return "No hay ataques en tu mazo.";
-        if (card.SearchNonSkill && !SearchableDeckCards(Array.IndexOf(State.Players, p)).Any()) return "No hay no-habilidades en tu mazo.";
+        if (CardEffects.For(card.Id) is { } effect && effect.Unavailable(EffectFor(Array.IndexOf(State.Players, p), card.Id), excludedHand) is { } effectError)
+            return effectError;
         if (card.RecoverMemory && State.Players.Sum(player => player.Memory.Count) <= (excludedHand < 0 ? 1 : 0))
             return "No hay cartas disponibles en las memorias.";
-        if (card.DestroyNonSkill && !DestructionTargets().Any()) return "No hay no-habilidades en el campo para destruir.";
-        if (card.DestroyChosenZone && !TimeBombTargets(Array.IndexOf(State.Players, p), excludedHand).Any())
-            return "No hay cartas en equipos, manos o Bonus para destruir.";
         if (card.DodgeAttack && (State.Phase != Phase.DefenseChoice || State.PendingAttack?.Attacker != 1 - Array.IndexOf(State.Players, p))) return "Solo puedes esquivar un ataque de tu oponente pendiente de defensa.";
         if (card.ResetMind && MindResetUnavailable(Array.IndexOf(State.Players, p), excludedHand) is { } resetError) return resetError;
         if (card.CancelActivation && !CanPlayLoadError(Array.IndexOf(State.Players, p))) return "No hay una activación que puedas anular.";
@@ -104,6 +107,8 @@ public sealed partial class GameEngine
         var card = CardCatalog.Get(p.Hand[handIndex]);
         if (State.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return "Completa la decisión del Código Trampa antes de jugar.";
         if (State.Phase == Phase.BlueEggDrawChoice) return "Decide primero si robas con Huevo Azul Explosivo.";
+        if (State.Phase == Phase.Decision && State.PendingDecision is { AllowsCombos: false } decision)
+            return $"Decide primero: {CardCatalog.Get(decision.Source).Name}.";
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
             State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)))
             return "Activa las respuestas COMBO para responder con esta carta.";
@@ -116,6 +121,12 @@ public sealed partial class GameEngine
 
     public CommandResult ResolveDestruction(int actor, int owner, FieldZone zone, int index = -1)
     {
+        // Huevo Azul and Bomba de Tiempo now ask through a decision; this command still answers it.
+        if (State.PendingDecision is { Step: FieldDestruction.Target } pending &&
+            ResolveDecisionWhere(actor, pending.Source, c => c.Field is { } t && t.Owner == owner && t.Zone == zone &&
+                // Bomba chooses zones: a hand card is drawn at random, so naming its position is refused.
+                (t.Index == index || pending.Source != CardCatalog.TimeBomb.Id && zone is FieldZone.Equipment or FieldZone.Bonus)) is { } answered) return answered;
+        // Legacy: a duel saved while the destruction phase was pending.
         if (State.Phase != Phase.DestroyChoice || State.DestroyActor != actor) return CommandResult.Fail("No te corresponde elegir objetivo.");
         if (IsZoneDestruction && index != -1 && zone != FieldZone.EquipmentCover) return CommandResult.Fail("Elige una zona; la carta de la mano se escoge al azar.");
         var target = DestructionTargets().FirstOrDefault(t => t.Owner == owner && t.Zone == zone && (zone is FieldZone.Equipment or FieldZone.Bonus || t.Index == index));
@@ -141,6 +152,8 @@ public sealed partial class GameEngine
 
     public CommandResult ResolveBlueEggDraw(int actor, bool pay)
     {
+        if (ResolveDecisionWhere(actor, CardCatalog.BlueEgg.Id, c => c.Field == null && c.Value == (pay ? 1 : 0)) is { } answered) return answered;
+        // Legacy: a duel saved while this draw phase was pending.
         if (State.Phase != Phase.BlueEggDrawChoice || State.DecisionPlayer != actor)
             return CommandResult.Fail("No te corresponde decidir el robo de Huevo Azul Explosivo.");
         var p = State.Players[actor];

@@ -97,7 +97,7 @@ static class ReverseTests
                 Check(g.ResolveDestructionProtection(1, protect ? 0 : -1).Success);
                 Check(defender.Skills.Count == (protect ? 0 : 1) && defender.Memory.Contains(protect ? CardCatalog.Reverse.Id : CardCatalog.Pc.Id));
                 Check(defender.Memory.Contains(CardCatalog.Pc.Id) == !protect);
-                Check(g.State.Phase == Phase.BlueEggDrawChoice && g.State.Active.ActionsLeft == 1 && g.State.Active.Relikia == 200);
+                Check((g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm) && g.State.Active.ActionsLeft == 1 && g.State.Active.Relikia == 200);
             }
         }),
         ("Reverse: protege mano privada sin revelarla ni activar el descarte de Sniper", () =>
@@ -212,7 +212,7 @@ static class ReverseTests
                 var before = g.SaveSnapshot(); Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; defender = g.State.Players[1];
                 Check(!g.CanPlayLoadError(1) && g.ResolveDestructionProtection(1, 0).Success);
-                Check(g.State.Phase == Phase.BlueEggDrawChoice && g.State.PendingDestruction == null && defender.Equipment == CardCatalog.Pc.Id);
+                Check((g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm) && g.State.PendingDestruction == null && defender.Equipment == CardCatalog.Pc.Id);
                 Check(defender.Skills.Count == 0 && p.Relikia == 200 && p.ActionsLeft == 1 && defender.Hand.Contains(CardCatalog.LoadError.Id));
             }
         }),

@@ -179,6 +179,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.TrapCraft when m.Flag => g.State.TrapCraftQueue?.FirstOrDefault() is { } craft
                 ? craft.Options.ElementAtOrDefault(m.Value) ?? craft.CardId : null,
             DuelMoveKind.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
+            DuelMoveKind.Choose => g.State.PendingDecision?.Source,
             _ => null
         };
     }
@@ -205,6 +206,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => $"{name} descarta una carta.",
             DuelMoveKind.Points => $"{name} {(m.Flag ? "aumenta" : "reduce")} los PR de {Target()}.",
             DuelMoveKind.Destroy => $"{name} elige destruir una carta de {Target()} ({(FieldZone)m.Value switch { FieldZone.Hand => "mano al azar", FieldZone.Bonus => "Bonus", FieldZone.Equipment => "equipo", _ => "campo" }}).",
+            DuelMoveKind.Choose => g.DecisionChoices(actor).ElementAtOrDefault(m.Index) is { } choice ? $"{name} {choice.Public}" : $"{name} decide.",
             DuelMoveKind.BlueEggDraw => m.Flag ? $"{name} paga {GameEngine.BlueEggDrawCost} PR para robar con Huevo Azul Explosivo." : $"{name} continúa sin robar con Huevo Azul Explosivo.",
             DuelMoveKind.Magnet => $"{name} elige tomar una carta {(m.Flag ? "del Bonus rival" : "de la mano rival")} por Magnet Shuffle.",
             DuelMoveKind.SkipMagnet => $"{name} decide no tomar una carta por Magnet Shuffle.",

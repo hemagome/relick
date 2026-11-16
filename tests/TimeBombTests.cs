@@ -10,7 +10,7 @@ static class TimeBombTests
             foreach (var owner in new[] { 0, 1 })
             {
                 var (g, _) = Fixture(); var target = g.State.Players[owner]; target.Equipment = CardCatalog.DiamondHelmet.Id;
-                Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DestroyChoice);
+                Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.Decision);
                 Check(g.ResolveDestruction(0, owner, FieldZone.Equipment).Success && target.Equipment == null && target.Memory.Contains(CardCatalog.DiamondHelmet.Id));
                 Check(g.State.Active.ActionsLeft == 1 && g.State.Active.Relikia == 0);
             }
@@ -44,8 +44,8 @@ static class TimeBombTests
         {
             var (g, _) = Fixture(); g.State.Players[1].Hand.AddRange(new[] { CardCatalog.Magnet.Id, CardCatalog.Destiny.Id });
             Check(g.PlayCode(0, 0).Success);
-            var options = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Destroy).ToArray();
-            Check(options.Length == 1 && options[0].Move.Index == -1 && options[0].Move.Target == 1);
+            var options = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
+            Check(options.Length == 1 && options[0].Field is { Index: -1, Owner: 1, Zone: FieldZone.Hand, CardId: "" });
             var text = JsonSerializer.Serialize(options);
             Check(!text.Contains(CardCatalog.Magnet.Id) && !text.Contains(CardCatalog.Destiny.Id) && !text.Contains("Shuffle"));
         }),
@@ -62,16 +62,16 @@ static class TimeBombTests
         {
             var (g, _) = Fixture(); g.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.CodeResponse && g.ResolveCodeResponse(1, true).Success);
-            Check(g.State.Active.ActionsLeft == 2 && g.State.DestroyActor == null);
+            Check(g.State.Active.ActionsLeft == 2 && g.State.PendingDecision == null);
             (g, _) = Fixture(); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.ErrorResponse && g.PlayCode(1, 0).Success);
-            Check(g.State.Phase == Phase.Actions && g.State.Active.ActionsLeft == 2 && g.State.DestroyActor == null);
+            Check(g.State.Phase == Phase.Actions && g.State.Active.ActionsLeft == 2 && g.State.PendingDecision == null);
         }),
         ("Bomba: no se atasca si los contraerrores consumen los únicos objetivos", () =>
         {
             var (g, _) = Fixture(); g.State.Active.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
             Check(g.PlayCode(0, 0).Success && g.PlayCode(1, 0).Success && g.PlayCode(0, 0).Success);
-            Check(g.State.Phase == Phase.Actions && g.State.DestroyActor == null && g.State.Players.All(p => p.Hand.Count == 0));
+            Check(g.State.Phase == Phase.Actions && g.State.PendingDecision == null && g.State.Players.All(p => p.Hand.Count == 0));
         }),
         ("Bomba: recuperar la elección y el azar produce el mismo resultado", () =>
         {
@@ -86,10 +86,10 @@ static class TimeBombTests
         ("Bomba: pasar Error cierra la respuesta durante la elección y conserva los objetivos", () =>
         {
             var (g, _) = Fixture(); g.State.Active.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
-            Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success && g.State.Phase == Phase.DestroyChoice);
+            Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success && g.State.Phase == Phase.Decision);
             var before = g.SaveSnapshot(); Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
             Check(!g.CanPlayLoadError(1) && g.ResolveDestruction(0, 1, FieldZone.Hand).Success);
-            Check(g.State.Phase == Phase.Actions && g.State.DestroyActor == null && g.State.Players[1].Hand.Count == 0);
+            Check(g.State.Phase == Phase.Actions && g.State.PendingDecision == null && g.State.Players[1].Hand.Count == 0);
             Check(g.State.Active.Hand.Single() == CardCatalog.LoadError.Id && g.State.Active.ActionsLeft == 1);
         }),
         ("Bomba: Relikia consume dos acciones y 400 PR y corrompe el código", () =>

@@ -84,7 +84,11 @@ public partial class OnlineArena : Control
     private readonly ExchangeTrack?[] _exchangeTracks = new ExchangeTrack?[2];
     private readonly List<OpponentHandCard> _opponentCards = [];
     private bool ChoosingRecycling => _snapshot is { Phase: Phase.RecycleChoice } s && s.DecisionPlayer == s.MySeat;
-    private bool ChoosingDeckSearch => _snapshot is { Phase: Phase.DeckSearchChoice } s && s.DecisionPlayer == s.MySeat;
+    private bool ChoosingDeckSearch => _snapshot is { Phase: Phase.DeckSearchChoice } s && s.DecisionPlayer == s.MySeat || Deciding == DecisionKind.ChooseCard;
+    /// <summary>The kind of card decision this player must answer now, or null. Every card decision is drawn from it alone.</summary>
+    private DecisionKind? Deciding => _snapshot is { Phase: Phase.Decision, Decision: { } decision } s && decision.Decider == s.MySeat ? decision.Kind : null;
+    /// <summary>The gallery header of a card decision: the card and what to do, as the server describes them.</summary>
+    private string? DecisionGalleryTitle => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } d ? $"{d.Title} · {d.Instruction}".ToUpperInvariant() : null;
     private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat;
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);
     private bool ChoosingCorruption => _snapshot is { Phase: Phase.RelikiaChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Corrupt);
@@ -242,7 +246,7 @@ public partial class OnlineArena : Control
         var stageDetail = _preparing ? PreparationCaption() : s.Winner != null ? resultCaption :
             $"TURNO {s.Turn:00} · {(s.CurrentPlayer == s.MySeat ? "TÚ" : "RIVAL")}";
         if (!_preparing && s.Winner == null && stage != s.Phase)
-            stageDetail += $" · {PhaseName(s.Phase)} · {(s.DecisionPlayer == s.MySeat ? "DECIDES TÚ" : "DECIDE EL RIVAL")}";
+            stageDetail += $" · {PhaseName(s)} · {(s.DecisionPlayer == s.MySeat ? "DECIDES TÚ" : "DECIDE EL RIVAL")}";
         if (Short) stageDetail += $" · TÚ {s.Players[s.MySeat].Health}/{s.Players[s.MySeat].MaxHealth} · RIVAL {s.Players[1 - s.MySeat].Health}/{s.Players[1 - s.MySeat].MaxHealth}";
         var rechargeActions = animateActions && previous != null && previous.Turn != s.Turn;
         var relativePlayers = new[] { s.Players[s.MySeat], s.Players[1 - s.MySeat] };
@@ -331,7 +335,7 @@ public partial class OnlineArena : Control
             // Turn, stage and the advance button live on the divider, in the colour of whose turn it is.
             var turnAccent = _preparing || s.Winner != null ? BoardArt.Gold : s.CurrentPlayer == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral;
             var barDetail = _preparing ? PreparationCaption() : s.Winner != null ? resultCaption : $"TURNO {s.Turn:00}";
-            if (!_preparing && s.Winner == null && stage != s.Phase) barDetail += " · " + PhaseName(s.Phase);
+            if (!_preparing && s.Winner == null && stage != s.Phase) barDetail += " · " + PhaseName(s);
             var (lane, bar) = ArenaPresentation.PhaseBar(canvas, stage, barDetail, turnAccent);
             _combatCenter = lane;
             BuildAdvanceControl(bar);
@@ -440,7 +444,7 @@ public partial class OnlineArena : Control
         }
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short, railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
-                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null, railColumns,
+                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : DecisionGalleryTitle ?? (ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null), railColumns,
                 useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop,
                 sections: MemorySections(), ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : OwnHandCardOwner,
                 viewerSeat: s.MySeat, stackColumns: desktop ? 7 : 0);
@@ -541,7 +545,8 @@ public partial class OnlineArena : Control
             SyncOpeningSelection(); RefreshSelection(); return;
         }
         if (IsAnimating || index < 0 || index >= SelectableCards.Count) return;
-        if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == _snapshot.MySeat && o.Move.Value == (int)FieldZone.Hand))
+        if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == _snapshot.MySeat && o.Move.Value == (int)FieldZone.Hand ||
+            o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } own && own.Owner == _snapshot.MySeat))
         { SelectField(_snapshot.MySeat, FieldZone.Hand, -1); return; }
         _choosingAttackSkill = false;
         _fieldSelection = null;
@@ -660,6 +665,7 @@ public partial class OnlineArena : Control
         ArenaViewport.FitDialog(dialog, Size);
     }
 
+    private static string PhaseName(DuelSnapshot s) => s.Phase == Phase.Decision && s.Decision is { } d ? d.Title.ToUpperInvariant() : PhaseName(s.Phase);
     private static string PhaseName(Phase phase) => phase switch
     {
         Phase.Preparation => "PREPARACIÓN", Phase.Draw => "ROBO", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",

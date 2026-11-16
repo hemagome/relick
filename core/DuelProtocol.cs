@@ -30,7 +30,7 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -100,6 +100,7 @@ public sealed class DuelMove
         DuelMoveKind.TrapCraft => game.ResolveTrapCraft(actor, Flag, Flag ? Math.Max(0, Value) : 0),
         DuelMoveKind.ZahiraTarget => game.ResolveZahiraTarget(actor, Target, (FieldZone)Value, Index),
         DuelMoveKind.ComboResponses => game.SetComboResponses(actor, Flag),
+        DuelMoveKind.Choose => game.ResolveDecision(actor, Index),
         _ => CommandResult.Fail("Jugada desconocida.")
     };
 }
@@ -111,6 +112,15 @@ public sealed class DuelOption
     public int RequiredDiscards { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? CardId { get; set; }
+    /// <summary>For a decision: the card or zone this choice targets on the board.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public FieldTarget? Field { get; set; }
+    /// <summary>For a decision: short button text; null uses <see cref="Label"/>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Button { get; set; }
+    /// <summary>For a decision: the choice drawn as the main action.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Primary { get; set; }
 }
 
 public sealed class DuelEntry

@@ -106,7 +106,7 @@ public sealed partial class GameEngine
     /// <summary>Read-only query for plays other than advancing; never consumes cards or randomness.</summary>
     public bool HasAvailablePlay(int actor)
     {
-        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) return actor == State.DecisionPlayer;
+        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice or Phase.Decision) return actor == State.DecisionPlayer;
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
         if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice or Phase.MemoryRecoveryChoice)
@@ -224,6 +224,7 @@ public sealed partial class GameEngine
 
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
+        if (TryResolveWithEffect(p, card)) return;
         if (card.DeployTotems) { BeginGoldenTotem(Array.IndexOf(State.Players, p)); return; }
         if (card.RepeatStage) { ResolveRepeatedStage(); return; }
         if (card.ReloadBothHands) { BeginReloadHands(Array.IndexOf(State.Players, p)); return; }
@@ -246,27 +247,6 @@ public sealed partial class GameEngine
             // Freeze the count so recycling cannot add further targets to this effect.
             for (var i = 0; i < count; i++)
                 MoveDeckCard(p, p.Deck.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Attack), false);
-            return;
-        }
-        if (card.SearchNonSkill)
-        {
-            if (!SearchableDeckCards(Array.IndexOf(State.Players, p)).Any())
-            {
-                Log($"{card.Name} se resuelve sin no-habilidades disponibles en el mazo.");
-                return;
-            }
-            State.Phase = Phase.DeckSearchChoice;
-            State.LastCombat = $"{p.Name} · {card.Name} · Elige una no-habilidad de tu mazo";
-            return;
-        }
-        if (card.DestroyChosenZone && !TimeBombTargets().Any())
-        {
-            Log($"{card.Name} se resuelve sin objetivos disponibles.");
-            return;
-        }
-        if (card.DestroyNonSkill || card.DestroyChosenZone)
-        {
-            State.DestroyActor = Array.IndexOf(State.Players, p); State.Phase = Phase.DestroyChoice;
             return;
         }
         if (card.ChangePointsFromDie)

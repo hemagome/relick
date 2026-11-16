@@ -38,13 +38,18 @@ public partial class OnlineArena
         };
     }
 
-    private bool MatchesField(DuelMove move, (int Owner, FieldZone Zone, int Index) field)
+    private bool MatchesField(DuelOption option, (int Owner, FieldZone Zone, int Index) field) => MatchesField(option.Move, field, option);
+
+    private bool MatchesField(DuelMove move, (int Owner, FieldZone Zone, int Index) field, DuelOption? option = null)
     {
         var s = _snapshot!;
         return move.Kind switch
         {
             DuelMoveKind.Destroy => move.Target == field.Owner && move.Value == (int)field.Zone &&
                 (move.Index == field.Index || field.Zone == FieldZone.Hand && move.Index < 0),
+            // A card decision names its board target; a hand is one zone, its card drawn at random.
+            DuelMoveKind.Choose => option?.Field is { } t && t.Owner == field.Owner && t.Zone == field.Zone &&
+                (t.Index == field.Index || field.Zone == FieldZone.Hand && t.Index < 0),
             DuelMoveKind.FieldCode => field.Owner == s.MySeat && move.Value == (int)field.Zone && move.Index == field.Index,
             DuelMoveKind.Magnet => field.Owner != s.MySeat && (move.Flag ? field.Zone == FieldZone.Bonus : field.Zone == FieldZone.Hand && move.Index == field.Index),
             DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
@@ -69,9 +74,10 @@ public partial class OnlineArena
     private void SelectField(int owner, FieldZone zone, int index)
     {
         if (IsAnimating) return;
-        if (zone == FieldZone.Hand && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)FieldZone.Hand && o.Move.Index < 0)) index = -1;
+        if (zone == FieldZone.Hand && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)FieldZone.Hand && o.Move.Index < 0 ||
+            o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand, Index: < 0 } hand && hand.Owner == owner)) index = -1;
         var field = (owner, zone, index);
-        if (_snapshot!.Options.Any(o => MatchesField(o.Move, field)) || FieldCardId(field) != null)
+        if (_snapshot!.Options.Any(o => MatchesField(o, field)) || FieldCardId(field) != null)
         {
             _selected.Clear(); _skillContext = false; _choosingAttackSkill = false; _fieldSelection = field; RefreshSelection();
         }
@@ -83,7 +89,8 @@ public partial class OnlineArena
     private void SelectFieldPile(int owner, FieldZone zone)
     {
         var ids = zone == FieldZone.EquipmentCover ? _snapshot!.Players[owner].EquipmentCovers ?? [] : _snapshot!.Players[owner].Attached;
-        var targetable = _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)zone);
+        var targetable = _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)zone ||
+            o.Move.Kind == DuelMoveKind.Choose && o.Field is { } t && t.Owner == owner && t.Zone == zone);
         if (ids.Length == 1 && targetable) { SelectField(owner, zone, 0); return; }
         ShowCards(zone == FieldZone.EquipmentCover ? "Sobre el equipo" : $"Sobre {RelikarioCatalog.DisplayNameOf(_snapshot.Players[owner].RelikarioId)}", ids, select: targetable ? index => SelectField(owner, zone, index) : null);
     }
@@ -128,7 +135,7 @@ public partial class OnlineArena
             void Mark(ZoneCardButton? node, FieldZone zone, int index)
             {
                 if (node == null) return;
-                node.Targetable = s.Options.Any(o => MatchesField(o.Move, (owner, zone, index)));
+                node.Targetable = s.Options.Any(o => MatchesField(o, (owner, zone, index)));
                 node.Chosen = _fieldSelection == (owner, zone, index); node.QueueRedraw();
                 if (node.Targetable) _pulsingTargets.Add(node);
             }
@@ -144,7 +151,7 @@ public partial class OnlineArena
         foreach (var card in _opponentCards)
         {
             var index = int.Parse(card.Name.ToString()[16..]);
-            card.Targetable = s.Options.Any(o => MatchesField(o.Move, (1 - s.MySeat, FieldZone.Hand, index)));
+            card.Targetable = s.Options.Any(o => MatchesField(o, (1 - s.MySeat, FieldZone.Hand, index)));
             card.Chosen = _fieldSelection is { } field && field.Owner != s.MySeat && field.Zone == FieldZone.Hand && (field.Index < 0 || field.Index == index);
             if (card.Targetable) _pulsingTargets.Add(card);
             card.QueueRedraw();

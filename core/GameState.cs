@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Relick.Core;
 
-public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse, MemoryRecoveryChoice, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, TotemChoice, GoldenTotemChoice, GoldenTotemResolving, TrapCraftChoice, ZahiraTarget, BlueEggDrawChoice }
+public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse, MemoryRecoveryChoice, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, TotemChoice, GoldenTotemChoice, GoldenTotemResolving, TrapCraftChoice, ZahiraTarget, BlueEggDrawChoice, Decision }
 
 public sealed class PlayerState
 {
@@ -211,6 +211,9 @@ public sealed class GameState
     public List<ActivationInfo> ActivationChain { get; internal set; } = new();
     [JsonInclude]
     public int? DestroyActor { get; internal set; }
+    /// <summary>The decision a card effect is waiting for (<see cref="Phase.Decision"/>).</summary>
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PendingDecision? PendingDecision { get; internal set; }
     [JsonInclude]
     public PendingPoints? PendingPoints { get; internal set; }
     [JsonInclude]
@@ -252,7 +255,7 @@ public sealed class GameState
     public int ZahiraFinalSlot { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Phase? TrapCraftResumePhase { get; internal set; }
-    public int DecisionPlayer => Phase == Phase.TrapCraftChoice ? TrapCraftQueue![0].Actor : Phase == Phase.ZahiraTarget ? PendingZahiraPlacement!.Actor : Phase == Phase.TotemChoice ? PendingTotemDamage!.Target : Phase == Phase.EffectDamageChoice ? 1 - PendingEffectDamage!.Actor : Phase is Phase.TurnBuffDiscard or Phase.TurnBuffResolving ? PendingTurnBuff!.Actor : Phase == Phase.DestructionResponse ? PendingDestruction!.Target.Owner : Phase == Phase.SniperChoice ? PendingSniper!.Actor : Phase == Phase.MindResetChoice ? PendingMindReset!.Actor : Phase == Phase.ErrorResponse ? ErrorResponder : Phase == Phase.CodeResponse ? 1 - PendingCode!.Actor : Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? PendingDieRoll!.Player : Phase == Phase.DefenseChoice ? 1 - CurrentPlayer
+    public int DecisionPlayer => Phase == Phase.Decision ? PendingDecision!.Decider : Phase == Phase.TrapCraftChoice ? TrapCraftQueue![0].Actor : Phase == Phase.ZahiraTarget ? PendingZahiraPlacement!.Actor : Phase == Phase.TotemChoice ? PendingTotemDamage!.Target : Phase == Phase.EffectDamageChoice ? 1 - PendingEffectDamage!.Actor : Phase is Phase.TurnBuffDiscard or Phase.TurnBuffResolving ? PendingTurnBuff!.Actor : Phase == Phase.DestructionResponse ? PendingDestruction!.Target.Owner : Phase == Phase.SniperChoice ? PendingSniper!.Actor : Phase == Phase.MindResetChoice ? PendingMindReset!.Actor : Phase == Phase.ErrorResponse ? ErrorResponder : Phase == Phase.CodeResponse ? 1 - PendingCode!.Actor : Phase is Phase.DieRerollChoice or Phase.RecycleChoice ? PendingDieRoll!.Player : Phase == Phase.DefenseChoice ? 1 - CurrentPlayer
         : Phase == Phase.Discard ? DiscardPlayer ?? CurrentPlayer : CurrentPlayer;
     [JsonInclude]
     public int? Winner { get; internal set; } // -1 = draw, null = still playing
