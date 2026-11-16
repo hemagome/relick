@@ -34,6 +34,20 @@ public partial class OnlineArena
         RejectionShakes++;
     }
 
+    private (DuelSnapshot Previous, DuelSnapshot Current)? _queuedPlay;
+
+    /// <summary>
+    /// The flash of a played code and a created Trap's summon, one frame after the Render that showed them:
+    /// read straight away, the rebuilt board has no layout yet and every place sits at the top-left corner.
+    /// </summary>
+    private void PresentQueuedPlay()
+    {
+        if (_queuedPlay is not { } play) return;
+        _queuedPlay = null;
+        if (_snapshot?.Revision != play.Current.Revision) return;
+        FlashPlayedCard(play.Previous, play.Current); SummonCreatedTrap(play.Previous, play.Current);
+    }
+
     /// <summary>
     /// Shows the code a duelist just played, read from the public history. A follow-up decision inside the
     /// same resolution (choosing Disquete's card, say) is not a new play and gets no flash.

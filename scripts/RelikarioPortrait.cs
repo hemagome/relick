@@ -39,6 +39,8 @@ public partial class RelikarioPortrait : Control
     private PortraitMotion _restMotion;
 
     public float PortraitHeight { get; set; } = 236;
+    /// <summary>Receives hover so the arena can read this Relikario in the inspector; clicks still reach the board.</summary>
+    public bool Inspectable { get; init; }
     public bool FlipHorizontal { get; set; }
     public Color AccentColor { get; set; } = new("75e6bd");
 
@@ -54,7 +56,7 @@ public partial class RelikarioPortrait : Control
 
     public override void _Ready()
     {
-        MouseFilter = MouseFilterEnum.Ignore;
+        MouseFilter = Inspectable ? MouseFilterEnum.Pass : MouseFilterEnum.Ignore;
         TextureFilter = TextureFilterEnum.Linear;
         ClipContents = true;
         if (CustomMinimumSize.Y <= 0) CustomMinimumSize = new Vector2(0, PortraitHeight);

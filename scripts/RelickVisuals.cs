@@ -215,7 +215,7 @@ public static class RelickVisuals
         {
             Atlas = GD.Load<Texture2D>("res://assets/brand/relick-logo.png"), Region = new(124, 0, 890, 205)
         },
-        CustomMinimumSize = new(compact ? 138 : 174, compact ? 32 : 40),
+        CustomMinimumSize = new(compact ? 172 : 200, compact ? 40 : 46),
         ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin, MouseFilter = Control.MouseFilterEnum.Ignore
     };

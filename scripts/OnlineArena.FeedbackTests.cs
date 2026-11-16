@@ -104,19 +104,19 @@ public partial class OnlineArena
 
                 // A rival skill on the board: Magnet's normal damage is its own die.
                 SelectField(rival, FieldZone.Skill, 0); await Layout();
-                Check(_inspector.Outlook.IsVisibleInTree() && Faces().SequenceEqual(["—", "½·1D6", "1D6", "5"]), $"Tabla de Magnet incorrecta: {string.Join(" ", Faces())}.");
+                Check(_inspector.Outlook.IsVisibleInTree() && Faces().SequenceEqual(["½·1D6", "1D6", "5"]), $"Tabla de Magnet incorrecta: {string.Join(" ", Faces())}.");
                 ClearContext();
                 if (!own) { Check(game.SaveSnapshot() == before, "La consulta alteró el duelo."); continue; }
 
                 // A skill card in hand has no copy yet: base values, labelled as such.
                 SelectCard(1); await Layout();
-                Check(_inspector.Outlook.IsVisibleInTree() && _inspector.OutlookCaption.Text.Contains("sin aumentos"), "La habilidad en mano no muestra su tabla base.");
+                Check(_inspector.Outlook.IsVisibleInTree() && _inspector.OutlookCaption.Text == "Daño", "La habilidad en mano no muestra su tabla base.");
                 // An Attack with no skill chosen yet promises nothing.
                 SelectCard(0); await Layout();
                 Check(!_inspector.Outlook.IsVisibleInTree(), "El Ataque muestra una tabla antes de elegir habilidad.");
                 SelectSkill(0); await Layout();
                 Check(_inspector.Outlook.IsVisibleInTree() && _inspector.OutlookCaption.Text.Contains(CardCatalog.Destiny.Name) &&
-                    Faces().SequenceEqual(["—", "2", "3", "5"]), $"Tabla de Destiny incorrecta: {string.Join(" ", Faces())}.");
+                    Faces().SequenceEqual(["2", "3", "5"]), $"Tabla de Destiny incorrecta: {string.Join(" ", Faces())}.");
                 if (size.X == 1820) await Capture($"feedback-attack-outlook-{size.X}x{size.Y}");
 
                 // Choosing among several skills: reading one shows what this Attack would do with it.
@@ -124,7 +124,7 @@ public partial class OnlineArena
                 var reverse = _ownSkills.Single(tile => tile.SkillIndex == 1);
                 reverse.EmitSignal(Control.SignalName.MouseEntered); await Layout();
                 Check(_contextTitle.Text == CardCatalog.Reverse.Name && _contextCost.Text == "Consume 1 Ataque" &&
-                    Faces().SequenceEqual(["—", "1", "2", "4"]), $"La lectura durante la elección de habilidad es incorrecta: {_contextTitle.Text} · {string.Join(" ", Faces())}.");
+                    Faces().SequenceEqual(["1", "2", "4"]), $"La lectura durante la elección de habilidad es incorrecta: {_contextTitle.Text} · {string.Join(" ", Faces())}.");
                 reverse.EmitSignal(Control.SignalName.MouseExited); await Layout();
                 Check(_inspectorPreview == null && _choosingAttackSkill, "Salir de la habilidad no devuelve la lectura del Ataque.");
                 ClearContext();
@@ -135,7 +135,7 @@ public partial class OnlineArena
                 boosted.State.Players[actor].Relikario = RelikarioCatalog.YunoLv2; boosted.State.Players[actor].StarEffects = 1;
                 PresentTestSnapshot(DuelSnapshot.For(boosted, seat, 703)); await Layout();
                 SelectCard(0); SelectSkill(0); await Layout();
-                Check(Faces().SequenceEqual(["—", "4", "6", "10"]) && _inspector.OutlookNotes.Text.Contains("Lv 2") &&
+                Check(Faces().SequenceEqual(["4", "6", "10"]) && _inspector.OutlookNotes.Text.Contains("Lv 2") &&
                     _inspector.OutlookNotes.Text.Contains("×2"), $"Lv 2 o Estrella no se reflejan: {string.Join(" ", Faces())} · {_inspector.OutlookNotes.Text}.");
                 ClearContext();
             }

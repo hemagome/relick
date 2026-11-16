@@ -1078,13 +1078,17 @@ public partial class OnlineArena
             foreach (var seat in new[] { 0, 1 })
             {
                 ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 61)); Animate(cues, []);
+                // The die turns onto its new face instead of jumping to it or rolling again.
+                if (!_die.IsTurning || _die.IsRolling || !IsAnimating)
+                    throw new Exception("Gastar destreza no gira el dado hacia su nueva cara.");
+                _die.AdvancePlayback(DiceFace.TurnSeconds);
                 var relative = actor == seat ? 0 : 1;
                 if ((_root!.FindChild($"Dexterity{relative}", true, false) as DexterityBadge)?.Amount != 0 ||
                     _die.IsRolling || _die.DisplayedValue != 4 || !_die.RollCaption.Contains("Destreza"))
                     throw new Exception("Gastar destreza no actualiza la ficha y el dado sin relanzarlo.");
             }
         }
-        GD.Print("PVP_DEXTERITY_LAYOUT_PASS · fichas públicas, opción del dueño y dado modificado sin relanzar, cuatro tamaños y ambos jugadores/asientos.");
+        GD.Print("PVP_DEXTERITY_LAYOUT_PASS · fichas públicas, opción del dueño y dado modificado que gira a su nueva cara sin relanzar, cuatro tamaños y ambos jugadores/asientos.");
     }
 
     internal async Task CheckHandLimitLayout()

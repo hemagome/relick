@@ -18,6 +18,8 @@ public partial class OnlineArena
     private int? _pointsTarget;
     private (int Owner, FieldZone Zone, int Index)? _fieldSelection;
     private (CardDefinition Card, int? Counters)? _inspectorPreview;
+    /// <summary>Seat whose Relikario portrait is being hovered; read in the inspector like a card.</summary>
+    private int? _relikarioPreview;
     private Vector2? _fieldPress;
 
     private void ResetInteraction()
@@ -25,7 +27,7 @@ public partial class OnlineArena
         _selected.Clear(); _selectedSkill = -1; _skillContext = false;
         _choosingAttackSkill = false;
         _fieldSelection = null; _pointsTarget = null; _showReplayMemory = false;
-        _inspectorPreview = null;
+        _inspectorPreview = null; _relikarioPreview = null;
     }
 
     private void BuildActionArea(VBoxContainer parent)
@@ -280,17 +282,34 @@ public partial class OnlineArena
         if (start == null || start.Value.DistanceSquaredTo(point) > 36 || IsAnimating) return;
         if (_preparing)
         {
-            _inspectorPreview = null;
+            _inspectorPreview = null; _relikarioPreview = null;
             _openingInspection = null;
             RefreshInspector();
         }
-        else if (_inspectorPreview != null || HasContextSelection || _showReplayMemory) ClearContext();
+        else if (_inspectorPreview != null || _relikarioPreview != null || HasContextSelection || _showReplayMemory) ClearContext();
         else return;
         GetViewport().SetInputAsHandled();
     }
 
     private bool HasContextSelection => _selected.Count > 0 || _selectedSkill >= 0 || _fieldSelection != null ||
         _pointsTarget != null || _preparing && SelectedCardId() != null;
+
+    /// <summary>Hovering a Relikario portrait reads its card and effect in the inspector, as hovering a card does.</summary>
+    private void BindRelikarioPreviews()
+    {
+        for (var relative = 0; relative < _portraits.Length; relative++)
+        {
+            var portrait = _portraits[relative]; var index = relative;
+            portrait.MouseEntered += () =>
+            {
+                if (_snapshot is not { } s || _preparing || IsAnimating || HasContextSelection || InspectorActivationId() != null) return;
+                var seat = index == 0 ? s.MySeat : 1 - s.MySeat;
+                if (_relikarioPreview == seat) return;
+                _relikarioPreview = seat; _inspectorPreview = null;
+                RefreshInspector();
+            };
+        }
+    }
 
     private void BindInspectorPreviews()
     {
@@ -317,8 +336,8 @@ public partial class OnlineArena
                 if (IsAnimating || HasContextSelection && !choosingSkill || InspectorActivationId() != null) return;
                 if (card != null) control.TooltipText = "";
                 (CardDefinition, int?)? preview = card == null ? null : (card, counters);
-                if (_inspectorPreview == preview && _inspectorPreviewOwner == owner) return;
-                _inspectorPreview = preview; _inspectorPreviewOwner = owner;
+                if (_inspectorPreview == preview && _inspectorPreviewOwner == owner && _relikarioPreview == null) return;
+                _inspectorPreview = preview; _inspectorPreviewOwner = owner; _relikarioPreview = null;
                 RefreshInspector();
             };
             if (card != null) control.MouseExited += () =>
@@ -377,6 +396,8 @@ public partial class OnlineArena
             cost = _preparing ? "" : _choosingAttackSkill ? ArenaActionText.CardCost(CardCatalog.Attack) : ArenaActionText.CardCost(card);
         }
         var relikia = _showcase != null && activation == null ? _relikiaPreview : null;
+        var relikario = activation == null && relikia == null && !fromPreview && _relikarioPreview is int seat &&
+            RelikarioCatalog.Find(s.Players[seat].RelikarioId) is { } definition ? (definition, s.Players[seat].Name) : default((RelikarioDefinition, string)?);
         if (relikia is { } effectId)
         {
             // The effect's own sheet explains it, so the menu only has to name it.
@@ -384,6 +405,11 @@ public partial class OnlineArena
             cost = $"{effect.Cost} PR · {effect.ActionLabel}";
             _inspector.Present(null, effect.Name, cost);
             _showcase!.PresentSheet(effectId.ToString(), RelikiaSheet(effectId));
+        }
+        else if (relikario is var (form, ownerName))
+        {
+            _inspector.PresentRelikario(form, ownerName);
+            _showcase?.PresentSheet("relikario:" + form.Id, RelikarioArt.Card(form.Id, form.Level));
         }
         else
         {
@@ -394,7 +420,7 @@ public partial class OnlineArena
             _showcase?.Present(card);
         }
         _contextCost.TooltipText = cost;
-        var reading = card != null || relikia != null;
+        var reading = card != null || relikia != null || relikario != null;
         _actionDock.SizeFlagsVertical = reading ? SizeFlags.ExpandFill : SizeFlags.Fill;
         if (_showcase != null)
         {

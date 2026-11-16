@@ -55,6 +55,13 @@ public partial class OnlineArena
                 // «Crear»: echoes meet over the exchange and the Trap goes to its place.
                 Check(new DuelMove { Kind = DuelMoveKind.TrapCraft, Flag = true }.Apply(game, 0).Success, "No se crea la trampa.");
                 var created = DuelSnapshot.For(game, seat, 1101);
+                // Live path: the board is rebuilt for the new revision and the summon waits for its layout,
+                // so it meets over the exchange instead of the top-left corner of a board not yet laid out.
+                _impacts.Clear(); PresentTestSnapshot(created); _queuedPlay = (asked, created);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); PresentQueuedPlay(); // The arena's next _Process (off in tests).
+                var liveExchange = _exchangeTracks[seat == 0 ? 0 : 1]!.ExchangeButtons.Select(b => b.GetGlobalRect()).Aggregate((a, b) => a.Merge(b));
+                Check(_impacts.SummonMeet is { } meet && liveExchange.Grow(4).HasPoint(meet) && liveExchange.Size.X > 0,
+                    $"La invocación en vivo no aparece sobre el canje ({trap.Name}, asiento {seat}, {size}).");
                 ResetAnimations(); PresentTestSnapshot(created); await Layout();
                 _impacts.Clear(); FlashPlayedCard(asked, created); SummonCreatedTrap(asked, created);
                 Check(_impacts.ShowingSummon && !_impacts.ShowingCard && _impacts.SummonEchoes == 2,
