@@ -44,6 +44,8 @@ public partial class OnlineArena
         var entry = current.History?.LastOrDefault(e => e.Id > seen && e.CardId.Length > 0 &&
             e.Status is DuelResolutionStatus.Response or DuelResolutionStatus.Resolving);
         if (entry == null || previous.Resolution?.CardId == entry.CardId) return;
+        // A link of a visible response chain slots into the chain instead of flashing on its own.
+        if (LiveChain(current) is { Count: >= 2 } chain && chain.Any(link => link.CardId == entry.CardId)) return;
         // A created Trap gets its own recipe animation instead (SummonCreatedTrap).
         if (!CardCatalog.All.TryGetValue(entry.CardId, out var card) || card.Kind != CardKind.Code || card.CodeType == CodeType.Trap) return;
         if (BoardArt.LoadCardArtwork(card) is not { } art) return;

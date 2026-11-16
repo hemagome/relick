@@ -124,6 +124,7 @@ public partial class OnlineArena : Control
         BuildResultOverlay();
         _cardActions.AddThemeConstantOverride("separation", 4);
         AddChild(_cardActions);
+        AddChild(_responseChain);
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
@@ -182,6 +183,7 @@ public partial class OnlineArena : Control
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins, placement);
             if (animate) { FlashPlayedCard(previous!, snapshot); SummonCreatedTrap(previous!, snapshot); }
+            SyncResponseChain(snapshot, animate);
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
         if (_root == null) return;
@@ -196,6 +198,7 @@ public partial class OnlineArena : Control
         UpdateRelikiaPreview();
         UpdateEnabled(); RefreshRuntimeGuidance(); RefreshDecisionFeedback();
         PositionCardActions();
+        PositionResponseChain();
         UpdateResultPresentation(); PositionResultOverlay();
         PresentPlaymat();
         foreach (var target in _pulsingTargets)
