@@ -103,6 +103,31 @@ static class LoadErrorTests
                 Check(g.State.PendingTurnBuff == null && a.StarEffects == 0 && g.State.ExtraActionStages == 0);
             }
         }),
+        ("Error tras el dado de Re-lanza: anularla conserva el dado relanzado y omite el robo; pasar o un contraerror roban", () =>
+        {
+            foreach (var answer in new[] { "cancel", "pass", "counter" })
+            {
+                var g = Fixture(); var a = g.State.Players[0]; var b = g.State.Players[1]; g.State.Phase = Phase.Combat;
+                a.Hand.AddRange(new[] { "attack", "reroll" }); a.Skills.Add("destiny-shuffle"); a.Dexterity = 0; b.Hand.Add("load-error");
+                if (answer == "counter") a.Hand.Add("load-error");
+                Check(g.Attack(0, 0, 0).Success && g.State.Phase == Phase.AttackRerollChoice);
+                Check(g.PlayCode(0, a.Hand.IndexOf("reroll")).Success && g.State.Phase == Phase.ErrorResponse && !g.State.ErrorAfterDie);
+                var hand = a.Hand.Count;
+                Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.ErrorResponse && g.State.ErrorAfterDie && g.State.PendingAfterError != null);
+                Check(DuelSnapshot.For(g, 1, 1) is { ErrorAfterDie: true, Die: 2 } && a.Hand.Count == hand);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), new ErrorRandom()); a = g.State.Players[0];
+                if (answer == "pass") Check(g.PassErrorResponse(1).Success);
+                else
+                {
+                    Check(g.PlayCode(1, 0).Success);
+                    if (answer == "counter") Check(g.PlayCode(0, a.Hand.IndexOf("load-error")).Success);
+                }
+                // The reroll already happened in every case; only the draw depends on the answer.
+                var drew = answer != "cancel";
+                Check(a.Hand.Count == hand + (drew ? 1 : 0) - (answer == "counter" ? 1 : 0) && !g.State.ErrorAfterDie && g.State.PendingAfterError == null);
+                Check(g.State.PendingAttackRoll is { Die: 2, WasRerolled: true } && g.ResolveAttackReroll(0, false).Success && g.State.Players[1].Health == 8);
+            }
+        }),
         ("Error puede negar Re-lanza sin relanzar ni robar y sin cobrar acción a la carta gratuita", () =>
         {
             var g = Fixture(); var a = g.State.Players[0]; var b = g.State.Players[1]; g.State.Phase = Phase.Combat;

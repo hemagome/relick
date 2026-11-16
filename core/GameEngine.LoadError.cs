@@ -78,8 +78,36 @@ public sealed partial class GameEngine
         return true;
     }
 
+    /// <summary>
+    /// Re-lanza rerolls a die that already exists, so its window follows the new result and comes before its draw. A
+    /// canceled Re-lanza keeps the rerolled die, which already happened, and skips the draw.
+    /// </summary>
+    private bool TryOpenErrorAfterReroll(EngineContinuation draw)
+    {
+        if (draw.Text.Length == 0 || !HasLoadError(1 - draw.Actor)) return false;
+        var frame = new EngineActivation(draw.Actor, draw.Text, 0, 0, State.Phase) { Kind = ActivationKind.Reroll, Parent = _activeActivation };
+        State.PendingAfterError = draw; State.ErrorAfterDie = true; State.LastDie = draw.Value;
+        OpenErrorChain(frame, State.Phase);
+        State.LastCombat = $"{State.Players[draw.Actor].Name} · {CardCatalog.Get(draw.Text).Name} · D6 = {draw.Value} · Puede responderse con Error de Carga";
+        Log($"{State.Players[1 - draw.Actor].Name} puede responder con Error de Carga después de ver el dado ({draw.Value}).");
+        return true;
+    }
+
     private void ResolveErrorAfterDie(EngineActivation root)
     {
+        if (State.PendingAfterError is { } rest)
+        {
+            State.PendingAfterError = null; State.ErrorAfterDie = false; _activeActivation = root.Parent;
+            if (root.Canceled)
+            {
+                State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Anulada tras el dado ({rest.Value}) · Sin robo";
+                Continue(rest.Next);
+            }
+            else { rest.Flag = true; Continue(rest); }
+            CompleteActivationIfFinished();
+            CompletePendingPlay();
+            return;
+        }
         var effect = _pendingDieEffect!; var die = State.PendingDieRoll!.Die;
         State.ErrorAfterDie = false; _pendingDieEffect = null; State.PendingDieRoll = null;
         if (root.Canceled)

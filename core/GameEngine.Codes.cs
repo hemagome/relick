@@ -203,7 +203,7 @@ public sealed partial class GameEngine
         var resume = new EngineContinuation { Kind = ContinuationKind.ResumeCombo, Actor = actor, Phase = phase,
             Attack = attack, Die = effect, SavedDieEffect = continuation };
         Log($"{p.Name} activa {card.Name}: dado {die}." + (die <= 3 ? " Roba una carta." : ""));
-        var draw = new EngineContinuation { Kind = ContinuationKind.RerollDraw, Actor = actor, Value = die, Die = effect, SavedDieEffect = continuation, Next = resume };
+        var draw = new EngineContinuation { Kind = ContinuationKind.RerollDraw, Actor = actor, Value = die, Die = effect, SavedDieEffect = continuation, Next = resume, Text = card.Id };
         if (attack != null) ProcessAttackDie(die, draw); else Continue(draw);
     }
 
@@ -211,6 +211,8 @@ public sealed partial class GameEngine
     {
         var die = next.Value; var effect = next.Die; var continuation = next.SavedDieEffect;
         var resume = next.Next!; var actor = next.Actor; var p = State.Players[actor];
+        // The new result is seen; before its draw, the rival may cancel Re-lanza with Error de Carga (6.5, 6.6).
+        if (die <= 3 && !next.Flag && TryOpenErrorAfterReroll(next)) return;
         if (die <= 3 && effect?.Purpose == DiePurpose.Recycling)
         {
             // The first recycling has not refilled the empty deck yet. Queue the bonus
