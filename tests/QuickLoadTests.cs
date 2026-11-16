@@ -38,9 +38,10 @@ static class QuickLoadTests
             (g, _) = Fixture(); g.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
             Check(g.PlayCode(0, 0).Success && g.State.Phase != Phase.CodeResponse && g.State.Players[1].Equipment == CardCatalog.CardboardBox.Id);
         }),
-        ("Carga Rápida: Error tardío no revierte robos ni devuelve recursos y la tirada sigue pendiente", () =>
+        ("Carga Rápida: Error responde tras el dado final, no en la ventana del dueño; anularla no revierte los robos ni con Relikia se abre", () =>
         {
             foreach (var memory in new[] { false, true })
+            foreach (var cancel in new[] { false, true })
             {
                 var (g, rng) = Fixture(); var p = g.State.Active; p.Equipment = CardCatalog.Pendant.Id;
                 if (memory) { p.Hand.Clear(); p.Memory.Add(CardCatalog.QuickLoad.Id); p.Relikia = 400; }
@@ -48,11 +49,20 @@ static class QuickLoadTests
                 Check((memory ? g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0) : g.PlayCode(0, 0)).Success);
                 Check(g.State.Phase == Phase.DieRerollChoice && p.Hand.SequenceEqual(top));
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                // While the owner may still modify the die, the result is not final: no Error yet.
                 Reject(g, () => g.PlayCode(1, 0));
                 Check(!g.CanPlayLoadError(1) && g.State.Phase == Phase.DieRerollChoice && p.Hand.SequenceEqual(top));
                 Check(p.ActionsLeft == (memory ? 0 : 1) && p.Relikia == 0);
                 Check(memory ? p.CorruptedMemory.Single() == CardCatalog.QuickLoad.Id : p.Memory.Contains(CardCatalog.QuickLoad.Id));
-                Check(g.ResolveDieReroll(0, false).Success && g.State.DiscardsRemaining == 2);
+                Check(g.ResolveDieReroll(0, false).Success);
+                if (memory) { Check(g.State.DiscardsRemaining == 2 && !g.State.ErrorAfterDie); continue; }
+                Check(g.State.Phase == Phase.ErrorResponse && g.State.ErrorAfterDie && g.CanPlayLoadError(1) && g.State.PendingDieRoll?.Die == 2);
+                Check(DuelSnapshot.For(g, 1, 1) is { ErrorAfterDie: true, Die: 2 } && DuelSnapshot.For(g, 0, 1).ErrorAfterDie);
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
+                if (!cancel) { Check(g.PassErrorResponse(1).Success && g.State.DiscardsRemaining == 2 && !g.State.ErrorAfterDie); continue; }
+                Check(g.PlayCode(1, 0).Success && g.State.Phase == Phase.Actions && g.State.DiscardsRemaining == 0 && g.State.PendingDieRoll == null);
+                // The text is void from here: the action comes back, the cards already drawn stay.
+                Check(p.ActionsLeft == 2 && p.Hand.SequenceEqual(top) && p.Memory.Contains(CardCatalog.QuickLoad.Id) && !g.State.ErrorAfterDie);
             }
         }),
         ("Carga Rápida: Yuno Lv 2 relanza el efecto y Reverse aumenta una vez sin repetir el robo inicial", () =>

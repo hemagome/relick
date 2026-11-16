@@ -89,7 +89,8 @@ public partial class OnlineArena : Control
     private DecisionKind? Deciding => _snapshot is { Phase: Phase.Decision, Decision: { } decision } s && decision.Decider == s.MySeat ? decision.Kind : null;
     /// <summary>The gallery header of a card decision: the card and what to do, as the server describes them.</summary>
     private string? DecisionGalleryTitle => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } d ? $"{d.Title} · {d.Instruction}".ToUpperInvariant() : null;
-    private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat;
+    private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat ||
+        Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);
     private bool ChoosingCorruption => _snapshot is { Phase: Phase.RelikiaChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Corrupt);
     private bool ChoosingEffectCards => ChoosingDeckSearch || ChoosingResetCards || ChoosingMemoryRecovery || ChoosingCorruption || _showReplayMemory;

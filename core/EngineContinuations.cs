@@ -28,6 +28,9 @@ public sealed class DieEffect
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int AttackDamageBonus { get; set; }
     public string SkillId { get; set; } = "";
+    /// <summary>For a card module's roll: the step of the card in <see cref="SkillId"/> that receives the result.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Step { get; set; }
     public bool Rerolled { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int Slot { get; set; }
@@ -115,6 +118,7 @@ public sealed partial class GameEngine
             case ContinuationKind.ResumeMindReset:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
                 if (State.Phase == Phase.MemoryRecoveryChoice && _activeActivation is { } recovery) BeginMemoryRecovery(recovery.Actor);
+                RecheckDecision();
                 CompletePendingPlay();
                 break;
             case ContinuationKind.ResumeCombo:
@@ -127,6 +131,12 @@ public sealed partial class GameEngine
 
     private void ResolveDieEffect(DieEffect effect, int die)
     {
+        if (effect.Step != null)
+        {
+            ContinueCardEffect(new EngineContinuation { Kind = ContinuationKind.CardEffectStep, Actor = effect.Actor, Text = effect.SkillId, Step = effect.Step, Value = die });
+            return;
+        }
+        // Below: rolls of cards without a module, and rolls saved before their card moved to one.
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {

@@ -32,7 +32,7 @@ static class FloppyDiskTests
                 var (g, rng) = Fixture(); g.State.Players[owner].Memory.Add(CardCatalog.FloppyDisk.Id);
                 Check(g.PlayCode(0, 0).Success); var activeIndex = g.State.Active.Memory.Count - 1;
                 Reject(g, () => g.ResolveMemoryRecovery(0, 0, activeIndex));
-                Check(!DuelOptions.For(g, 0).Any(o => o.Move.Kind == DuelMoveKind.RecoverMemory && o.Move.Target == 0 && o.Move.Index == activeIndex));
+                Check(!g.DecisionChoices(0).Any(c => c.Owner == 0 && c.Value == activeIndex));
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
                 Check(g.ResolveMemoryRecovery(0, owner, 0).Success && g.State.Active.Hand.Single() == CardCatalog.FloppyDisk.Id);
                 Check(g.State.Active.Memory.Single() == CardCatalog.FloppyDisk.Id);
@@ -56,9 +56,9 @@ static class FloppyDiskTests
             Check(g.PlayCode(1, 0).Success && g.HasAvailablePlay(1) && !g.HasAvailablePlay(0));
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             var mine = DuelSnapshot.For(g, 1, 4); var other = DuelSnapshot.For(g, 0, 4);
-            Check(mine.Stage == Phase.Actions && mine.Options.Single(o => o.Move.Kind == DuelMoveKind.RecoverMemory).CardId == CardCatalog.Destiny.Id);
-            Check(other.Options.All(o => o.Move.Kind != DuelMoveKind.RecoverMemory && o.CardId == null));
-            Check(mine.Options.Single(o => o.Move.Kind == DuelMoveKind.RecoverMemory).Move.Apply(g, 1).Success);
+            Check(mine.Stage == Phase.Actions && mine.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose).CardId == CardCatalog.Destiny.Id);
+            Check(other.Options.All(o => o.Move.Kind != DuelMoveKind.Choose && o.CardId == null));
+            Check(mine.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose).Move.Apply(g, 1).Success);
             Check(DuelSnapshot.For(g, 1, 5).Players[1].Hand.Single() == CardCatalog.Destiny.Id);
             Check(DuelSnapshot.For(g, 0, 5).Players[1].Hand.Single() == null && !g.State.Active.IsHandCardRevealed(0));
         }),
@@ -87,7 +87,7 @@ static class FloppyDiskTests
         {
             var (g, rng) = Fixture(); g.State.Active.Hand.Add(CardCatalog.LoadError.Id); g.State.Players[1].Memory.Add(CardCatalog.Bonfire.Id);
             g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id); Check(g.PlayCode(0, 0).Success);
-            Check(g.PlayCode(1, 1).Success && g.PlayCode(0, 0).Success && g.State.Phase == Phase.MemoryRecoveryChoice);
+            Check(g.PlayCode(1, 1).Success && g.PlayCode(0, 0).Success && g.State.Phase == Phase.Decision);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             Reject(g, () => g.ResolveMemoryRecovery(0, 0, 0));
             Check(g.ResolveMemoryRecovery(0, 1, 0).Success && g.State.Active.Hand.Single() == CardCatalog.Bonfire.Id);
@@ -124,7 +124,7 @@ static class FloppyDiskTests
                 if (removeActive)
                 {
                     g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
-                    Check(g.State.Phase == Phase.MemoryRecoveryChoice && g.ResolveMemoryRecovery(0, 0, 0).Success);
+                    Check(g.State.Phase == Phase.Decision && g.ResolveMemoryRecovery(0, 0, 0).Success);
                     Check(g.State.Active.Hand.Single() == CardCatalog.Attack.Id);
                 }
                 else Check(g.State.Phase == Phase.Actions && p.Memory.Single() == CardCatalog.FloppyDisk.Id && p.Hand.Count == 0);

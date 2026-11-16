@@ -852,7 +852,7 @@ public partial class OnlineArena
                 if (seat == actor)
                 {
                     if (_handCards.Count != 2 + rivalMemory.Count || _deckSearchOptions.Count(o => o.CardId == CardCatalog.FloppyDisk.Id) != 2 ||
-                        _deckSearchOptions.Any(o => o.Move.Target == actor && o.Move.Index == 2))
+                        game.DecisionChoices(actor).Any(c => c.Owner == actor && c.Value == 2))
                         throw new Exception("Disquete no distingue las otras copias de su copia activa.");
                     var titles = _hand!.FindChildren("HandSectionTitle*", "Label", true, false).OfType<Label>().ToArray();
                     if (titles.Length != 2 || !titles.Any(t => t.Text.Contains("TU MEMORIA")) || !titles.Any(t => t.Text.Contains("MEMORIA DE")))
@@ -871,7 +871,8 @@ public partial class OnlineArena
                             throw new Exception($"Disquete no muestra el botón de confirmación al abrir el selector en {size}.");
                         footerBounds = footer.GetGlobalRect();
                     }
-                    var index = Array.FindIndex(_deckSearchOptions, o => o.Move.Target == 1 - actor && o.Move.Index == targetSlot);
+                    // Gallery cards follow the decision's choices in order; the engine knows each one's memory position.
+                    var index = game.DecisionChoices(actor).ToList().FindIndex(c => c.Owner == 1 - actor && c.Value == targetSlot);
                     var option = _deckSearchOptions[index];
                     var card = _handCards.Single(c => c.Name == $"HandCard{index}");
                     _hand.EnsureControlVisible(card);

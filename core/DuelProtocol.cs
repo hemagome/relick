@@ -115,6 +115,9 @@ public sealed class DuelOption
     /// <summary>For a decision: the card or zone this choice targets on the board.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public FieldTarget? Field { get; set; }
+    /// <summary>For a decision: whose memory the card comes from, so a gallery groups it.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Owner { get; set; }
     /// <summary>For a decision: short button text; null uses <see cref="Label"/>.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Button { get; set; }

@@ -227,7 +227,7 @@ public static class DuelOptions
                     {
                         Add(DuelMoveKind.Choose, choices[i].Label, i);
                         result[^1].CardId = choices[i].CardId; result[^1].Field = choices[i].Field;
-                        result[^1].Button = choices[i].Button; result[^1].Primary = choices[i].Primary;
+                        result[^1].Button = choices[i].Button; result[^1].Primary = choices[i].Primary; result[^1].Owner = choices[i].Owner;
                     }
                     break;
                 case Phase.BlueEggDrawChoice:

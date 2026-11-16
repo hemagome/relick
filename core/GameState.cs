@@ -207,6 +207,12 @@ public sealed class GameState
     public int CorruptionsRemaining { get; internal set; }
     [JsonInclude]
     public int ErrorResponder { get; internal set; }
+    /// <summary>The Error de Carga window is open after a Code's die result (6.5, 6.6); <see cref="PendingDieRoll"/> holds the final die.</summary>
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ErrorAfterDie { get; internal set; }
+    /// <summary>During <see cref="ErrorAfterDie"/> for a COMBO that rerolled a die: the rest of its effect, run if it is not canceled.</summary>
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public EngineContinuation? PendingAfterError { get; internal set; }
     [JsonInclude]
     public List<ActivationInfo> ActivationChain { get; internal set; } = new();
     [JsonInclude]

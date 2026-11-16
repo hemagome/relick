@@ -18,6 +18,7 @@ public partial class OnlineArena
     {
         if (_showReplayMemory && option.Move.Kind == DuelMoveKind.Relikia && option.Move.Value == (int)RelikiaEffect.ReplayCode)
             return _snapshot!.MySeat;
+        if (option.Move.Kind == DuelMoveKind.Choose) return option.Owner;
         return option.Move.Kind is DuelMoveKind.RecoverMemory or DuelMoveKind.MindResetMemory or DuelMoveKind.Corrupt
             ? option.Move.Target : null;
     }

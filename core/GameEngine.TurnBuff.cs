@@ -114,6 +114,7 @@ public sealed partial class GameEngine
         State.PendingTurnBuff = null; State.Phase = pending.ResumePhase;
         State.PendingAttackRoll = pending.AttackRoll; State.PendingDieRoll = pending.DieRoll; _pendingDieEffect = pending.DieEffect;
         State.PendingCode = pending.Code; State.PendingPoints = pending.Points; State.DestroyActor = pending.DestroyActor; State.PendingDecision = pending.Decision;
+        RecheckDecision();
         State.PendingMindReset = pending.MindReset; State.PendingRelikia = pending.Relikia; State.CorruptionsRemaining = pending.Corruptions;
         CompletePendingPlay();
     }

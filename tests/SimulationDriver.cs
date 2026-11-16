@@ -18,6 +18,8 @@ static class SimulationDriver
         {
             // Prefer the rival's cards and declining optional payments, as the former per-card choices did.
             var choices = game.DecisionChoices(actor);
+            // Aumento de Relick Points raises the bot's own PR, as the former points choice did.
+            if (s.PendingDecision!.Source == CardCatalog.PointsIncrease.Id) return game.ResolveDecision(actor, Enumerable.Range(0, choices.Count).First(i => choices[i].Primary));
             return game.ResolveDecision(actor, Enumerable.Range(0, choices.Count).OrderBy(i => choices[i].Field?.Owner == actor).ThenBy(i => choices[i].Primary).First());
         }
         if (s.Phase == Phase.Draw) return game.Advance(actor);

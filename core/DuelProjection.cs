@@ -96,6 +96,9 @@ public sealed class DuelSnapshot
     /// <summary>The pending card decision as both players may see it; its choices reach the decider as options.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public DecisionView? Decision { get; set; }
+    /// <summary>The Error de Carga window follows a Code's die result, shown in <see cref="Die"/>.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ErrorAfterDie { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public List<DuelHistoryEntry>? History { get; set; }
     public DuelPlayerView[] Players { get; set; } = [];
@@ -150,6 +153,7 @@ public sealed class DuelSnapshot
                 stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase,
             DieCaption = game.CurrentDieCaption,
             LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(),
+            ErrorAfterDie = s.ErrorAfterDie && s.Phase == Phase.ErrorResponse,
             Decision = s.Phase == Phase.Decision && s.PendingDecision is { } decision ? new DecisionView { Source = decision.Source, Decider = decision.Decider,
                 Kind = decision.Kind, Title = CardCatalog.Get(decision.Source).Name, Instruction = decision.Instruction } : null,
             History = game.PublicHistory?.Entries.ToList(),

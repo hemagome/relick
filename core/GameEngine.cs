@@ -228,15 +228,9 @@ public sealed partial class GameEngine
         if (card.DeployTotems) { BeginGoldenTotem(Array.IndexOf(State.Players, p)); return; }
         if (card.RepeatStage) { ResolveRepeatedStage(); return; }
         if (card.ReloadBothHands) { BeginReloadHands(Array.IndexOf(State.Players, p)); return; }
-        if (card.DrawThenDie)
-        {
-            DrawCards(p, card.Draw, new EngineContinuation { Kind = ContinuationKind.QuickLoadDie, Actor = Array.IndexOf(State.Players, p) });
-            return;
-        }
         if (card.DiscardForTurnBuff) { ResolveTurnBuff(); return; }
-        if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p) }); return; }
+        if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p), SkillId = card.Id }); return; }
         if (card.ResetMind) { BeginMindReset(Array.IndexOf(State.Players, p)); return; }
-        if (card.RecoverMemory) { BeginMemoryRecovery(Array.IndexOf(State.Players, p)); return; }
         if (card.SwapHands) { SwapHands(Array.IndexOf(State.Players, p)); return; }
         if (card.SearchAttacks > 0)
         {
@@ -247,16 +241,6 @@ public sealed partial class GameEngine
             // Freeze the count so recycling cannot add further targets to this effect.
             for (var i = 0; i < count; i++)
                 MoveDeckCard(p, p.Deck.FindIndex(id => CardCatalog.Get(id).Kind == CardKind.Attack), false);
-            return;
-        }
-        if (card.ChangePointsFromDie)
-        {
-            RollWithRelikario(p, DiePurpose.PointsChange, new DieEffect { Purpose = DiePurpose.PointsChange, Actor = Array.IndexOf(State.Players, p) });
-            return;
-        }
-        if (card.HealFromDie)
-        {
-            RollWithRelikario(p, DiePurpose.ExtraLife, new DieEffect { Purpose = DiePurpose.ExtraLife, Actor = Array.IndexOf(State.Players, p) });
             return;
         }
         if (card.Heal > 0) Heal(p, card.Heal);

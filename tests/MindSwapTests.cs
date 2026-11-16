@@ -88,19 +88,16 @@ static class MindSwapTests
             Check(p.Memory.SequenceEqual(new[] { CardCatalog.MindSwap.Id, CardCatalog.LoadError.Id }) && rival.Memory.Single() == CardCatalog.LoadError.Id);
             Check(p.ActionsLeft == 0 && rival.ActionsLeft == 2 && g.State.Phase == Phase.Actions);
         }),
-        ("Cambio de Mentes: Relikia permite mano vacía, corrompe el código y cobra dos acciones y 400 PR", () =>
+        ("Cambio de Mentes: Relikia permite mano vacía, corrompe el código y cobra dos acciones y 400 PR; Error no lo cancela", () =>
         {
-            foreach (var cancel in new[] { false, true })
+            foreach (var rivalHasError in new[] { false, true })
             {
                 var g = Fixture(); var p = g.State.Active; var rival = g.State.Players[1]; p.Hand.Clear(); p.Memory.Add(CardCatalog.MindSwap.Id); p.Relikia = 400;
-                rival.Hand.Add(CardCatalog.ExtraLife.Id); if (cancel) rival.Hand.Add(CardCatalog.LoadError.Id);
-                Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success);
-                if (cancel)
-                {
-                    Check(g.PlayCode(1, 1).Success && p.Hand.Count == 0 && rival.Hand.Single() == CardCatalog.ExtraLife.Id);
-                    Check(p.Relikia == 400 && p.ActionsLeft == 2 && p.Memory.Single() == CardCatalog.MindSwap.Id && p.CorruptedMemory.Count == 0);
-                }
-                else Check(p.Hand.Single() == CardCatalog.ExtraLife.Id && rival.Hand.Count == 0 && p.CorruptedMemory.Single() == CardCatalog.MindSwap.Id && p.Relikia == 0 && p.ActionsLeft == 0);
+                rival.Hand.Add(CardCatalog.ExtraLife.Id); if (rivalHasError) rival.Hand.Add(CardCatalog.LoadError.Id);
+                // Replaying from memory is a relikia effect: it resolves at once, even against Error de Carga.
+                Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && g.State.Phase == Phase.Actions);
+                Check(p.Hand.Count == (rivalHasError ? 2 : 1) && p.Hand.Contains(CardCatalog.ExtraLife.Id) && rival.Hand.Count == 0);
+                Check(p.CorruptedMemory.Single() == CardCatalog.MindSwap.Id && p.Relikia == 0 && p.ActionsLeft == 0);
             }
         }),
         ("Cambio de Mentes: recuperación pendiente y ejecución no consumen azar ni filtran cartas en señales", () =>
