@@ -104,7 +104,7 @@ internal static class ArenaGuidance
         if (p.Pr < GameEngine.CodePrCost(card, s.LegacyBlueEgg)) return "No tienes PR suficientes para activar esta carta.";
         if (p.HandCount - 1 < card.DiscardCost) return "No tienes suficientes cartas adicionales para pagar el descarte.";
         if (card.FieldCombatDie) return "Activa Jessica Lee desde Bonus o canje durante tu fase de combate.";
-        if (card.DodgeAttack) return "Requiere un ataque rival pendiente de defensa.";
+        if (card.Id == CardCatalog.Dodge.Id) return "Requiere un ataque rival pendiente de defensa.";
         if (card.RerollOwnDie || card.SetOwnDie > 0) return "Requiere un dado propio pendiente de resolver.";
         if (card.CancelActivation) return "Requiere una activación rival que puedas anular.";
         return "El efecto de esta carta no tiene una activación disponible ahora.";

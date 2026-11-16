@@ -203,12 +203,12 @@ public partial class OnlineArena
                         throw new Exception("Tótem de Oro no muestra su cobertura pública independiente.");
                     if (step == 0 && seat == actor)
                     {
-                        var choices = current.Options.Where(o => o.Move.Kind == DuelMoveKind.GoldenTotem).ToArray();
+                        // A confirmation decision: one button per number of copies, the instruction from the server.
+                        var choices = current.Options.Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
                         if (choices.Length != 3 || !_selection.Text.Contains("hasta dos")) throw new Exception("Oro no explica la selección de cero a dos copias.");
-                        SelectCard(0); SelectCard(1);
-                        for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                        if (_selected.Count != 2 || _moveButtons.Count(b => ReferenceEquals(PresentedOption(b), choices.Single(o => o.RequiredDiscards == 2))) != 1)
-                            throw new Exception("No se pueden seleccionar dos Tótems distintos sin descartar.");
+                        if (choices.Any(o => _moveButtons.Count(b => ReferenceEquals(PresentedOption(b), o)) != 1) ||
+                            _moveButtons.Count(b => PresentedOption(b)?.Button == "Mostrar 2 Tótems") != 1)
+                            throw new Exception("Oro no ofrece mostrar cero, uno o dos Tótems.");
                     }
                     if (step == 1)
                     {
@@ -235,7 +235,8 @@ public partial class OnlineArena
                         throw new Exception($"Oro desborda {size}: {minimum}.");
                 }
                 previousSaved = game.SaveSnapshot(); cues = DuelVisualEvents.Capture(game);
-                if (step == 0 && !game.ResolveGoldenTotem(actor, [0, 1]).Success) throw new Exception("No se muestran las dos copias con Oro.");
+                if (step == 0 && !game.ResolveDecision(actor, game.DecisionChoices(actor).ToList().FindIndex(c => c.Value == 2)).Success)
+                    throw new Exception("No se muestran las dos copias con Oro.");
                 if (step == 1 && !game.ResolveDestructionProtection(actor).Success) throw new Exception("No se sustituye el equipo anterior.");
                 if (step == 2)
                 {

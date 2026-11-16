@@ -226,10 +226,8 @@ public sealed partial class GameEngine
     private void ResolveCode(PlayerState p, CardDefinition card)
     {
         if (TryResolveWithEffect(p, card)) return;
-        if (card.DeployTotems) { BeginGoldenTotem(Array.IndexOf(State.Players, p)); return; }
         if (card.RepeatStage) { ResolveRepeatedStage(); return; }
         if (card.DiscardForTurnBuff) { ResolveTurnBuff(); return; }
-        if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p), SkillId = card.Id }); return; }
         // Plain heal and draw data, used by the test fixtures; every real code has its own rules.
         if (card.Heal > 0) Heal(p, card.Heal);
         if (_activeActivation != null) _activeActivation.CanInterrupt = false;
