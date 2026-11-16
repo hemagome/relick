@@ -7,7 +7,7 @@ static class GoldenTotemTests
         ("Oro: Personaje sin COMBO, una acción y una copia en el mazo de 42 cartas", () =>
         {
             var c = CardCatalog.GoldenTotem;
-            Check(c.Kind == CardKind.Code && c.CodeType == CodeType.Character && c.DeployTotems && !c.IsCombo && c.ActionCost == 1 && c.PrCost == 0);
+            Check(c.Kind == CardKind.Code && c.CodeType == CodeType.Character && !c.IsCombo && c.ActionCost == 1 && c.PrCost == 0);
             var deck = CardCatalog.TrainingDeck();
             Check(deck.Count == 42 && deck.Count(id => id == c.Id) == 1 && CardCatalog.All.ContainsKey(c.Id));
         }),
@@ -17,7 +17,7 @@ static class GoldenTotemTests
             foreach (var amount in new[] { 0, 1, 2 })
             {
                 var (g, rng) = Fixture(actor); var p = g.State.Active; p.Equipment = CardCatalog.Pc.Id; p.EquipmentDie = 4; var count = Count(g);
-                Check(g.PlayCode(actor, 0).Success && g.State.Phase == Phase.GoldenTotemChoice && p.ActionsLeft == 1);
+                Check(g.PlayCode(actor, 0).Success && g.State.PendingDecision?.Source == CardCatalog.GoldenTotem.Id && p.ActionsLeft == 1);
                 Check(p.EquipmentCovers == null && p.Hand.Count == 3 && p.Memory.Single() == CardCatalog.GoldenTotem.Id);
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
                 Check(new DuelMove { Kind = DuelMoveKind.GoldenTotem, Discards = Enumerable.Range(0, amount).ToArray() }.Apply(g, actor).Success);
@@ -33,7 +33,7 @@ static class GoldenTotemTests
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.RemoveAll(id => id == CardCatalog.Totem.Id);
             Reject(g, () => g.PlayCode(0, 0)); p.Hand.Add(CardCatalog.Totem.Id);
             Check(g.PlayCode(0, 0).Success);
-            Check(DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.GoldenTotem).All(o => o.RequiredDiscards == 1));
+            Check(DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Choose).Select(o => o.Button).SequenceEqual(["Mostrar 1 Tótem"]));
             Reject(g, () => g.ResolveGoldenTotem(0, []));
             Check(g.ResolveGoldenTotem(0, [1]).Success && p.Equipment == CardCatalog.Totem.Id && p.EquipmentCovers!.Count == 1);
         }),
@@ -79,13 +79,36 @@ static class GoldenTotemTests
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
             Check(g.ResolveGoldenTotem(0, [0, 1]).Success && p.EquipmentCovers!.Count == 1 && p.EquipmentStackedCopies == 1 && p.ActionsLeft == 0);
         }),
+        ("Oro: la decisión ofrece cuántos Tótems mostrar solo a quien decide y usa las primeras copias de la mano", () =>
+        {
+            var (g, _) = Fixture(); var p = g.State.Active; p.Equipment = CardCatalog.Pc.Id; g.PublicHistory = new DuelHistory();
+            Check(g.PlayCode(0, 0).Success && g.State.PendingDecision is { Kind: DecisionKind.Confirm, AllowsCombos: false });
+            var options = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
+            Check(options.Select(o => o.Button).SequenceEqual(["Colocar sin Tótems", "Mostrar 1 Tótem", "Mostrar 2 Tótems"]) && options[2].Primary);
+            Check(!DuelOptions.For(g, 1).Any(o => o.Move.Kind == DuelMoveKind.Choose) && DuelSnapshot.For(g, 1, 1).Decision?.Title == CardCatalog.GoldenTotem.Name);
+            Check(options[1].Move.Apply(g, 0).Success && p.Equipment == CardCatalog.Totem.Id && p.Hand.SequenceEqual([CardCatalog.Totem.Id, CardCatalog.Attack.Id]));
+            Check(p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id && g.State.Phase == Phase.Actions && g.State.PendingDecision == null);
+            Check(g.PublicHistory.Entries.Last().Text.EndsWith("coloca Tótem de Oro con 1 Tótem(s) de Salvación."));
+        }),
+        ("Oro: un duelo guardado en la fase anterior se termina con su jugada de entonces", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active;
+            Check(g.PlayCode(0, 0).Success);
+            var json = System.Text.Json.Nodes.JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
+            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.GoldenTotemChoice;
+            state["PendingGoldenTotem"] = new System.Text.Json.Nodes.JsonObject { ["Actor"] = 0, ["HandIndices"] = new System.Text.Json.Nodes.JsonArray() };
+            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng); p = legacy.State.Active;
+            Check(DuelOptions.For(legacy, 0).Count(o => o.Move.Kind == DuelMoveKind.GoldenTotem) == 2);
+            Check(legacy.ResolveGoldenTotem(0, [1]).Success && p.Equipment == CardCatalog.Totem.Id && p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id);
+            Check(legacy.State.PendingGoldenTotem == null && legacy.State.Phase == Phase.Actions && p.Hand.SequenceEqual([CardCatalog.Totem.Id, CardCatalog.Attack.Id]));
+        }),
         ("Oro: Caja no responde a Personaje y Relikia no puede activarlo", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active; g.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
             p.Memory.Add(CardCatalog.GoldenTotem.Id); p.Relikia = 500;
             Check(!g.CanReplayMemoryCode(0, 0) && !g.ReplayableMemoryCodes(0).Contains(0));
             Reject(g, () => g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0));
-            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.GoldenTotemChoice);
+            Check(g.PlayCode(0, 0).Success && g.State.PendingDecision?.Source == CardCatalog.GoldenTotem.Id);
             Reject(g, () => g.ResolveCodeResponse(1, true)); Check(g.ResolveGoldenTotem(0, [0]).Success);
             Check(g.State.Players[1].Equipment == CardCatalog.CardboardBox.Id);
         }),

@@ -65,9 +65,6 @@ public sealed partial class GameEngine
         if (card.CodeType == CodeType.Trap) return "Este Código Trampa se crea mediante un canje.";
         if (State.PendingTotemDamage != null) return "Decide primero si cancelas el daño con Tótem de Salvación.";
         if (State.PendingGoldenTotem != null && !card.CancelActivation) return "Completa la colocación de Tótem de Oro.";
-        if (card.DeployTotems && excludedHand < 0) return "Tótem de Oro no puede activarse con Relikia.";
-        if (card.DeployTotems && p.Equipment == null && !p.Hand.Contains(CardCatalog.Totem.Id))
-            return "Tótem de Oro necesita un equipo debajo o un Tótem de Salvación en tu mano.";
         if (card.FieldCombatDie) return "Activa Jessica Lee desde tu zona de canje o Bonus durante tu etapa de combate.";
         if (State.PendingReload != null && !card.CancelActivation && !card.RerollOwnDie && card.SetOwnDie <= 0)
             return "Completa la resolución de Cartucho de Re-carga.";
@@ -88,7 +85,6 @@ public sealed partial class GameEngine
         if (p.Relikia < prCost) return $"Necesitas {prCost} PR.";
         if (CardEffects.For(card.Id) is { } effect && effect.Unavailable(EffectFor(Array.IndexOf(State.Players, p), card.Id), excludedHand) is { } effectError)
             return effectError;
-        if (card.DodgeAttack && (State.Phase != Phase.DefenseChoice || State.PendingAttack?.Attacker != 1 - Array.IndexOf(State.Players, p))) return "Solo puedes esquivar un ataque de tu oponente pendiente de defensa.";
         if (card.CancelActivation && !CanPlayLoadError(Array.IndexOf(State.Players, p))) return "No hay una activación que puedas anular.";
         if ((card.RerollOwnDie || card.SetOwnDie > 0) && !OwnDiePending(Array.IndexOf(State.Players, p))) return "Requiere un dado propio pendiente.";
         return null;

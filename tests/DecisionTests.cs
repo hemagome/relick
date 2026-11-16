@@ -133,10 +133,11 @@ static class DecisionTests
         }),
         ("Decisión: las cartas con efecto registrado no necesitan indicadores en su definición", () =>
         {
-            foreach (var card in new[] { CardCatalog.BlueEgg, CardCatalog.TimeBomb, CardCatalog.KonamyCode, CardCatalog.PointsIncrease, CardCatalog.FloppyDisk, CardCatalog.TripleAttack })
+            foreach (var card in new[] { CardCatalog.BlueEgg, CardCatalog.TimeBomb, CardCatalog.KonamyCode, CardCatalog.PointsIncrease, CardCatalog.FloppyDisk, CardCatalog.TripleAttack, CardCatalog.GoldenTotem })
                 Check(card with { Text = "" } == new CardDefinition(card.Id, card.Name, card.Kind, "", CodeType: card.CodeType));
             // A COMBO keeps its speed and action cost, which are common costs, not card rules.
             Check(CardCatalog.MindReset with { Text = "" } == new CardDefinition(CardCatalog.MindReset.Id, CardCatalog.MindReset.Name, CardKind.Code, "", CodeType: CodeType.Play, IsCombo: true));
+            Check(CardCatalog.Dodge with { Text = "" } == new CardDefinition(CardCatalog.Dodge.Id, CardCatalog.Dodge.Name, CardKind.Code, "", CodeType: CodeType.Play, IsCombo: true));
             // Data the module reads, not a rule switch: how many cards Carga Rápida, Senshuni and Cartucho draw.
             // The first-turn ban is a common activation cost every code may carry.
             Check(CardCatalog.QuickLoad with { Text = "" } == new CardDefinition(CardCatalog.QuickLoad.Id, CardCatalog.QuickLoad.Name, CardKind.Code, "", Draw: 2, CodeType: CodeType.Play));

@@ -15,10 +15,10 @@ public sealed record CardDefinition(
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, int PrCost = 0, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
     int DamageReduction = 0, bool DestroyOnAttackOne = false,
-    int EarliestTurn = 0, int SetOwnDie = 0, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false,
+    int EarliestTurn = 0, int SetOwnDie = 0, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false,
     int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
     bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false,
-    int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false, bool DeployTotems = false,
+    int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false,
     // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
     string? Relikario = null, bool Special = false)
 {
@@ -40,7 +40,7 @@ public static class CardCatalog
     public const int SuperMagnetCounterLimit = 3;
     public static readonly CardDefinition GoldenTotem = new("golden-totem", "Tótem de Oro", CardKind.Code,
         "Muestra hasta 2 Tótems de Salvación de tu mano y colócalos en la zona de equipos. Coloca esta carta encima de tu equipo. Necesita al menos un equipo debajo. Si un Tótem de Salvación equipado fuera a ser destruido, destruye esta carta en su lugar. No puede activarse con Relikia.",
-        CodeType: CodeType.Character, DeployTotems: true);
+        CodeType: CodeType.Character);
     public static readonly CardDefinition Totem = new("salvation-totem", "Tótem de Salvación", CardKind.Equipment,
         "Si el daño te llevaría a 0 vidas, puedes cancelarlo y destruir un Tótem de Salvación equipado. Al equipar otra copia, apílala sobre este equipo. Con dos o más copias, destruye una si recibes daño y todos tus fallos de ataque infligen daño normal.", Stackable: true);
     public static readonly CardDefinition TimeBender = new("time-bender", "Doblador de Tiempo", CardKind.Code,
@@ -74,7 +74,7 @@ public static class CardCatalog
         "Al equipar: lanza 1D6 y colócalo sobre esta carta. Al lanzar un dado puedes destruir este equipo: si guardó 1–3, suma ese valor al dado (máx. 5); si guardó 4–6, cambia el resultado del dado por el valor guardado.", StoreDie: true);
     public static readonly CardDefinition Dodge = new("dodge", "Esquivar", CardKind.Code,
         "COMBO. Si tu oponente te está atacando, lanza 1D6: 1–2–3: roba 1 carta; 4–5–6: niega el ataque.",
-        CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, DodgeAttack: true);
+        CodeType: CodeType.Play, IsCombo: true, ActionCost: 1);
     public static readonly CardDefinition MindReset = new("mind-reset", "Resetear la Mente", CardKind.Code,
         "COMBO. Selecciona 2 cartas de cualquier memoria y 1 no-habilidad de la mano (mira la mano) de un jugador objetivo. Envía esas cartas al mazo de su respectivo dueño, baraja y luego el jugador objetivo roba una carta.",
         CodeType: CodeType.Play, IsCombo: true, ActionCost: 1);

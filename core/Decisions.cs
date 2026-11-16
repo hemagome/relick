@@ -94,7 +94,8 @@ internal static class CardEffects
     private static readonly IReadOnlyDictionary<string, ICardEffect> Registered =
         new ICardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
             new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
-            new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect() }.ToDictionary(e => e.CardId);
+            new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
+            new DodgeEffect(), new GoldenTotemEffect() }.ToDictionary(e => e.CardId);
 
     public static ICardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
@@ -151,6 +152,15 @@ public sealed partial class GameEngine
         public void SwapHands() => _engine.SwapHands(Actor);
         /// <summary>Both players discard their hands and draw this card's <c>Draw</c>, with Mira de Sniper triggers in between.</summary>
         public void ReloadBothHands() => _engine.BeginReloadHands(Actor);
+        /// <summary>Shows these Tótems de Salvación and places them with Tótem de Oro on top, through the engine's placement sequence.</summary>
+        public void DeployGoldenTotem(int[] handIndices) => _engine.DeployGoldenTotem(Actor, handIndices);
+        /// <summary>The pending attack against this player is negated: the attacker loses a prize already paid and combat goes on.</summary>
+        public void NegatePendingAttack()
+        {
+            var attack = State.PendingAttack!; var attacker = State.Players[attack.Attacker];
+            if (!attack.RewardPending) attacker.Relikia = Math.Max(0, attacker.Relikia - CardCatalog.Get(attack.SkillId).Reward);
+            State.PendingAttack = null; State.Phase = Phase.Combat;
+        }
 
         /// <summary>
         /// Rolls a D6 through the shared die window (Relikario rerolls, Colgante, PC, destreza, COMBO), then continues the
