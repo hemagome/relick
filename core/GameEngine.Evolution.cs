@@ -60,7 +60,7 @@ public sealed partial class GameEngine
         else
         {
             RegisterNaturalSix(p, die);
-            ResolveDieEffect(effect, die);
+            if (!TryOpenErrorAfterDie(effect, die)) ResolveDieEffect(effect, die);
         }
     }
 
@@ -88,7 +88,7 @@ public sealed partial class GameEngine
         _pendingDieEffect = null;
         State.PendingDieRoll = null;
         State.Phase = pending.ResumePhase;
-        ResolveDieEffect(effect, die);
+        if (!TryOpenErrorAfterDie(effect, die)) ResolveDieEffect(effect, die);
         CompleteActivationIfFinished();
         return CommandResult.Ok();
     }

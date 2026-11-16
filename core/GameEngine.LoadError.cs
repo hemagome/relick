@@ -9,8 +9,8 @@ public sealed partial class GameEngine
     public bool CanPlayLoadError(int actor)
     {
         if (actor < 0 || actor >= 2) return false;
-        // An activation can only be canceled before its effect starts. Passing closes
-        // this window permanently; choices made during resolution do not reopen it.
+        // An activation can be canceled before its effect starts and, when it rolls a die, once more after seeing the
+        // final result (6.5, 6.6). Choices made during resolution do not reopen the window.
         return HasLoadError(actor) && State.Phase == Phase.ErrorResponse && State.ErrorResponder == actor &&
             _activationChain.Count > 0 && _activationChain[^1].Actor != actor;
     }
@@ -52,6 +52,7 @@ public sealed partial class GameEngine
             if (i > 0) _activationChain[i - 1].Canceled = true;
         }
         var root = _activationChain[0]; _activationChain.Clear(); State.ActivationChain.Clear(); State.Phase = _errorResumePhase;
+        if (State.ErrorAfterDie) { ResolveErrorAfterDie(root); return; }
         if (root.Canceled) { CancelActivation(root); _activeActivation = root.Parent; State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Activación anulada · Costes devueltos"; }
         else { ResumeActivation(root); CompleteActivationIfFinished(); }
         if (root.Canceled && root.FinishSniperExchange) CompleteExchange(State.Players[root.Actor]);
@@ -59,6 +60,42 @@ public sealed partial class GameEngine
         if (State.Phase == Phase.ReloadResolving && State.PendingReload != null) CompleteActivationIfFinished();
         CompletePendingPlay();
     }
+    /// <summary>
+    /// After a Code's die is final (its owner's rerolls and modifiers included), the rival may answer with Error de Carga
+    /// before the rest of the effect applies (6.5, 6.6). Only the activating Code's own roll opens it, and only while that
+    /// activation can still be canceled: a replay with Relikia, or a roll that is not the Code's (recycling), never does.
+    /// </summary>
+    private bool TryOpenErrorAfterDie(DieEffect effect, int die)
+    {
+        if (_activeActivation is not { Kind: ActivationKind.Code, CanInterrupt: true } frame || effect.SkillId != frame.CardId ||
+            effect.Actor != frame.Actor || !HasLoadError(1 - frame.Actor)) return false;
+        _pendingDieEffect = effect;
+        State.PendingDieRoll = new(effect.Actor, effect.Purpose, die, State.Phase);
+        State.ErrorAfterDie = true;
+        OpenErrorChain(frame, State.Phase);
+        State.LastCombat = $"{State.Players[frame.Actor].Name} · {CardCatalog.Get(frame.CardId).Name} · D6 = {die} · Puede responderse con Error de Carga";
+        Log($"{State.Players[1 - frame.Actor].Name} puede responder con Error de Carga después de ver el dado ({die}).");
+        return true;
+    }
+
+    private void ResolveErrorAfterDie(EngineActivation root)
+    {
+        var effect = _pendingDieEffect!; var die = State.PendingDieRoll!.Die;
+        State.ErrorAfterDie = false; _pendingDieEffect = null; State.PendingDieRoll = null;
+        if (root.Canceled)
+        {
+            // The text is void: the rest of the effect never applies. What already happened (cards drawn first) stays.
+            CancelActivation(root); _activeActivation = root.Parent;
+            State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Anulada tras el dado ({die}) · Acción devuelta";
+        }
+        else
+        {
+            ResolveDieEffect(effect, die);
+            CompleteActivationIfFinished();
+        }
+        CompletePendingPlay();
+    }
+
     private void RefundActivation(int actor, int actions, int pr)
     {
         var p = State.Players[actor]; p.ActionsLeft += actions; p.Relikia += pr;

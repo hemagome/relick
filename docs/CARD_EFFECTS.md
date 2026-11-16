@@ -20,7 +20,7 @@ Piloto del 16 de noviembre de 2026, ampliado el mismo día con cuatro cartas má
 
 **Operaciones reutilizables.** El módulo usa `EffectContext`: preguntar, destruir (con Súper Imán, Reverse Shuffle y Tótem de Oro incluidos), robar, curar, tirar un dado, exigir descartes, tomar una carta de una memoria, reponer el Bonus, mover una carta del mazo, azar y las consultas de objetivos. Son las mismas funciones del motor, así que una carta migrada consume el azar en el mismo orden que antes.
 
-**Tiradas.** `Roll(purpose, step)` pasa por la misma ventana de dado de siempre (relanzamientos del Relikario, Colgante, PC, destreza, Re-lanza y Agilidad) y entrega el resultado final al paso indicado. La tirada conserva su propósito anterior (`ExtraLife`, `PointsChange`, `QuickLoad`), así que el estado y el registro durante la tirada no cambian. Es también el único punto donde habría que añadir la ventana de Error de Carga tras el dado que pide el reglamento ([RAM](RAM.md), discrepancia 2).
+**Tiradas.** `Roll(purpose, step)` pasa por la misma ventana de dado de siempre (relanzamientos del Relikario, Colgante, PC, destreza, Re-lanza y Agilidad) y entrega el resultado final al paso indicado. La tirada conserva su propósito anterior (`ExtraLife`, `PointsChange`, `QuickLoad`), así que el estado y el registro durante la tirada no cambian. Cuando el dado de una activación de Código es definitivo, el rival puede responder con Error de Carga antes de que el efecto continúe ([RAM](RAM.md)).
 
 **Decisiones que se quedan sin opciones.** Si una respuesta (Resetear la Mente, un COMBO) deja una decisión sin opciones, el efecto termina sin efecto, como pide A.2, en lugar de quedarse esperando.
 

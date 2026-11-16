@@ -30,6 +30,16 @@ static class DodgeTests
             g.State.Phase = Phase.Actions; p.Hand.Add(CardCatalog.Dodge.Id); before = g.SaveSnapshot();
             Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
         }),
+        ("Esquivar: el atacante puede anular con Error tras ver el dado y el ataque sigue pendiente de defensa", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Players[1]; var attacker = g.State.Players[0];
+            p.Dexterity = 0; attacker.Hand.Add("load-error"); attacker.ActionsLeft = 1;
+            Check(g.PlayCode(1, 0).Success && g.State.Phase == Phase.ErrorResponse);
+            rng.EnqueueDie(5); Check(g.PassErrorResponse(0).Success);
+            Check(g.State.Phase == Phase.ErrorResponse && g.State.ErrorAfterDie && g.State.PendingDieRoll?.Die == 5 && g.State.PendingAttack != null);
+            Check(g.PlayCode(0, attacker.Hand.IndexOf("load-error")).Success && g.State.Phase == Phase.DefenseChoice && g.State.PendingAttack != null);
+            Check(p.ActionsLeft == 2 && p.Memory.Contains(CardCatalog.Dodge.Id) && g.PassDefense(1).Success && p.Health == p.MaxHealth - 5);
+        }),
         ("Esquivar: Agilidad modifica dado propio, persiste decisión y cuesta la segunda acción", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Players[1]; p.Hand.Add(CardCatalog.Agility.Id);

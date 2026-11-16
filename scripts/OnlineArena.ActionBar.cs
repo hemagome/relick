@@ -448,7 +448,8 @@ public partial class OnlineArena
     {
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
-        if (s.Phase == Phase.ErrorResponse && myTurn) return "Anula la activación o deja que se resuelva.";
+        if (s.Phase == Phase.ErrorResponse && myTurn) return s.ErrorAfterDie
+            ? $"Dado final: {s.Die}. Anula el código ahora o deja que termine su efecto." : "Anula la activación o deja que se resuelva.";
         if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) return ArenaGuidance.Instruction(s);
         if (Deciding == DecisionKind.ChooseTarget && _fieldSelection?.Zone == FieldZone.Hand) return "Se destruirá una carta al azar de esa mano.";
         if (Deciding is DecisionKind.Confirm or DecisionKind.ChooseTarget && _fieldSelection == null) return ArenaGuidance.Instruction(s);
