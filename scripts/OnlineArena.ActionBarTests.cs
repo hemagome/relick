@@ -24,6 +24,7 @@ public partial class OnlineArena
         if (ChoosingEffectCards && _deckSearchOptions.Contains(o)) SelectCard(Array.IndexOf(_deckSearchOptions, o));
         else if (m.Kind == DuelMoveKind.FieldCode) SelectField(s.MySeat, (FieldZone)m.Value, m.Index);
         else if (m.Kind == DuelMoveKind.Destroy) SelectField(m.Target, (FieldZone)m.Value, m.Index);
+        else if (m.Kind == DuelMoveKind.Choose && o.Field is { } field) SelectField(field.Owner, field.Zone, field.Index);
         else if (m.Kind == DuelMoveKind.Magnet) SelectField(1 - s.MySeat, m.Flag ? FieldZone.Bonus : FieldZone.Hand, m.Index);
         else if (m.Kind == DuelMoveKind.Points) { _pointsTarget = m.Target; BuildMoves(); }
         else if (m.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && m.Index >= 0) SelectSkill(m.Index);
@@ -183,24 +184,24 @@ public partial class OnlineArena
                 game.State.Phase = Phase.Actions; p.Hand.Add(CardCatalog.BlueEgg.Id); p.Equipment = CardCatalog.Pc.Id;
                 Check(game.PlayCode(actor, p.Hand.Count - 1).Success, "No comienza Huevo para probar objetivos.");
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 312)); await Layout();
-                Check(!PresentsKind(DuelMoveKind.Destroy), "Se listan todos los objetivos de destrucción como botones.");
+                Check(!PresentsKind(DuelMoveKind.Choose), "Se listan todos los objetivos de destrucción como botones.");
                 var equipment = (ZoneCardButton)_root!.FindChild("EquipmentZone0", true, false);
                 Check(equipment.Targetable && equipment.CardRect.Size.Y > 39, "El equipo propio no se ilumina o no muestra su miniatura ampliada.");
                 _arenaScroll?.EnsureControlVisible(equipment); await Layout();
                 await Capture($"equipped-card-seat{seat}-{size.X}x{size.Y}");
                 GuiInputTestDriver.Click(equipment); await Layout();
-                var destroy = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == actor && o.Move.Value == (int)FieldZone.Equipment);
+                var destroy = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Equipment } f && f.Owner == actor);
                 Check(PresentedButton(destroy)?.Text == "Destruir" && equipment.Chosen, "La selección del equipo apunta a otra carta.");
                 Check(game.ResolveDestruction(actor, actor, true).Success, "No termina Huevo en el fixture de objetivos.");
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 313)); await Layout();
-                var drawChoices = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.BlueEggDraw).ToArray();
+                var drawChoices = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
                 Check(drawChoices.Length == 2 && drawChoices.All(o => PresentedButton(o)?.GetParent() == _moves) &&
-                    PresentedButton(drawChoices.Single(o => o.Move.Flag))?.Text.Contains("200 PR") == true &&
+                    PresentedButton(drawChoices.Single(o => o.Primary))?.Text.Contains("200 PR") == true &&
                     _contextTitle.Text == CardCatalog.BlueEgg.Name, "El robo opcional de Huevo no muestra ambas decisiones.");
-                Check(drawChoices.Single(o => !o.Move.Flag).Move.Apply(game, actor).Success, "No se puede omitir el robo de Huevo.");
+                Check(drawChoices.Single(o => !o.Primary).Move.Apply(game, actor).Success, "No se puede omitir el robo de Huevo.");
                 p.Hand.Add(CardCatalog.TimeBomb.Id); Check(game.PlayCode(actor, p.Hand.Count - 1).Success, "No empieza Bomba en el fixture de mano.");
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 314)); await Layout(); await TapCard(0);
-                var ownHand = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == actor && o.Move.Value == (int)FieldZone.Hand);
+                var ownHand = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } f && f.Owner == actor);
                 Check(PresentedButton(ownHand)?.Text == "Destruir" && _contextTitle.Text == "Mi mano" && _selection.Text.Contains("azar"), "Bomba confunde la mano al azar con la carta tocada.");
 
                 var memoryGame = new GameEngine(41); memoryGame.State.Phase = Phase.Actions; memoryGame.State.CurrentPlayer = actor;

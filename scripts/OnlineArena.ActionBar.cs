@@ -160,13 +160,16 @@ public partial class OnlineArena
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.ZahiraTarget).ToList();
         else if (s.Phase == Phase.BlueEggDrawChoice)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.BlueEggDraw).ToList();
+        else if (Deciding == DecisionKind.Confirm)
+            indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.Choose).ToList();
         else if (ChoosingEffectCards)
             indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i])).ToList();
         else if (_fieldSelection is { } field)
-            indices = indices.Where(i => MatchesField(s.Options[i].Move, field)).ToList();
+            indices = indices.Where(i => MatchesField(s.Options[i], field)).ToList();
         else
         {
-            indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.Relikia or DuelMoveKind.FieldCode or DuelMoveKind.Destroy or DuelMoveKind.Magnet);
+            indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.Relikia or DuelMoveKind.FieldCode or DuelMoveKind.Destroy or DuelMoveKind.Magnet ||
+                s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].Field != null);
             indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind) && !_selected.Contains(s.Options[i].Move.Index));
             if (_selected.Count > 1 || _skillContext) indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind));
             if (!_skillContext && indices.Any(i => IsHandAction(s.Options[i].Move.Kind)))
@@ -181,7 +184,7 @@ public partial class OnlineArena
                 indices = _pointsTarget.HasValue ? indices.Where(i => s.Options[i].Move.Target == _pointsTarget).ToList() : [];
         }
         var chooseAttackSkill = !_choosingAttackSkill && _selectedSkill < 0 && SelectedAttacks().Any();
-        var cardAnchoring = s.Phase is not (Phase.ErrorResponse or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice);
+        var cardAnchoring = s.Phase is not (Phase.ErrorResponse or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) && Deciding != DecisionKind.Confirm;
         var handActions = cardAnchoring && !ChoosingEffectCards && !ChoosingRecycling &&
             !_skillContext && _fieldSelection == null && _selected.Count == 1;
         if (handActions)
@@ -195,7 +198,8 @@ public partial class OnlineArena
         var die = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && !s.Options[i].Move.Flag).ToArray();
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
             DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
-            s.Options[i].Move.Kind is DuelMoveKind.TrapCraft or DuelMoveKind.BlueEggDraw && s.Options[i].Move.Flag, -1);
+            s.Options[i].Move.Kind is DuelMoveKind.TrapCraft or DuelMoveKind.BlueEggDraw && s.Options[i].Move.Flag ||
+            s.Options[i].Move.Kind == DuelMoveKind.Choose && (s.Options[i].Primary || Deciding == DecisionKind.ChooseCard), -1);
         if (main < 0 && die.Length > 0) main = die[0];
         if (_showcase != null && ChoosingMemoryRecovery)
         {
@@ -345,6 +349,7 @@ public partial class OnlineArena
                 Phase.TrapCraftChoice => s.TrapCardId,
                 Phase.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
                 Phase.BlueEggDrawChoice => CardCatalog.BlueEgg.Id,
+                Phase.Decision => s.Decision?.Source,
                 Phase.TurnBuffDiscard => s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id,
                 _ => null
             } : null;
@@ -416,6 +421,9 @@ public partial class OnlineArena
         if (s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name;
         if (s.Phase == Phase.GoldenTotemChoice && s.DecisionPlayer == s.MySeat) return "Tótem de Oro";
         if (s.Phase == Phase.BlueEggDrawChoice) return CardCatalog.BlueEgg.Name;
+        // The card that asks names the decision until the player picks what to answer with.
+        if (s.Phase == Phase.Decision && s.Decision is { } decision && (Deciding == DecisionKind.Confirm || _fieldSelection == null && _selected.Count == 0))
+            return decision.Title;
         if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget && InspectorActivationId() is { } trap)
             return CardCatalog.Get(trap).Name;
         if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.LoadError.Name;
@@ -442,6 +450,8 @@ public partial class OnlineArena
         if (s.Winner != null) return "El duelo terminó.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return "Anula la activación o deja que se resuelva.";
         if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) return ArenaGuidance.Instruction(s);
+        if (Deciding == DecisionKind.ChooseTarget && _fieldSelection?.Zone == FieldZone.Hand) return "Se destruirá una carta al azar de esa mano.";
+        if (Deciding is DecisionKind.Confirm or DecisionKind.ChooseTarget && _fieldSelection == null) return ArenaGuidance.Instruction(s);
         if (ChoosingRecycling) return $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas elegidas. " + (_selected.Count == s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards ? "Confirma para reciclar." : "Elige las cartas que faltan.");
         if (s.Phase == Phase.GoldenTotemChoice && myTurn) return $"Elige hasta dos Tótems · {_selected.Count}/2 seleccionados.";
         if (s.Phase == Phase.TurnBuffDiscard && myTurn) return $"Descarta {s.ActivationDiscardsRemaining} carta(s) para completar la activación · " + (_selected.Count == 1 ? CardCatalog.Get(SelectableCards[_selected.Single()]!).Name : "elige una carta");

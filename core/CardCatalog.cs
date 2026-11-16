@@ -5,12 +5,15 @@ public enum CodeType { None, Character, Object, Play, Trap }
 
 public enum CardKind { Attack, Skill, Code, Attachment, Equipment }
 
-/// <summary>Only cards supplied by the user; no sample cards in the playable catalogue.</summary>
+/// <summary>
+/// Only cards supplied by the user; no sample cards in the playable catalogue. A card whose rules live in an
+/// <see cref="ICardEffect"/> (core/Effects) needs no flag here: its data is just name, kind and text.
+/// </summary>
 public sealed record CardDefinition(
     string Id, string Name, CardKind Kind, string Text,
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
-    int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, bool ChangePointsFromDie = false, int PrCost = 0, bool DestroyNonSkill = false, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
-    int DamageReduction = 0, bool DestroyOnAttackOne = false, bool DestroyChosenZone = false, bool SearchNonSkill = false,
+    int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, bool ChangePointsFromDie = false, int PrCost = 0, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
+    int DamageReduction = 0, bool DestroyOnAttackOne = false,
     bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false, int SearchAttacks = 0,
     int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
     bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool RecoverMemory = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false, bool DrawThenDie = false, bool ReloadBothHands = false,
@@ -81,10 +84,10 @@ public static class CardCatalog
         "No puedes activar esta carta en el primer turno del juego. Cambia todas las cartas de tu mano (mín. 0) por las de tu oponente.",
         CodeType: CodeType.Play, SwapHands: true, EarliestTurn: 2);
     public static readonly CardDefinition KonamyCode = new("konamy-code", "Código Konamy", CardKind.Code,
-        "Busca en tu mazo una no-habilidad y añádela a tu mano.", CodeType: CodeType.Play, SearchNonSkill: true);
+        "Busca en tu mazo una no-habilidad y añádela a tu mano.", CodeType: CodeType.Play);
     public static readonly CardDefinition TimeBomb = new("time-bomb", "Bomba de Tiempo", CardKind.Code,
         "Escoge una de estas opciones: zona de equipos, mano al azar o zona Bonus. Destruye una carta de ese lugar.",
-        CodeType: CodeType.Object, DestroyChosenZone: true);
+        CodeType: CodeType.Object);
     public static readonly CardDefinition DiamondHelmet = new("diamond-helmet", "Casco de Diamantes", CardKind.Equipment,
         "Resta 2 puntos a cualquier daño que recibas. Si en el dado de ataque alguien saca 1: destruye esta carta.",
         DamageReduction: 2, DestroyOnAttackOne: true);
@@ -112,7 +115,7 @@ public static class CardCatalog
 
     public static readonly CardDefinition BlueEgg = new("blue-egg", "Huevo Azul Explosivo", CardKind.Code,
         "Selecciona y destruye una no-habilidad en el campo. Además puedes pagar 200 PR para robar 1 carta.",
-        CodeType: CodeType.Object, DestroyNonSkill: true);
+        CodeType: CodeType.Object);
     public static readonly CardDefinition Reroll = new("reroll", "Re-lanza", CardKind.Code,
         "COMBO. Activar esta carta no cuenta como acción. Relanza uno de tus dados. Si sale 1, 2 o 3, roba 1 carta.", CodeType: CodeType.Play, IsCombo: true, ActionCost: 0, RerollOwnDie: true);
 

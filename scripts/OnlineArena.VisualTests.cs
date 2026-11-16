@@ -388,7 +388,7 @@ public partial class OnlineArena
             Bonuses = [CardCatalog.Pendant.Id, CardCatalog.Senshuni.Id]
         }, new SeededRandom(7));
         game.State.Phase = Phase.Actions; game.State.Turn = 3; game.State.Players[0].Relikia = 300;
-        if (!game.PlayCode(0, 0).Success || !game.ResolveDestruction(0, 1, FieldZone.Bonus, 0).Success || game.State.Phase != Phase.BlueEggDrawChoice)
+        if (!game.PlayCode(0, 0).Success || !game.ResolveDestruction(0, 1, FieldZone.Bonus, 0).Success || game.State.PendingDecision?.Kind != DecisionKind.Confirm)
             throw new Exception("No se prepara el robo opcional de Huevo Azul Explosivo.");
         var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
         foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
@@ -397,7 +397,7 @@ public partial class OnlineArena
             GetWindow().Size = size; GetWindow().ContentScaleSize = size;
             PresentTestSnapshot(DuelSnapshot.For(game, seat, 520));
             for (var i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            var choices = _moveButtons.Where(b => PresentedOption(b)?.Move.Kind == DuelMoveKind.BlueEggDraw).ToArray();
+            var choices = _moveButtons.Where(b => PresentedOption(b)?.Move.Kind == DuelMoveKind.Choose).ToArray();
             if (seat == 1)
             {
                 if (choices.Length != 0) throw new Exception("El rival puede decidir el robo de Huevo Azul Explosivo.");
@@ -1253,7 +1253,7 @@ public partial class OnlineArena
                     SelectCard(2);
                     var label = _deckSearchOptions[2].Label;
                     if (_selected.Single() != 2 || _moveButtons.Count(b => PresentedOption(b)?.Label == label) != 1 ||
-                        _deckSearchOptions[2].Move.Index != 3 || !_contextTitle.Text.Contains(CardCatalog.ExtraLife.Name) ||
+                        _deckSearchOptions[2].CardId != CardCatalog.ExtraLife.Id || !_contextTitle.Text.Contains(CardCatalog.ExtraLife.Name) ||
                         _moves.GetChildren().OfType<Button>().First().Text != "Añadir a mano")
                         throw new Exception("La carta ilustrada no corresponde a la opción autorizada del mazo.");
                 }
@@ -1341,7 +1341,7 @@ public partial class OnlineArena
             var minimum = root.GetCombinedMinimumSize();
             if (minimum.X > root.Size.X + 1 || minimum.Y > root.Size.Y + 1)
                 throw new Exception($"Bomba desborda {size}: {minimum}.");
-            if (snapshot.Options.Count(o => o.Move.Kind == DuelMoveKind.Destroy) != (seat == 0 ? 6 : 0))
+            if (snapshot.Options.Count(o => o.Move.Kind == DuelMoveKind.Choose && o.Field != null) != (seat == 0 ? 6 : 0))
                 throw new Exception("Se pierden zonas de Bomba o se ofrecen al adversario.");
             if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
                 throw new Exception("Bomba revela la mano rival en la interfaz.");

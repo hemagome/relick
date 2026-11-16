@@ -59,6 +59,8 @@ La [clasificación de cartas del usuario](CARD_TAXONOMY.md) define las categorí
 6. **Migrar gradualmente y comprobar equivalencia.** Primero trasladar cartas actuales sencillas y después dado, defensa y cancelación, manteniendo las pruebas de referencia. Cambiar el formato persistido y el protocolo con una estrategia explícita de compatibilidad.
 7. **Exigir pruebas por patrón y por carta.** Camino normal, rechazos sin mutación, costes/cancelaciones, límites, orden, duplicados, privacidad y guardar/restaurar en cada pausa. Complementar con interacciones dirigidas y simulaciones; ninguna batería finita garantiza todas las combinaciones.
 
+El 16 de noviembre de 2026 se pilotaron los pasos 3 y 4 con Huevo Azul, Bomba de Tiempo y Código Konamy: [efectos de carta y decisiones genéricas](CARD_EFFECTS.md).
+
 ## Criterio para empezar la carga masiva
 
 Antes de implementar las 500 cartas, un lote piloto de cartas reales con mecánicas representativas debe poder incorporarse principalmente mediante definiciones o módulos de efecto, sin añadir un caso por carta al motor central, al protocolo y a la interfaz. Debe conservar equivalencia de las cartas existentes y soportar la recuperación de cada decisión pendiente. Solo entonces conviene escalar la producción de contenido.

@@ -9,7 +9,8 @@ public partial class OnlineArena
 
     private void RefreshEffectCardOptions()
     {
-        _deckSearchOptions = _snapshot!.Options.Where(o => o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory ||
+        _deckSearchOptions = _snapshot!.Options.Where(o => o.CardId != null && Deciding == DecisionKind.ChooseCard && o.Move.Kind == DuelMoveKind.Choose ||
+            o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory ||
             ChoosingCorruption && o.Move.Kind == DuelMoveKind.Corrupt || _showReplayMemory && o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode).ToArray();
     }
 

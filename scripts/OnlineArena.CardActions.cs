@@ -40,7 +40,7 @@ public partial class OnlineArena
 
     private static GameIcon CardActionSymbol(DuelMove move) => move.Kind switch
     {
-        DuelMoveKind.Attack or DuelMoveKind.Destroy => GameIcon.Sword,
+        DuelMoveKind.Attack or DuelMoveKind.Destroy or DuelMoveKind.Choose => GameIcon.Sword,
         DuelMoveKind.Equip or DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse or DuelMoveKind.ProtectDestruction => GameIcon.Shield,
         DuelMoveKind.Exchange => GameIcon.Exchange,
         DuelMoveKind.Placement when move.Value == (int)CardDestination.Exchange => GameIcon.Exchange,

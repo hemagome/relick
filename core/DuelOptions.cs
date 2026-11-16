@@ -221,6 +221,15 @@ public static class DuelOptions
                         Add(DuelMoveKind.Destroy, $"Destruir {Card(t.CardId)} de {s.Players[t.Owner].Name} · {zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : ""), t.Index, (int)t.Zone, t.Owner);
                     }
                     break;
+                case Phase.Decision:
+                    var choices = game.DecisionChoices(actor);
+                    for (var i = 0; i < choices.Count; i++)
+                    {
+                        Add(DuelMoveKind.Choose, choices[i].Label, i);
+                        result[^1].CardId = choices[i].CardId; result[^1].Field = choices[i].Field;
+                        result[^1].Button = choices[i].Button; result[^1].Primary = choices[i].Primary;
+                    }
+                    break;
                 case Phase.BlueEggDrawChoice:
                     if (p.Relikia >= GameEngine.BlueEggDrawCost)
                         Add(DuelMoveKind.BlueEggDraw, $"Robar 1 carta · {GameEngine.BlueEggDrawCost} PR", flag: true);

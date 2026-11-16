@@ -47,6 +47,13 @@ static class SnapshotTests
                 if (result.Success && expected.Entry.Move.Kind == DuelMoveKind.Evolve) break;
                 // The former recordings paid prizes before defense and critical-effect choices.
                 if (game.State.PendingAttack is { RewardPending: true }) break;
+                // A card decision replaced the per-card choice phases (DestroyChoice, DeckSearchChoice). While it waits the
+                // state has another shape by design; the move must still apply and the state must match again once answered.
+                if (result.Success && game.State.Phase == Phase.Decision)
+                {
+                    game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+                    continue;
+                }
                 if (!result.Success || Hash(game) != expected.Hash) throw new Exception($"Cambio de reglas en duelo {index}, jugada {step}, {game.State.Phase}: {result.Message}");
                 game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
                 if (Hash(game) != expected.Hash) throw new Exception($"Estado incompleto en duelo {index}, jugada {step}, {game.State.Phase}");

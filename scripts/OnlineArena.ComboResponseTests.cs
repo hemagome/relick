@@ -43,7 +43,7 @@ public partial class OnlineArena
         PresentTestSnapshot(DuelSnapshot.For(search, 0, 501)); SelectCard(0);
         var builds = BoardBuildCount;
         search.SetComboResponses(0, false); ApplyPrivateComboPreference(DuelSnapshot.For(search, 0, 501));
-        if (_selected.Count != 1 || !PresentsKind(DuelMoveKind.SearchDeck) || BoardBuildCount != builds)
+        if (_selected.Count != 1 || !PresentsKind(DuelMoveKind.Choose) || BoardBuildCount != builds)
             throw new Exception("Cambiar COMBO pierde el objetivo o sus opciones autorizadas.");
         GD.Print("PVP_COMBO_RESPONSES_PASS · dos estados privados, ambos jugadores/asientos, cuatro tamaños y actualización sin animaciones.");
     }

@@ -47,6 +47,7 @@ internal static class ArenaGuidance
             Phase.CodeResponse => "Anula el código con Caja o deja que se resuelva.",
             Phase.DestructionResponse => "Elige una protección o permite la destrucción.",
             Phase.BlueEggDrawChoice => $"Decide si pagas {GameEngine.BlueEggDrawCost} PR para robar una carta.",
+            Phase.Decision when s.Decision is { } decision => decision.Decider == s.MySeat ? decision.Instruction.TrimEnd('.') + "." : $"{decision.Title}: decide el rival.",
             Phase.TotemChoice => "Decide si destruyes un Tótem para cancelar el daño.",
             Phase.SniperChoice => "Elige si equipas Mira de Sniper o la colocas en canje.",
             Phase.TrapCraftChoice when s.TrapCardId == CardCatalog.ZahiraFlair.Id => "Tu canje permite crear Zahira Flair.",

@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -11,6 +11,9 @@ public sealed class EngineContinuation
     public bool Prevented { get; set; }
     public FieldTarget? Target { get; set; }
     public string Text { get; set; } = "";
+    /// <summary>For <see cref="ContinuationKind.CardEffectStep"/>: the step of the card in <see cref="Text"/>.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Step { get; set; }
     public EngineContinuation? Next { get; set; }
     public Phase Phase { get; set; }
     public PendingAttackRoll? Attack { get; set; }
@@ -70,6 +73,7 @@ public sealed partial class GameEngine
             case ContinuationKind.AttackOneEquipment: DestroyAttackOneEquipment(next.Actor, next.Next); break;
             case ContinuationKind.FinishCodeDestruction: FinishCodeDestruction(next); break;
             case ContinuationKind.OfferBlueEggDraw: OfferBlueEggDraw(next.Actor); break;
+            case ContinuationKind.CardEffectStep: ContinueCardEffect(next); break;
             case ContinuationKind.UsePendant: FinishPendant(next.Actor, (PendantEffect)next.Value); break;
             case ContinuationKind.UsePc: FinishPc(next.Actor, next.Value); break;
             case ContinuationKind.BoxDefense:

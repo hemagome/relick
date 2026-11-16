@@ -67,7 +67,7 @@ public partial class OnlineArena
             return (winner == -1 ? "EMPATE" : winner == s.MySeat ? "¡VICTORIA!" : "DERROTA", "DUELO TERMINADO",
                 winner == -1 ? BoardArt.Gold : winner == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral, GameIcon.Flag);
         var stage = StageAppearance.Current(s);
-        var detail = stage != s.Phase ? $"{turn} · {PhaseName(s.Phase)}" : turn;
+        var detail = stage != s.Phase ? $"{turn} · {PhaseName(s)}" : turn;
         var danger = RelickVisuals.State.Danger;
         if (!ready) return ("SIN CONEXIÓN", detail, danger, GameIcon.Alert);
         if (rejected) return ("JUGADA RECHAZADA", detail, danger, GameIcon.Alert);

@@ -90,7 +90,7 @@ static class DuelHistoryTests
         Play(g, 0, DuelMoveKind.Corrupt, 0, target: 1);
         Check(!Public(g).Contains(CardCatalog.Agility.Id) && !Public(g).Contains(CardCatalog.Agility.Name));
         g = Fixture([CardCatalog.KonamyCode.Id], []); Play(g, 0, DuelMoveKind.PlayCode, 0);
-        Play(g, 0, DuelMoveKind.SearchDeck, 0);
+        Play(g, 0, DuelMoveKind.Choose, 0);
         Check(!Public(g).Contains(CardCatalog.DiamondHelmet.Id) && !Public(g).Contains(CardCatalog.DiamondHelmet.Name));
         g = Fixture([CardCatalog.Attack.Id], [CardCatalog.Agility.Id], 5);
         g.State.Phase = Phase.Combat; g.State.Active.Skills.Add(CardCatalog.Magnet.Id);

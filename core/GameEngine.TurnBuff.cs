@@ -21,6 +21,8 @@ public sealed class PendingTurnBuff
     public PendingCode? Code { get; set; }
     public PendingPoints? Points { get; set; }
     public int? DestroyActor { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PendingDecision? Decision { get; set; }
     public PendingMindReset? MindReset { get; set; }
     public RelikiaChoice? Relikia { get; set; }
     public int Corruptions { get; set; }
@@ -46,13 +48,13 @@ public sealed partial class GameEngine
             RepeatedStage = CardCatalog.Get(frame.CardId).RepeatStage ? RepeatableStage(frame.Actor) : null,
             Actor = frame.Actor, ResumePhase = State.Phase, AttackRoll = State.PendingAttackRoll,
             DieRoll = State.PendingDieRoll, DieEffect = _pendingDieEffect, Code = State.PendingCode,
-            Points = State.PendingPoints, DestroyActor = State.DestroyActor, MindReset = State.PendingMindReset,
+            Points = State.PendingPoints, DestroyActor = State.DestroyActor, Decision = State.PendingDecision, MindReset = State.PendingMindReset,
             Relikia = State.PendingRelikia, Corruptions = State.CorruptionsRemaining
         };
         frame.Kind = ActivationKind.TurnBuff; frame.Parent = _activeActivation; frame.ResumePhase = Phase.TurnBuffResolving;
         _activeActivation = frame;
         State.PendingAttackRoll = null; State.PendingDieRoll = null; _pendingDieEffect = null;
-        State.PendingCode = null; State.PendingPoints = null; State.DestroyActor = null;
+        State.PendingCode = null; State.PendingPoints = null; State.DestroyActor = null; State.PendingDecision = null;
         State.PendingMindReset = null; State.PendingRelikia = null; State.CorruptionsRemaining = 0;
         State.LastCombat = $"{State.Players[frame.Actor].Name} · {CardCatalog.Get(frame.CardId).Name} · Elige {State.PendingTurnBuff.RequiredDiscards} carta(s) para descartar como coste.";
         State.Phase = Phase.TurnBuffResolving;
@@ -111,7 +113,7 @@ public sealed partial class GameEngine
         _activeActivation = frame.Parent;
         State.PendingTurnBuff = null; State.Phase = pending.ResumePhase;
         State.PendingAttackRoll = pending.AttackRoll; State.PendingDieRoll = pending.DieRoll; _pendingDieEffect = pending.DieEffect;
-        State.PendingCode = pending.Code; State.PendingPoints = pending.Points; State.DestroyActor = pending.DestroyActor;
+        State.PendingCode = pending.Code; State.PendingPoints = pending.Points; State.DestroyActor = pending.DestroyActor; State.PendingDecision = pending.Decision;
         State.PendingMindReset = pending.MindReset; State.PendingRelikia = pending.Relikia; State.CorruptionsRemaining = pending.Corruptions;
         CompletePendingPlay();
     }

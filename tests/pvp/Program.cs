@@ -327,11 +327,11 @@ try
             return fighterA.Duel?.Revision == before.Revision + 1 && b.Duel?.Revision == before.Revision + 1;
         });
         VerifyPublicHistory(fighterA.Duel!, b.Duel!);
-        if (choice.Option.Move.Kind == DuelMoveKind.SearchDeck)
+        if (IsDeckSearch(before, choice.Option))
         {
             var other = actor == fighterA ? b : fighterA;
             if (actor.Duel!.Players[before.MySeat].Hand.Last() != choice.Option.CardId || other.Duel!.Players[before.MySeat].Hand.Last() != null ||
-                before.Options.Where(o => o.Move.Kind == DuelMoveKind.SearchDeck).Any(o => o.CardId == null || CardCatalog.Get(o.CardId).Kind == CardKind.Skill))
+                before.Options.Where(o => IsDeckSearch(before, o)).Any(o => o.CardId == null || CardCatalog.Get(o.CardId).Kind == CardKind.Skill))
                 throw new Exception("La búsqueda remota cambia el objetivo o revela la carta al rival.");
             verifiedSearches++;
         }
@@ -431,7 +431,7 @@ try
         if (!isRecycling)
         {
             choice = before.Phase == Phase.ErrorResponse ? options.First(o => o.Option.Move.Kind == DuelMoveKind.PassError) :
-                before.Phase == Phase.DeckSearchChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.SearchDeck) :
+                before.Phase == Phase.DeckSearchChoice || before.Decision?.Kind == DecisionKind.ChooseCard ? options.First(o => IsDeckSearch(before, o.Option)) :
                 before.Phase == Phase.DieRerollChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.EffectDie) :
                 options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.PlayCode &&
                     (before.Players[before.MySeat].Hand[o.Option.Move.Index] == CardCatalog.KonamyCode.Id ||
@@ -457,11 +457,11 @@ try
             if (!actor.Duel!.Players[before.MySeat].Memory.SequenceEqual(remaining)) throw new Exception("El servidor recicló cartas que no fueron elegidas.");
             Console.WriteLine($"RECYCLE_TRANSPORT · D6 {before.Die}, {selected.Count} cartas elegidas y memoria restante verificada.");
         }
-        if (choice.Option!.Move.Kind == DuelMoveKind.SearchDeck)
+        if (IsDeckSearch(before, choice.Option!))
         {
             var other = actor == fighterA ? b : fighterA;
             if (actor.Duel!.Players[before.MySeat].Hand.Last() != choice.Option.CardId || other.Duel!.Players[before.MySeat].Hand.Last() != null ||
-                other.Duel.Options.Any(o => o.Move.Kind == DuelMoveKind.SearchDeck || o.CardId != null))
+                other.Duel.Options.Any(o => o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.Choose || o.CardId != null))
                 throw new Exception("La búsqueda revela opciones o la carta añadida a otro jugador.");
             verifiedSearches++;
         }
@@ -482,6 +482,10 @@ finally
 {
     foreach (var client in clients) if (client.Connection.IsActive) client.Connection.Disconnect();
 }
+
+// A deck search answered through the generic card decision, or the earlier search command.
+static bool IsDeckSearch(DuelSnapshot snapshot, DuelOption option) => option.Move.Kind == DuelMoveKind.SearchDeck ||
+    option.Move.Kind == DuelMoveKind.Choose && snapshot.Decision?.Kind == DecisionKind.ChooseCard;
 
 sealed class Client
 {
