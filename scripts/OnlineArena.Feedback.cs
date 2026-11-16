@@ -126,7 +126,7 @@ public partial class OnlineArena
         int Multiplier(int? seat) => seat is int owner && s.Players[owner].StarEffects > 0 ? 1 << s.Players[owner].StarEffects : 1;
         if (card.Kind == CardKind.Skill)
             return AttackOutlook.For(card, counters ?? 0, DieBonus(ownerSeat), Multiplier(ownerSeat),
-                ownerSeat == null ? "Resultado según el dado · sin aumentos" : null);
+                ownerSeat == null ? "Daño" : null);
         if (card.Kind == CardKind.Attack && card.Id != CardCatalog.SuperAttack.Id && _selectedSkill >= 0 &&
             SelectedAttacks().Any(entry => entry.Option.Move.Value == _selectedSkill))
         {

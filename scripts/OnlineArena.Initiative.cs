@@ -6,7 +6,7 @@ namespace Relick;
 
 public partial class OnlineArena
 {
-    private sealed record OpeningInitiative(int RollOne, int RollTwo, int Starter, string[] Names, int MySeat);
+    private sealed record OpeningInitiative(int RollOne, int RollTwo, int Starter, string[] Names, int MySeat, string?[] Dice);
     private readonly DiceFace[] _initiativeDice =
     [new() { Name = "InitiativeDice0" }, new() { Name = "InitiativeDice1" }];
     private readonly Label[] _initiativeNames = [new(), new()];
@@ -56,7 +56,7 @@ public partial class OnlineArena
         if (opening is not { Started: true, RollOne: >= 1 and <= 6, RollTwo: >= 1 and <= 6 })
         { if (draw != null) _flights.Enqueue(draw); return; }
         _openingInitiative = new(opening.RollOne, opening.RollTwo, opening.StartingSeat,
-            combat.Players.Select(p => p.Name).ToArray(), combat.MySeat);
+            combat.Players.Select(p => p.Name).ToArray(), combat.MySeat, combat.Players.Select(p => p.Dice).ToArray());
         _openingTurnDraw = draw;
         _initiativeStarted = false; _initiativeLanded = false;
         _initiativeResultRemaining = 1.5;
@@ -79,6 +79,8 @@ public partial class OnlineArena
                 _initiativeDice[seat].CustomMinimumSize = Short ? new(192, 148) : new(242, 200);
                 // The dice are seen rolling: the value stays blank (one line tall) until they land.
                 _initiativeValues[seat].Text = "\u00A0";
+                // Each player rolls their own die cosmetic, as in every later roll.
+                _initiativeDice[seat].ApplyStyle(opening.Dice.ElementAtOrDefault(seat));
                 _initiativeDice[seat].RollTo(seat == 0 ? opening.RollOne : opening.RollTwo);
             }
             _initiativeWinner.Text = "\u00A0";

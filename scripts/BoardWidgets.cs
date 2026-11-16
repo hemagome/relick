@@ -1034,8 +1034,7 @@ public partial class HandCard : Button
         DrawOwner(y);
     }
 
-    // A sleeve edge marks every card whose owner is known; outside a labelled memory block,
-    // the rival's cards also carry a readable badge before selection.
+    // A sleeve edge marks every card whose owner is known; the rival's red edge needs no label.
     private void DrawOwner(float y)
     {
         if (OriginalOwner is not { } owner) return;
@@ -1044,10 +1043,6 @@ public partial class HandCard : Button
         var left = 3f; var right = Face.X - 1; var bottom = y + Face.Y;
         DrawLine(new Vector2(left, y + 8), new Vector2(left, bottom - 8), color, foreign ? 4 : 3, true);
         DrawLine(new Vector2(left + 4, y + 2), new Vector2(right - 4, y + 2), color, foreign ? 3 : 2, true);
-        if (!foreign || !ShowOwnerBadge) return;
-        var badge = new Rect2(8, bottom - 21, 48, 16);
-        BoardArt.Plate(this, badge, new Color("0b1020"), color, 4, 1);
-        BoardArt.CenterText(this, "RIVAL", new(badge.GetCenter().X, badge.Position.Y + 12), 8, color);
     }
 
     private void DrawSelection(float y, Color accent)

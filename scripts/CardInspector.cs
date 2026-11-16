@@ -64,7 +64,6 @@ internal sealed record AttackOutlook(int Normal, int Critical, bool RandomNormal
             var notes = new List<string>();
             if (DieBonus > 0) notes.Add($"Lv 2: +{DieBonus} al dado salvo con 1.");
             if (DamageMultiplier > 1) notes.Add($"Estrella del Fontanero: daño ×{DamageMultiplier}.");
-            notes.Add("Antes de respuestas, defensas y bonus de equipo.");
             return string.Join(" ", notes);
         }
     }
@@ -148,7 +147,7 @@ public partial class CardInspector : PanelContainer
         CostLabel.HorizontalAlignment = HorizontalAlignment.Right; _cost.AddChild(CostLabel);
     }
 
-    /// <summary>Final D6 face → result, in the order printed by the rulebook: 1–3 miss, 4 reduced, 5 normal, 6 critical.</summary>
+    /// <summary>Final D6 face → result, for the faces that hit: 4 reduced, 5 normal, 6 critical.</summary>
     private void BuildOutlook(VBoxContainer header)
     {
         Outlook = new VBoxContainer { Name = "AttackOutlook", Visible = false };
@@ -156,7 +155,7 @@ public partial class CardInspector : PanelContainer
         OutlookCaption = ArenaPresentation.Text("", 12, BoardArt.Muted); OutlookCaption.Name = "AttackOutlookCaption";
         OutlookCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; Outlook.AddChild(OutlookCaption);
         var faces = new HBoxContainer { Name = "AttackOutlookFaces" }; faces.AddThemeConstantOverride("separation", 4); Outlook.AddChild(faces);
-        foreach (var (die, result, color) in new[] { ("1–3", "Fallo", BoardArt.Muted), ("4", "Reducido", BoardArt.Ink), ("5", "Normal", BoardArt.Ink), ("6", "Crítico", BoardArt.Gold) })
+        foreach (var (die, result, color) in new[] { ("4", "Reducido", BoardArt.Ink), ("5", "Normal", BoardArt.Ink), ("6", "Crítico", BoardArt.Gold) })
         {
             var cell = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             var style = RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.Playmat.Background, 0.55f), BoardArt.Tint(color, 0.45f), 4);
@@ -206,8 +205,9 @@ public partial class CardInspector : PanelContainer
         _attributeColumns[0].Visible = _attributeColumns[1].Visible = outlook == null;
         if (outlook == null) return;
         OutlookCaption.Text = outlook.Caption ?? "Resultado del ataque según el dado";
-        for (var face = 0; face < _outlookValues.Count; face++) _outlookValues[face].Text = outlook.Damage(face + 3);
+        for (var face = 0; face < _outlookValues.Count; face++) _outlookValues[face].Text = outlook.Damage(face + 4);
         OutlookNotes.Text = outlook.Notes;
+        OutlookNotes.Visible = OutlookNotes.Text.Length > 0;
     }
 
     /// <summary>Shows or clears the refused-play notice; unchanged text does no work, so it may be called every frame.</summary>
@@ -230,6 +230,16 @@ public partial class CardInspector : PanelContainer
         _lastHint = hint;
         HintLabel.Text = hint; HintLabel.Visible = hint.Length > 0; HintLabel.TooltipText = hint;
         TitleLabel.Visible = TitleLabel.Text.Length > 0 && (HasCard || hint.Length == 0);
+    }
+
+    /// <summary>A Relikario is not a card in the catalog: its sheet goes to the showcase and its effect is read here.</summary>
+    internal void PresentRelikario(RelikarioDefinition relikario, string ownerName)
+    {
+        Present(null, $"{relikario.Name} · Lv {relikario.Level}");
+        _cardId = "relikario:" + relikario.Id; HasCard = true;
+        _reading.Visible = true; SizeFlagsVertical = SizeFlags.ExpandFill;
+        ClassificationLabel.Text = $"RELIKARIO DE {ownerName.ToUpperInvariant()} · {relikario.MaxHealth} VIDAS"; ClassificationLabel.Visible = true;
+        DescriptionLabel.Text = relikario.AbilityText; DescriptionLabel.Visible = true;
     }
 
     internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null, AttackOutlook? outlook = null,

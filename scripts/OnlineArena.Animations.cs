@@ -639,7 +639,7 @@ public partial class OnlineArena
         if (!preserveStageAnnouncements) ResetStageBanner();
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
-        _placementDice.Clear();
+        _placementDice.Clear(); _queuedPlay = null;
         _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); _pendingBeams.Clear(); FinishFlight(); _die.Value = 0;
         _impacts.Clear();
         foreach (var portrait in _portraits) portrait.ReturnToRest();

@@ -41,7 +41,7 @@ public partial class OnlineArena
     private void SelectInitialSkillCandidate(string id)
     {
         if (!CanChooseInitialSkill || !_availableInitialSkills.Contains(id)) return;
-        _inspectorPreview = null;
+        _inspectorPreview = null; _relikarioPreview = null;
         _initialSkillCandidate = id;
         foreach (var card in _initialSkillCards) { card.Chosen = card.Card.Id == id; card.QueueRedraw(); }
         if (InitialSkillConfirmButton != null) InitialSkillConfirmButton.Disabled = !CanChooseInitialSkill;

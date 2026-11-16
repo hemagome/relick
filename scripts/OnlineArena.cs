@@ -20,8 +20,8 @@ public partial class OnlineArena : Control
     private readonly List<Button> _moveButtons = [];
     private readonly RelikarioPortrait[] _portraits =
     [
-        new() { Name = "RelikarioPortrait", PortraitHeight = 150, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill },
-        new() { Name = "EnemyRelikarioPortrait", PortraitHeight = 150, FlipHorizontal = true, AccentColor = ArenaPresentation.Coral,
+        new() { Name = "RelikarioPortrait", PortraitHeight = 150, Inspectable = true, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill },
+        new() { Name = "EnemyRelikarioPortrait", PortraitHeight = 150, Inspectable = true, FlipHorizontal = true, AccentColor = ArenaPresentation.Coral,
             SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill }
     ];
     private readonly LifeMeter[] _life = [new(), new()];
@@ -106,6 +106,7 @@ public partial class OnlineArena : Control
         var background = new ArenaBackground { Name = "ArenaBackdrop" }; AddChild(background);
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _background = background;
+        BindRelikarioPreviews();
         foreach (var pool in _actionPools)
         {
             pool.Hide();
@@ -147,6 +148,7 @@ public partial class OnlineArena : Control
         {
             _connectionEpoch = Connection.Epoch; _needsBaseline = true; ResetAnimations();
         }
+        PresentQueuedPlay();
         if (!Connection.Ready)
         {
             if (!_needsBaseline) { _needsBaseline = true; ResetAnimations(); }
@@ -182,7 +184,9 @@ public partial class OnlineArena : Control
             _needsBaseline = false; Render(animate || openingFlights != null, previous);
             if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
             else if (animate) Animate(snapshot.Visuals, origins, placement);
-            if (animate) { FlashPlayedCard(previous!, snapshot); SummonCreatedTrap(previous!, snapshot); }
+            // Render just rebuilt the board; its controls get their places at the end of this frame, so the
+            // played-code flash and the Trap summon read them on the next one (see PresentQueuedPlay).
+            if (animate) _queuedPlay = (previous!, snapshot);
             SyncResponseChain(snapshot, animate);
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
@@ -222,7 +226,7 @@ public partial class OnlineArena : Control
     private void Render(bool animateActions = false, DuelSnapshot? previous = null)
     {
         _relikiaMenu = null;
-        _inspectorPreview = null;
+        _inspectorPreview = null; _relikarioPreview = null;
         ClearStageStatus();
         _fieldPress = null;
         var handPosition = _hand?.ScrollHorizontal ?? 0;
@@ -313,7 +317,7 @@ public partial class OnlineArena : Control
             brand.AddChild(logo);
             _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.Visible = false;
             brand.AddChild(_status);
-            canvas.Place(brand, new Rect2(10, 4, 330, 34), BoardAnchor.Top);
+            canvas.Place(brand, new Rect2(24, 14, 300, 42), BoardAnchor.Top);
 
             ArenaPresentation.Mat(canvas, true, Active(1));
             ArenaPresentation.Mat(canvas, false, Active(0));
@@ -562,7 +566,7 @@ public partial class OnlineArena : Control
     }
     private void RefreshSelection()
     {
-        _inspectorPreview = null;
+        _inspectorPreview = null; _relikarioPreview = null;
         foreach (var card in _handCards)
         { card.Chosen = _selected.Contains(int.Parse(card.Name.ToString()[8..])); card.QueueRedraw(); }
         BuildMoves();

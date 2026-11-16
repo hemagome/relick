@@ -8,6 +8,8 @@ public partial class DiceFace : Control
 {
     public const double RollSeconds = 1.45;
     public const double ResultSeconds = 0.9;
+    /// <summary>A modified result (Destreza, Super Ataque, +1…) hops and turns onto its new face instead of rolling again.</summary>
+    public const double TurnSeconds = 0.6;
     private const float FloorHeight = -HalfSize;
     private const float HalfSize = 0.68f;
     private static readonly Vector3[] FaceNormals =
@@ -19,7 +21,12 @@ public partial class DiceFace : Control
     internal int LatestResult => _queuedRolls.Count > 0 ? _queuedRolls.Last().Value : Value;
     public string RollCaption { get; private set; } = "";
     public bool HasPendingRolls => _queuedRolls.Count > 0;
-    public bool IsBusy => IsRolling || HasPendingRolls;
+    public bool IsBusy => IsRolling || IsTurning || HasPendingRolls;
+    /// <summary>The die is turning from its previous face onto a modified result.</summary>
+    public bool IsTurning { get; private set; }
+    private double _turnElapsed;
+    private Quaternion _turnFrom = Quaternion.Identity;
+    private bool _reducedMotion;
     private int _value;
     private double _elapsed;
     private double _glow;
@@ -37,8 +44,8 @@ public partial class DiceFace : Control
     public event Action? RollFinished;
     public event Action? RollStarted;
     public bool IsRolling { get; private set; }
-    public bool IsPresented => IsRolling || _resultRemaining > 0;
-    public float PresentationOpacity => IsRolling ? 1 : (float)Math.Clamp(_resultRemaining / 0.2, 0, 1);
+    public bool IsPresented => IsRolling || IsTurning || _resultRemaining > 0;
+    public float PresentationOpacity => IsRolling || IsTurning ? 1 : (float)Math.Clamp(_resultRemaining / 0.2, 0, 1);
     internal float HeightAboveTable { get; private set; }
     public bool Is3DReady => _viewport != null && _cube != null;
     public int Value
@@ -49,7 +56,7 @@ public partial class DiceFace : Control
             _queuedRolls.Clear();
             RollCaption = "";
             _value = Math.Clamp(value, 0, 6);
-            IsRolling = false;
+            IsRolling = false; IsTurning = false;
             _elapsed = 0;
             _glow = 0;
             _resultRemaining = 0;
@@ -72,11 +79,14 @@ public partial class DiceFace : Control
     }
     private void ApplyAdjustedResult(int value, string caption)
     {
+        // The turn starts from the face on show, so the change is seen as the same die being turned.
+        _turnFrom = Is3DReady ? _cube.Quaternion : _landing;
         _value = Math.Clamp(value, 0, 6);
         IsRolling = false; _elapsed = 0; _glow = 0;
         _landing = LandingRotation(Math.Max(1, _value));
         RollCaption = caption;
-        _resultRemaining = ResultSeconds;
+        if (_reducedMotion) { IsTurning = false; _resultRemaining = ResultSeconds; _glow = 0.35; UpdatePose(); RollFinished?.Invoke(); return; }
+        IsTurning = true; _turnElapsed = 0; _resultRemaining = 0;
         UpdatePose();
     }
     public int DisplayedValue => _value == 0 ? 0 : TopFaceValue;
@@ -85,6 +95,8 @@ public partial class DiceFace : Control
     {
         MouseFilter = MouseFilterEnum.Ignore;
         TextureFilter = TextureFilterEnum.Linear;
+        _reducedMotion = DisplayServer.AccessibilityShouldReduceAnimation() == 1 ||
+            ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool();
         BuildScene();
         UpdatePose();
     }
@@ -260,7 +272,7 @@ public partial class DiceFace : Control
         _elapsed = 0;
         _glow = 0;
         _resultRemaining = 0;
-        IsRolling = true;
+        IsRolling = true; IsTurning = false;
         UpdatePose();
         RollStarted?.Invoke();
     }
@@ -269,16 +281,25 @@ public partial class DiceFace : Control
 
     internal void AdvancePlayback(double delta)
     {
-        if (!IsRolling && _resultRemaining <= 0 && _queuedRolls.Count > 0)
+        if (!IsRolling && !IsTurning && _resultRemaining <= 0 && _queuedRolls.Count > 0)
         {
             var next = _queuedRolls.Dequeue();
-            if (next.Adjusted) { ApplyAdjustedResult(next.Value, next.Caption); RollFinished?.Invoke(); }
+            if (next.Adjusted) ApplyAdjustedResult(next.Value, next.Caption);
             else StartRoll(next.Value, next.Caption, next.Style);
         }
-        if (!IsRolling && _resultRemaining <= 0 && _glow <= 0) return;
+        if (!IsRolling && !IsTurning && _resultRemaining <= 0 && _glow <= 0) return;
         delta = Math.Max(0, delta);
         var finished = false;
-        if (IsRolling)
+        if (IsTurning)
+        {
+            _turnElapsed += delta;
+            if (_turnElapsed + 1e-9 >= TurnSeconds)
+            {
+                IsTurning = false; _glow = 0.35; finished = true;
+                _resultRemaining = Math.Max(0, ResultSeconds - Math.Max(0, _turnElapsed - TurnSeconds));
+            }
+        }
+        else if (IsRolling)
         {
             _elapsed += delta;
             if (_elapsed + 1e-9 >= RollSeconds)
@@ -301,9 +322,10 @@ public partial class DiceFace : Control
     {
         if (Is3DReady)
         {
-            if (IsRolling || _renderedRolling || _renderedValue != _value)
-                _viewport.RenderTargetUpdateMode = IsRolling ? SubViewport.UpdateMode.WhenVisible : SubViewport.UpdateMode.Once;
-            _renderedValue = _value; _renderedRolling = IsRolling;
+            var moving = IsRolling || IsTurning;
+            if (moving || _renderedRolling || _renderedValue != _value)
+                _viewport.RenderTargetUpdateMode = moving ? SubViewport.UpdateMode.WhenVisible : SubViewport.UpdateMode.Once;
+            _renderedValue = _value; _renderedRolling = moving;
             var seconds = (float)Math.Clamp(_elapsed, 0, RollSeconds);
             var t = seconds / (float)RollSeconds;
             var spin = Math.Clamp(seconds / 1.18f, 0, 1);
@@ -318,6 +340,19 @@ public partial class DiceFace : Control
                 _cube.Quaternion = (new Quaternion(Vector3.Right, Mathf.Sin(settle * Mathf.Tau * 2) * 0.09f * (1 - settle) * (1 - settle)) * _landing).Normalized();
             }
             HeightAboveTable = IsRolling ? BounceHeight(seconds) : 0;
+            if (IsTurning)
+            {
+                // Lift off the table, turn onto the new face, then settle with a small wobble.
+                var turn = (float)Math.Clamp(_turnElapsed / TurnSeconds, 0, 1);
+                var rotate = Math.Min(1, turn / 0.75f);
+                _cube.Quaternion = _turnFrom.Slerp(_landing, rotate * rotate * (3 - 2 * rotate)).Normalized();
+                if (turn > 0.75f)
+                {
+                    var settle = (turn - 0.75f) / 0.25f;
+                    _cube.Quaternion = (new Quaternion(Vector3.Right, Mathf.Sin(settle * Mathf.Tau) * 0.08f * (1 - settle)) * _landing).Normalized();
+                }
+                HeightAboveTable = 0.7f * Mathf.Sin(Mathf.Pi * rotate);
+            }
             var x = IsRolling ? -0.85f * (1 - t) * (1 - t) : 0;
             var z = IsRolling ? 0.3f * (1 - t) : 0;
             // Support of the rounded cube keeps corners above the tabletop while tumbling.

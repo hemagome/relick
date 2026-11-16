@@ -54,9 +54,18 @@ public partial class OnlineArena
                 PresentDieCue(new DuelVisualEvent { Kind = DuelVisualKind.Die, Player = roller, Value = 4 });
                 Check(_die.IsRolling && _die.Style == game.State.Players[roller].Dice, $"La tirada de {roller} no usa su dado ({_die.Style}).");
             }
+            // The opening initiative: both players roll at once, each with their own die.
+            ResetAnimations();
+            _openingInitiative = new(3, 5, 1, snapshot.Players.Select(p => p.Name).ToArray(), snapshot.MySeat,
+                snapshot.Players.Select(p => p.Dice).ToArray());
+            _initiativeStarted = false; _initiativeLanded = false; _initiativeResultRemaining = 1.5;
+            UpdateOpeningInitiative(0);
+            Check(Enumerable.Range(0, 2).All(i => _initiativeDice[i].IsRolling && _initiativeDice[i].Style == game.State.Players[i].Dice),
+                $"La iniciativa no usa el dado de cada jugador ({_initiativeDice[0].Style}, {_initiativeDice[1].Style}).");
+            ResetOpeningInitiative();
             ResetAnimations();
             if (seat == 0 && size.X == 1820) await Capture($"cosmetics-board-{size.X}x{size.Y}");
         }
-        GD.Print("PVP_COSMETICS_PASS · mica de cada dueño en mazo, corruptas y mano rival, y dado de quien tira; dos tamaños y ambos asientos.");
+        GD.Print("PVP_COSMETICS_PASS · mica de cada dueño en mazo, corruptas y mano rival, dado de quien tira y de cada jugador en la iniciativa; dos tamaños y ambos asientos.");
     }
 }

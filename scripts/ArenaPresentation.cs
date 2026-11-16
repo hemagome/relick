@@ -38,6 +38,27 @@ public static class ArenaPresentation
         return label;
     }
 
+    /// <summary>
+    /// Once evolution is affordable, the Lv 2 button turns gold and breathes so the player notices the chance.
+    /// The tween belongs to the button, so it stops when a rebuild frees it. Reduced motion keeps only the gold.
+    /// </summary>
+    internal static void InviteEvolution(Button evolve)
+    {
+        evolve.Name = "EvolveRelikario";
+        RelickVisuals.Primary(evolve, BoardArt.Gold);
+        evolve.SetMeta("evolution_invite", true);
+        if (DisplayServer.AccessibilityShouldReduceAnimation() == 1 ||
+            ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool()) return;
+        void Center() => evolve.PivotOffset = evolve.Size / 2;
+        evolve.Resized += Center; Center();
+        var pulse = evolve.CreateTween().SetLoops().SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+        pulse.TweenProperty(evolve, "scale", new Vector2(1.08f, 1.08f), 0.55);
+        pulse.Parallel().TweenProperty(evolve, "self_modulate", new Color(1.25f, 1.2f, 0.9f), 0.55);
+        pulse.TweenProperty(evolve, "scale", Vector2.One, 0.55);
+        pulse.Parallel().TweenProperty(evolve, "self_modulate", Colors.White, 0.55);
+        pulse.TweenInterval(0.5);
+    }
+
     public static Button Button(Node parent, string text, Action action, bool disabled = false)
     {
         var button = new Button { Text = text, Disabled = disabled, CustomMinimumSize = new(0, 48), MouseDefaultCursorShape = Control.CursorShape.PointingHand };
@@ -140,6 +161,7 @@ public static class ArenaPresentation
             var evolve = Button(stand, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
             evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
             evolve.CustomMinimumSize = new(0, 28); evolve.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+            if (actions.CanEvolve && owner.Level == 1) InviteEvolution(evolve);
         }
         for (var copy = 0; copy < actions.Zahiras.Count; copy++)
         {
@@ -329,6 +351,7 @@ public static class ArenaPresentation
         {
             var evolve = Button(stats, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
             evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
+            if (actions.CanEvolve && owner.Level == 1) InviteEvolution(evolve);
         }
         var meters = new HBoxContainer();
         meters.AddThemeConstantOverride("separation", 10);

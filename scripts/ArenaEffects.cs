@@ -97,6 +97,7 @@ public partial class ImpactLayer : Control
     /// <summary>A Trap being created: echoes of its recipe meet and the card appears, then goes to its place.</summary>
     internal bool ShowingSummon => _summon != null;
     internal Rect2? SummonTarget => _summon?.To;
+    internal Vector2? SummonMeet => _summon?.Meet;
     internal int SummonEchoes => _summon?.Ingredients.Length ?? 0;
     internal int ActiveCount => _numbers.Count + _rings.Count + _beams.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0) + (_summon != null ? 1 : 0);
     internal Vector2? LastNumberAt => _numbers.Count == 0 ? null : _numbers[^1].At;
