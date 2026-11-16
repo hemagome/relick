@@ -93,7 +93,28 @@ public partial class OnlineArena
             : entry.CardId == CardCatalog.SuperAttack.Id ? relative == 0 ? HandLanding() : Find("OpponentHandFan") ?? Find("OpponentHandScroll") : null;
         _impacts.TrapSummon(ingredients, memory.Value.GetCenter(), exchange.Value.GetCenter(), art, destination,
             relative == 0 ? ArenaPresentation.Mint : ArenaPresentation.Coral);
+        if (entry.CardId == CardCatalog.SuperAttack.Id && destination != null && _impacts.ShowingSummon)
+            HideUntilSummonLands(current, entry.Actor, relative);
     }
+
+    /// <summary>
+    /// The board was rebuilt with Súper Ataque already in the hand; that card stays hidden while its echo is
+    /// summoned and fades in as the flying Trap lands on it, so the card is never seen before it arrives.
+    /// </summary>
+    private void HideUntilSummonLands(DuelSnapshot current, int actor, int relative)
+    {
+        var hand = current.Players[actor];
+        var slot = relative == 0 ? Array.LastIndexOf(hand.Hand, CardCatalog.SuperAttack.Id) : hand.HandCount - 1;
+        if (slot < 0 || ZoneNode(relative, CardZone.Hand, slot) is not { } card) return;
+        HiddenSummonedCard = card;
+        card.Modulate = new Color(1, 1, 1, 0);
+        var tween = card.CreateTween();
+        tween.TweenInterval(ImpactLayer.SummonLanding);
+        tween.TweenProperty(card, "modulate:a", 1f, ImpactLayer.SummonLandingFade);
+    }
+
+    /// <summary>For tests: the hand card kept hidden while the Trap summon flies to it.</summary>
+    internal Control? HiddenSummonedCard { get; private set; }
 
     /// <summary>Where a card joining the own hand lands: the visible band of the fan, at board card size.</summary>
     private Rect2? HandLanding()

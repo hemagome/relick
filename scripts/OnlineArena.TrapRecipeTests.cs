@@ -70,6 +70,16 @@ public partial class OnlineArena
                     : seat == 0 ? _hand : (Control?)_root!.FindChild("OpponentHandFan", true, false) ?? (Control)_root.FindChild("OpponentHandScroll", true, false);
                 Check(_impacts.SummonTarget is { } target && place != null && place.GetGlobalRect().Grow(80).Intersects(target),
                     $"{trap.Name} no vuela a su lugar ({size}, asiento {seat}).");
+                if (trap == CardCatalog.SuperAttack)
+                {
+                    // The card already in the rebuilt hand waits for the flying Trap instead of showing early.
+                    var card = HiddenSummonedCard;
+                    Check(card != null && IsInstanceValid(card) && card.Modulate.A < 0.01f,
+                        $"Súper Ataque se ve en la mano antes de que termine su invocación ({size}, asiento {seat}).");
+                    await ToSignal(GetTree().CreateTimer(ImpactLayer.SummonLanding + ImpactLayer.SummonLandingFade + 0.1), SceneTreeTimer.SignalName.Timeout);
+                    Check(IsInstanceValid(card) && card!.Modulate.A > 0.99f,
+                        $"Súper Ataque no aparece en la mano al aterrizar ({size}, asiento {seat}).");
+                }
                 if (seat == 0 && size.X == 1820)
                 {
                     foreach (var (moment, tag) in new[] { (0.3, "echoes"), (0.62, "summoned") })

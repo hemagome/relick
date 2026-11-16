@@ -88,6 +88,10 @@ public partial class ImpactLayer : Control
     /// <summary>A code just played by either duelist is shown for a moment over the middle of the board.</summary>
     internal bool ShowingCard => _card != null;
     private const double SummonGather = 0.45, SummonPop = 0.3, SummonFly = 0.45, SummonFade = 0.2;
+    /// <summary>Seconds from a summon's start until the flying Trap reaches its place and starts to fade there.</summary>
+    internal const double SummonLanding = SummonGather + SummonPop + SummonFly;
+    /// <summary>How long the landed Trap takes to fade into the real card underneath.</summary>
+    internal const double SummonLandingFade = SummonFade;
     private sealed record Summon(Texture2D[] Ingredients, Vector2 From, Vector2 Meet, Texture2D Trap, Rect2? To, Color Accent)
     {
         public double Age { get; set; }
