@@ -84,7 +84,8 @@ internal static class CardEffects
 {
     private static readonly IReadOnlyDictionary<string, ICardEffect> Registered =
         new ICardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
-            new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect() }.ToDictionary(e => e.CardId);
+            new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
+            new ReloadCartridgeEffect(), new TripleAttackEffect() }.ToDictionary(e => e.CardId);
 
     public static ICardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
@@ -134,6 +135,10 @@ public sealed partial class GameEngine
 
         public void Draw(int count, EngineContinuation? then = null) => _engine.DrawCards(Player, count, then);
         public int Heal(int amount) => _engine.Heal(Player, amount);
+        /// <summary>Swaps the whole hands of both players; each copy keeps its owner and whether it was revealed.</summary>
+        public void SwapHands() => _engine.SwapHands(Actor);
+        /// <summary>Both players discard their hands and draw this card's <c>Draw</c>, with Mira de Sniper triggers in between.</summary>
+        public void ReloadBothHands() => _engine.BeginReloadHands(Actor);
 
         /// <summary>
         /// Rolls a D6 through the shared die window (Relikario rerolls, Colgante, PC, destreza, COMBO), then continues the

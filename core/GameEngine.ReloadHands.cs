@@ -43,7 +43,7 @@ public sealed partial class GameEngine
     {
         if (State.IsOver || State.PendingReload is not { } pending || State.Phase != Phase.ReloadResolving) return;
         var frame = _activeActivation;
-        while (frame != null && !CardCatalog.Get(frame.CardId).ReloadBothHands) frame = frame.Parent;
+        while (frame != null && frame.CardId != CardCatalog.ReloadCartridge.Id) frame = frame.Parent;
         if (frame == null) throw new InvalidOperationException("Falta la activación de Cartucho de Re-carga.");
         _activeActivation = frame;
         while (State.PendingReload == pending && State.Phase == Phase.ReloadResolving)

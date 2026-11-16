@@ -91,10 +91,14 @@ static class DecisionTests
         }),
         ("Decisión: las cartas con efecto registrado no necesitan indicadores en su definición", () =>
         {
-            foreach (var card in new[] { CardCatalog.BlueEgg, CardCatalog.TimeBomb, CardCatalog.KonamyCode, CardCatalog.PointsIncrease, CardCatalog.FloppyDisk })
+            foreach (var card in new[] { CardCatalog.BlueEgg, CardCatalog.TimeBomb, CardCatalog.KonamyCode, CardCatalog.PointsIncrease, CardCatalog.FloppyDisk, CardCatalog.TripleAttack })
                 Check(card with { Text = "" } == new CardDefinition(card.Id, card.Name, card.Kind, "", CodeType: card.CodeType));
-            // Data the module reads, not a rule switch: how many cards Carga Rápida draws first.
+            // Data the module reads, not a rule switch: how many cards Carga Rápida, Senshuni and Cartucho draw.
+            // The first-turn ban is a common activation cost every code may carry.
             Check(CardCatalog.QuickLoad with { Text = "" } == new CardDefinition(CardCatalog.QuickLoad.Id, CardCatalog.QuickLoad.Name, CardKind.Code, "", Draw: 2, CodeType: CodeType.Play));
+            Check(CardCatalog.Senshuni with { Text = "" } == new CardDefinition(CardCatalog.Senshuni.Id, CardCatalog.Senshuni.Name, CardKind.Code, "", Draw: 2, CodeType: CodeType.Character));
+            Check(CardCatalog.MindSwap with { Text = "" } == new CardDefinition(CardCatalog.MindSwap.Id, CardCatalog.MindSwap.Name, CardKind.Code, "", CodeType: CodeType.Play, EarliestTurn: 2));
+            Check(CardCatalog.ReloadCartridge with { Text = "" } == new CardDefinition(CardCatalog.ReloadCartridge.Id, CardCatalog.ReloadCartridge.Name, CardKind.Code, "", Draw: 4, CodeType: CodeType.Play, EarliestTurn: 2));
         }),
     };
 
