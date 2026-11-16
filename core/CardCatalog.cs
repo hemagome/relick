@@ -7,16 +7,17 @@ public enum CardKind { Attack, Skill, Code, Attachment, Equipment }
 
 /// <summary>
 /// Only cards supplied by the user; no sample cards in the playable catalogue. A card whose rules live in an
-/// <see cref="ICardEffect"/> (core/Effects) needs no flag here: its data is just name, kind and text.
+/// <see cref="ICardEffect"/> (core/Effects) needs no rule flag here. HealFromDie stays only as a hint for the card icon
+/// and the test bot; the engine no longer reads it.
 /// </summary>
 public sealed record CardDefinition(
     string Id, string Name, CardKind Kind, string Text,
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
-    int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, bool ChangePointsFromDie = false, int PrCost = 0, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
+    int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, int PrCost = 0, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
     int DamageReduction = 0, bool DestroyOnAttackOne = false,
     bool SwapHands = false, int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false, int SearchAttacks = 0,
     int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
-    bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool RecoverMemory = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false, bool DrawThenDie = false, bool ReloadBothHands = false,
+    bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false, bool ReloadBothHands = false,
     int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false, bool DeployTotems = false,
     // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
     string? Relikario = null, bool Special = false)
@@ -50,7 +51,7 @@ public static class CardCatalog
         Draw: 4, CodeType: CodeType.Play, EarliestTurn: 2, ReloadBothHands: true);
     public static readonly CardDefinition QuickLoad = new("quick-load", "Carga Rápida", CardKind.Code,
         "Roba 2 cartas. Luego lanza 1D6: 1–2: descarta 2 cartas; 3–4: descarta 1 carta; 5: roba 1 carta; 6: roba 2 cartas.",
-        Draw: 2, CodeType: CodeType.Play, DrawThenDie: true);
+        Draw: 2, CodeType: CodeType.Play);
     public static readonly CardDefinition Jessica = new("jessica-lee", "Jessica Lee", CardKind.Code,
         "Una vez en tu etapa de combate, si esta carta está en tu zona de canje/Bonus, puedes lanzar 1D6: 5: 2 daños al adversario; 6: 3 daños al adversario y tú robas 1 carta. Error de Carga solo puede cancelarla en el turno en que entra en juego.",
         CodeType: CodeType.Character, ActionCost: 0, FieldCombatDie: true);
@@ -58,7 +59,7 @@ public static class CardCatalog
         "COMBO. Descarta 1 carta para activar hasta el final del turno: no recibes daño y duplicas todo el daño que inflijan tus cartas o habilidades. Error de Carga cancela antes del descarte; Caja de Cartón lo conserva.",
         CodeType: CodeType.Object, IsCombo: true, DiscardForTurnBuff: true, DiscardCost: 1);
     public static readonly CardDefinition FloppyDisk = new("floppy-disk", "Disquete", CardKind.Code,
-        "Selecciona una carta de cualquier memoria y añádela a tu mano. No puede recuperar la copia que se está activando; sí otra copia de Disquete.", CodeType: CodeType.Object, RecoverMemory: true);
+        "Selecciona una carta de cualquier memoria y añádela a tu mano. No puede recuperar la copia que se está activando; sí otra copia de Disquete.", CodeType: CodeType.Object);
     public static readonly CardDefinition Bonfire = new("bonfire", "Hoguera", CardKind.Equipment,
         "Al equipar: gana +1 vida. Mientras esta carta esté equipada, todos los daños que recibas se transforman en 0. Destruye esta carta al inicio de tu siguiente turno luego de haber sido equipada.",
         Heal: 1, PreventDamage: true, DestroyAtNextTurnStart: true);
@@ -111,7 +112,7 @@ public static class CardCatalog
 
     public static readonly CardDefinition PointsIncrease = new("points-increase", "Aumento de Relick Points", CardKind.Code,
         "Lanza 1D6: aumenta o disminuye los PR de cualquier jugador: 1 → 300; 2 → 400; 3–4 → 500; 5 → 1000; 6 → 1500. Los PR no bajan de cero.",
-        CodeType: CodeType.Play, ChangePointsFromDie: true);
+        CodeType: CodeType.Play);
 
     public static readonly CardDefinition BlueEgg = new("blue-egg", "Huevo Azul Explosivo", CardKind.Code,
         "Selecciona y destruye una no-habilidad en el campo. Además puedes pagar 200 PR para robar 1 carta.",

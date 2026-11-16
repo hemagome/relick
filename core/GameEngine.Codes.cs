@@ -91,8 +91,6 @@ public sealed partial class GameEngine
         if (card.SearchAttacks > 0 && !p.Deck.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack)) return "No hay ataques en tu mazo.";
         if (CardEffects.For(card.Id) is { } effect && effect.Unavailable(EffectFor(Array.IndexOf(State.Players, p), card.Id), excludedHand) is { } effectError)
             return effectError;
-        if (card.RecoverMemory && State.Players.Sum(player => player.Memory.Count) <= (excludedHand < 0 ? 1 : 0))
-            return "No hay cartas disponibles en las memorias.";
         if (card.DodgeAttack && (State.Phase != Phase.DefenseChoice || State.PendingAttack?.Attacker != 1 - Array.IndexOf(State.Players, p))) return "Solo puedes esquivar un ataque de tu oponente pendiente de defensa.";
         if (card.ResetMind && MindResetUnavailable(Array.IndexOf(State.Players, p), excludedHand) is { } resetError) return resetError;
         if (card.CancelActivation && !CanPlayLoadError(Array.IndexOf(State.Players, p))) return "No hay una activación que puedas anular.";

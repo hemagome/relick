@@ -9,7 +9,7 @@ public sealed partial class GameEngine
             {
                 // Exclude this resolving copy by position, never every card with its definition.
                 if (_activeActivation is { Kind: ActivationKind.Code, ReplayCorrupted: false } frame &&
-                    CardCatalog.Get(frame.CardId).RecoverMemory && frame.MemorySeat == owner && frame.MemoryIndex == index) continue;
+                    frame.CardId == CardCatalog.FloppyDisk.Id && frame.MemorySeat == owner && frame.MemoryIndex == index) continue;
                 yield return new(owner, index);
             }
     }
@@ -29,12 +29,24 @@ public sealed partial class GameEngine
 
     public CommandResult ResolveMemoryRecovery(int actor, int owner, int memoryIndex)
     {
+        // Disquete now asks through a decision; this command still answers it.
+        if (ResolveDecisionWhere(actor, CardCatalog.FloppyDisk.Id, c => c.Owner == owner && c.Value == memoryIndex) is { } answered) return answered;
+        // Legacy: a duel saved while the memory recovery phase was pending.
         if (State.Phase != Phase.MemoryRecoveryChoice || actor != State.DecisionPlayer ||
-            _activeActivation is not { Kind: ActivationKind.Code } frame || frame.Actor != actor || !CardCatalog.Get(frame.CardId).RecoverMemory)
+            _activeActivation is not { Kind: ActivationKind.Code } frame || frame.Actor != actor || frame.CardId != CardCatalog.FloppyDisk.Id)
             return CommandResult.Fail("No te corresponde recuperar una carta de memoria.");
         if (!RecoverableMemoryCards().Contains(new(owner, memoryIndex)))
             return CommandResult.Fail("Elige una carta disponible de una memoria normal.");
 
+        TakeFromMemory(actor, owner, memoryIndex);
+        State.Phase = frame.ResumePhase;
+        _activeActivation = null;
+        CompleteEndTurnIfReady();
+        return CommandResult.Ok();
+    }
+
+    private string TakeFromMemory(int actor, int owner, int memoryIndex)
+    {
         var source = State.Players[owner]; var recipient = State.Players[actor]; var id = source.Memory[memoryIndex];
         source.Memory.RemoveAt(memoryIndex); ShiftSniperIndices(owner, memoryIndex);
         recipient.Hand.Add(id);
@@ -43,10 +55,7 @@ public sealed partial class GameEngine
         // The source memory is public, but the card is not marked revealed in its new hand.
         State.LastCombat = $"{recipient.Name} añade {CardCatalog.Get(id).Name} de la memoria de {source.Name} a su mano con Disquete.";
         Log(State.LastCombat);
-        State.Phase = frame.ResumePhase;
-        _activeActivation = null;
-        CompleteEndTurnIfReady();
-        return CommandResult.Ok();
+        return id;
     }
 
     public event Action<int, int, int, int>? MemoryCardClaimed;

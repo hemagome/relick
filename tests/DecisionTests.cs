@@ -64,10 +64,37 @@ static class DecisionTests
             Check(legacy.State.Phase == Phase.BlueEggDrawChoice && DuelOptions.For(legacy, 0).Count(o => o.Move.Kind == DuelMoveKind.BlueEggDraw) == 2);
             Check(legacy.ResolveBlueEggDraw(0, false).Success && legacy.State.Phase == Phase.Actions && p.Relikia == 200);
         }),
+        ("Decisión: una tirada guardada antes de mover Vida Extra a su módulo termina con la regla anterior", () =>
+        {
+            var g = Fixture(CardCatalog.ExtraLife.Id); var p = g.State.Active; p.Health = 3; p.Equipment = CardCatalog.Pendant.Id;
+            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DieRerollChoice && g.State.PendingDieRoll!.Purpose == DiePurpose.ExtraLife);
+            var json = JsonNode.Parse(g.SaveSnapshot())!; var die = json["PendingDie"]!.AsObject();
+            Check(die["Step"]?.GetValue<string>() == "heal"); die.Remove("Step"); die["SkillId"] = "";
+            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom()); var rolled = legacy.State.PendingDieRoll!.Die;
+            Check(legacy.ResolveDieReroll(0, false).Success && legacy.State.Active.Health == Math.Min(8, 3 + rolled switch { 1 => 1, 2 => 2, 6 => 4, _ => 3 }));
+        }),
+        ("Decisión: Aumento de PR guardado en su fase anterior se termina con su jugada de entonces", () =>
+        {
+            var g = Fixture(CardCatalog.PointsIncrease.Id); var p = g.State.Active; p.Dexterity = 0;
+            Check(g.PlayCode(0, 0).Success && g.State.PendingDecision is { Kind: DecisionKind.Confirm } decision && decision.Value > 0);
+            var amount = g.State.PendingDecision!.Value;
+            Check(DuelOptions.For(g, 0).Count(o => o.Move.Kind == DuelMoveKind.Choose) == 4 && DuelOptions.For(g, 0).Single(o => o.Primary).Button == $"+{amount} a mis PR");
+            var json = JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
+            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.PointsChoice;
+            state["PendingPoints"] = new JsonObject { ["Actor"] = 0, ["Die"] = 6, ["Amount"] = amount };
+            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom());
+            var points = DuelOptions.For(legacy, 0).Where(o => o.Move.Kind == DuelMoveKind.Points).ToArray();
+            Check(points.Length == 4);
+            var result = legacy.ResolvePointsChange(0, 0, true);
+            Check(result.Success, result.Message);
+            Check(legacy.State.Active.Relikia == p.Relikia + amount && legacy.State.Phase == Phase.Actions);
+        }),
         ("Decisión: las cartas con efecto registrado no necesitan indicadores en su definición", () =>
         {
-            foreach (var card in new[] { CardCatalog.BlueEgg, CardCatalog.TimeBomb, CardCatalog.KonamyCode })
+            foreach (var card in new[] { CardCatalog.BlueEgg, CardCatalog.TimeBomb, CardCatalog.KonamyCode, CardCatalog.PointsIncrease, CardCatalog.FloppyDisk })
                 Check(card with { Text = "" } == new CardDefinition(card.Id, card.Name, card.Kind, "", CodeType: card.CodeType));
+            // Data the module reads, not a rule switch: how many cards Carga Rápida draws first.
+            Check(CardCatalog.QuickLoad with { Text = "" } == new CardDefinition(CardCatalog.QuickLoad.Id, CardCatalog.QuickLoad.Name, CardKind.Code, "", Draw: 2, CodeType: CodeType.Play));
         }),
     };
 
@@ -79,6 +106,6 @@ static class DecisionTests
         return g;
     }
 
-    static void Check(bool value, [System.Runtime.CompilerServices.CallerLineNumber] int line = 0)
-    { if (!value) throw new Exception($"Decisión genérica no satisfecha (línea {line})"); }
+    static void Check(bool value, string? detail = null, [System.Runtime.CompilerServices.CallerLineNumber] int line = 0)
+    { if (!value) throw new Exception($"Decisión genérica no satisfecha (línea {line}){(detail == null ? "" : ": " + detail)}"); }
 }

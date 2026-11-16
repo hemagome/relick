@@ -114,7 +114,7 @@ public sealed partial class GameEngine
                 for (var frame = _activeActivation?.Parent; frame != null; frame = frame.Parent)
                     if (frame.MemorySeat == group.Key && frame.MemoryIndex > selection.Index) frame.MemoryIndex--;
                     else if (frame.MemorySeat == group.Key && frame.MemoryIndex == selection.Index &&
-                        !frame.ReplayCorrupted && CardCatalog.Get(frame.CardId).RecoverMemory) frame.MemoryIndex = -1;
+                        !frame.ReplayCorrupted && frame.CardId == CardCatalog.FloppyDisk.Id) frame.MemoryIndex = -1;
             }
         }
         ReturnHandCardToDeck(pending.Target, handIndex);

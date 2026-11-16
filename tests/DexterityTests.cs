@@ -64,7 +64,7 @@ static class DexterityTests
                 Check(g.State.Phase == Phase.DieRerollChoice && g.UseDexterity(0).Success && p.Dexterity == 0);
                 if (code == CardCatalog.ExtraLife.Id)
                     Check(p.Health == 4 && DuelSnapshot.For(g, 0, 1).Die == 3 && g.State.Phase == Phase.Actions);
-                else Check(g.State.PendingPoints!.Die == 5 && g.State.PendingPoints.Amount == 1000);
+                else Check(g.State.PendingDecision!.Value == 1000);
             }
         }),
         ("Destreza: aumenta dado de daño Magnet y valor guardado en PC", () =>

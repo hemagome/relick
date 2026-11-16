@@ -124,8 +124,8 @@ static class ComboResponseTests
             Check(g.SetComboResponses(0, false, out var resumed).Success && !resumed && g.CanUseRelikarioOnPendingDie(0));
             Check(g.ResolveDieReroll(0, false).Success && p.Health == 4);
             p.Hand.Add(CardCatalog.FloppyDisk.Id); g.State.Players[1].Memory.Add(CardCatalog.Attack.Id);
-            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.MemoryRecoveryChoice);
-            Check(g.SetComboResponses(0, false, out resumed).Success && !resumed && g.State.Phase == Phase.MemoryRecoveryChoice);
+            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.Decision);
+            Check(g.SetComboResponses(0, false, out resumed).Success && !resumed && g.State.Phase == Phase.Decision);
             Check(g.ResolveMemoryRecovery(0, 1, 0).Success);
         }),
         ("COMBO: apagar después de iniciar Estrella no cancela su descarte obligatorio ni su efecto", () =>

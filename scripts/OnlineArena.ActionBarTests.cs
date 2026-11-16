@@ -345,38 +345,35 @@ public partial class OnlineArena
         {
             GetWindow().Size = size; GetWindow().ContentScaleSize = size; await Layout();
             var points = PendingCodeFixture(actor, CardCatalog.PointsIncrease.Id);
-            Check(points.PlayCode(actor, 0).Success && points.State.Phase == Phase.PointsChoice, "No empieza la elección de PR.");
+            Check(points.PlayCode(actor, 0).Success && points.State.PendingDecision is { Kind: DecisionKind.Confirm }, "No empieza la elección de PR.");
             points = GameEngine.FromSnapshot(points.SaveSnapshot(), new SeededRandom(31));
+            var amount = points.State.PendingDecision!.Value;
             foreach (var seat in new[] { 0, 1 })
             {
                 ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(points, seat, 320)); await Layout();
                 CheckPendingCodeBounds();
-                Button[] Targets() => _moves.GetChildren().OfType<Button>().Where(b => b.Text is "Mis PR" or "PR del rival").ToArray();
+                var shown = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.Choose && PresentsOption(o)).ToArray();
                 if (seat != actor)
                 {
-                    Check(Targets().Length == 0 && !PresentsKind(DuelMoveKind.Points), "El rival ve el selector de Aumento de Relick Points.");
+                    Check(shown.Length == 0, "El rival ve el selector de Aumento de Relick Points.");
                     Check(_selection.Text.Contains("rival"), "El rival no ve la espera de la elección de PR.");
                     continue;
                 }
-                Check(Targets().Length == 2, "El dueño no puede elegir ambos destinos de PR.");
-                foreach (var target in new[] { actor, 1 - actor })
+                // One button per destination and sign, all visible at once, with the amount the die decided.
+                var view = _movesScroll.GetGlobalRect().Grow(1);
+                Check(shown.Length == 4 && shown.All(o => PresentedButton(o) is { } b && b.IsVisibleInTree() && view.Encloses(b.GetGlobalRect()) && b.Text.Contains(amount.ToString())),
+                    "La elección de PR no muestra a la vez ambos destinos y signos.");
+                Check(PresentedButton(shown.Single(o => o.Primary))?.Text == $"+{amount} a mis PR" && _contextTitle.Text == CardCatalog.PointsIncrease.Name,
+                    "La elección de PR no destaca sumar a los propios PR o pierde su título.");
+                var before = points.SaveSnapshot();
+                foreach (var option in shown)
                 {
-                    var before = points.SaveSnapshot();
-                    GuiInputTestDriver.Click(Targets().Single(b => b.Text == (target == actor ? "Mis PR" : "PR del rival"))); await Layout();
-                    CheckPendingCodeBounds();
-                    var options = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.Points && PresentsOption(o)).ToArray();
-                    Check(options.Length == 2 && options.All(o => o.Move.Target == target) && options.Select(o => o.Move.Flag).Distinct().Count() == 2,
-                        "La elección de PR muestra otro destino o pierde uno de los signos.");
-                    foreach (var option in options)
-                    {
-                        var copy = GameEngine.FromSnapshot(before, new SeededRandom(31));
-                        Check(option.Move.Apply(copy, actor).Success && copy.State.Phase == Phase.Actions &&
-                            copy.State.Players[target].Relikia == (option.Move.Flag ? points.State.PendingPoints!.Amount : 0), "El botón de PR resuelve otra opción.");
-                    }
-                    var field = (Control)_root!.FindChild("OwnRelikarioPanel", true, false);
-                    GuiInputTestDriver.Click(GetViewport(), field.GlobalPosition + new Vector2(5, 5)); await Layout();
-                    Check(Targets().Length == 2 && points.SaveSnapshot() == before, "Seleccionar PR altera el duelo o pierde los destinos.");
+                    var copy = GameEngine.FromSnapshot(before, new SeededRandom(31)); var target = option.Button!.Contains("mis") ? actor : 1 - actor;
+                    var expected = option.Button.StartsWith('+') ? copy.State.Players[target].Relikia + amount : Math.Max(0, copy.State.Players[target].Relikia - amount);
+                    Check(option.Move.Apply(copy, actor).Success && copy.State.Phase == Phase.Actions && copy.State.Players[target].Relikia == expected,
+                        "El botón de PR resuelve otra opción.");
                 }
+                Check(points.SaveSnapshot() == before, "Presentar la elección de PR altera el duelo.");
             }
         }
         ResetInteraction();

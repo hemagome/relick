@@ -516,6 +516,7 @@ public partial class OnlineArena
     private string ChoiceOrigin(DuelOption option) => option.Move.Kind switch
     {
         DuelMoveKind.RecoverMemory or DuelMoveKind.MindResetMemory or DuelMoveKind.Corrupt => "Memoria de " + _snapshot!.Players[option.Move.Target].Name,
+        DuelMoveKind.Choose when option.Owner is int owner => "Memoria de " + _snapshot!.Players[owner].Name,
         DuelMoveKind.Relikia => "Tu memoria · la copia se corromperá",
         _ => "Confirma la carta seleccionada."
     };
