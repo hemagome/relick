@@ -11,6 +11,9 @@ public sealed class DuelPlayerView
     public int Level { get; set; }
     public int Pr { get; set; }
     public int Dexterity { get; set; }
+    /// <summary>Cosmetic sleeve and die (CosmeticCatalog ids), public to both players.</summary>
+    public string Sleeve { get; set; } = CosmeticCatalog.DefaultSleeve;
+    public string Dice { get; set; } = CosmeticCatalog.DefaultDice;
     public int Actions { get; set; }
     public int DeckCount { get; set; }
     public int HandCount { get; set; }
@@ -146,7 +149,7 @@ public sealed class DuelSnapshot
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
             Players = s.Players.Select((p, index) => new DuelPlayerView
             {
-                Name = p.Name, Health = p.Health, MaxHealth = p.MaxHealth, Level = p.Level, Pr = p.Relikia, Dexterity = p.Dexterity,
+                Name = p.Name, Health = p.Health, MaxHealth = p.MaxHealth, Level = p.Level, Pr = p.Relikia, Dexterity = p.Dexterity, Sleeve = p.Sleeve ?? CosmeticCatalog.DefaultSleeve, Dice = p.Dice ?? CosmeticCatalog.DefaultDice,
                 HasReachedZero = p.HasReachedZero,
                 RelikarioId = p.Relikario.Id,
                 Actions = p.ActionsLeft, DeckCount = p.Deck.Count, HandCount = p.Hand.Count,

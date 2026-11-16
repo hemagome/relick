@@ -39,7 +39,9 @@ public sealed partial class GameEngine
         {
             var player = new PlayerState { Name = opening.Names[seat], Bonus = opening.Bonuses[seat],
                 SuperMagnetCopies = Math.Clamp(opening.SuperMagnetCopies?.ElementAtOrDefault(seat) ?? 0, 0, 2),
-                ZahiraAvailable = opening.IncludeZahiraFlair, SuperAttackAvailable = opening.IncludeSuperAttack };
+                ZahiraAvailable = opening.IncludeZahiraFlair, SuperAttackAvailable = opening.IncludeSuperAttack,
+                Sleeve = CosmeticCatalog.Sleeve(opening.Sleeves?.ElementAtOrDefault(seat)).Id is var sleeve && sleeve != CosmeticCatalog.DefaultSleeve ? sleeve : null,
+                Dice = CosmeticCatalog.DiceFor(opening.Dice?.ElementAtOrDefault(seat)).Id is var dice && dice != CosmeticCatalog.DefaultDice ? dice : null };
             if (opening.Traps?.ElementAtOrDefault(seat) is { } traps) LoadTraps(player, traps);
             if (player.Bonus is { } bonus && CardCatalog.Get(bonus).FieldCombatDie) player.BonusPlacedTurn = 1;
             player.Hand.AddRange(opening.Hands[seat]);
@@ -617,8 +619,11 @@ public sealed partial class GameEngine
         }
         return die;
     }
-    private int Roll(string caption = "", bool convertSix = false)
+    /// <summary>Whose die the latest roll was, for presentation only: the roller's cosmetic die is shown.</summary>
+    public int CurrentDieRoller { get; private set; } = -1;
+    private int Roll(string caption = "", bool convertSix = false, int roller = -1)
     {
+        CurrentDieRoller = roller >= 0 ? roller : State.CurrentPlayer;
         var value = _random.Next(6) + 1;
         State.LastDie = value;
         CurrentDieCaption = convertSix && value == 6 ? "Yuno · 6 se convierte en 5" : caption;

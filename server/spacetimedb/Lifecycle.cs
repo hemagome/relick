@@ -85,6 +85,7 @@ public static partial class Module
         foreach (var member in ctx.Db.Member.RoomCode.Filter(code).ToList())
         {
             ctx.Db.InitialSkill.Player.Delete(member.Player); ctx.Db.Loadout.Player.Delete(member.Player);
+            ctx.Db.LoadoutStyle.Player.Delete(member.Player);
             ctx.Db.Preparation.Player.Delete(member.Player); ctx.Db.DuelHand.Player.Delete(member.Player);
             ctx.Db.DuelChoices.Player.Delete(member.Player); ctx.Db.MoveResult.Player.Delete(member.Player);
             ctx.Db.PlayBudget.Player.Delete(member.Player); ctx.Db.Member.Player.Delete(member.Player);

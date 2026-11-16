@@ -379,3 +379,31 @@ Validación previa en una base local aislada con `tests/server/dev`:
 
 No se ejecutó la batería PvP contra Maincloud: el módulo real exige iniciar
 sesión con SpacetimeAuth y esas pruebas usan identidades anónimas.
+
+## Micas y dados por mazo
+
+Cada mazo guarda una mica y un dado cosméticos (`core/CosmeticCatalog.cs`).
+
+Cambios en el servidor:
+
+- **Tabla `deck_style`.** Guarda la mica y el dado de cada mazo, igual que `deck_side` guarda el banquillo. Un mazo sin fila usa los clásicos, y no se escribe fila cuando el estilo es el clásico. Borrar el mazo borra también su estilo.
+- **Tabla `loadout_style`.** Congela la mica y el dado al repartir, igual que `loadout` congela las Trampas. Se elimina al salir, al caducar la sala o al eliminar la cuenta.
+- **Vista `my_decks`.** Añade `sleeve` y `dice`.
+- **Reductor `save_deck_v_2`.** Guarda el mazo con su estilo y rechaza identificadores que no existan. `save_deck` sigue disponible para los clientes anteriores y conserva el estilo que ya tenga el mazo.
+
+Cambios en el motor:
+
+- La apertura (`DuelOpening.Sleeves` y `Dice`) lleva el estilo al duelo, que lo publica en la vista de cada jugador.
+- El estado guardado solo escribe el estilo cuando no es el clásico, así que los duelos anteriores se reproducen sin cambios.
+- El evento visual del dado indica quién tiró.
+
+Validación local con `tests/server/dev`:
+
+- 472 comprobaciones del motor.
+- La batería de mazos con `-- --decks`. Incluye el estilo de ida y vuelta, la compatibilidad con `save_deck`, los rechazos y un duelo real en el que ambos jugadores ven la mica y el dado de cada mazo.
+- La batería PvP general completa.
+
+Publicado el 15 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud
+con `--delete-data=never`. El plan de migración solo agregó las tablas privadas
+`deck_style` y `loadout_style` y la vista `my_deck_styles`. No eliminó tablas ni
+datos. Los clientes anteriores siguen funcionando con `save_deck`.

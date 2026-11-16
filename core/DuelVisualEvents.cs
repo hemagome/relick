@@ -31,7 +31,7 @@ public static class DuelVisualEvents
         var events = new List<DuelVisualEvent>();
         void Add(DuelVisualKind kind, int player, int value = 0, string caption = "")
             => events.Add(new() { Kind = kind, Player = player, Value = value, Caption = caption });
-        game.DieRolled += value => Add(DuelVisualKind.Die, -1, value, game.CurrentDieCaption);
+        game.DieRolled += value => Add(DuelVisualKind.Die, game.CurrentDieRoller, value, game.CurrentDieCaption);
         game.DieAdjusted += value => Add(DuelVisualKind.DieAdjustment, -1, value, game.CurrentDieCaption);
         game.AttackPerformed += player => Add(DuelVisualKind.Attack, player);
         game.DamageReceived += (player, amount, attackDie) => events.Add(new()

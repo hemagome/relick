@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Relick.Core;
 using Relick.Network.Types;
 using SpacetimeDB;
@@ -35,7 +36,7 @@ static class DeckChecks
             peer.Connection = DbConnection.Builder().WithUri(server).WithDatabaseName(database)
                 .OnConnect((connection, _, _) => connection.SubscriptionBuilder().OnApplied(_ => peer.Ready = true)
                     .OnError((_, e) => peer.Fatal = e.Message)
-                    .Subscribe(["SELECT * FROM my_decks", "SELECT * FROM my_account", "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill"]))
+                    .Subscribe(["SELECT * FROM my_decks", "SELECT * FROM my_account", "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel"]))
                 .OnConnectError(e => peer.Fatal = e.Message).Build();
             void Reply(ReducerEventContext ctx)
             {
@@ -51,6 +52,9 @@ static class DeckChecks
             peer.Connection.Reducers.OnJoinRoom += (ctx, _, _) => Reply(ctx);
             peer.Connection.Reducers.OnLeaveRoom += ctx => Reply(ctx);
             peer.Connection.Reducers.OnChooseInitialSkill += (ctx, _, _, _) => Reply(ctx);
+            peer.Connection.Reducers.OnSaveDeckV2 += (ctx, _, _, _, _, _, _, _, _, _) => Reply(ctx);
+            peer.Connection.Reducers.OnConfirmPreparation += (ctx, _, _, _) => Reply(ctx);
+            peer.Connection.Reducers.OnPlayDuelV2 += (ctx, _, _, _, _, _) => Reply(ctx);
             await Until(() => peer.Ready); return peer;
         }
         async Task Call(Peer peer, Action<RemoteReducers> send, bool rejected = false)
@@ -140,6 +144,15 @@ static class DeckChecks
             await Until(() => ana.Decks.Single(d => d.Id == deck.Id) is { Valid: true, Active: true } saved && saved.Side.SequenceEqual(bench));
             Check(true, "Guardar conserva un banquillo de diez cartas y el mazo sigue siendo jugable");
 
+            // The deck's sleeve and die: saved with it, kept when an older client saves without them, and validated.
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, "oro", "obsidiana", Id()));
+            await Until(() => ana.Decks.Single(d => d.Id == deck.Id) is { Sleeve: "oro", Dice: "obsidiana", Valid: true, Active: true });
+            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, bench, Id()));
+            Check(ana.Decks.Single(d => d.Id == deck.Id) is { Sleeve: "oro", Dice: "obsidiana" }, "Guardar con un cliente anterior conserva la mica y el dado");
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, "no-existe", "clasico", Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, "clasica", "no-existe", Id()), rejected: true);
+            Check(ana.Decks.Single(d => d.Id == deck.Id) is { Sleeve: "oro", Dice: "obsidiana" }, "Micas y dados inexistentes se rechazan sin tocar el mazo");
+
             // Ana brings her deck; Beto has none and receives the training deck. A hand shows only five cards,
             // so several deals are needed before a training deck dealt by mistake could not go unnoticed.
             var betoCards = new HashSet<string>();
@@ -165,6 +178,28 @@ static class DeckChecks
             Check(true, "La mano inicial sale del mazo activo aunque se edite después de repartir");
             Check(betoCards.Any(card => !custom.Contains(card)) && betoCards.All(CardCatalog.TrainingDeck().Contains),
                 "Sin mazo activo se reparte el mazo de entrenamiento");
+
+            // The style reaches the duel: both see Ana's sleeve and die; Beto, with the training deck, plays the classic ones.
+            {
+                await Call(ana, r => r.CreateRoom("Ana"));
+                await Until(() => ana.Room != null);
+                await Call(beto, r => r.JoinRoom(ana.Room!.Code, "Beto"));
+                await Until(() => ana.Room!.Dealt && beto.Room?.Dealt == true);
+                var room = ana.Room!.Code; var seat = (int)ana.Room.MySeat;
+                foreach (var peer in new[] { ana, beto }) await Call(peer, r => r.ChooseInitialSkill(room, "magnet-shuffle", Id()));
+                await Until(() => ana.Hand.Count == 5 && beto.Hand.Count == 5);
+                foreach (var peer in new[] { ana, beto }) await Call(peer, r => r.ConfirmPreparation(room, [], Id()));
+                await Until(() => ana.Duel != null && beto.Duel != null);
+                foreach (var view in new[] { ana.Duel!, beto.Duel! })
+                    Check(view.Players[seat] is { Sleeve: "oro", Dice: "obsidiana" } &&
+                        view.Players[1 - seat] is { Sleeve: CosmeticCatalog.DefaultSleeve, Dice: CosmeticCatalog.DefaultDice },
+                        "Ambos jugadores ven la mica y el dado de cada mazo en el duelo");
+                var duel = ana.Duel!;
+                await Call(ana, r => r.PlayDuelV2(room, duel.Revision, Id(), duel.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Concede), []));
+                await Until(() => ana.Duel?.Winner != null || ana.Room == null);
+                await Call(ana, r => r.LeaveRoom());
+                await Until(() => ana.Room == null && beto.Room == null);
+            }
 
             await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom.Skip(1).ToList(), traps, [], Id()));
             await Until(() => ana.Decks.All(d => !d.Active));
@@ -227,14 +262,14 @@ static class DeckChecks
                 service.Connect(server, database, null);
                 await Served(() => service.Ready);
                 var revision = service.DeckRevision;
-                service.SaveDeck(0, " Desde el juego ", "yuno", custom, traps, []);
+                service.SaveDeck(0, " Desde el juego ", "yuno", custom, traps, [], "violeta", "menta");
                 Check(service.DeckPending, "El juego marca la solicitud de mazo como pendiente");
                 await Served(() => !service.DeckPending && service.Decks.Count == 1);
-                Check(service.DeckSaves == 1 && service.DeckError == "" && service.DeckRevision > revision && service.Decks[0].Name == "Desde el juego",
-                    "El juego guarda un mazo y lo recibe de vuelta");
+                Check(service.DeckSaves == 1 && service.DeckError == "" && service.DeckRevision > revision && service.Decks[0] is { Name: "Desde el juego", Sleeve: "violeta", Dice: "menta" },
+                    "El juego guarda un mazo con su estilo y lo recibe de vuelta");
                 service.SetActiveDeck(service.Decks[0].Id);
                 await Served(() => !service.DeckPending && service.Decks[0].Active);
-                service.SaveDeck(service.Decks[0].Id, "", "yuno", custom, traps, []);
+                service.SaveDeck(service.Decks[0].Id, "", "yuno", custom, traps, [], "violeta", "menta");
                 await Served(() => !service.DeckPending);
                 Check(service.DeckSaves == 1 && service.DeckError.Contains("nombre de mazo"), "El juego muestra el motivo de un guardado rechazado");
                 service.DeleteDeck(service.Decks[0].Id);
@@ -266,5 +301,6 @@ static class DeckChecks
         public List<DeckInfo> Decks => Connection.Db.MyDecks.Iter().ToList();
         public RoomInfo? Room => Connection.Db.MyRoom.Iter().SingleOrDefault();
         public List<string> Hand => Connection.Db.MyHand.Iter().OrderBy(card => card.Position).Select(card => card.Definition).ToList();
+        public DuelSnapshot? Duel => Connection.Db.MyDuel.Iter().SingleOrDefault() is { } row ? JsonSerializer.Deserialize(row.Json, DuelJson.Default.DuelSnapshot) : null;
     }
 }

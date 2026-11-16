@@ -34,6 +34,36 @@ public static partial class Module
         if (side.Count > 0) ctx.Db.DeckSide.Insert(new DeckSide { Deck = deck, Cards = side });
     }
 
+    // A deck's cosmetic sleeve and die. Its own table, like DeckSide, so older decks need no migration:
+    // a deck without a row plays with the classic ones.
+    [Table(Accessor = "DeckStyle")]
+    public partial struct DeckStyle
+    {
+        [PrimaryKey] public ulong Deck;
+        public string Sleeve;
+        public string Dice;
+    }
+
+    private static (string Sleeve, string Dice) StyleOf(ReducerContext ctx, ulong deck) =>
+        ctx.Db.DeckStyle.Deck.Find(deck) is DeckStyle style ? (style.Sleeve, style.Dice) : (CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice);
+
+    private static void StoreStyle(ReducerContext ctx, ulong deck, string sleeve, string dice)
+    {
+        ctx.Db.DeckStyle.Deck.Delete(deck);
+        if (sleeve != CosmeticCatalog.DefaultSleeve || dice != CosmeticCatalog.DefaultDice)
+            ctx.Db.DeckStyle.Insert(new DeckStyle { Deck = deck, Sleeve = sleeve, Dice = dice });
+    }
+
+    // The sleeve and die a player brought into a room; a room dealt before styles existed has no row.
+    [Table(Accessor = "LoadoutStyle")]
+    public partial struct LoadoutStyle
+    {
+        [PrimaryKey] public Identity Player;
+        public string RoomCode;
+        public string Sleeve;
+        public string Dice;
+    }
+
     // The Trap deck a player brought into a room, kept apart from the main cards dealt as Card rows.
     [Table(Accessor = "Loadout")]
     public partial struct Loadout
@@ -71,10 +101,41 @@ public static partial class Module
         }).ToList();
     }
 
+    [SpacetimeDB.Type]
+    public partial struct DeckStyleInfo
+    {
+        public ulong Deck;
+        public string Sleeve;
+        public string Dice;
+    }
+
+    /// <summary>The caller's deck styles, apart from <see cref="MyDecks"/> so clients that predate styles keep reading
+    /// their decks unchanged. A deck missing here plays with the classic sleeve and die.</summary>
+    [View(Accessor = "MyDeckStyles", Public = true, PrimaryKey = "Deck")]
+    public static IEnumerable<DeckStyleInfo> MyDeckStyles(ViewContext ctx) =>
+        ctx.Db.Deck.Owner.Filter(ctx.Sender)
+            .Select(deck => ctx.Db.DeckStyle.Deck.Find(deck.Id))
+            .Where(style => style != null)
+            .Select(style => new DeckStyleInfo { Deck = style!.Value.Deck, Sleeve = style.Value.Sleeve, Dice = style.Value.Dice })
+            .ToList();
+
     /// <summary>Creates a deck when <paramref name="id"/> is zero, otherwise replaces the caller's deck.
     /// An illegal deck is kept as a draft; it cannot be made active or dealt.</summary>
+    /// <summary>Saves a deck with its cosmetic sleeve and die. Older clients call <see cref="SaveDeck"/>, which keeps the current style.</summary>
     [Reducer]
-    public static void SaveDeck(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side, string commandId)
+    public static void SaveDeckV2(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side,
+        string sleeve, string dice, string commandId)
+    {
+        if (!CosmeticCatalog.IsSleeve(sleeve) || !CosmeticCatalog.IsDice(dice)) throw new Exception("Esa mica o ese dado no existen.");
+        StoreDeck(ctx, id, name, relikario, cards, traps, side, commandId, (sleeve, dice));
+    }
+
+    [Reducer]
+    public static void SaveDeck(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side, string commandId) =>
+        StoreDeck(ctx, id, name, relikario, cards, traps, side, commandId, null);
+
+    private static void StoreDeck(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side,
+        string commandId, (string Sleeve, string Dice)? style)
     {
         if (RequireAccount(ctx).Guest) throw new Exception(GuestsKeepNoDecks);
         if (!Guid.TryParseExact(commandId, "N", out _)) throw new Exception("Solicitud de mazo inválida.");
@@ -95,6 +156,7 @@ public static partial class Module
             if (mine.Count >= MaxDecksPerPlayer) throw new Exception($"Puedes guardar hasta {MaxDecksPerPlayer} mazos.");
             var created = ctx.Db.Deck.Insert(new Deck { Owner = ctx.Sender, Name = name, Relikario = relikario, Cards = cards, Traps = traps, CommandId = commandId, UpdatedAt = now });
             StoreSide(ctx, created.Id, side);
+            if (style is { } chosen) StoreStyle(ctx, created.Id, chosen.Sleeve, chosen.Dice);
             return;
         }
         if (mine.FirstOrDefault(deck => deck.Id == id) is not { Id: > 0 } current) throw new Exception("No se encontró el mazo.");
@@ -102,6 +164,7 @@ public static partial class Module
         current.CommandId = commandId; current.UpdatedAt = now;
         ctx.Db.Deck.Id.Update(current);
         StoreSide(ctx, id, side);
+        if (style is { } updated) StoreStyle(ctx, id, updated.Sleeve, updated.Dice);
         // A deck edited into a draft stops being the one dealt.
         if (ctx.Db.Account.Player.Find(ctx.Sender) is Account account && account.ActiveDeck == id &&
             DeckRules.Validate(relikario, cards, traps, side).Count > 0) SetActive(ctx, account, 0);
@@ -114,6 +177,7 @@ public static partial class Module
         if (deck.Owner != ctx.Sender) throw new Exception("No se encontró el mazo.");
         ctx.Db.Deck.Id.Delete(id);
         ctx.Db.DeckSide.Deck.Delete(id);
+        ctx.Db.DeckStyle.Deck.Delete(id);
         if (ctx.Db.Account.Player.Find(ctx.Sender) is Account account && account.ActiveDeck == id) SetActive(ctx, account, 0);
     }
 
@@ -136,12 +200,16 @@ public static partial class Module
         ctx.Db.Account.Player.Update(account);
     }
 
-    /// <summary>The deck a player takes into a room: their active deck while it is legal, otherwise the training deck.</summary>
-    private static (List<string> Cards, List<string> Traps) DeckFor(ReducerContext ctx, Identity player)
+    /// <summary>The deck a player takes into a room: their active deck while it is legal, otherwise the training deck
+    /// with the classic sleeve and die.</summary>
+    private static (List<string> Cards, List<string> Traps, string Sleeve, string Dice) DeckFor(ReducerContext ctx, Identity player)
     {
         if (ctx.Db.Account.Player.Find(player) is Account { ActiveDeck: > 0, Guest: false } account && ctx.Db.Deck.Id.Find(account.ActiveDeck) is Deck deck &&
             deck.Owner == player && DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, SideOf(ctx, deck.Id)).Count == 0)
-            return (deck.Cards, deck.Traps);
-        return (CardCatalog.TrainingDeck(), CardCatalog.TrainingTraps());
+        {
+            var (sleeve, dice) = StyleOf(ctx, deck.Id);
+            return (deck.Cards, deck.Traps, sleeve, dice);
+        }
+        return (CardCatalog.TrainingDeck(), CardCatalog.TrainingTraps(), CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice);
     }
 }

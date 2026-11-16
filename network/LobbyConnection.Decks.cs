@@ -18,8 +18,9 @@ public sealed partial class LobbyConnection
 
     public IReadOnlyList<DeckInfo> Decks => _decks ??= _connection?.Db.MyDecks.Iter().OrderBy(deck => deck.Id).ToList() ?? [];
 
-    public void SaveDeck(ulong id, string name, string relikario, IEnumerable<string> cards, IEnumerable<string> traps, IEnumerable<string> side) =>
-        RequestDeck(reducers => reducers.SaveDeck(id, name.Trim(), relikario, cards.ToList(), traps.ToList(), side.ToList(), Guid.NewGuid().ToString("N")));
+    public void SaveDeck(ulong id, string name, string relikario, IEnumerable<string> cards, IEnumerable<string> traps, IEnumerable<string> side,
+        string sleeve, string dice) =>
+        RequestDeck(reducers => reducers.SaveDeckV2(id, name.Trim(), relikario, cards.ToList(), traps.ToList(), side.ToList(), sleeve, dice, Guid.NewGuid().ToString("N")));
     public void DeleteDeck(ulong id) => RequestDeck(reducers => reducers.DeleteDeck(id));
     public void SetActiveDeck(ulong id) => RequestDeck(reducers => reducers.SetActiveDeck(id));
 
@@ -65,6 +66,7 @@ public sealed partial class LobbyConnection
         _connection.Db.MyDecks.OnUpdate += (_, _, _) => Changed();
         _connection.Db.MyDecks.OnDelete += (_, _) => Changed();
         _connection.Reducers.OnSaveDeck += (context, _, _, _, _, _, _, _) => Reply(context, save: true);
+        _connection.Reducers.OnSaveDeckV2 += (context, _, _, _, _, _, _, _, _, _) => Reply(context, save: true);
         _connection.Reducers.OnDeleteDeck += (context, _) => Reply(context);
         _connection.Reducers.OnSetActiveDeck += (context, _) => Reply(context);
         _connection.Reducers.OnDeleteAccount += context =>

@@ -144,7 +144,8 @@ public static partial class Module
             }
             ctx.Db.Duel.RoomCode.Delete(roomCode);
         }
-        else game = GameEngine.FromOpening(InitialDuel(opening, ctx.Db.Member.RoomCode.Filter(roomCode), ctx.Db.Card.RoomCode.Filter(roomCode), player => ctx.Db.Loadout.Player.Find(player)?.Traps), new DuelRandom());
+        else game = GameEngine.FromOpening(InitialDuel(opening, ctx.Db.Member.RoomCode.Filter(roomCode), ctx.Db.Card.RoomCode.Filter(roomCode), player => ctx.Db.Loadout.Player.Find(player)?.Traps,
+            player => ctx.Db.LoadoutStyle.Player.Find(player) is LoadoutStyle style ? (style.Sleeve, style.Dice) : null), new DuelRandom());
         current = new CurrentDuel { RoomCode = roomCode, Revision = revision, RulesVersion = 1, SnapshotJson = game.SaveSnapshot(false), Finished = game.State.IsOver };
         ctx.Db.CurrentDuel.Insert(current); CacheDuel(ctx, roomCode, game, revision);
         return current;

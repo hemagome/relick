@@ -6,6 +6,9 @@ namespace Relick;
 /// <summary>Receives only public card data; hidden card identities never enter this widget.</summary>
 public partial class OpponentHandCard : Button
 {
+    /// <summary>The rival's cosmetic sleeve, shown while the card is face down.</summary>
+    public string? Sleeve { get; init; }
+    internal Texture2D? BackTexture => _back;
     public CardDefinition? PublicCard { get; init; }
     public CardOwner? OriginalOwner { get; init; }
     public int ViewerSeat { get; init; } = -1;
@@ -27,8 +30,7 @@ public partial class OpponentHandCard : Button
                   (owner.Seat == ViewerSeat ? " · tu carta" : "") + "\nPulsa para consultar."
                 : $"REVELADA · {PublicCard.Name}\n{PublicCard.Text}\nPulsa para consultar.";
         if (PublicCard == null)
-            _back = GD.Load<Texture2D>("res://assets/cards/card-back.png")
-                ?? throw new InvalidOperationException("No se pudo cargar el reverso de las cartas.");
+            _back = SleeveArt.Back(Sleeve);
         else
         {
             var scale = Math.Min(FaceSize.X / 126, FaceSize.Y / 184);

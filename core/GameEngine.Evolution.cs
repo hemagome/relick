@@ -50,7 +50,7 @@ public sealed partial class GameEngine
     {
         var actor = Array.IndexOf(State.Players, p);
         var equipment = ActiveEquipment(actor)?.Id;
-        var die = Roll(purpose == DiePurpose.Zahira ? "Zahira Flair · Etapa final" : purpose == DiePurpose.QuickLoad ? "Carga Rápida · Robo o descarte" : purpose == DiePurpose.FieldCombat ? "Jessica Lee · Efecto de canje/Bonus" : purpose == DiePurpose.SkillLearning ? "Reverse Shuffle · Aprendizaje" : purpose == DiePurpose.PcStore ? "PC 8BITS · Valor guardado" : purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
+        var die = Roll(roller: actor, caption: purpose == DiePurpose.Zahira ? "Zahira Flair · Etapa final" : purpose == DiePurpose.QuickLoad ? "Carga Rápida · Robo o descarte" : purpose == DiePurpose.FieldCombat ? "Jessica Lee · Efecto de canje/Bonus" : purpose == DiePurpose.SkillLearning ? "Reverse Shuffle · Aprendizaje" : purpose == DiePurpose.PcStore ? "PC 8BITS · Valor guardado" : purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
         if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
         {
             _pendingDieEffect = effect;
@@ -78,7 +78,7 @@ public sealed partial class GameEngine
         {
             OnOwnDieRerolled(actor);
             p.AttackRerollUsedThisTurn = true;
-            die = Roll("Yuno Lv 2 · Relanzamiento"); count++;
+            die = Roll("Yuno Lv 2 · Relanzamiento", roller: actor); count++;
             Log($"{p.Name} usa Yuno Lv 2: relanzamiento {count}/2 de {pending.Purpose}, resultado {die}.");
             State.PendingDieRoll = pending with { Die = die, Rerolls = count, WasRerolled = true, Modified = true, YunoStopped = die == 1 };
             if (CanRespondToEffectDie()) return CommandResult.Ok();

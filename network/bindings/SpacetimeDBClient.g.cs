@@ -31,6 +31,7 @@ namespace Relick.Network.Types
             AddTable(MyAccount = new(conn));
             AddTable(MyBoard = new(conn));
             AddTable(MyChoices = new(conn));
+            AddTable(MyDeckStyles = new(conn));
             AddTable(MyDecks = new(conn));
             AddTable(MyDuel = new(conn));
             AddTable(MyDuelHand = new(conn));
@@ -539,6 +540,7 @@ namespace Relick.Network.Types
             new QueryBuilder().From.MyAccount().ToSql(),
             new QueryBuilder().From.MyBoard().ToSql(),
             new QueryBuilder().From.MyChoices().ToSql(),
+            new QueryBuilder().From.MyDeckStyles().ToSql(),
             new QueryBuilder().From.MyDecks().ToSql(),
             new QueryBuilder().From.MyDuel().ToSql(),
             new QueryBuilder().From.MyDuelHand().ToSql(),
@@ -557,6 +559,7 @@ namespace Relick.Network.Types
         public global::SpacetimeDB.Table<AccountInfo, MyAccountCols, MyAccountIxCols> MyAccount() => new("my_account", new MyAccountCols("my_account"), new MyAccountIxCols("my_account"));
         public global::SpacetimeDB.Table<DuelBoard, MyBoardCols, MyBoardIxCols> MyBoard() => new("my_board", new MyBoardCols("my_board"), new MyBoardIxCols("my_board"));
         public global::SpacetimeDB.Table<DuelChoices, MyChoicesCols, MyChoicesIxCols> MyChoices() => new("my_choices", new MyChoicesCols("my_choices"), new MyChoicesIxCols("my_choices"));
+        public global::SpacetimeDB.Table<DeckStyleInfo, MyDeckStylesCols, MyDeckStylesIxCols> MyDeckStyles() => new("my_deck_styles", new MyDeckStylesCols("my_deck_styles"), new MyDeckStylesIxCols("my_deck_styles"));
         public global::SpacetimeDB.Table<DeckInfo, MyDecksCols, MyDecksIxCols> MyDecks() => new("my_decks", new MyDecksCols("my_decks"), new MyDecksIxCols("my_decks"));
         public global::SpacetimeDB.Table<DuelInfo, MyDuelCols, MyDuelIxCols> MyDuel() => new("my_duel", new MyDuelCols("my_duel"), new MyDuelIxCols("my_duel"));
         public global::SpacetimeDB.Table<DuelHand, MyDuelHandCols, MyDuelHandIxCols> MyDuelHand() => new("my_duel_hand", new MyDuelHandCols("my_duel_hand"), new MyDuelHandIxCols("my_duel_hand"));
@@ -661,6 +664,7 @@ namespace Relick.Network.Types
                 Reducer.LeaveRoom args => Reducers.InvokeLeaveRoom(eventContext, args),
                 Reducer.PlayDuelV2 args => Reducers.InvokePlayDuelV2(eventContext, args),
                 Reducer.SaveDeck args => Reducers.InvokeSaveDeck(eventContext, args),
+                Reducer.SaveDeckV2 args => Reducers.InvokeSaveDeckV2(eventContext, args),
                 Reducer.SetActiveDeck args => Reducers.InvokeSetActiveDeck(eventContext, args),
                 Reducer.SetComboResponses args => Reducers.InvokeSetComboResponses(eventContext, args),
                 Reducer.SetDisplayName args => Reducers.InvokeSetDisplayName(eventContext, args),
