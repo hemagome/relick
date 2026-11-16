@@ -107,6 +107,8 @@ public sealed class DuelSnapshot
     private static bool HandSlotVisible(GameState s, PlayerState p, int slot, int ownerSeat, int viewerSeat)
         => ownerSeat == viewerSeat || p.IsHandCardRevealed(slot) ||
            (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == viewerSeat) ||
+           (s.Phase == Phase.Decision && s.PendingDecision is { } decision && decision.Decider == viewerSeat && decision.ShowsHandOf == ownerSeat) ||
+           // Legacy: a duel saved while Resetear la Mente had its own phase.
            (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == viewerSeat && s.PendingMindReset.Target == ownerSeat);
 
     private static int?[]? VisibleHandOwners(GameState s, PlayerState p, int ownerSeat, int viewerSeat)

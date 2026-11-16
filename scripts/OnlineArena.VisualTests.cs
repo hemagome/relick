@@ -1152,17 +1152,20 @@ public partial class OnlineArena
                     if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1) throw new Exception($"Resetear desborda {size}: {minimum}.");
                     if (seat == actor && step > 0)
                     {
-                        if (!ChoosingResetCards || _handCards.Count == 0) throw new Exception("Faltan las cartas seleccionables de Resetear.");
+                        if (Deciding != DecisionKind.ChooseCard || _handCards.Count == 0) throw new Exception("Faltan las cartas seleccionables de Resetear.");
                         var titles = _hand!.FindChildren("HandSectionTitle*", "Label", true, false).OfType<Label>().ToArray();
                         if (step < 3 && (titles.Length != 2 || !titles.Any(t => t.Text.Contains("TU MEMORIA")) || !titles.Any(t => t.Text.Contains("MEMORIA DE"))))
                             throw new Exception("Resetear no separa visualmente las dos memorias.");
                         if (step == 3 && titles.Length != 0)
                             throw new Exception("Resetear agrupa como memoria una carta de mano.");
                         SelectCard(0);
-                        if (!_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Move.Kind == (step < 3 ? DuelMoveKind.MindResetMemory : DuelMoveKind.MindResetHand)))
+                        if (!_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Move.Kind == DuelMoveKind.Choose))
                             throw new Exception("Falta el botón para confirmar la carta de Resetear.");
                     }
-                    if (seat != actor && ChoosingResetCards) throw new Exception("El rival recibe las selecciones privadas de Resetear.");
+                    if (seat == actor && step == 0 && !_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Button == "Mano rival"))
+                        throw new Exception("Falta el botón para mirar la mano rival.");
+                    if (seat != actor && (Deciding != null || _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose)))
+                        throw new Exception("El rival recibe las selecciones privadas de Resetear.");
                 }
                 var result = step switch
                 {

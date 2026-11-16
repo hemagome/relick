@@ -5,7 +5,7 @@ public sealed partial class GameEngine
     private Phase? RepeatableStage(int actor)
     {
         if (actor != State.CurrentPlayer || State.IsOver || State.PendingTurnBuff != null || State.PendingReload != null ||
-            State.PendingSniper != null || State.PendingDestruction != null || State.PendingMindReset != null ||
+            State.PendingSniper != null || State.PendingDestruction != null || MindResetPending() ||
             State.PendingDieRoll?.Purpose == DiePurpose.Recycling) return null;
         return State.Phase switch
         {

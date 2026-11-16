@@ -89,7 +89,6 @@ public sealed partial class GameEngine
         if (CardEffects.For(card.Id) is { } effect && effect.Unavailable(EffectFor(Array.IndexOf(State.Players, p), card.Id), excludedHand) is { } effectError)
             return effectError;
         if (card.DodgeAttack && (State.Phase != Phase.DefenseChoice || State.PendingAttack?.Attacker != 1 - Array.IndexOf(State.Players, p))) return "Solo puedes esquivar un ataque de tu oponente pendiente de defensa.";
-        if (card.ResetMind && MindResetUnavailable(Array.IndexOf(State.Players, p), excludedHand) is { } resetError) return resetError;
         if (card.CancelActivation && !CanPlayLoadError(Array.IndexOf(State.Players, p))) return "No hay una activación que puedas anular.";
         if ((card.RerollOwnDie || card.SetOwnDie > 0) && !OwnDiePending(Array.IndexOf(State.Players, p))) return "Requiere un dado propio pendiente.";
         return null;

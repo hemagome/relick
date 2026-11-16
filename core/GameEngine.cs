@@ -211,7 +211,8 @@ public sealed partial class GameEngine
         if (error != null) return CommandResult.Fail(error);
         var p = State.Players[actor];
         var card = CardCatalog.Get(p.Hand[handIndex]);
-        if (card.ResetMind) return PlayMindReset(actor, handIndex);
+        // Resetear la Mente keeps its own activation: no PR cost and no "juega" line, as before it became a module.
+        if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
         var played = SendHandToMemory(p, handIndex);
@@ -229,7 +230,6 @@ public sealed partial class GameEngine
         if (card.RepeatStage) { ResolveRepeatedStage(); return; }
         if (card.DiscardForTurnBuff) { ResolveTurnBuff(); return; }
         if (card.DodgeAttack) { RollWithRelikario(p, DiePurpose.Dodge, new DieEffect { Purpose = DiePurpose.Dodge, Actor = Array.IndexOf(State.Players, p), SkillId = card.Id }); return; }
-        if (card.ResetMind) { BeginMindReset(Array.IndexOf(State.Players, p)); return; }
         // Plain heal and draw data, used by the test fixtures; every real code has its own rules.
         if (card.Heal > 0) Heal(p, card.Heal);
         if (_activeActivation != null) _activeActivation.CanInterrupt = false;

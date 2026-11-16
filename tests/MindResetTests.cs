@@ -7,7 +7,7 @@ static class MindResetTests
         ("Resetear: Jugada COMBO cuesta una acción y mazo conserva 42 cartas", () =>
         {
             var c = CardCatalog.MindReset;
-            Check(c.IsCombo && c.CodeType == CodeType.Play && c.ActionCost == 1 && c.ResetMind);
+            Check(c.IsCombo && c.CodeType == CodeType.Play && c.ActionCost == 1);
             Check(CardCatalog.TrainingDeck().Count == 42 && CardCatalog.TrainingDeck().Count(id => id == c.Id) == 1);
         }),
         ("Resetear: memorias propias, rivales o mixtas; baraja solo mazos afectados y roba solo objetivo", () =>
@@ -45,7 +45,7 @@ static class MindResetTests
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             Check(g.ChooseMindResetMemory(0, 1, 0).Success);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
-            Check(g.ResolveMindReset(0, 0).Success && g.State.PendingMindReset == null);
+            Check(g.ResolveMindReset(0, 0).Success && g.State.PendingDecision == null);
             Check(DuelSnapshot.For(g, 0, 3).Players[1].Hand.All(id => id == null));
         }),
         ("Resetear: rechazos atómicos, sin acciones, memoria insuficiente, habilidad y selección duplicada", () =>
@@ -79,12 +79,12 @@ static class MindResetTests
                     Check(g.ChooseMindResetTarget(0, 1).Success && g.ChooseMindResetMemory(0, 1, 0).Success);
                     other.Hand.Add("load-error");
                     Reject(g, () => g.PlayCode(1, other.Hand.Count - 1));
-                    Check(!g.CanPlayLoadError(1) && g.State.PendingMindReset?.Target == 1 && g.State.Active.ActionsLeft == 1);
+                    Check(!g.CanPlayLoadError(1) && g.State.PendingDecision is { Source: "mind-reset", ShowsHandOf: 1 } && g.State.Active.ActionsLeft == 1);
                     Check(g.ChooseMindResetMemory(0, 0, 0).Success && g.ResolveMindReset(0, 0).Success);
                     continue;
                 }
                 Check(g.PlayCode(1, other.Hand.Count - 1).Success && g.State.Phase == Phase.Actions);
-                Check(g.State.PendingMindReset == null && g.State.Active.ActionsLeft == 2 && other.ActionsLeft == 1);
+                Check(g.State.PendingDecision == null && g.State.Active.ActionsLeft == 2 && other.ActionsLeft == 1);
                 Check(g.State.Active.Memory.SequenceEqual(memories[0].Append(CardCatalog.MindReset.Id)));
                 Check(other.Memory.SequenceEqual(memories[1].Append("load-error")) && other.Equipment == "cardboard-box");
             }

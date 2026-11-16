@@ -15,7 +15,7 @@ public sealed record CardDefinition(
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, int PrCost = 0, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
     int DamageReduction = 0, bool DestroyOnAttackOne = false,
-    int EarliestTurn = 0, int SetOwnDie = 0, bool ResetMind = false, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false,
+    int EarliestTurn = 0, int SetOwnDie = 0, bool DodgeAttack = false, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false,
     int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
     bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false,
     int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false, bool DeployTotems = false,
@@ -77,7 +77,7 @@ public static class CardCatalog
         CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, DodgeAttack: true);
     public static readonly CardDefinition MindReset = new("mind-reset", "Resetear la Mente", CardKind.Code,
         "COMBO. Selecciona 2 cartas de cualquier memoria y 1 no-habilidad de la mano (mira la mano) de un jugador objetivo. Envía esas cartas al mazo de su respectivo dueño, baraja y luego el jugador objetivo roba una carta.",
-        CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, ResetMind: true);
+        CodeType: CodeType.Play, IsCombo: true, ActionCost: 1);
     public static readonly CardDefinition Agility = new("agility-100", "Agilidad al 100%", CardKind.Code,
         "COMBO. Cambia el resultado de uno de tus dados a 5.",
         CodeType: CodeType.Play, IsCombo: true, ActionCost: 1, SetOwnDie: 5);

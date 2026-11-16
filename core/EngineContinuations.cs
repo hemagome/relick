@@ -212,7 +212,7 @@ public sealed partial class GameEngine
                 frame.CanInterrupt = false;
                 ReplaceEquipment(new EngineContinuation { Kind = ContinuationKind.ReplaceEquipment, Actor = frame.Actor });
                 break;
-            case ActivationKind.MindReset: BeginMindReset(frame.Actor); break;
+            case ActivationKind.MindReset: TryResolveWithEffect(p, CardCatalog.Get(frame.CardId)); break;
             case ActivationKind.Reroll: _activeActivation = frame.Parent; ResolveRerollComboEffect(frame.Actor, CardCatalog.Get(frame.CardId)); break;
             default: throw new InvalidOperationException("Activación pendiente desconocida.");
         }
