@@ -56,11 +56,13 @@ La conexión de desarrollo está en `network/server.cfg`:
 - Base: `relick-pvp-dev-c2006ee7`
 - Panel: <https://spacetimedb.com/relick-pvp-dev-c2006ee7>
 
+`jugar.sh` pasa al juego todas sus opciones salvo `--headless`, que va a Godot; ya no hace falta escribir `--` (la forma antigua `./jugar.sh --headless -- …` sigue funcionando). El juego entra siempre a PvP, así que la antigua opción `--pvp` se ha retirado de los ejemplos.
+
 Para probar dos identidades en la misma computadora, abre dos terminales:
 
 ```bash
-./jugar.sh -- --pvp --pvp-profile=uno
-./jugar.sh -- --pvp --pvp-profile=dos
+./jugar.sh --pvp-profile=uno
+./jugar.sh --pvp-profile=dos
 ```
 
 Cada perfil guarda una credencial propia bajo los datos de usuario de Godot, separada por servidor y base. No utiliza las credenciales administrativas del CLI. No compartas esos archivos `.token`. Cerrar la aplicación desconecta el cliente y conserva la sala para retomarla hasta su vencimiento; **Cerrar sala** elimina la sala y sus datos para los dos jugadores cuando no hay un combate en curso.
@@ -86,7 +88,7 @@ En otra, desde la raíz del repositorio:
 ```bash
 spacetime publish relick-dev --server http://127.0.0.1:3100 --module-path tests/server/dev --no-config
 spacetime generate --module-path server/spacetimedb --lang csharp --out-dir network/bindings --namespace Relick.Network.Types --yes
-RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh -- --pvp --pvp-profile=uno
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --pvp-profile=uno
 ```
 
 El módulo real (`server/spacetimedb`) solo admite jugadores que iniciaron sesión con SpacetimeAuth. `tests/server/dev` compila el mismo código con `RELICK_DEV_AUTH`, que también admite la identidad anónima del dispositivo; es el que usan el desarrollo local y las pruebas automáticas. **No publiques `tests/server/dev` en Maincloud.** Al indicar `RELICK_SERVER` el juego entra sin cuenta, salvo que también indiques `RELICK_AUTH_CLIENT`.
@@ -95,7 +97,7 @@ Para probar el inicio de sesión real en local, publica el módulo real en otra 
 
 ```bash
 spacetime publish relick-auth-check --server http://127.0.0.1:3100 --module-path server/spacetimedb --no-config
-RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-auth-check RELICK_AUTH_CLIENT=client_034x0qkKtrinrInTSvJZAI ./jugar.sh -- --pvp
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-auth-check RELICK_AUTH_CLIENT=client_034x0qkKtrinrInTSvJZAI ./jugar.sh
 ```
 
 `dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --login <client-id>` comprueba el mismo inicio de sesión sin abrir el juego, y `-- --decks` los mazos guardados y las cuentas.
@@ -131,7 +133,7 @@ dotnet run --project tests/Relick.Core.Tests.csproj
 Prueba de la interfaz de Godot contra el servidor local (abre el tablero antes del mulligan, selecciona mediante clics, confirma, reconecta con la mano bloqueada, comprueba que el combate conserva la misma arena y cierra su sala):
 
 ```bash
-RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh -- --pvp --pvp-profile=preparation-ui-test --pvp-preparation-test
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --pvp-profile=preparation-ui-test --pvp-preparation-test
 ```
 
 Puedes añadir `--pvp-screenshot=/tmp/relick-preparation.png` para capturar el resultado usando la ventana de Godot. El perfil de prueba no debe tener otra sala activa.
@@ -139,13 +141,13 @@ Puedes añadir `--pvp-screenshot=/tmp/relick-preparation.png` para capturar el r
 Prueba de un duelo mediante los botones de la arena y un segundo cliente real:
 
 ```bash
-RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh -- --pvp --pvp-profile=combat-ui-test --pvp-combat-test --pvp-screenshot=/tmp/relick-combat.png
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --pvp-profile=combat-ui-test --pvp-combat-test --pvp-screenshot=/tmp/relick-combat.png
 ```
 
 Regresión de entrada al arrancar directamente en PvP (no necesita un servidor disponible):
 
 ```bash
-RELICK_SERVER=http://127.0.0.1:3199 RELICK_DATABASE=input-check ./jugar.sh --headless -- --pvp --pvp-profile=input-test --pvp-ui-test
+RELICK_SERVER=http://127.0.0.1:3199 RELICK_DATABASE=input-check ./jugar.sh --headless --pvp-profile=input-test --pvp-ui-test
 ```
 
 Inyecta clics y teclas mediante el `Viewport`, sin emitir directamente las señales de los botones. El juego inicia en salas PvP; la matriz sin conexión comprueba que no existan accesos a práctica.
@@ -166,8 +168,8 @@ recuperación con la misma identidad y el tiempo límite de conexión inicial.
 Para probar dos procesos con entrada real de la interfaz contra el servidor local publicado, ejecuta estas órdenes en dos terminales. Usa una ruta de sesión nueva en cada ejecución, compartida por ambas órdenes:
 
 ```bash
-RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --headless -- --pvp --pvp-profile=input-host --pvp-input-peer=host --pvp-input-session=/tmp/relick-input-session-1
-RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --headless -- --pvp --pvp-profile=input-guest --pvp-input-peer=guest --pvp-input-session=/tmp/relick-input-session-1
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --headless --pvp-profile=input-host --pvp-input-peer=host --pvp-input-session=/tmp/relick-input-session-1
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --headless --pvp-profile=input-guest --pvp-input-peer=guest --pvp-input-session=/tmp/relick-input-session-1
 ```
 
 Comprueba identidades independientes, escritura de nombres/código, creación y entrada a sala, cambio de una carta por jugador dentro del tablero, confirmación y continuidad en la misma arena, apertura/cierre de memoria y abandono confirmado con resultado compartido. Al terminar, cierra la sala. Los diálogos se integran en la ventana durante esta prueba para permitir su manejo sin pantalla.

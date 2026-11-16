@@ -4,21 +4,39 @@ Juego de cartas para **Godot 4.7.2 o posterior, edición .NET**, con interfaz en
 
 ## Abrir y jugar
 
-Necesitas Godot .NET y el SDK de .NET 8. Abre `project.godot` y pulsa F5, o ejecuta:
+Necesitas Godot .NET 4.7.2 o posterior y el SDK de .NET 8. Abre `project.godot` y pulsa F5, o ejecuta:
 
 ```bash
 ./jugar.sh
 ```
 
-1. Escribe tu nombre y pulsa **Buscar rival** para una partida rápida casual. También puedes crear una sala privada o introducir el código de tu rival.
-2. Al encontrar rival o completarse la sala privada, ambos pasan al tablero. Puedes cancelar mientras esperas en partida rápida.
+El juego entra directo a la sala PvP. La primera vez pide iniciar sesión con SpacetimeAuth (correo, Discord u otra cuenta) y guarda la sesión para entrar directo la próxima vez. La cuenta conserva tu nombre y tus mazos, con su mica y su dado, en cualquier dispositivo.
+
+1. Pulsa **Buscar rival** para una partida rápida casual. También puedes crear una sala privada o introducir el código de tu rival. Puedes cancelar mientras esperas en partida rápida.
+2. Al encontrar rival o completarse la sala privada, ambos pasan al tablero.
 3. Elige una habilidad entre las presentes en tu mazo. Esa carta y otras cuatro forman tu mano inicial.
 4. Selecciona las cartas que quieres cambiar —también puedes cambiar la habilidad elegida— o conserva las cinco. Confirma y espera al rival.
 5. Se resuelven los cambios, los Bonus y la iniciativa. Quien empieza roba una carta adicional.
 6. Enseña habilidades, ataca, juega códigos, equipa o canjea cartas. Quien inicia no puede atacar durante el primer turno de la partida; el rival sí puede atacar en el siguiente, y después ambos pueden hacerlo. Las opciones visibles están autorizadas por el servidor.
 7. Al terminar, cierra la sala para volver a la pantalla de creación y acceso. Durante preparación puedes cerrarla; durante un duelo puedes abandonar mediante su confirmación.
 
-La conexión predeterminada está en `network/server.cfg`. `RELICK_SERVER` y `RELICK_DATABASE` permiten usar otra base de desarrollo. El juego pide iniciar sesión con SpacetimeAuth (correo, Discord u otra cuenta) y guarda la sesión para entrar directo la próxima vez; la cuenta conserva el nombre y los mazos en cualquier dispositivo. Contra un servidor indicado con `RELICK_SERVER` se entra sin cuenta, con la identidad del dispositivo, salvo que también se indique `RELICK_AUTH_CLIENT`. El directorio de identidad anterior se conserva aunque el título del juego ahora sea Relick.
+En el editor de mazos, la pestaña «Estilo» elige la mica y el dado de cada mazo ([detalles](docs/UI.md#personalización-de-mazos-micas-y-dados)).
+
+### Servidor
+
+El juego se conecta al servidor de desarrollo publicado en Maincloud, configurado en `network/server.cfg` (base `relick-pvp-dev-c2006ee7`). Para usar otra base, por ejemplo un servidor local, indica `RELICK_SERVER` y `RELICK_DATABASE`; en ese caso se entra sin cuenta, con la identidad del dispositivo, salvo que también indiques `RELICK_AUTH_CLIENT`. Cómo levantar el servidor local y publicar el módulo está en [PvP · Desarrollo local](docs/PVP.md#desarrollo-local).
+
+### Opciones de `jugar.sh`
+
+`jugar.sh` compila `Relick.csproj` y abre Godot. Busca `godot` o `godot4` en el `PATH`; `RELICK_GODOT=/ruta/a/godot` indica otro ejecutable. `--headless` abre Godot sin ventana; cualquier otra opción pasa al juego:
+
+```bash
+./jugar.sh --pvp-profile=dos                      # segunda identidad en el mismo equipo
+./jugar.sh --headless --pvp-ui-test               # prueba de interfaz sin ventana
+RELICK_SERVER=http://127.0.0.1:3100 RELICK_DATABASE=relick-dev ./jugar.sh --pvp-profile=uno
+```
+
+La forma con `--` de la documentación (`./jugar.sh --headless -- --pvp-ui-test`) sigue funcionando: lo anterior a `--` va a Godot y lo posterior, al juego.
 
 ## Exportar para Windows
 
@@ -49,6 +67,7 @@ Android compila para `net9.0`, requerido por la plantilla APK de Godot; escritor
 ## Alcance actual
 
 - Audio original: menú compartido, combate y clímax según el Relikario rival —incluidos los dos temas de Yuno—, efectos de robo, barajado, dado, curación y ataque, y volúmenes independientes guardados en el dispositivo.
+- Micas y dados cosméticos por mazo, guardados en la cuenta y visibles para ambos jugadores durante el duelo.
 - Yuno Gyambura y su evolución, con animaciones de reposo, ataque y daño. Las hojas actuales conservan la marca de agua de Ludo del recurso aportado.
 - Treinta y una definiciones aportadas: Ataque, Magnet Shuffle, Destiny Shuffle, Colgante de la Suerte, Senshuni, Caja de Cartón, Vida Extra, Aumento de Relick Points, Huevo Azul Explosivo, Re-lanza, Error de Carga, Casco de Diamantes, Bomba de Tiempo, Código Konamy, Cambio de Mentes, Agilidad al 100%, Resetear la Mente, Esquivar, PC 8BITS, Mira de Sniper, Triple Ataque Cruzado, Relick Reverse Shuffle, Hoguera, Disquete, Estrella del Fontanero, Jessica Lee, Carga Rápida, Cartucho de Re-carga, Doblador de Tiempo, Tótem de Salvación y Tótem de Oro.
 - Mazos de desarrollo simétricos de 42 cartas (doce Ataques y una copia de cada otra carta), cuatro espacios de habilidad con costes 0/300/500/1000 PR, Memoria, Corruptas, Bonus, canje, respuestas, COMBO y efectos de Relikia.
@@ -72,6 +91,7 @@ La [clasificación indicada por el usuario](docs/CARD_TAXONOMY.md) es la referen
 
 - [PvP, configuración, servidor y pruebas en línea](docs/PVP.md).
 - [Interfaz, animaciones y optimizaciones](docs/UI.md).
+- [Stack y diseño del duelo en línea](docs/STACK.md).
 - [Audio: música original por rival, clímax, efectos y controles de volumen](docs/MUSIC.md).
 - [Clasificación de cartas](docs/CARD_TAXONOMY.md).
 - [Evaluación del motor para 500 cartas](docs/RULES_ENGINE_REVIEW.md).
@@ -86,12 +106,20 @@ dotnet build Relick.csproj
 godot --headless --path . -- --pvp-ui-test
 ```
 
-La prueba de interfaz trabaja sin servidor: comprueba cuatro tamaños horizontales, ambos asientos, privacidad, selección de habilidad sin reconstruir el tablero, mulligan, recuperación y animaciones. Para capturas renderizadas:
+La primera orden ejecuta las pruebas del motor. La prueba de interfaz trabaja sin servidor: comprueba cuatro tamaños horizontales, ambos asientos, privacidad, selección de habilidad sin reconstruir el tablero, mulligan, recuperación y animaciones. `./jugar.sh --headless --pvp-ui-test` hace lo mismo compilando antes. Los filtros de la matriz (`--lobby-only`, `--decks-only`, `--cosmetics-only`…) están en [Interfaz · Validación](docs/UI.md#validación). Para capturas renderizadas:
 
 ```bash
-./jugar.sh -- --pvp-ui-test --ui-screenshot-dir=/tmp/relick-ui
-./jugar.sh -- --lobby-preview-dir=/tmp/relick-lobby
+./jugar.sh --pvp-ui-test --ui-screenshot-dir=/tmp/relick-ui
+./jugar.sh --lobby-preview-dir=/tmp/relick-lobby
 ```
+
+Las pruebas de red (`tests/pvp`) necesitan un servidor con el módulo publicado; por defecto apuntan a `http://127.0.0.1:3100` y la base `relick-dev`, publicada con `tests/server/dev`, que nunca se publica en Maincloud:
+
+```bash
+dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj
+```
+
+Sus variantes (`--quick-match`, `--decks`, `--connection-health`, `--login`) y las pruebas de interfaz con dos procesos están en [PvP · Desarrollo local](docs/PVP.md#desarrollo-local).
 
 Las simulaciones automáticas de reglas existen solo en `tests/SimulationDriver.cs` y no se compilan en el juego ni en el servidor. Los fixtures pueden preparar manos explícitas; el flujo interactivo siempre solicita elegir una habilidad.
 
@@ -103,5 +131,7 @@ scripts/              Sala, arena PvP, presentación y animaciones
 scenes/Main.tscn       Entrada directa a OnlineLobby
 network/              Conexión y bindings de SpacetimeDB
 server/spacetimedb/    Módulo autoritativo
-tests/                Reglas, simulaciones y pruebas de red
+tests/                Reglas, simulaciones y fixtures
+tests/pvp/            Pruebas de red contra un servidor publicado
+tests/server/dev/     Módulo con autenticación de desarrollo, solo local
 ```
