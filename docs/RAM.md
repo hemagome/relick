@@ -23,13 +23,14 @@ Comparación del motor con las secciones 6.1 a 6.7 y A.2 del reglamento, del 16 
 | 4 | 6.2: antes de pasar a la siguiente etapa se pasa la prioridad y el rival puede responder. | Avanzar de etapa no abre ninguna ventana para el rival. | Avanzar desde Acciones cambia de etapa al momento. |
 | 5 | 6.2: si quieres responder a tu propia carta, primero pasa la prioridad; si el rival pasa, puedes añadir tu respuesta. | Cuando el rival pasa, la cadena se resuelve; quien activó no recibe la prioridad. | Código propio, el rival pasa: se resuelve sin preguntar al activador. |
 | 6 | 6.1: con efectos simultáneos, el jugador activo añade primero los suyos, en el orden que elija. | Se ordenan por asiento (0 y después 1), sin elegir. Solo importa si hay sustituciones que decidir, como Reverse Shuffle. | Dado de ataque 1 en el turno del asiento 1: se destruye primero el Casco del asiento 0. |
-| 8 | 6.5 y A.2: Error de Carga no cancela un efecto de relikia, y solo devuelve la acción y los pagos del texto. | Un Código rejugado desde la memoria con Relikia puede cancelarse, y se devuelven las dos acciones y los 400 PR del coste de Relikia. | Prueba existente: «Konamy: Relikia corrompe el código, cobra dos acciones y 400 PR, y Error los devuelve». Hay que decidir si rejugar con Relikia es activar el Código o un efecto de relikia. |
 | 9 | 5.3 y 6.3: Súper Error de Carga (32 RAM). | No existe. | Pendiente de implementar con su receta y sus devoluciones completas. |
 | 10 | 6.7: clonar un efecto. | Ninguna carta clona todavía. | No aplica. |
 
 ## Decisiones tomadas
 
-- **Error de Carga cancela equipos** (antes, discrepancia 7). Decidido el 16 de noviembre de 2026: manda el texto de la carta («antes de que un código ejecute su efecto o un equipo se equipe»), aunque el reglamento (6.5) hable solo de Códigos. El motor ya lo hacía así y lo comprueba la prueba «Error cancela equipo nuevo». No se cambió código.
+- **Error de Carga cancela equipos** (antes, discrepancia 7). Decidido el 16 de noviembre de 2026: manda el texto de la carta aunque el reglamento (6.5) hable solo de Códigos. El texto vigente es «Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria», y ya está en `CardCatalog`. El motor ya cancelaba equipos; lo comprueba la prueba «Error cancela equipo nuevo».
+- **Rejugar un Código con Relikia es un efecto de relikia** (antes, discrepancia 8). Decidido el mismo día: Error de Carga no puede cancelarlo (6.5, A.2). El Código se resuelve al momento, con su coste de dos acciones y 400 PR y su corrupción. Caja de Cartón sigue pudiendo responder a un Código Objeto rejugado, porque esta decisión solo se refiere a Error de Carga. Pruebas: Konamy, Cambio de Mentes y Vida Extra rejugados con Error en la mano del rival.
+- **Qué devuelve Error de Carga.** Se devuelven la acción y los pagos del propio texto del Código, como pide 6.5. Ninguna carta actual tiene coste en PR propio; solo los duelos grabados con el Huevo Azul anterior recuperan sus 200 PR, como en el ejemplo del reglamento.
 
 ## Qué haría falta
 
@@ -42,4 +43,4 @@ Las discrepancias 1 a 5 tienen la misma causa: el motor no tiene una secuencia d
 
 Las decisiones genéricas ya facilitan una parte: una tirada de una carta migrada pasa por un único punto (`EffectContext.Roll`), así que la ventana de Error tras el dado se añadiría ahí una sola vez para todas esas cartas.
 
-Antes de construirlo hay que decidir la discrepancia 8, y cuánto se quiere preguntar en cada paso. Una secuencia completa añade confirmaciones a la partida en línea.
+Antes de construirlo hay que decidir cuánto se quiere preguntar en cada paso. Una secuencia completa añade confirmaciones a la partida en línea.

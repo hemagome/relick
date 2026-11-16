@@ -18,7 +18,11 @@ public sealed partial class GameEngine
     {
         var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : card.ActionCost,
             CodePrCost(card) + (fromMemory ? 400 : 0), State.Phase)
-        { Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex, MemoryOwner = memoryOwner == actor ? null : memoryOwner };
+        {
+            Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex, MemoryOwner = memoryOwner == actor ? null : memoryOwner,
+            // Replaying a Code from memory is a relikia effect, which Error de Carga cannot cancel (6.5, A.2).
+            CanInterrupt = !fromMemory
+        };
         if (card.DiscardForTurnBuff || card.RepeatStage) { BeginTurnBuff(frame); return; }
         BeginActivation(frame);
     }

@@ -95,31 +95,17 @@ static class KonamyCodeTests
             Check(g.PlayCode(1, 0).Success && g.PlayCode(0, 0).Success && g.State.Phase == Phase.Decision);
             Check(g.ResolveDeckSearch(0, 1).Success && g.State.Phase == Phase.Actions && g.State.Active.Hand.Single() == CardCatalog.Attack.Id);
         }),
-        ("Konamy: Relikia corrompe el código, cobra dos acciones y 400 PR, y Error los devuelve", () =>
+        ("Konamy: Relikia corrompe el código y cobra dos acciones y 400 PR; Error no puede cancelar el efecto de relikia", () =>
         {
-            foreach (var cancel in new[] { 0, 1, 2 })
+            foreach (var rivalHasError in new[] { false, true })
             {
                 var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Clear(); p.Memory.Add(CardCatalog.KonamyCode.Id); p.Relikia = 400;
-                if (cancel > 0) g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
-                Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success);
-                if (cancel > 0)
-                {
-                    if (cancel == 2)
-                    {
-                        Check(g.PassErrorResponse(1).Success && g.State.Phase == Phase.Decision && p.CorruptedMemory.Count == 1);
-                        var before = g.SaveSnapshot();
-                        Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
-                        Check(g.ResolveDeckSearch(0, 1).Success && p.Relikia == 0 && p.ActionsLeft == 0);
-                        continue;
-                    }
-                    Check(g.PlayCode(1, 0).Success && p.Relikia == 400 && p.ActionsLeft == 2 && p.CorruptedMemory.Count == 0);
-                    Check(p.Memory.Single() == CardCatalog.KonamyCode.Id);
-                }
-                else
-                {
-                    Check(p.Relikia == 0 && p.ActionsLeft == 0 && p.CorruptedMemory.Single() == CardCatalog.KonamyCode.Id);
-                    Check(g.ResolveDeckSearch(0, 1).Success && p.Hand.Single() == CardCatalog.Attack.Id);
-                }
+                if (rivalHasError) g.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && g.State.Phase == Phase.Decision);
+                Check(p.Relikia == 0 && p.ActionsLeft == 0 && p.CorruptedMemory.Single() == CardCatalog.KonamyCode.Id);
+                var before = g.SaveSnapshot();
+                Check(!g.CanPlayLoadError(1) && (!rivalHasError || !g.PlayCode(1, 0).Success) && before == g.SaveSnapshot());
+                Check(g.ResolveDeckSearch(0, 1).Success && p.Hand.Single() == CardCatalog.Attack.Id);
             }
         }),
         ("Konamy: buscar la última carta activa reciclaje o segundo agotamiento con vidas inevitables", () =>
