@@ -15,7 +15,8 @@ static class RelikarioCatalogTests
             foreach (var playable in RelikarioCatalog.Playable)
                 Check(playable.Family == playable.Id && RelikarioCatalog.Roster.Any(r => r.Id == playable.Id && r.Definition == playable));
             Check(RelikarioCatalog.EvolutionFor(RelikarioCatalog.Yuno) == RelikarioCatalog.YunoLv2 && RelikarioCatalog.EvolutionFor(RelikarioCatalog.YunoLv2) == null);
-            Check(RelikarioCatalog.YunoLv2.DisplayName == "Yuno" && RelikarioCatalog.NameOf("yuno-lv2") == "Yuno Gyambura" && RelikarioCatalog.NameOf("osamu") == "Osamu");
+            Check(RelikarioCatalog.YunoLv2.DisplayName == "Yuno" && RelikarioCatalog.NameOf("yuno-lv2") == "Yuno Gyambura" &&
+                RelikarioCatalog.NameOf("osamu") == "Osamu Takahashi" && RelikarioCatalog.EvolutionFor(RelikarioCatalog.Osamu) == RelikarioCatalog.OsamuLv2);
         }),
         ("Relikario: la opción de evolucionar describe la forma siguiente con su nivel y coste", () =>
         {

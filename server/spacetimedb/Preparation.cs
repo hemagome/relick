@@ -1,4 +1,5 @@
 using SpacetimeDB;
+using Relick.Core;
 
 public static partial class Module
 {
@@ -72,6 +73,31 @@ public static partial class Module
             if (opening is not null) deck--; // Bonus occupies its own zone, outside the deck.
             if (member.Seat == 0) { result.HandCountOne = hand; result.DeckCountOne = deck; }
             else { result.HandCountTwo = hand; result.DeckCountTwo = deck; }
+        }
+        return result;
+    }
+
+    [SpacetimeDB.Type]
+    public partial struct RoomRelikarioInfo
+    {
+        public string RoomCode;
+        public string RelikarioOne;
+        public string RelikarioTwo;
+    }
+
+    [View(Accessor = "MyRoomRelikarios", Public = true)]
+    public static RoomRelikarioInfo? MyRoomRelikarios(ViewContext ctx)
+    {
+        if (ctx.Db.Member.Player.Find(ctx.Sender) is not Member me) return null;
+        var result = new RoomRelikarioInfo
+        {
+            RoomCode = me.RoomCode, RelikarioOne = RelikarioCatalog.Yuno.Id, RelikarioTwo = RelikarioCatalog.Yuno.Id
+        };
+        foreach (var member in ctx.Db.Member.RoomCode.Filter(me.RoomCode))
+        {
+            var id = ctx.Db.LoadoutRelikario.Player.Find(member.Player)?.Relikario ?? RelikarioCatalog.Yuno.Id;
+            if (member.Seat == 0) result.RelikarioOne = id;
+            else result.RelikarioTwo = id;
         }
         return result;
     }

@@ -41,6 +41,7 @@ namespace Relick.Network.Types
             AddTable(MyPreparation = new(conn));
             AddTable(MyQuickSearch = new(conn));
             AddTable(MyRoom = new(conn));
+            AddTable(MyRoomRelikarios = new(conn));
         }
     }
 
@@ -550,6 +551,7 @@ namespace Relick.Network.Types
             new QueryBuilder().From.MyPreparation().ToSql(),
             new QueryBuilder().From.MyQuickSearch().ToSql(),
             new QueryBuilder().From.MyRoom().ToSql(),
+            new QueryBuilder().From.MyRoomRelikarios().ToSql(),
         }
         ;
     }
@@ -569,6 +571,7 @@ namespace Relick.Network.Types
         public global::SpacetimeDB.Table<PreparationInfo, MyPreparationCols, MyPreparationIxCols> MyPreparation() => new("my_preparation", new MyPreparationCols("my_preparation"), new MyPreparationIxCols("my_preparation"));
         public global::SpacetimeDB.Table<QuickSearchInfo, MyQuickSearchCols, MyQuickSearchIxCols> MyQuickSearch() => new("my_quick_search", new MyQuickSearchCols("my_quick_search"), new MyQuickSearchIxCols("my_quick_search"));
         public global::SpacetimeDB.Table<RoomInfo, MyRoomCols, MyRoomIxCols> MyRoom() => new("my_room", new MyRoomCols("my_room"), new MyRoomIxCols("my_room"));
+        public global::SpacetimeDB.Table<RoomRelikarioInfo, MyRoomRelikariosCols, MyRoomRelikariosIxCols> MyRoomRelikarios() => new("my_room_relikarios", new MyRoomRelikariosCols("my_room_relikarios"), new MyRoomRelikariosIxCols("my_room_relikarios"));
     }
 
     public sealed class TypedSubscriptionBuilder

@@ -76,6 +76,8 @@ public sealed class PlayerState
     public int MaxHealth => Relikario.MaxHealth;
     [JsonInclude]
     public bool AttackRerollUsedThisTurn { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RelikarioSearchUsedThisTurn { get; internal set; }
     [JsonInclude]
     public int ActionsLeft { get; internal set; } = 2;
     [JsonInclude]
@@ -109,6 +111,7 @@ public sealed class PlayerState
     internal bool RemoveHandCard(int index)
     {
         Hand.RemoveAt(index);
+        RemoveCorruptionSlots(CardZone.Hand, index);
         var remaining = _revealedHandSlots.Where(slot => slot != index).Select(slot => slot > index ? slot - 1 : slot).ToArray();
         _revealedHandSlots.Clear();
         _revealedHandSlots.UnionWith(remaining);
@@ -131,6 +134,31 @@ public sealed class PlayerState
     }
     public bool IsForeignHandCard(int index) => _foreignHandSlots.Contains(index);
     internal void MarkForeignHandCard(int index) => _foreignHandSlots.Add(index);
+    // Osamu marks copies, including copies moved to another zone or controlled by the other player.
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<CardZone, List<int>>? CorruptionMarks { get; internal set; }
+    internal bool CorruptsOnMemory(CardZone zone, int index) =>
+        CorruptionMarks?.GetValueOrDefault(zone)?.Contains(index) == true;
+    internal void MarkForCorruption(CardZone zone, int index)
+    {
+        CorruptionMarks ??= [];
+        if (!CorruptionMarks.TryGetValue(zone, out var slots)) CorruptionMarks[zone] = slots = [];
+        if (!slots.Contains(index)) slots.Add(index);
+    }
+    internal void RemoveCorruptionSlots(CardZone zone, int index, int count = 1)
+    {
+        if (CorruptionMarks?.GetValueOrDefault(zone) is not { } slots) return;
+        slots.RemoveAll(slot => slot >= index && slot < index + count);
+        for (var i = 0; i < slots.Count; i++)
+            if (slots[i] >= index + count) slots[i] -= count;
+        if (slots.Count == 0) ClearCorruptionMarks(zone);
+    }
+    internal void ClearCorruptionMarks(CardZone zone)
+    {
+        if (CorruptionMarks == null) return;
+        CorruptionMarks.Remove(zone);
+        if (CorruptionMarks.Count == 0) CorruptionMarks = null;
+    }
     // Rival-owned copies on this player's field (skills, equipment, covers, canje, Bonus).
     // Identical copies are interchangeable there, so a multiset is enough.
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -282,7 +310,7 @@ public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, in
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, [property: JsonPropertyName("YunoStopped")] bool RerollStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 

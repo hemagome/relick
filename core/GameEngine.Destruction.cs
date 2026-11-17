@@ -89,10 +89,13 @@ public sealed partial class GameEngine
             case FieldZone.Bonus:
                 ChangeZahiraHosts(target.Owner, target.Zone, -1); ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = null; break;
         }
-        SendToMemory(p, target.CardId, target.Zone switch
+        var source = target.Zone switch
         {
             FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, FieldZone.EquipmentCover => CardZone.EquipmentCover, _ => CardZone.Attached
-        }, target.Index);
+        };
+        SendToMemory(p, target.CardId, source, target.Index);
+        if (source == CardZone.Bonus) p.ClearCorruptionMarks(source);
+        else p.RemoveCorruptionSlots(source, target.Index);
     }
 
     private void DestroyEquipment(PlayerState p, EngineContinuation? completed = null, int index = -1)

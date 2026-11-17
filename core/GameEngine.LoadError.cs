@@ -159,7 +159,11 @@ public sealed partial class GameEngine
         {
             CompleteTurnBuff(); return;
         }
-        if (State.Phase is Phase.Draw or Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished) _activeActivation = null;
+        if (State.Phase is Phase.Draw or Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished)
+        {
+            if (_activeActivation is { } frame && !State.IsOver) CorruptWaitingFieldCard(frame);
+            _activeActivation = null;
+        }
         CompletePendingPlay();
     }
 }

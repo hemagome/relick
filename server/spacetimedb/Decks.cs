@@ -64,6 +64,13 @@ public static partial class Module
         public string Dice;
     }
 
+    [Table(Accessor = "LoadoutRelikario")]
+    public partial struct LoadoutRelikario
+    {
+        [PrimaryKey] public Identity Player;
+        public string Relikario;
+    }
+
     // The Trap deck a player brought into a room, kept apart from the main cards dealt as Card rows.
     [Table(Accessor = "Loadout")]
     public partial struct Loadout
@@ -202,14 +209,14 @@ public static partial class Module
 
     /// <summary>The deck a player takes into a room: their active deck while it is legal, otherwise the training deck
     /// with the classic sleeve and die.</summary>
-    private static (List<string> Cards, List<string> Traps, string Sleeve, string Dice) DeckFor(ReducerContext ctx, Identity player)
+    private static (List<string> Cards, List<string> Traps, string Sleeve, string Dice, string Relikario) DeckFor(ReducerContext ctx, Identity player)
     {
         if (ctx.Db.Account.Player.Find(player) is Account { ActiveDeck: > 0, Guest: false } account && ctx.Db.Deck.Id.Find(account.ActiveDeck) is Deck deck &&
             deck.Owner == player && DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, SideOf(ctx, deck.Id)).Count == 0)
         {
             var (sleeve, dice) = StyleOf(ctx, deck.Id);
-            return (deck.Cards, deck.Traps, sleeve, dice);
+            return (deck.Cards, deck.Traps, sleeve, dice, deck.Relikario);
         }
-        return (CardCatalog.TrainingDeck(), CardCatalog.TrainingTraps(), CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice);
+        return (CardCatalog.TrainingDeck(), CardCatalog.TrainingTraps(), CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, RelikarioCatalog.Yuno.Id);
     }
 }

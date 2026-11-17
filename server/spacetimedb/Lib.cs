@@ -147,11 +147,13 @@ public static partial class Module
     private static void Deal(ReducerContext ctx, Member member)
     {
         // The deck is copied into the room, so later edits never change a match already dealt.
-        var (deck, traps, sleeve, dice) = DeckFor(ctx, member.Player);
+        var (deck, traps, sleeve, dice, relikario) = DeckFor(ctx, member.Player);
         ctx.Db.Loadout.Player.Delete(member.Player);
         ctx.Db.Loadout.Insert(new Loadout { Player = member.Player, RoomCode = member.RoomCode, Traps = traps });
         ctx.Db.LoadoutStyle.Player.Delete(member.Player);
         ctx.Db.LoadoutStyle.Insert(new LoadoutStyle { Player = member.Player, RoomCode = member.RoomCode, Sleeve = sleeve, Dice = dice });
+        ctx.Db.LoadoutRelikario.Player.Delete(member.Player);
+        ctx.Db.LoadoutRelikario.Insert(new LoadoutRelikario { Player = member.Player, Relikario = relikario });
         for (var i = 0; i < deck.Count; i++)
             ctx.Db.Card.Insert(new Card
             {

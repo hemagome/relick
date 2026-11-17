@@ -11,7 +11,11 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var next = RelikarioCatalog.EvolutionFor(p.Relikario);
         if (next == null) return "El Relikario ya está en su nivel máximo.";
-        if (!p.HasNaturalSix) return "Requiere haber obtenido un 6 natural en un D6 durante la partida, sin relanzarlo ni modificarlo.";
+        if (next.EvolutionMaxHealth is int maxHealth)
+        {
+            if (p.Health > maxHealth) return $"Requiere tener {maxHealth} vidas o menos.";
+        }
+        else if (!p.HasNaturalSix) return "Requiere haber obtenido un 6 natural en un D6 durante la partida, sin relanzarlo ni modificarlo.";
         if (p.Relikia < next.EvolutionCost) return $"Necesitas {next.EvolutionCost} PR para evolucionar.";
         return null;
     }
@@ -33,12 +37,14 @@ public sealed partial class GameEngine
                 State.Players[owner].SetZahira(slot, host with { CardId = next.Id });
         // Evolution does not refresh an ability already used during this turn.
         Log($"{p.Name} evoluciona a {p.Relikario.Name} Lv {p.Level}: paga {next.EvolutionCost} PR, recupera {p.Health - previousHealth} vida(s), hasta el máximo de {p.MaxHealth} de su nivel 1.");
+        if (next == RelikarioCatalog.OsamuLv2 && !EffectsSuppressed(actor, FieldZone.Relikario))
+            OfferOsamuSearch(actor, next.Id, OsamuEvolutionSearch);
         return CommandResult.Ok();
     }
 
     private void RegisterNaturalSix(PlayerState p, int die)
     {
-        if (die != 6 || State.Phase == Phase.Preparation || p.HasNaturalSix) return;
+        if (die != 6 || State.Phase == Phase.Preparation || p.HasNaturalSix || p.Relikario.Family == RelikarioCatalog.Osamu.Id) return;
         p.HasNaturalSix = true;
         Log($"{p.Name} obtiene un 6 natural: condición de evolución cumplida para esta partida.");
     }
@@ -50,7 +56,21 @@ public sealed partial class GameEngine
     {
         var actor = Array.IndexOf(State.Players, p);
         var equipment = ActiveEquipment(actor)?.Id;
-        var die = Roll(roller: actor, caption: purpose == DiePurpose.Zahira ? "Zahira Flair · Etapa final" : purpose == DiePurpose.QuickLoad ? "Carga Rápida · Robo o descarte" : purpose == DiePurpose.FieldCombat ? "Jessica Lee · Efecto de canje/Bonus" : purpose == DiePurpose.SkillLearning ? "Reverse Shuffle · Aprendizaje" : purpose == DiePurpose.PcStore ? "PC 8BITS · Valor guardado" : purpose == DiePurpose.Dodge ? "Esquivar · Defensa" : purpose == DiePurpose.ExtraLife ? "Vida Extra · Curación" : purpose == DiePurpose.PointsChange ? "Aumento de Relick Points" : "");
+        var die = Roll(roller: actor, caption: purpose switch
+        {
+            DiePurpose.Zahira => "Zahira Flair · Etapa final",
+            DiePurpose.QuickLoad => "Carga Rápida · Robo o descarte",
+            DiePurpose.FieldCombat => "Jessica Lee · Efecto de canje/Bonus",
+            DiePurpose.SkillLearning => "Reverse Shuffle · Aprendizaje",
+            DiePurpose.PcStore => "PC 8BITS · Valor guardado",
+            DiePurpose.Dodge => "Esquivar · Defensa",
+            DiePurpose.ExtraLife => "Vida Extra · Curación",
+            DiePurpose.PointsChange => "Aumento de Relick Points",
+            DiePurpose.TurboSwordDefense => "Turbo Sword · Defensa",
+            DiePurpose.TurboSwordDamage => "Turbo Sword · Daño",
+            DiePurpose.TurboOverlapDamage => $"Turbo Overlap · Dado de daño {(effect.Slot == 0 ? 1 : 2)}",
+            _ => ""
+        });
         if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
         {
             _pendingDieEffect = effect;

@@ -179,7 +179,7 @@ public partial class DeckEditor : VBoxContainer
 
     private void AddCatalogCard(CardDefinition card)
     {
-        var face = new HandCard { Card = card, PresentationScale = CardScale, Name = "Catalog_" + card.Id, TooltipText = card.Name,
+        var face = new HandCard { Card = card, RelikarioId = Relikario, PresentationScale = CardScale, Name = "Catalog_" + card.Id, TooltipText = card.Name,
             SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
         var badge = ArenaPresentation.Text("", ShortScreen ? 13 : 16, new Color("06141a"));
         badge.Name = "Copies"; badge.MouseFilter = MouseFilterEnum.Ignore;

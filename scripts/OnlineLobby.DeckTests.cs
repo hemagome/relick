@@ -57,10 +57,11 @@ public partial class OnlineLobby
             // A new deck starts by choosing its Relikario.
             ((Button)screen.FindChild("NewDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             var picker = screen.Picker!;
-            Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 1 && picker.Selected.Id == "yuno",
+            Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 2 && picker.Selected.Id == "yuno",
                 "el selector no lista los 18 Relikarios con Yuno elegido.");
             Expect(picker.Tiles["yuno"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
-                picker.Tiles["osamu"].FindChild("Soon", true, false) != null, "Yuno no muestra su retrato o un Relikario sin programar no se marca como próximamente.");
+                picker.Tiles["osamu"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
+                picker.Tiles["wd"].FindChild("Soon", true, false) != null, "Yuno y Osamu deben mostrar sus retratos, y WD debe marcarse como próximamente.");
             foreach (var name in new[] { "PickerBack", "RosterGallery", "RelikarioDetail", "CreateDeck", "CardButton" })
                 Inside((Control)picker.FindChild(name, true, false), name);
             var gallery = (Control)picker.FindChild("RosterGallery", true, false);
@@ -71,12 +72,16 @@ public partial class OnlineLobby
                 Expect(art == tile || Math.Abs(art.Size.X - art.Size.Y) <= 1, "el retrato de la ficha no es cuadrado.");
             }
             picker.Tiles["osamu"].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: false } osamu && osamu.Text.Contains("Osamu") &&
+                RelikarioPicker.Card("osamu", 1) != null && RelikarioPicker.Card("osamu", 2) != null,
+                "Osamu no muestra sus dos cartas o no permite crear su mazo.");
+            picker.Tiles["wd"].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: true, Text: "Próximamente" } && picker.FindChild("ComingSoonNote", true, false) != null,
                 "un Relikario sin programar permite crear un mazo.");
             if (picker.FindChild("FilterAvailable", true, false) is Button { Visible: true } available)
             {
                 available.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-                Expect(picker.Tiles.Values.Count(tile => tile.Visible) == 1 && picker.Selected.Id == "yuno", "el filtro Disponibles no deja solo a Yuno.");
+                Expect(picker.Tiles.Values.Count(tile => tile.Visible) == 2 && picker.Selected.Id == "yuno", "el filtro Disponibles debe mostrar a Yuno y Osamu.");
                 ((Button)picker.FindChild("FilterAll", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             }
             else picker.Tiles["yuno"].EmitSignal(BaseButton.SignalName.Pressed);
@@ -99,7 +104,8 @@ public partial class OnlineLobby
             Expect(!editor.Dirty && editor.Problems.Count > 0 && ((Button)editor.FindChild("SaveDeck", true, false)).Text == "Guardar borrador",
                 "un mazo nuevo debe empezar como borrador sin cambios.");
             Expect(editor.AddBlocked(CardCatalog.Attack) != null, "se permite un Ataque de más.");
-            var playable = CardCatalog.All.Values.Where(card => !DeckRules.IsAttack(card) && !DeckRules.IsTrap(card)).OrderBy(card => card.Kind == CardKind.Skill ? 0 : 1).ToList();
+            var playable = CardCatalog.All.Values.Where(card => !DeckRules.IsAttack(card) && !DeckRules.IsTrap(card) && DeckRules.Compatible(card, editor.Relikario))
+                .OrderBy(card => card.Kind == CardKind.Skill ? 0 : 1).ToList();
             foreach (var card in playable.Take(15)) { editor.Add(card); editor.Add(card); }
             Expect(editor.AddBlocked(playable[0])!.Contains("2 copias") && editor.Main.Count == 42 && editor.AddBlocked(playable[20])!.Contains("42"),
                 "no se respetan las dos copias por nombre o el tope de 42.");

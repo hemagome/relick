@@ -61,6 +61,10 @@ public sealed class PendingDecision
     /// <summary>The decision a COMBO interrupted; it waits underneath and comes back once this one is answered.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingDecision? Suspended { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PendingAttackRoll? Attack { get; set; }
+
+    public string Title() => CardCatalog.All.TryGetValue(Source, out var card) ? card.Name : RelikarioCatalog.NameOf(Source);
 }
 
 /// <summary>What both players see about the pending decision; its choices only reach the decider, as options.</summary>
@@ -126,12 +130,8 @@ public sealed partial class GameEngine
         public void Ask(string step, DecisionKind kind, string instruction, bool allowsCombos = false, bool announce = true, int value = 0,
             List<int>? picks = null, int? showsHandOf = null)
         {
-            // A COMBO that asks while another decision waits keeps that decision underneath.
-            State.PendingDecision = new PendingDecision { Source = Card.Id, Step = step, Decider = Actor, Kind = kind,
-                Instruction = instruction, AllowsCombos = allowsCombos, ResumePhase = State.Phase, Value = value, Picks = picks,
-                ShowsHandOf = showsHandOf, Suspended = State.Phase == Phase.Decision ? State.PendingDecision : null };
-            State.Phase = Phase.Decision;
-            if (announce) State.LastCombat = $"{Player.Name} · {Card.Name} · {instruction}";
+            _engine.AskDecision(new PendingDecision { Source = Card.Id, Step = step, Decider = Actor, Kind = kind,
+                Instruction = instruction, AllowsCombos = allowsCombos, Value = value, Picks = picks, ShowsHandOf = showsHandOf }, announce);
         }
 
         /// <summary>Continues the card at <paramref name="step"/> after the operation finishes, or right away.</summary>
@@ -207,25 +207,35 @@ public sealed partial class GameEngine
 
     private EffectContext EffectFor(int actor, string cardId) => new(this, actor, cardId);
 
+    private void AskDecision(PendingDecision decision, bool announce = true)
+    {
+        decision.ResumePhase = State.Phase;
+        decision.Suspended = State.Phase == Phase.Decision ? State.PendingDecision : null;
+        State.PendingDecision = decision;
+        State.Phase = Phase.Decision;
+        if (announce) State.LastCombat = $"{State.Players[decision.Decider].Name} · {decision.Title()} · {decision.Instruction}";
+    }
+
     /// <summary>The live choices of the pending decision, only for the player who decides.</summary>
     public IReadOnlyList<DecisionChoice> DecisionChoices(int actor)
     {
-        if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor ||
-            CardEffects.For(decision.Source) is not { } effect) return [];
-        return effect.Choices(EffectFor(actor, decision.Source), decision);
+        if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor) return [];
+        if (CardEffects.For(decision.Source) is { } effect)
+            return effect.Choices(EffectFor(actor, decision.Source), decision);
+        return OsamuDecisionChoices(decision);
     }
 
     public CommandResult ResolveDecision(int actor, int choice)
     {
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor)
             return CommandResult.Fail("No te corresponde decidir.");
-        var effect = CardEffects.For(decision.Source) ?? throw new InvalidOperationException("Decisión de una carta sin efecto registrado.");
-        var context = EffectFor(actor, decision.Source);
-        var choices = effect.Choices(context, decision);
+        var choices = DecisionChoices(actor);
         if (choice < 0 || choice >= choices.Count) return CommandResult.Fail("Esa opción ya no está disponible.");
         State.PendingDecision = decision.Suspended;
         State.Phase = decision.ResumePhase;
-        effect.Choose(context, decision, choices[choice]);
+        if (CardEffects.For(decision.Source) is { } effect)
+            effect.Choose(EffectFor(actor, decision.Source), decision, choices[choice]);
+        else ResolveOsamuDecision(decision, choices[choice]);
         CompleteActivationIfFinished();
         return CommandResult.Ok();
     }
@@ -254,7 +264,7 @@ public sealed partial class GameEngine
     private void RecheckDecision()
     {
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || DecisionChoices(decision.Decider).Count > 0) return;
-        Log($"{CardCatalog.Get(decision.Source).Name} se resuelve sin opciones disponibles después de las respuestas.");
+        Log($"{decision.Title()} se resuelve sin opciones disponibles después de las respuestas.");
         State.PendingDecision = decision.Suspended; State.Phase = decision.ResumePhase;
         CompleteActivationIfFinished();
     }

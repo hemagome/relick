@@ -42,17 +42,22 @@ internal static class CardInspectorText
 /// equipment bonuses are left out on purpose: they depend on information the viewer may not have.
 /// </summary>
 internal sealed record AttackOutlook(int Normal, int Critical, bool RandomNormal = false, int DieBonus = 0,
-    int DamageMultiplier = 1, string? Caption = null)
+    int DamageMultiplier = 1, string? Caption = null, string? SkillId = null, bool BonusIncludesOne = false)
 {
-    public static AttackOutlook For(CardDefinition skill, int counters, int dieBonus = 0, int multiplier = 1, string? caption = null) =>
+    public static AttackOutlook For(CardDefinition skill, int counters, int dieBonus = 0, int multiplier = 1,
+        string? caption = null, bool bonusIncludesOne = false) =>
         new(skill.NormalDamageAt(counters), skill.CriticalDamageAt(counters), skill.Id == CardCatalog.Magnet.Id, dieBonus,
-            Math.Max(1, multiplier), caption);
+            Math.Max(1, multiplier), caption, skill.Id, bonusIncludesOne);
 
     /// <summary>Damage for each final D6 face, using the engine's own formula.</summary>
     public string Damage(int die)
     {
         if (die < 4) return "—";
         if (RandomNormal && die < 6) return die == 4 ? "½·1D6" : "1D6";
+        string Range(int min, int max) => $"{min * DamageMultiplier}–{max * DamageMultiplier}";
+        if (SkillId == CardCatalog.TurboSword.Id)
+            return die switch { 4 => Range(1, 3), 5 => Range(2, 5), _ => Range(4, 7) };
+        if (SkillId == CardCatalog.TurboOverlap.Id && die == 6) return Range(1, 6);
         var amount = GameEngine.DamageFor(die, Normal, Critical) * DamageMultiplier;
         return amount.ToString();
     }
@@ -62,7 +67,8 @@ internal sealed record AttackOutlook(int Normal, int Critical, bool RandomNormal
         get
         {
             var notes = new List<string>();
-            if (DieBonus > 0) notes.Add($"Lv 2: +{DieBonus} al dado salvo con 1.");
+            if (DieBonus > 0) notes.Add($"Lv 2: +{DieBonus} al dado" + (BonusIncludesOne ? "." : " salvo con 1."));
+            if (SkillId == CardCatalog.TurboOverlap.Id) notes.Add("Crítico: lanza dos dados y elige uno.");
             if (DamageMultiplier > 1) notes.Add($"Estrella del Fontanero: daño ×{DamageMultiplier}.");
             return string.Join(" ", notes);
         }
@@ -258,13 +264,13 @@ public partial class CardInspector : PanelContainer
         Attributes.Visible = card?.Kind == CardKind.Skill;
         if (card?.Kind == CardKind.Skill)
         {
-            _attributeValues[0].Text = card.Id == CardCatalog.Magnet.Id ? "1D6" : card.NormalDamageAt(counters ?? 0).ToString();
-            _attributeValues[1].Text = card.CriticalDamageAt(counters ?? 0).ToString();
+            _attributeValues[0].Text = card.NormalDamageText(counters ?? 0);
+            _attributeValues[1].Text = card.CriticalDamageText(counters ?? 0);
             _attributeValues[2].Text = card.Reward + " PR";
         }
         var counterLimit = card?.Id switch
         {
-            var id when id == CardCatalog.Destiny.Id => 2,
+            var id when id == CardCatalog.Destiny.Id || id == CardCatalog.TurboSword.Id => 2,
             var id when id == CardCatalog.SuperMagnet.Id => CardCatalog.SuperMagnetCounterLimit,
             _ => 0
         };

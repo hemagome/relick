@@ -12,6 +12,7 @@ public partial class MemoryZoneButton : Button
     public int Amount { get; init; }
     public bool Corrupted { get; init; }
     public CardDefinition? TopCard { get; init; }
+    public string? RelikarioId { get; init; }
     public Color Accent { get; init; } = new("b5a2fa");
     private Texture2D? _back;
     private HandCard? _preview;
@@ -50,7 +51,7 @@ public partial class MemoryZoneButton : Button
         if (Corrupted && Amount > 0) _back = SleeveArt.Back(Sleeve);
         if (!Corrupted && TopCard != null)
         {
-            var preview = new HandCard { Name = "MemoryTopCard", Card = TopCard, Disabled = true, ShowBehindParent = Board,
+            var preview = new HandCard { Name = "MemoryTopCard", Card = TopCard, RelikarioId = RelikarioId, Disabled = true, ShowBehindParent = Board,
                 Size = new(126, 184), Scale = new(0.2f, 0.2f), Position = new(6, 17) };
             preview.Ready += () => { preview.MouseFilter = MouseFilterEnum.Ignore; preview.SetProcess(false); };
             AddChild(preview); _preview = preview;

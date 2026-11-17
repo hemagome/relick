@@ -47,8 +47,8 @@ se adapta al tamaño y deja pasar los clics a los controles. Los acentos de las
 acciones y el foco visible conservan sus significados. En pantallas cortas se
 reducen márgenes y descripciones. Enter en el código permite unirse cuando hay conexión.
 
-Durante la partida rápida, un enlace de dos cartas ocupa el espacio central de
-su panel: reverso propio, silueta rival y tres flechas con un ciclo suave de dos
+Durante la partida rápida, el centro del panel muestra la miniatura del Relikario
+del mazo equipado, la silueta rival y tres flechas con un ciclo suave de dos
 segundos. El tiempo de espera y Cancelar búsqueda permanecen visibles; el botón
 conserva su posición. La animación solo avanza durante una búsqueda confirmada
 y se pausa al cancelar, perder conexión u ocultarse. La preferencia de reducir
@@ -56,7 +56,7 @@ animaciones del sistema, cuando está disponible, y el ajuste de proyecto
 `relick/accessibility/reduced_motion` habilitan una variante estática.
 
 Una sala confirmada después de solicitar partida rápida muestra «Rival
-encontrado», completa el reverso rival y entra a preparación tras 350 ms. También
+encontrado», revela un reverso clásico en el lado rival y entra a preparación tras 350 ms. También
 se presenta cuando el segundo jugador es emparejado inmediatamente sin pasar por
 la cola. Una sala privada o la recuperación de una partida ya abierta no repite
 esa confirmación; no se simulan jugadores, porcentajes ni estimaciones de espera.
@@ -223,7 +223,6 @@ Funcionamiento:
 - **Editor.** La pestaña «Estilo», junto a Mazo y Banquillo, muestra una ficha por opción, con la elegida enmarcada en dorado. Mientras está abierta, pulsar el catálogo solo consulta la carta. Cambiar la mica o el dado marca el mazo como modificado, y guardar los envía con él. Duplicar un mazo copia su estilo. El mazo de entrenamiento usa la mica y el dado clásicos.
 - **Micas.** `SleeveArt` recolorea en bitono el reverso impreso: los negros toman el tono oscuro de la mica y los blancos el claro, y se añade un borde con su color de canto. Cada reverso se genera una vez, a 512 px de alto, y se conserva durante la sesión. La Clásica es el reverso impreso sin cambios.
   - Se ve en el mazo y en las cartas corruptas de cada jugador, en la mano oculta del rival y en las cartas que vuelan.
-  - En la sala, la tarjeta de búsqueda muestra la mica del mazo activo.
 - **Dados.** `DiceFace.ApplyStyle` recolorea el cuerpo y los puntos del dado 3D. Cada tirada muestra el dado de quien tira, también cuando lanza el defensor (por ejemplo, con Esquivar), porque el evento visual del dado ahora indica quién tiró. Los dados de iniciativa conservan el estilo clásico, porque la preparación aún no conoce los estilos.
 - **Visibilidad.** Ambos jugadores ven la mica y el dado del otro: viajan en la apertura del duelo y en la vista pública de cada jugador (`DuelPlayerView.Sleeve` y `Dice`). Una partida anterior a esta versión usa los clásicos.
 

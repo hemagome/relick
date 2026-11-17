@@ -1,4 +1,5 @@
 using Godot;
+using Relick.Core;
 using Relick.Network;
 using Relick.Network.Types;
 
@@ -19,6 +20,10 @@ public partial class OnlineLobby
             GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory, name + ".png"));
         }
         var originalReducedMotion = _matchLink.ReducedMotion;
+        var yuno = RelikarioArt.Thumbnail(RelikarioCatalog.Yuno.Id);
+        var osamu = RelikarioArt.Thumbnail(RelikarioCatalog.Osamu.Id);
+        Check(yuno != null && osamu != null && yuno != osamu, "Faltan las miniaturas distintas de Yuno y Osamu.");
+        var equipped = new DeckInfo { Name = "Mazo de Osamu", Relikario = RelikarioCatalog.Osamu.Id, Sleeve = "oro", Active = true };
         _content.Show();
         try
         {
@@ -45,6 +50,10 @@ public partial class OnlineLobby
                 var preserved = _matchLink.PlaybackSeconds;
                 PresentLobbyState(null, true, false, RoomRequest.None, "", "", true);
                 Check(_matchLink.PlaybackSeconds == preserved, "Actualizar el estado reinicia el ciclo de búsqueda.");
+                Check(_matchLink.Thumbnail == yuno, "La búsqueda con el mazo de entrenamiento no muestra a Yuno.");
+                PresentEquippedDeck(equipped);
+                Check(_matchLink.Thumbnail == osamu && _decks.Icon == osamu && _matchLink.PlaybackSeconds == preserved,
+                    "La búsqueda no muestra el mismo Relikario que el mazo equipado o reinicia la animación al cambiar el retrato.");
                 if (!reduced && size.X is 1440 or 700) { await Layout(); await Capture($"match-searching-{size.X}x{size.Y}"); }
                 PresentLobbyState(null, false, false, RoomRequest.None, "", "", true); await Layout();
                 elapsed = _matchLink.PlaybackSeconds; _matchLink.AdvancePlayback(4);
@@ -79,6 +88,6 @@ public partial class OnlineLobby
             _quickMatchRequested = false; _matchConfirmationRoom = ""; _matchConfirmationRemaining = 0;
             PresentLobbyState(null, true, false, RoomRequest.None, "", ""); _content.Hide();
         }
-        GD.Print("PVP_MATCHMAKING_ANIMATION_PASS · búsqueda sin progreso ficticio, cancelación fija, pausa/desconexión, movimiento reducido, emparejamiento inmediato y confirmado, transición acotada y sin repetición; cuatro tamaños.");
+        GD.Print("PVP_MATCHMAKING_ANIMATION_PASS · miniatura de Yuno y Osamu, cancelación fija, pausa/desconexión, movimiento reducido, emparejamiento inmediato y confirmado, transición acotada y sin repetición; cuatro tamaños.");
     }
 }

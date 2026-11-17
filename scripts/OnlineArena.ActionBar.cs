@@ -49,7 +49,7 @@ public partial class OnlineArena
     // hiding behind the scrollbar; longer lists still scroll once they pass the cap.
     private void FitMovesScroll()
     {
-        var floor = ChoosingMemoryRecovery ? 60 : 50;
+        var floor = ChoosingMemoryRecovery || ChoosingOsamuCards ? 60 : 50;
         var cap = Short ? 104 : 168;
         var height = Mathf.Clamp(_moves.GetCombinedMinimumSize().Y, floor, Math.Max(floor, cap));
         if (!Mathf.IsEqualApprox(_movesScroll.CustomMinimumSize.Y, height)) _movesScroll.CustomMinimumSize = new(0, height);
@@ -165,7 +165,8 @@ public partial class OnlineArena
         else if (Deciding == DecisionKind.Confirm)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.Choose).ToList();
         else if (ChoosingEffectCards)
-            indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i])).ToList();
+            indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i]) ||
+                Deciding == DecisionKind.ChooseCard && s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].CardId == null).ToList();
         else if (_fieldSelection is { } field)
             indices = indices.Where(i => MatchesField(s.Options[i], field)).ToList();
         else
@@ -200,14 +201,20 @@ public partial class OnlineArena
         var die = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && !s.Options[i].Move.Flag).ToArray();
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
             DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
+            s.Options[i].Move.Kind == DuelMoveKind.RelikarioSearch ||
             s.Options[i].Move.Kind is DuelMoveKind.TrapCraft or DuelMoveKind.BlueEggDraw && s.Options[i].Move.Flag ||
-            s.Options[i].Move.Kind == DuelMoveKind.Choose && (s.Options[i].Primary || Deciding == DecisionKind.ChooseCard), -1);
+            s.Options[i].Move.Kind == DuelMoveKind.Choose && (s.Options[i].Primary || Deciding == DecisionKind.ChooseCard && s.Options[i].CardId != null), -1);
         if (main < 0 && die.Length > 0) main = die[0];
-        if (_showcase != null && ChoosingMemoryRecovery)
+        if (ChoosingOsamuCards || _showcase != null && ChoosingMemoryRecovery)
         {
+            if (ChoosingOsamuCards)
+                foreach (var index in indices.Where(i => s.Options[i].CardId == null))
+                    AddOption(_moves, index);
+            var includesDeck = _deckSearchOptions.Any(o => EffectCardOwner(o) == null);
             var confirm = main >= 0 ? AddOption(_moves, main, primary: true) : new Button
             {
-                Text = "Recuperar", Disabled = true, TooltipText = "Selecciona una carta de la memoria."
+                Text = includesDeck ? "Añadir a la mano" : "Recuperar", Disabled = true,
+                TooltipText = includesDeck ? "Selecciona una carta." : "Selecciona una carta de la memoria."
             };
             if (main < 0)
             {
@@ -313,7 +320,9 @@ public partial class OnlineArena
 
     private void BindInspectorPreviews()
     {
-        foreach (var control in _root!.FindChildren("*", "Button", true, false).OfType<Button>())
+        var buttons = _root!.FindChildren("*", "Button", true, false).OfType<Button>();
+        if (_osamuChoiceShade != null) buttons = buttons.Concat(_handCards);
+        foreach (var control in buttons)
         {
             var card = control switch
             {
@@ -328,6 +337,13 @@ public partial class OnlineArena
             if (card == null && control is not OpponentHandCard) continue;
             int? counters = control is SkillTile skill ? skill.Counters : null;
             var owner = SkillTileOwner(control);
+            var relikario = control switch
+            {
+                HandCard hand => hand.ArtworkRelikario,
+                OpponentHandCard opponent => opponent.ArtworkRelikario,
+                ZoneCardButton zone => zone.RelikarioId,
+                _ => null
+            };
             var tooltip = control.TooltipText;
             control.MouseEntered += () =>
             {
@@ -336,8 +352,8 @@ public partial class OnlineArena
                 if (IsAnimating || HasContextSelection && !choosingSkill || InspectorActivationId() != null) return;
                 if (card != null) control.TooltipText = "";
                 (CardDefinition, int?)? preview = card == null ? null : (card, counters);
-                if (_inspectorPreview == preview && _inspectorPreviewOwner == owner && _relikarioPreview == null) return;
-                _inspectorPreview = preview; _inspectorPreviewOwner = owner; _relikarioPreview = null;
+                if (_inspectorPreview == preview && _inspectorPreviewOwner == owner && _inspectorPreviewRelikario == relikario && _relikarioPreview == null) return;
+                _inspectorPreview = preview; _inspectorPreviewOwner = owner; _inspectorPreviewRelikario = relikario; _relikarioPreview = null;
                 RefreshInspector();
             };
             if (card != null) control.MouseExited += () =>
@@ -368,10 +384,25 @@ public partial class OnlineArena
                 Phase.TrapCraftChoice => s.TrapCardId,
                 Phase.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
                 Phase.BlueEggDrawChoice => CardCatalog.BlueEgg.Id,
-                Phase.Decision => s.Decision?.Source,
+                Phase.Decision when s.Decision is { } decision && CardCatalog.All.ContainsKey(decision.Source) => decision.Source,
                 Phase.TurnBuffDiscard => s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id,
                 _ => null
             } : null;
+
+    private string SelectedArtworkRelikario()
+    {
+        var s = _snapshot!;
+        if (_fieldSelection is { } field)
+            return field.Zone == FieldZone.Hand ? HandArtworkRelikario(field.Owner, field.Index) : s.Players[field.Owner].RelikarioId;
+        if (_selected.Count == 1 && !_preparing && !ChoosingRecycling)
+        {
+            var index = _selected.Single();
+            if (!ChoosingEffectCards) return HandArtworkRelikario(s.MySeat, index);
+            var option = _deckSearchOptions.ElementAtOrDefault(index);
+            if (option != null && EffectCardOwner(option) is int owner) return s.Players[owner].RelikarioId;
+        }
+        return s.Players[s.MySeat].RelikarioId;
+    }
 
     private void RefreshInspector()
     {
@@ -379,6 +410,7 @@ public partial class OnlineArena
         var activation = InspectorActivationId();
         var id = activation ?? SelectedCardId();
         var card = id == null ? null : CardCatalog.Get(id);
+        var artworkRelikario = SelectedArtworkRelikario();
         int? counters = null;
         if (_fieldSelection is { Zone: FieldZone.Skill } field)
             counters = s.Players[field.Owner].Counters.ElementAtOrDefault(field.Index);
@@ -389,7 +421,8 @@ public partial class OnlineArena
         var title = _preparing ? card?.Name ?? (_choosingOpeningSkill ? "Elige una habilidad" : "Mano inicial") : ContextTitle();
         var cost = _preparing ? "" : s.Phase == Phase.TrapCraftChoice && activation != null ? ArenaActionText.CardCost(card!) : _selectionCost;
         var fromPreview = false;
-        if (activation == null && _inspectorPreview is { } preview && (preview.Card != card || preview.Counters != counters))
+        if (activation == null && _inspectorPreview is { } preview &&
+            (preview.Card != card || preview.Counters != counters || card?.Id == CardCatalog.Attack.Id && _inspectorPreviewRelikario != artworkRelikario))
         {
             card = preview.Card; title = card.Name; counters = preview.Counters; fromPreview = true;
             // While an Attack waits for its skill, the skill being read is what the Attack would use.
@@ -417,7 +450,7 @@ public partial class OnlineArena
             // Deciding a Trap shows the two exchanged cards that met its recipe.
             var recipe = activation != null && s.Phase == Phase.TrapCraftChoice ? s.TrapIngredients : null;
             _inspector.Present(card, title, cost, _selection.Text, counters, InspectorOutlook(card, counters, owner), recipe);
-            _showcase?.Present(card);
+            _showcase?.Present(card, fromPreview ? _inspectorPreviewRelikario : artworkRelikario);
         }
         _contextCost.TooltipText = cost;
         var reading = card != null || relikia != null || relikario != null;
@@ -429,7 +462,7 @@ public partial class OnlineArena
             if (_historyFeed != null) _historyFeed.Visible = !reading && !_preparing;
             if (_railReading != null) _railReading.SizeFlagsVertical = reading || _historyFeed is not { Visible: true } ? SizeFlags.ExpandFill : SizeFlags.Fill;
         }
-        if (_showcase == null)
+        if (_showcase == null && _osamuChoiceShade == null)
         {
             var interaction = (Control)_actionDock.GetParent().GetParent();
             // The scrollable board and inspector share a column at medium sizes.

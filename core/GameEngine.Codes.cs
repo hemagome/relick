@@ -98,7 +98,7 @@ public sealed partial class GameEngine
         if (State.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return "Completa la decisión del Código Trampa antes de jugar.";
         if (State.Phase == Phase.BlueEggDrawChoice) return "Decide primero si robas con Huevo Azul Explosivo.";
         if (State.Phase == Phase.Decision && State.PendingDecision is { AllowsCombos: false } decision)
-            return $"Decide primero: {CardCatalog.Get(decision.Source).Name}.";
+            return $"Decide primero: {decision.Title()}.";
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
             State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)))
             return "Activa las respuestas COMBO para responder con esta carta.";

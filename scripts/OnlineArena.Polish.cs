@@ -88,7 +88,7 @@ public partial class OnlineArena
             ? track.ExchangeButtons.Where(IsInstanceValid).Select(b => b.GetGlobalRect()).Aggregate((a, b) => a.Merge(b)) : (Rect2?)null;
         if (memory == null || exchange == null) return;
         var ingredients = (previous.TrapIngredients ?? []).Where(CardCatalog.All.ContainsKey)
-            .Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id))).OfType<Texture2D>().ToArray();
+            .Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), current.Players[entry.Actor].RelikarioId)).OfType<Texture2D>().ToArray();
         Rect2? destination = entry.CardId == CardCatalog.SuperMagnet.Id ? Find("EquipmentZone" + relative)
             : entry.CardId == CardCatalog.SuperAttack.Id ? relative == 0 ? HandLanding() : Find("OpponentHandFan") ?? Find("OpponentHandScroll") : null;
         _impacts.TrapSummon(ingredients, memory.Value.GetCenter(), exchange.Value.GetCenter(), art, destination,

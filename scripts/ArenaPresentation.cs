@@ -28,7 +28,7 @@ public static class ArenaPresentation
     public static readonly Color Coral = RelickVisuals.State.Rival;
 
     /// <summary>Cards selected from one memory, rendered as its own labelled block.</summary>
-    public sealed record HandSection(string Title, Color Accent, CardOwner Owner, IReadOnlyList<int> Indices);
+    public sealed record HandSection(string Title, Color Accent, CardOwner Owner, IReadOnlyList<int> Indices, bool FromDeck = false);
 
     public static Label Text(string text, int size = 16, Color? color = null)
     {
@@ -110,7 +110,7 @@ public static class ArenaPresentation
         frame.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.Playmat.Surface, 0.94f), BoardArt.Tint(BoardArt.Gold, 0.8f), 10, 2));
         Put(frame, 0, -112.5f, 302, 225);
         var track = new ExchangeTrack { Name = $"BonusTrack{index}", Detached = true, OwnerCaption = index == 0 ? "TÚ" : "RIVAL",
-            ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing,
+            ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing, RelikarioId = owner.RelikarioId,
             BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
             BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = accent };
         track.BonusInspected += bonusPressed; track.ExchangeInspected += exchangePressed;
@@ -215,7 +215,7 @@ public static class ArenaPresentation
             Put(skill, x, y, H, W);
         }
 
-        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Length, Accent = accent, Board = true,
+        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Length, Accent = accent, Board = true, RelikarioId = owner.RelikarioId,
             TopCard = owner.Memory.Length == 0 ? null : CardCatalog.Get(owner.Memory[^1]) };
         memory.Pressed += () => actions.Memory(false); Put(memory, 996, top, W, H);
         var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true, Board = true, Sleeve = owner.Sleeve };
@@ -369,7 +369,7 @@ public static class ArenaPresentation
         zones.AddThemeConstantOverride("separation", 6);
         zones.AddChild(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter, Sleeve = owner.Sleeve });
         var memories = new HBoxContainer(); memories.AddThemeConstantOverride("separation", 6);
-        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Length, Accent = accent,
+        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Amount = owner.Memory.Length, Accent = accent, RelikarioId = owner.RelikarioId,
             TopCard = owner.Memory.Length == 0 ? null : CardCatalog.Get(owner.Memory[^1]) };
         memory.Pressed += () => actions.Memory(false); memories.AddChild(memory);
         var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", Amount = owner.CorruptedCount, Corrupted = true, Sleeve = owner.Sleeve };
@@ -459,7 +459,7 @@ public static class ArenaPresentation
         {
             var owner = players[index];
             var track = new ExchangeTrack { Name = $"BonusTrack{index}", OwnerCaption = index == 0 ? "TÚ" : "RIVAL",
-                Compact = compact,
+                Compact = compact, RelikarioId = owner.RelikarioId,
                 ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing,
                 BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
                 BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = index == 0 ? Mint : Coral };
@@ -510,7 +510,7 @@ public static class ArenaPresentation
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
         Action<int> pressed, bool preparing, bool shortScreen, string? title = null, int railColumns = 0, bool useFan = true,
         bool desktop = false, IReadOnlyList<HandSection>? sections = null, Func<int, CardOwner?>? ownerOf = null,
-        int viewerSeat = -1, int stackColumns = 0)
+        int viewerSeat = -1, int stackColumns = 0, string? relikario = null, bool wrapTitle = false)
     {
         var grouped = sections is { Count: > 0 };
         var fanned = useFan && !grouped && railColumns == 0 && hand.Count > 0;
@@ -531,6 +531,7 @@ public static class ArenaPresentation
             // Labelled memory blocks carry their own counts; the total would only repeat their sum.
             var heading = grouped ? Text(title, 10) : HandHeading(title, hand.Count, railColumns);
             heading.TooltipText = title;
+            if (wrapTitle) heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             if (desktop) { heading.AddThemeFontSizeOverride("font_size", 16); heading.AddThemeFontOverride("font", RelickVisuals.Display); heading.AddThemeColorOverride("font_color", BoardArt.Gold); }
             parent.AddChild(heading);
         }
@@ -552,7 +553,7 @@ public static class ArenaPresentation
                 var card = new HandCard
                 {
                     Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), Mulligan = preparing,
-                    InFan = fanned, Lift = raised ? DesktopHandLift : 9, OriginalOwner = ownerOf?.Invoke(i),
+                    InFan = fanned, Lift = raised ? DesktopHandLift : 9, OriginalOwner = ownerOf?.Invoke(i), RelikarioId = relikario,
                     ViewerSeat = viewerSeat >= 0 ? viewerSeat : null,
                     PresentationScale = fanned ? raised ? DesktopHandScale : HandFan.CardScale : shortScreen ? 0.6f : desktop ? DesktopHandScale : 1
                 };
@@ -587,10 +588,11 @@ public static class ArenaPresentation
         foreach (var section in sections)
         {
             if (section.Indices.Count == 0) continue;
-            var block = new VBoxContainer { Name = $"HandSection{section.Owner.Seat}", SizeFlagsHorizontal = columns > 0 ? Control.SizeFlags.ExpandFill : Control.SizeFlags.ShrinkBegin };
+            var suffix = section.FromDeck ? "Deck" : section.Owner.Seat.ToString();
+            var block = new VBoxContainer { Name = $"HandSection{suffix}", SizeFlagsHorizontal = columns > 0 ? Control.SizeFlags.ExpandFill : Control.SizeFlags.ShrinkBegin };
             block.AddThemeConstantOverride("separation", 4);
             var heading = Heading($"{section.Title}  ·  {section.Indices.Count} CARTAS", stackColumns > 0 && railColumns == 0 ? 13 : 10, section.Accent);
-            heading.Name = $"HandSectionTitle{section.Owner.Seat}";
+            heading.Name = $"HandSectionTitle{suffix}";
             heading.TooltipText = $"{section.Title} · {section.Indices.Count} cartas";
             block.AddChild(heading);
             var rule = new ColorRect { Color = BoardArt.Tint(section.Accent, 0.65f), CustomMinimumSize = new(0, 2), MouseFilter = Control.MouseFilterEnum.Ignore };

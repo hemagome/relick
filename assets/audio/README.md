@@ -9,8 +9,10 @@ Las composiciones instrumentales se sintetizan específicamente para este proyec
 | `music/yuno-combat.ogg` | Apuesta de acero | Duelo contra Yuno: 160 BPM, ostinato de cuerdas en 3+3+2 y tema de trompetas. 72 s. |
 | `music/yuno-to-climax.ogg` | — | Puente hacia el clímax: tres golpes y una escala ascendente. |
 | `music/yuno-climax.ogg` | La última tirada | Cero vidas contra Yuno: 168 BPM, cadencia descendente y el tema del combate a toda orquesta. 57,1 s. |
+| `music/osamu-combat.ogg` | Pulso de acero | Duelo contra Osamu. 144 BPM, cuerdas graves, metales apagados y acentos de percusión metálica. 66,7 s. |
+| `music/osamu-climax.ogg` | La última orden | Cero vidas contra Osamu. 174 BPM, el motivo del combate en los metales y cuerdas en semicorcheas. 44,1 s. |
 
-Las tres piezas están en re menor y el clímax retoma el tema del combate. En las piezas en bucle, las reverberaciones y las colas de las notas se pliegan sobre el comienzo para mantener continuidad; los puentes conservan su cola después del último pulso para que suene sobre la pieza siguiente. Los archivos `.import` conservan el tempo, el compás, la longitud musical y la repetición; deben versionarse junto con los OGG.
+Las piezas comparten re como centro tonal. Los clímax retoman el motivo del combate de cada Relikario. En las piezas en bucle, las reverberaciones y las colas de las notas se pliegan sobre el comienzo para mantener continuidad. Los puentes conservan su cola después del último pulso para que suene sobre la pieza siguiente. Los archivos `.import` conservan el tempo, el compás, la longitud musical y la repetición.
 
 | Efecto | Duración | Diseño |
 | --- | --- | --- |

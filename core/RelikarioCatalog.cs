@@ -18,6 +18,12 @@ public sealed record RelikarioDefinition(string Id, string Name, int MaxHealth, 
     /// <summary>Id of the base form that decks, art and music are keyed by; null for a base form.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string? BaseForm { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int? EvolutionMaxHealth { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int AttackDieBonus => AttackDieBonusExceptOne + AttackDieBonusIncludingOne;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int AttackDieBonusIncludingOne { get; init; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public string DisplayName => ShortName ?? Name;
@@ -40,21 +46,27 @@ public static class RelikarioCatalog
         "Una vez por turno, al lanzar un dado que no resulte en 1, puedes relanzarlo hasta 2 veces más. Si en un relanzamiento sale 1, ya no puedes relanzarlo más.",
         CanRerollAttack: true, Level: 2, MaxRerolls: 2, CanRerollAnyDie: true, ConvertRerolledSix: false, EvolutionCost: 1800,
         EvolutionHealing: 2, AttackDieBonusExceptOne: 1) { ShortName = "Yuno", BaseForm = "yuno" };
+    public static readonly RelikarioDefinition Osamu = new("osamu", "Osamu Takahashi", 10,
+        "Al realizar un ataque exitoso, puedes buscar Bomba de Tiempo o Agilidad al 100% en tu mazo. Si fallas con un resultado distinto de 1, añade una Agilidad al 100% de tu memoria a tu mano.")
+        { ShortName = "Osamu", EvolvesTo = "osamu-lv2" };
+    public static readonly RelikarioDefinition OsamuLv2 = new("osamu-lv2", "Osamu Takahashi", Osamu.MaxHealth,
+        "Al evolucionar, añade una Agilidad al 100% de tu mazo o memoria a tu mano. Una vez por turno, gasta 1 acción para buscar una carta de tu mazo o memoria. Esa copia se corrompe al ir a memoria. Suma +1 al D6 de ataque.",
+        Level: 2, EvolutionCost: 1500) { ShortName = "Osamu", BaseForm = "osamu", EvolutionMaxHealth = 4, AttackDieBonusIncludingOne = 1 };
 
     /// <summary>Every programmed form, evolutions included, by Id.</summary>
     public static readonly IReadOnlyDictionary<string, RelikarioDefinition> All =
-        new[] { Yuno, YunoLv2 }.ToDictionary(r => r.Id);
+        new[] { Yuno, YunoLv2, Osamu, OsamuLv2 }.ToDictionary(r => r.Id);
 
     public static RelikarioDefinition? Find(string? id) => id != null && All.TryGetValue(id, out var r) ? r : null;
 
     /// <summary>Base forms a deck can be built around; evolutions are reached during the duel.</summary>
-    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno];
+    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno, Osamu];
 
     /// <summary>Every Relikario of the game, in the order the deck builder lists them. Only those with a
     /// definition are programmed and can have decks built for them; the rest are shown as coming soon.</summary>
     public static readonly IReadOnlyList<RelikarioEntry> Roster =
     [
-        new("yuno", "Yuno", Yuno), new("osamu", "Osamu"), new("wd", "WD"), new("godkira", "Godkira"), new("jen95", "Jen95"),
+        new("yuno", "Yuno", Yuno), new("osamu", "Osamu", Osamu), new("wd", "WD"), new("godkira", "Godkira"), new("jen95", "Jen95"),
         new("yuno-8bits", "Yuno 8 bits"), new("yuno-abogado", "Yuno abogado"), new("yuno-oro", "Yuno oro"), new("senshuni", "Senshuni"),
         new("zii-jay", "Zii Jay"), new("hiperman", "Hiperman"), new("ef-jen", "EF Jen"), new("ef-wd", "EF WD"), new("ironwing", "Ironwing"),
         new("shuya", "Shuya"), new("zarpo", "Zarpo"), new("kael", "Kael"), new("kurtz", "Kurtz")

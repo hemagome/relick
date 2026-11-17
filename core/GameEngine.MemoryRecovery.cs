@@ -45,15 +45,16 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private string TakeFromMemory(int actor, int owner, int memoryIndex)
+    private string TakeFromMemory(int actor, int owner, int memoryIndex, string effectName = "Disquete", bool mark = false)
     {
         var source = State.Players[owner]; var recipient = State.Players[actor]; var id = source.Memory[memoryIndex];
         source.Memory.RemoveAt(memoryIndex); ShiftSniperIndices(owner, memoryIndex);
         recipient.Hand.Add(id);
+        if (mark) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count - 1);
         if (owner != actor) recipient.MarkForeignHandCard(recipient.Hand.Count - 1);
         MemoryCardClaimed?.Invoke(owner, actor, memoryIndex, recipient.Hand.Count - 1);
         // The source memory is public, but the card is not marked revealed in its new hand.
-        State.LastCombat = $"{recipient.Name} añade {CardCatalog.Get(id).Name} de la memoria de {source.Name} a su mano con Disquete.";
+        State.LastCombat = $"{recipient.Name} añade {CardCatalog.Get(id).Name} de la memoria de {source.Name} a su mano con {effectName}.";
         Log(State.LastCombat);
         return id;
     }

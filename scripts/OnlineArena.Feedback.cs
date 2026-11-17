@@ -18,6 +18,7 @@ public partial class OnlineArena
     private string _rejectionText = "";
     private ulong _rejectionUntil;
     private int? _inspectorPreviewOwner;
+    private string? _inspectorPreviewRelikario;
 
     internal string StageStatusText => _stageStatus?.Text ?? "";
     internal bool ShowingRejection => _rejectionUntil > Time.GetTicksMsec() && _rejectionText.Length > 0;
@@ -122,19 +123,19 @@ public partial class OnlineArena
     {
         var s = _snapshot;
         if (s == null || card == null) return null;
-        int DieBonus(int? seat) => seat is int owner ? RelikarioCatalog.Find(s.Players[owner].RelikarioId)?.AttackDieBonusExceptOne ?? 0 : 0;
+        RelikarioDefinition? Form(int? seat) => seat is int owner ? RelikarioCatalog.Find(s.Players[owner].RelikarioId) : null;
         int Multiplier(int? seat) => seat is int owner && s.Players[owner].StarEffects > 0 ? 1 << s.Players[owner].StarEffects : 1;
         if (card.Kind == CardKind.Skill)
-            return AttackOutlook.For(card, counters ?? 0, DieBonus(ownerSeat), Multiplier(ownerSeat),
-                ownerSeat == null ? "Daño" : null);
+            return AttackOutlook.For(card, counters ?? 0, Form(ownerSeat)?.AttackDieBonus ?? 0, Multiplier(ownerSeat),
+                ownerSeat == null ? "Daño" : null, Form(ownerSeat)?.AttackDieBonusIncludingOne > 0);
         if (card.Kind == CardKind.Attack && card.Id != CardCatalog.SuperAttack.Id && _selectedSkill >= 0 &&
             SelectedAttacks().Any(entry => entry.Option.Move.Value == _selectedSkill))
         {
             var me = s.Players[s.MySeat];
             if (me.Skills.ElementAtOrDefault(_selectedSkill) is not { } id) return null;
             var skill = CardCatalog.Get(id);
-            return AttackOutlook.For(skill, me.Counters.ElementAtOrDefault(_selectedSkill), DieBonus(s.MySeat), Multiplier(s.MySeat),
-                $"Atacando con {skill.Name}");
+            return AttackOutlook.For(skill, me.Counters.ElementAtOrDefault(_selectedSkill), Form(s.MySeat)?.AttackDieBonus ?? 0, Multiplier(s.MySeat),
+                $"Atacando con {skill.Name}", Form(s.MySeat)?.AttackDieBonusIncludingOne > 0);
         }
         return null;
     }

@@ -10,8 +10,10 @@ public partial class CardShowcase : Control
     private CardDefinition? _card;
     private string? _key;
     private Texture2D? _art, _back;
+    private Color _accent;
     private double _elapsed = AppearSeconds;
     internal CardDefinition? Card => _card;
+    internal Texture2D? FaceTexture => _art;
     internal bool ReducedMotion { get; set; }
 
     public override void _Ready()
@@ -24,19 +26,24 @@ public partial class CardShowcase : Control
         SetProcess(false);
     }
 
-    internal static Texture2D? Artwork(CardDefinition card) => card.Kind == CardKind.Skill
+    internal static Texture2D? Artwork(CardDefinition card, string? relikario = null) => card.Kind == CardKind.Skill
         ? SkillArtwork.Load(card)
-        : BoardArt.LoadCardArtwork(card) ?? (card.Kind == CardKind.Attack ? BoardArt.LoadCardArtwork(CardCatalog.Attack) : null);
+        : BoardArt.LoadCardArtwork(card, relikario) ?? (card.Kind == CardKind.Attack ? BoardArt.LoadCardArtwork(CardCatalog.Attack, relikario) : null);
 
-    internal void Present(CardDefinition? card) => Show(card?.Id, card, card == null ? null : Artwork(card));
+    internal void Present(CardDefinition? card, string? relikario = null)
+    {
+        var key = card?.Id == CardCatalog.Attack.Id ? $"attack:{RelikarioArt.Family(relikario)}" : card?.Id;
+        Show(key, card, card == null ? null : Artwork(card, relikario), relikario);
+    }
 
     /// <summary>Shows a reading sheet that is not a card, such as the explanation of a Relikia effect.</summary>
     internal void PresentSheet(string key, Texture2D? sheet) => Show("sheet:" + key, null, sheet);
 
-    private void Show(string? key, CardDefinition? card, Texture2D? art)
+    private void Show(string? key, CardDefinition? card, Texture2D? art, string? relikario = null)
     {
         if (_key == key) return;
         _key = key; _card = card; _art = art;
+        _accent = card == null ? BoardArt.Gold : BoardArt.CardColor(card, relikario);
         _elapsed = ReducedMotion ? AppearSeconds : 0;
         SetProcess(!ReducedMotion);
         QueueRedraw();
@@ -63,11 +70,10 @@ public partial class CardShowcase : Control
         }
         var t = (float)(_elapsed / AppearSeconds);
         var eased = 1 - (1 - t) * (1 - t);
-        var accent = _card == null ? BoardArt.Gold : BoardArt.CardColor(_card);
         var fit = BoardArt.FitArtwork(_art, area);
         var rect = new Rect2(fit.GetCenter() - fit.Size * Mathf.Lerp(0.94f, 1, eased) / 2 + new Vector2(0, (1 - eased) * 8), fit.Size * Mathf.Lerp(0.94f, 1, eased));
         RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 6), rect.Size).Grow(-4), new Color(0, 0, 0, 0.6f * eased), 14, 8);
-        RelickVisuals.Shadow(this, rect.Grow(-4), BoardArt.Tint(accent, 0.35f * eased), 16, 8);
+        RelickVisuals.Shadow(this, rect.Grow(-4), BoardArt.Tint(_accent, 0.35f * eased), 16, 8);
         DrawTextureRect(_art, rect, false, new Color(1, 1, 1, eased));
     }
 }

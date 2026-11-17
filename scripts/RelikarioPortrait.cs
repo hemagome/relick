@@ -8,7 +8,7 @@ public enum PortraitMotion { Idle, Attack, Hit, ExhaustedIdle, Heal, HitNormal, 
 /// <summary>
 /// A Relikario's animated figure: one fixed canvas shared by all clips, read from that Relikario's art folder
 /// (<see cref="RelikarioArt"/>). UI rebuilds reparent this node, preserving playback. A Relikario without clips
-/// draws an empty stand instead of failing.
+/// uses its static portrait when available.
 /// </summary>
 public partial class RelikarioPortrait : Control
 {
@@ -32,9 +32,12 @@ public partial class RelikarioPortrait : Control
     private Control _sprite = null!;
     private ShaderMaterial? _restMaterial;
     internal bool ReducedMotion { get; private set; }
-    /// <summary>The rest pose moves continuously; it has no frames to step through.</summary>
-    public bool IsContinuous => Clips[Motion].Still;
+    /// <summary>This pose is sampled continuously from time instead of stepping through a sheet.</summary>
+    public bool IsContinuous => _osamu != null || Clips[Motion].Still;
     private readonly Dictionary<PortraitMotion, Texture2D> _sheets = new();
+    private Texture2D? _staticPortrait;
+    private OsamuPortraitRig? _osamu;
+    internal OsamuPortraitRig.Pose? OsamuPose => _osamu?.Current;
     private double _elapsed;
     private PortraitMotion _restMotion;
 
@@ -46,11 +49,11 @@ public partial class RelikarioPortrait : Control
 
     public PortraitMotion Motion { get; private set; }
     public bool IsActionPlaying => !Clips[Motion].Loops;
-    public int FrameCount => Clips[Motion].Frames;
+    public int FrameCount => _osamu != null ? 1 : Clips[Motion].Frames;
     public double DurationSeconds => DurationFor(Motion);
     // Stabilize exact frame boundaries reached through repeated 60/120 Hz delta additions.
     public int CurrentFrame => Math.Min(FrameCount - 1, (int)(_elapsed / DurationSeconds * FrameCount + 1e-9));
-    public bool AssetsReady => _sheets.Count == Clips.Count;
+    public bool AssetsReady => _osamu != null || _sheets.Count == Clips.Count;
     /// <summary>Any form's Id; forms of one Relikario share their clips.</summary>
     public string RelikarioId { get; private set; } = RelikarioCatalog.Yuno.Id;
 
@@ -87,11 +90,19 @@ public partial class RelikarioPortrait : Control
     private void LoadClips()
     {
         _sheets.Clear();
+        _osamu = null;
+        if (RelikarioArt.Family(RelikarioId) == RelikarioCatalog.Osamu.Id &&
+            RelikarioArt.Load(RelikarioId, "sprite") is { } body && RelikarioArt.Load(RelikarioId, "turbo-sword") is { } sword)
+        {
+            _staticPortrait = null;
+            _osamu = new OsamuPortraitRig(body, sword);
+            _osamu.Advance(Motion, _elapsed, 0, ReducedMotion, FlipHorizontal);
+            return;
+        }
         var name = RelikarioCatalog.NameOf(RelikarioId);
         foreach (var (motion, clip) in Clips)
         {
             var file = clip.File;
-            // A missing clip leaves the stand empty; a malformed one is an art error worth stopping for.
             if (RelikarioArt.Load(RelikarioId, file) is not { } texture) continue;
             if (clip.Still)
             {
@@ -107,12 +118,13 @@ public partial class RelikarioPortrait : Control
                 throw new InvalidOperationException($"Hoja de {name} inválida: {file}. Debe conservar la cuadrícula {Columns} × {rows} y la proporción de cada fotograma.");
             _sheets.Add(motion, texture);
         }
+        _staticPortrait = _sheets.Count == 0 ? RelikarioArt.Portrait(RelikarioId) : null;
     }
 
     private void Refresh()
     {
         if (_sprite == null) return;
-        _sprite.Material = IsContinuous ? _restMaterial : null;
+        _sprite.Material = IsContinuous && _sheets.ContainsKey(Motion) ? _restMaterial : null;
         QueueRedraw(); _sprite.QueueRedraw();
     }
 
@@ -129,6 +141,7 @@ public partial class RelikarioPortrait : Control
 
     public void Play(PortraitMotion motion)
     {
+        _osamu?.BeginMotion();
         Motion = motion;
         _elapsed = 0;
         Refresh();
@@ -147,7 +160,22 @@ public partial class RelikarioPortrait : Control
         if (_elapsed >= DurationSeconds)
         {
             if (!IsActionPlaying) _elapsed %= DurationSeconds;
-            else { Motion = _restMotion; _elapsed = 0; }
+            else
+            {
+                if (_osamu != null)
+                {
+                    var remaining = _elapsed - DurationSeconds;
+                    _osamu.Advance(Motion, DurationSeconds, Math.Max(0, delta - remaining), ReducedMotion, FlipHorizontal);
+                    _osamu.BeginMotion();
+                    delta = remaining;
+                }
+                Motion = _restMotion; _elapsed = 0;
+            }
+        }
+        if (_osamu != null)
+        {
+            _osamu.Advance(Motion, _elapsed, delta, ReducedMotion, FlipHorizontal);
+            _sprite.QueueRedraw();
         }
         if (CurrentFrame != previousFrame || Motion != previousMotion) Refresh();
     }
@@ -166,7 +194,7 @@ public partial class RelikarioPortrait : Control
 
     public override void _Draw()
     {
-        if (!_sheets.ContainsKey(Motion)) return;
+        if (_osamu == null && !_sheets.ContainsKey(Motion) && _staticPortrait == null) return;
         var (halo, radius, _) = Placement();
         for (var i = 3; i >= 1; i--) DrawCircle(halo, radius * i / 3, BoardArt.Tint(AccentColor, 0.025f));
         DrawArc(halo, radius, -Mathf.Pi * 0.9f, Mathf.Pi * 0.7f, 64, BoardArt.Tint(AccentColor, 0.16f), 1, true);
@@ -187,8 +215,19 @@ public partial class RelikarioPortrait : Control
 
     private void DrawFigure()
     {
-        if (!_sheets.TryGetValue(Motion, out var texture)) return;
         var target = Placement().Target;
+        if (_osamu != null)
+        {
+            _osamu.Draw(_sprite, target, Motion, _elapsed, FlipHorizontal);
+            return;
+        }
+        _sprite.DrawSetTransform(Vector2.Zero);
+        if (!_sheets.TryGetValue(Motion, out var texture))
+        {
+            if (_staticPortrait is { } portrait)
+                _sprite.DrawTextureRect(portrait, BoardArt.FitArtwork(portrait, target.Grow(-target.Size.Y * 0.12f)), false);
+            return;
+        }
         if (FlipHorizontal) _sprite.DrawSetTransform(new Vector2(Size.X, 0), 0, new Vector2(-1, 1));
         if (IsContinuous)
         {

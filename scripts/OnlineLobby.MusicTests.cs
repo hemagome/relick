@@ -44,7 +44,7 @@ public partial class OnlineLobby
             };
 
             var template = GD.Load<AudioStreamInteractive>("res://assets/audio/music.tres");
-            Check(template.ClipCount >= 5, "Faltan las tres fases de música o sus puentes.");
+            Check(template.ClipCount >= 7, "Faltan temas de música o sus puentes.");
             const int any = (int)AudioStreamInteractive.ClipAny;
             Check(template.HasTransition(any, any) &&
                 template.GetTransitionFromTime(any, any) == AudioStreamInteractive.TransitionFromTime.NextBeat &&
@@ -75,6 +75,16 @@ public partial class OnlineLobby
             }
             Check(template.GetTransitionFromTime(1, 4) == AudioStreamInteractive.TransitionFromTime.NextBar,
                 "El clímax debe partir en un compás del combate.");
+            foreach (var (index, name, bpm, beats) in new[] { (5, "Combat:osamu", 144, 160), (6, "Climax:osamu", 174, 128) })
+            {
+                var song = template.GetClipStream(index) as AudioStreamOggVorbis;
+                Check(template.GetClipName(index) == name && song is { Loop: true, BarBeats: 4 } && song.Bpm == bpm &&
+                    song.BeatCount == beats && Math.Abs(song.GetLength() - beats * 60.0 / bpm) < .05,
+                    $"El tema de Osamu {name} no conserva el nombre, compás o bucle.");
+            }
+            Check(template.GetTransitionFromTime(5, 6) == AudioStreamInteractive.TransitionFromTime.NextBar &&
+                template.GetTransitionFadeMode(5, 6) == AudioStreamInteractive.FadeMode.Cross,
+                "Osamu debe pasar a su clímax con fundido desde el siguiente compás.");
 
             // A genuinely empty score must be harmless before music assets are assigned.
             music = new MusicDirector { Stream = new AudioStreamInteractive { ClipCount = 5 } };
@@ -85,9 +95,9 @@ public partial class OnlineLobby
 
             var score = (AudioStreamInteractive)template.Duplicate();
             // A second rival without lead-ins exercises the direct transitions.
-            score.ClipCount = 7;
-            score.SetClipName(5, "Combat:another"); score.SetClipName(6, "Climax:another");
-            for (var i = 0; i < 7; i++)
+            score.ClipCount = 9;
+            score.SetClipName(7, "Combat:another"); score.SetClipName(8, "Climax:another");
+            for (var i = 0; i < 9; i++)
             {
                 var clock = AudioStreamOggVorbis.LoadFromFile("res://tests/fixtures/music-clock.ogg");
                 var bridge = i is 3 or 4;
@@ -112,17 +122,28 @@ public partial class OnlineLobby
             music.PresentDuel("opponents", opponents); await Clip(1);
             Check(music.EnemyTheme == "yuno", "Se elige la música del Relikario propio.");
             opponents.MySeat = 1;
-            music.PresentDuel("opponents", opponents); await Clip(5);
+            music.PresentDuel("opponents", opponents); await Clip(7);
             Check(music.EnemyTheme == "another", "Invertir asientos no cambia al rival musical.");
             opponents.Players[1].RelikarioId = "third";
             music.PresentDuel("opponents", opponents);
-            Check(music.DesiredClipIndex == 5, "Cambiar de Relikario propio altera la música del enemigo.");
+            Check(music.DesiredClipIndex == 7, "Cambiar de Relikario propio altera la música del enemigo.");
             opponents.Players[1].Health = 0;
-            music.PresentDuel("opponents", opponents); await Clip(6);
+            music.PresentDuel("opponents", opponents); await Clip(8);
             Check(music.EnemyTheme == "another", "El cero propio usa otro tema de clímax.");
             var evolved = Snapshot(Phase.Combat); evolved.Players[1].RelikarioId = "yuno-lv2";
             music.PresentDuel("evolved", evolved); await Clip(1);
             Check(music.EnemyTheme == "yuno", "La evolución pierde la identidad musical de Yuno.");
+            var osamu = Snapshot(Phase.Preparation);
+            osamu.Players[1].RelikarioId = "osamu";
+            music.PresentDuel("osamu", osamu); await Clip(5);
+            osamu.Players[1].RelikarioId = "osamu-lv2";
+            music.PresentDuel("osamu", osamu);
+            Check(music.DesiredClipIndex == 5, "Osamu pierde su tema al evolucionar.");
+            osamu.Players[1].Health = 0;
+            music.PresentDuel("osamu", osamu); await Clip(6);
+            osamu.Players[1].Health = 3;
+            music.PresentDuel("osamu", osamu);
+            Check(music.EnemyTheme == "osamu" && music.DesiredClipIndex == 6, "Osamu pierde el clímax al curarse.");
 
             foreach (var zeroSeat in new[] { 0, 1 })
             {
@@ -164,7 +185,7 @@ public partial class OnlineLobby
             await arena.CheckAudioPresentation();
             await CheckAudioControls();
             global.ShowMenu();
-            GD.Print("MUSIC_PASS · tres composiciones, selección por rival y evolución, ambos asientos, curación, recuperación, resultado, nuevo duelo, peticiones rápidas y reproducción sin reinicios.");
+            GD.Print("MUSIC_PASS · menú, combate y clímax de Yuno y Osamu, selección por rival, evolución, curación, recuperación y transiciones.");
             // Let native audio mixing release active voices before engine teardown.
             global.Stop();
             foreach (var player in GetNode<SoundDirector>("/root/SoundDirector").GetChildren().OfType<AudioStreamPlayer>()) player.Stop();

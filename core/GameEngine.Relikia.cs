@@ -67,6 +67,8 @@ public sealed partial class GameEngine
             case RelikiaEffect.ChangeBonus:
                 var bonus = p.Bonus!;
                 var bonusPlacedTurn = p.BonusPlacedTurn;
+                if (p.CorruptsOnMemory(CardZone.Bonus, -1)) p.MarkForCorruption(CardZone.Exchange, p.Exchange.Count);
+                p.ClearCorruptionMarks(CardZone.Bonus);
                 ChangeZahiraHosts(actor, FieldZone.Bonus, -1, movedTo: new(actor, FieldZone.Exchange, p.Exchange.Count, bonus));
                 ForgetFieldCodeSource(p, FieldZone.Bonus);
                 p.Bonus = null;
@@ -98,7 +100,7 @@ public sealed partial class GameEngine
         EndRelikiaChoice();
         if (destination == CardDestination.Exchange)
         {
-            MoveHandCardToField(p, handIndex);
+            MoveHandCardToField(p, handIndex, CardZone.Exchange, p.Exchange.Count);
             PlaceInExchange(p, id);
         }
         else
@@ -159,6 +161,8 @@ public sealed partial class GameEngine
         ForgetFieldCodeSource(source, FieldZone.Bonus);
         source.Bonus = null;
         var owner = source.ReleaseForeignFieldCard(id) ? 1 - Seat(source) : Seat(source);
+        if (source.CorruptsOnMemory(CardZone.Bonus, -1)) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count);
+        source.ClearCorruptionMarks(CardZone.Bonus);
         recipient.Hand.Add(id);
         if (owner != Seat(recipient)) recipient.MarkForeignHandCard(recipient.Hand.Count - 1);
         BonusClaimed?.Invoke(Array.IndexOf(State.Players, source), Array.IndexOf(State.Players, recipient), recipient.Hand.Count - 1, id);

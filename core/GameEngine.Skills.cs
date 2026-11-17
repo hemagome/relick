@@ -69,6 +69,8 @@ public sealed partial class GameEngine
         var attack = State.PendingAttack!;
         State.PendingAttack = attack with { DamageResolved = true };
         if (State.IsOver) { State.PendingAttack = null; return; }
+        if (attack.Critical && !attack.EffectsSuppressed && attack.SkillId == CardCatalog.TurboOverlap.Id &&
+            OfferOsamuSearch(attack.Attacker, attack.SkillId, OsamuAgilitySearch)) return;
         // Canceling damage does not undo the critical result or its skill effect.
         if (!State.IsOver && attack.Critical && !attack.EffectsSuppressed && attack.SkillId == CardCatalog.Magnet.Id &&
             (State.Players[1 - attack.Attacker].Hand.Count > 0 || State.Players[1 - attack.Attacker].Bonus != null))
@@ -115,6 +117,8 @@ public sealed partial class GameEngine
         else
         {
             // A copy the rival had borrowed simply comes home.
+            if (rival.CorruptsOnMemory(CardZone.Hand, handIndex))
+                State.Active.MarkForCorruption(CardZone.Hand, State.Active.Hand.Count);
             var returning = rival.RemoveHandCard(handIndex);
             State.Active.Hand.Add(id);
             if (!returning) State.Active.MarkForeignHandCard(State.Active.Hand.Count - 1);

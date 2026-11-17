@@ -73,7 +73,7 @@ public partial class OnlineLobby
         _name = new LineEdit { Name = "PlayerName", PlaceholderText = "¿Cómo te llamas?", Text = "Jugador", MaxLength = 24,
             CustomMinimumSize = new(0, 48), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         identityRow.AddChild(_name);
-        _decks = AddButton(identityRow, DeckButtonText("Entrenamiento"), OpenDecks);
+        _decks = AddButton(identityRow, "Entrenamiento", OpenDecks);
         _decks.Name = "OpenDecks"; _decks.ClipText = true; _decks.CustomMinimumSize = new(240, 48);
         _decks.Icon = DeckScreen.Thumbnail(RelikarioCatalog.Yuno.Id); _decks.ExpandIcon = true; _decks.AddThemeConstantOverride("icon_max_width", 40); _decks.AddThemeConstantOverride("h_separation", 10);
         _decks.TooltipText = "Elige el mazo con el que juegas o arma uno nuevo.";
@@ -154,6 +154,13 @@ public partial class OnlineLobby
         _content.Visible = _arena == null && !_loginScreen.Visible;
     }
 
+    private void PresentEquippedDeck(DeckInfo? deck)
+    {
+        _decks.Text = deck?.Name ?? "Entrenamiento";
+        var thumbnail = DeckScreen.Thumbnail(deck?.Relikario ?? RelikarioCatalog.Yuno.Id);
+        _decks.Icon = _matchLink.Thumbnail = thumbnail;
+    }
+
     private void JoinRoom() { _lobbyNotice = _localError = ""; SaveAccountName(); _lobby.Join(_code.Text, _name.Text); }
 
     private void QuickMatch()
@@ -207,11 +214,7 @@ public partial class OnlineLobby
         _name.Editable = _code.Editable = room == null && !busy && !searching;
         PresentAccountName(_name.Editable);
         _decks.Disabled = !ready || busy || searching || room != null;
-        var activeDeck = _lobby.Decks.FirstOrDefault(deck => deck.Active);
-        _decks.Text = DeckButtonText(activeDeck?.Name ?? "Entrenamiento");
-        // The searching card shows the sleeve the player will bring; the training deck keeps the classic one.
-        _matchLink.Sleeve = activeDeck?.Sleeve;
-        _decks.Icon = DeckScreen.Thumbnail(activeDeck?.Relikario ?? RelikarioCatalog.Yuno.Id);
+        PresentEquippedDeck(_lobby.Decks.FirstOrDefault(deck => deck.Active));
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;
         _copy.Text = _copiedCode == roomCode && _copyFeedbackSeconds > 0 ? "Copiado ✓" : "Copiar código";
@@ -234,9 +237,6 @@ public partial class OnlineLobby
     {
         if (_shownLobbyProblem.Length > 0 && _status.IsVisibleInTree()) _lobbyPage.EnsureControlVisible(_status);
     }
-
-    /// <summary>The active deck's name alone did not read as the deck selector.</summary>
-    internal static string DeckButtonText(string deck) => $"Mazo · {deck}";
 
     private static Label Caption(string text, Color color)
     {

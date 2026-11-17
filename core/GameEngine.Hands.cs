@@ -19,6 +19,12 @@ public sealed partial class GameEngine
         var revealed = p.RevealedHandSlots;
         p.RevealedHandSlots = rival.RevealedHandSlots;
         rival.RevealedHandSlots = revealed;
+        var marked = p.CorruptionMarks?.GetValueOrDefault(CardZone.Hand);
+        var rivalMarked = rival.CorruptionMarks?.GetValueOrDefault(CardZone.Hand);
+        p.ClearCorruptionMarks(CardZone.Hand);
+        rival.ClearCorruptionMarks(CardZone.Hand);
+        foreach (var slot in rivalMarked ?? []) p.MarkForCorruption(CardZone.Hand, slot);
+        foreach (var slot in marked ?? []) rival.MarkForCorruption(CardZone.Hand, slot);
         if (ownCount > 0) HandTransferred?.Invoke(actor, 1 - actor, ownCount);
         if (rivalCount > 0) HandTransferred?.Invoke(1 - actor, actor, rivalCount);
         State.LastCombat = $"{p.Name} intercambia su mano de {ownCount} carta(s) por la de {rival.Name}, de {rivalCount} carta(s).";

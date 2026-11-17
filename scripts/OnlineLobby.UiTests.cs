@@ -34,6 +34,13 @@ public partial class OnlineLobby
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
             var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
+            if (OS.GetCmdlineUserArgs().Contains("--osamu-only"))
+            {
+                await online.CheckOsamuSearchLayout(); await online.CheckOsamuPresentation();
+                online.QueueFree(); await Layout();
+                GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
+                GD.Print("PVP_OSAMU_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--choice-preview-dir=")) is { } choicePreview)
             {
                 await online.CaptureChoicePreview(choicePreview.Split('=', 2)[1]); online.QueueFree(); await Layout();
@@ -294,6 +301,8 @@ public partial class OnlineLobby
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();
             await online.CheckDeckSearchLayout();
+            await online.CheckOsamuSearchLayout();
+            await online.CheckOsamuPresentation();
             await online.CheckMemoryRecoveryLayout();
             await online.CheckPlumberStarLayout();
             await online.CheckJessicaLayout();

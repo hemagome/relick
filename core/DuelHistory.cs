@@ -56,7 +56,8 @@ public sealed partial class GameEngine
         var state = State;
         if (state.IsOver || state.Phase is Phase.Preparation or Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final or Phase.Finished) return null;
         var frame = _activationChain.FirstOrDefault() ?? _activeActivation;
-        var card = frame?.CardId ?? state.PendingCode?.CardId ?? state.PendingAttack?.SkillId ?? state.PendingAttackRoll?.SkillId;
+        var card = frame?.CardId ?? state.PendingCode?.CardId ?? state.PendingAttack?.SkillId ?? state.PendingAttackRoll?.SkillId ??
+            state.PendingDecision?.Attack?.SkillId;
         var actor = frame?.Actor ?? state.PendingCode?.Actor ?? state.PendingAttack?.Attacker ?? state.PendingAttackRoll?.Attacker ?? state.DecisionPlayer;
         if (card == null && state.PendingDieRoll is { } die)
         {
@@ -66,7 +67,9 @@ public sealed partial class GameEngine
                 DiePurpose.ExtraLife => CardCatalog.ExtraLife.Id, DiePurpose.PointsChange => CardCatalog.PointsIncrease.Id,
                 DiePurpose.Dodge => CardCatalog.Dodge.Id, DiePurpose.PcStore => CardCatalog.Pc.Id,
                 DiePurpose.SkillLearning => CardCatalog.Reverse.Id, DiePurpose.FieldCombat => CardCatalog.Jessica.Id,
-                DiePurpose.QuickLoad => CardCatalog.QuickLoad.Id, DiePurpose.Zahira => CardCatalog.ZahiraFlair.Id, _ => null
+                DiePurpose.QuickLoad => CardCatalog.QuickLoad.Id, DiePurpose.Zahira => CardCatalog.ZahiraFlair.Id,
+                DiePurpose.TurboSwordDamage or DiePurpose.TurboSwordDefense => CardCatalog.TurboSword.Id,
+                DiePurpose.TurboOverlapDamage => CardCatalog.TurboOverlap.Id, _ => null
             };
         }
         return new DuelResolutionView { Actor = actor, DecisionPlayer = state.DecisionPlayer, CardId = card ?? "",
@@ -194,7 +197,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.TrapCraft when m.Flag => g.State.TrapCraftQueue?.FirstOrDefault() is { } craft
                 ? craft.Options.ElementAtOrDefault(m.Value) ?? craft.CardId : null,
             DuelMoveKind.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
-            DuelMoveKind.Choose => g.State.PendingDecision?.Source,
+            DuelMoveKind.Choose when g.State.PendingDecision is { } decision && CardCatalog.All.ContainsKey(decision.Source) => decision.Source,
             _ => null
         };
     }
@@ -240,6 +243,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.TrapCraft => m.Flag ? $"{name} elige crear {card}." : $"{name} pasa sin crear un Código Trampa.",
             DuelMoveKind.ZahiraTarget => $"{name} elige dónde colocar Zahira Flair.",
             DuelMoveKind.Evolve => $"{name} evoluciona su Relikario.", DuelMoveKind.Advance => $"{name} avanza de fase.",
+            DuelMoveKind.RelikarioSearch => $"{name} activa la búsqueda de Osamu Lv 2.",
             DuelMoveKind.Concede => $"{name} abandona el duelo.", DuelMoveKind.ComboResponses => "Continúa la resolución de la jugada.",
             DuelMoveKind.Reward => $"{name} elige el efecto adicional de Relikia.", _ => $"{name} resuelve una decisión."
         };

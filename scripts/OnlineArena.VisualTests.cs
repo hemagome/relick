@@ -821,6 +821,113 @@ public partial class OnlineArena
         GD.Print("PVP_PLUMBER_STAR_LAYOUT_PASS · coste, respuesta, inmunidad y multiplicador públicos, vencimiento, cuatro tamaños y ambos jugadores/asientos.");
     }
 
+    internal async Task CheckOsamuSearchLayout()
+    {
+        if (BoardArt.LoadCardArtwork(CardCatalog.TurboSword) == null || BoardArt.LoadCardArtwork(CardCatalog.TurboOverlap) == null)
+            throw new Exception("Falta arte de las habilidades de Osamu.");
+        var random = new DuelRandom(); random.Replay([4]);
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = [new string('W', 24), "Yuno"], Hands = [[CardCatalog.Attack.Id], []],
+            Decks = [[CardCatalog.TimeBomb.Id, CardCatalog.Attack.Id, CardCatalog.TimeBomb.Id, CardCatalog.Agility.Id, CardCatalog.Agility.Id], []],
+            Bonuses = [null, null],
+            Relikarios = [RelikarioCatalog.Osamu.Id, RelikarioCatalog.Yuno.Id]
+        }, random);
+        game.State.Turn = 2;
+        game.State.Active.Skills.Add(CardCatalog.TurboOverlap.Id);
+        if (!game.Attack(0, 0, 0).Success || game.State.Phase != Phase.Decision)
+            throw new Exception("No se abrió la búsqueda de Osamu Lv 1.");
+        var baseSearch = DuelSnapshot.For(game, 0, 100);
+        var skip = baseSearch.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.CardId == null);
+        if (!skip.Move.Apply(game, 0).Success || !game.Advance(0).Success)
+            throw new Exception("No se pudo pasar la búsqueda de Osamu Lv 1.");
+        game.State.Active.Relikario = RelikarioCatalog.OsamuLv2;
+        var otherCards = CardCatalog.TrainingDeck().Where(id => CardCatalog.Get(id).Relikario != RelikarioCatalog.Yuno.Id &&
+            id != CardCatalog.TimeBomb.Id && id != CardCatalog.Agility.Id).Take(35).ToArray();
+        game.State.Active.Deck.AddRange(otherCards.Take(23));
+        game.State.Active.Memory.AddRange(otherCards.Skip(23));
+        var actions = DuelSnapshot.For(game, 0, 101);
+        if (!actions.Options.Single(o => o.Move.Kind == DuelMoveKind.RelikarioSearch).Move.Apply(game, 0).Success)
+            throw new Exception("No se abrió la búsqueda de Osamu Lv 2.");
+        var search = DuelSnapshot.For(game, 0, 102);
+        var saved = game.SaveSnapshot();
+        game.State.Active.Memory.Clear();
+        var deckOnly = DuelSnapshot.For(game, 0, 103);
+        game = GameEngine.FromSnapshot(saved, new SeededRandom(43));
+        game.State.Active.Deck.Clear();
+        var memoryOnly = DuelSnapshot.For(game, 0, 104);
+        var issues = new List<string>();
+        async Task Layout()
+        {
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        bool Visible(Button? button, string context)
+        {
+            if (button != null && RectVisible(button, button.GetGlobalRect()) &&
+                GetGlobalRect().Grow(1).Encloses(button.GetGlobalRect())) return true;
+            issues.Add($"{context} · botón {button?.GetGlobalRect()} · pantalla {Size}");
+            return false;
+        }
+        var window = GetWindow();
+        var oldSize = window.Size;
+        var oldContentScale = window.ContentScaleSize;
+        foreach (var size in new[] { new Vector2I(700, 390), new(700, 600), new(819, 450), new(844, 390), new(960, 540), new(1024, 600),
+            new(1024, 768), new(1099, 700), new(1100, 599), new(1100, 768), new(1280, 720), new(1366, 768),
+            new(1440, 980), new(1820, 1024), new(2280, 1024) })
+        {
+            window.Size = window.ContentScaleSize = size;
+            await Layout();
+            _selected.Clear(); ResetAnimations(); PresentTestSnapshot(baseSearch);
+            await Layout();
+            if (!Size.IsEqualApprox((Vector2)size)) throw new Exception($"Se solicitó {size} y el tablero mide {Size}.");
+            Visible(PresentedButton(skip), $"Pasar Lv 1 {size}");
+            if (_handCards.Count != 4) throw new Exception("La búsqueda de Osamu Lv 1 debe mostrar las cuatro copias elegibles.");
+            foreach (var card in _handCards) Visible(card, $"Carta Lv 1 {card.Name} {size}");
+            var baseOption = _deckSearchOptions.Last();
+            var baseCard = _handCards.Single(c => c.Name == "HandCard3");
+            baseCard.Disabled = false;
+            GuiInputTestDriver.Click(baseCard); await Layout();
+            Visible(PresentedButton(baseOption), $"Confirmar Lv 1 {size}");
+            Visible(PresentedButton(skip), $"Pasar tras seleccionar Lv 1 {size}");
+            ResetAnimations(); PresentTestSnapshot(actions);
+            if (PresentedButton(actions.Options.Single(o => o.Move.Kind == DuelMoveKind.RelikarioSearch)) == null)
+                throw new Exception("Falta el botón Buscar con Osamu en Acciones.");
+            foreach (var (snapshot, source) in new[] { (search, "mazo y memoria"), (deckOnly, "mazo"), (memoryOnly, "memoria") })
+            {
+                ResetAnimations(); PresentTestSnapshot(snapshot);
+                await Layout();
+                if (snapshot == search)
+                {
+                    var titles = _hand!.FindChildren("HandSectionTitle*", "Label", true, false).OfType<Label>().ToArray();
+                    if (!titles.Any(t => t.Text.Contains("TU MAZO")) || !titles.Any(t => t.Text.Contains("TU MEMORIA")))
+                        throw new Exception("La búsqueda de Osamu debe distinguir el mazo de la memoria.");
+                }
+                var placeholder = _moves.GetChildren().OfType<Button>().SingleOrDefault(b => b.Disabled && PresentedOption(b) == null);
+                Visible(placeholder, $"Confirmación antes de seleccionar · {source} {size}");
+                var footer = _decisionBar.GetGlobalRect();
+                var option = _deckSearchOptions.Last();
+                var card = _handCards.Single(c => c.Name == $"HandCard{_deckSearchOptions.Length - 1}");
+                _hand!.EnsureControlVisible(card); await Layout();
+                if (!Visible(card, $"Última carta · {source} {size}")) continue;
+                card.Disabled = false;
+                GuiInputTestDriver.Click(card); await Layout();
+                var confirm = PresentedButton(option);
+                var fits = Visible(confirm, $"Confirmar Lv 2 · {source} {size}");
+                if (!_decisionBar.GetGlobalRect().IsEqualApprox(footer))
+                    issues.Add($"Se movió el pie al seleccionar · {source} {size}");
+                if (fits && confirm != null)
+                {
+                    confirm.Disabled = false;
+                    GuiInputTestDriver.Click(confirm);
+                }
+            }
+        }
+        window.Size = oldSize; window.ContentScaleSize = oldContentScale;
+        _selected.Clear();
+        if (issues.Count > 0) throw new Exception(string.Join("\n", issues));
+        GD.Print("PVP_OSAMU_SEARCH_PASS · cuatro cartas visibles en Lv 1, y confirmación fija antes y después de desplazar Lv 2 en quince resoluciones.");
+    }
+
     internal async Task CheckMemoryRecoveryLayout()
     {
         if (GD.Load<Texture2D>("res://assets/cards/floppy-disk-clean.png") == null)

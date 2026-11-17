@@ -141,7 +141,7 @@ public sealed partial class GameEngine
             }
         }
         ReturnHandCardToDeck(targetSeat, handIndex);
-        foreach (var owner in affected.Distinct().Order()) { Shuffle(State.Players[owner].Deck); CardsReturnedToDeck?.Invoke(owner); }
+        foreach (var owner in affected.Distinct().Order()) { Shuffle(State.Players[owner]); CardsReturnedToDeck?.Invoke(owner); }
         Log(returnsHandCard
             ? $"{State.Players[actor].Name} devuelve dos cartas de memoria y una de la mano de {target.Name} a sus mazos, los baraja y ese jugador roba una carta."
             : $"{State.Players[actor].Name} devuelve dos cartas de memoria, baraja sus mazos y retira la trampa de la mano de {target.Name}, que roba una carta.");

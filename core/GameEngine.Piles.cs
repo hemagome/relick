@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira }
+public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck }
 /// <summary>Owner is the player the card leaves; MemoryOwner is the memory that receives it.</summary>
 public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1)
 {
@@ -17,10 +17,10 @@ public sealed partial class GameEngine
         => CardMovedToPile?.Invoke(new(Seat(p), id, source, index, destination, memoryOwner));
 
     /// <summary>Returns where the card landed, or null when a trap leaves the game.</summary>
-    private MemorySelection? SendHandToMemory(PlayerState p, int index)
+    private MemorySelection? SendHandToMemory(PlayerState p, int index, bool deferCorruption = false)
     {
         var id = p.Hand[index];
-        var landed = SendToMemory(p, id, CardZone.Hand, index);
+        var landed = SendToMemory(p, id, CardZone.Hand, index, deferCorruption: deferCorruption);
         p.RemoveHandCard(index);
         return landed;
     }
@@ -29,23 +29,33 @@ public sealed partial class GameEngine
     /// Every card that leaves a hand or the field for a memory goes to its owner's memory,
     /// whoever controlled it. Call this before removing a hand card: its slot carries the ownership.
     /// </summary>
-    private MemorySelection? SendToMemory(PlayerState p, string id, CardZone source, int index, bool notify = true)
+    private MemorySelection? SendToMemory(PlayerState p, string id, CardZone source, int index, bool notify = true,
+        bool deferCorruption = false, int? corruptionIndex = null)
     {
         var holder = Seat(p);
         var foreign = source == CardZone.Hand ? p.IsForeignHandCard(index) : p.ReleaseForeignFieldCard(id);
         var owner = foreign ? 1 - holder : holder;
         var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
-        if (notify) NotifyPileMove(p, id, source, index, trap ? CardZone.OutOfGame : CardZone.Memory, trap ? -1 : owner);
+        var corrupt = !trap && !deferCorruption && p.CorruptsOnMemory(source, corruptionIndex ?? index);
+        var destination = trap ? CardZone.OutOfGame : corrupt ? CardZone.Corrupted : CardZone.Memory;
+        if (notify) NotifyPileMove(p, id, source, index, destination, trap ? -1 : owner);
         if (trap) return null;
+        if (corrupt)
+        {
+            State.Players[owner].CorruptedMemory.Add(id);
+            Log($"Una carta de {State.Players[owner].Name} se corrompe al ir a la memoria por el efecto de Osamu.");
+            return null;
+        }
         var memory = State.Players[owner].Memory;
         memory.Add(id);
         return new(owner, memory.Count - 1);
     }
 
     /// <summary>Moves a hand card onto its holder's field, keeping track of a borrowed copy.</summary>
-    private string MoveHandCardToField(PlayerState p, int index)
+    private string MoveHandCardToField(PlayerState p, int index, CardZone zone, int slot)
     {
         var id = p.Hand[index];
+        if (p.CorruptsOnMemory(CardZone.Hand, index)) p.MarkForCorruption(zone, slot);
         if (p.RemoveHandCard(index)) p.MarkForeignFieldCard(id);
         return id;
     }
@@ -69,8 +79,27 @@ public sealed partial class GameEngine
             return -1;
         }
         CardReturnedToDeck?.Invoke(actor, index, id);
+        var marked = p.CorruptsOnMemory(CardZone.Hand, index);
         var owner = p.RemoveHandCard(index) ? 1 - actor : actor;
-        State.Players[owner].Deck.Add(id);
+        var recipient = State.Players[owner];
+        if (marked) recipient.MarkForCorruption(CardZone.Deck, recipient.Deck.Count);
+        recipient.Deck.Add(id);
         return owner;
+    }
+
+    // Equipment and Tótem de Oro wait for responses in memory and only stay there when placement fails.
+    private bool CorruptWaitingFieldCard(EngineActivation frame)
+    {
+        if (!frame.CorruptOnMemory) return false;
+        frame.CorruptOnMemory = false;
+        var p = State.Players[frame.MemorySeat];
+        var index = frame.MemoryIndex;
+        var id = p.Memory[index];
+        NotifyPileMove(State.Players[frame.Actor], id, CardZone.Activation, destination: CardZone.Corrupted, memoryOwner: frame.MemorySeat);
+        p.Memory.RemoveAt(index);
+        ShiftSniperIndices(frame.MemorySeat, index);
+        p.CorruptedMemory.Add(id);
+        Log($"Una carta de {p.Name} se corrompe al ir a la memoria por el efecto de Osamu.");
+        return true;
     }
 }

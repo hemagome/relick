@@ -63,8 +63,9 @@ public partial class OnlineArena
     // This is a presentation of server-authorized views, never a local rules engine.
     internal void PresentPreparation(RoomInfo room, PreparationInfo? info, NetworkCard[] cards, bool connected, bool pending)
     {
+        var relikarios = RelikariosForRoom(room);
         var key = $"{room.Code}:{room.MySeat}:{room.PlayerOne}:{room.PlayerTwo}:{connected}:{pending}:{info?.MyConfirmed}:{info?.OpponentConfirmed}:{info?.Started}:" +
-            $"{info?.HandCountOne}:{info?.HandCountTwo}:{info?.DeckCountOne}:{info?.DeckCountTwo}:" +
+            $"{info?.HandCountOne}:{info?.HandCountTwo}:{info?.DeckCountOne}:{info?.DeckCountTwo}:{relikarios?.RelikarioOne}:{relikarios?.RelikarioTwo}:" +
             string.Join(',', cards.Select(c => $"{c.Id}/{c.Definition}"));
         if (_openingKey == key && !_choosingOpeningSkill && _preparing && _openingConnected == connected && _openingPending == pending) return;
         _choosingOpeningSkill = false;
@@ -77,18 +78,8 @@ public partial class OnlineArena
         }
         _openingReturns.IntersectWith(cards.Select(c => c.Id));
         SyncOpeningSelection();
-        DuelPlayerView Player(int seat) => new()
-        {
-            Name = seat == 0 ? room.PlayerOne : room.PlayerTwo,
-            Health = RelikarioCatalog.Yuno.MaxHealth, MaxHealth = RelikarioCatalog.Yuno.MaxHealth, Level = 1,
-            Dexterity = RelikarioCatalog.Yuno.StartingDexterity,
-            HandCount = (int)(seat == 0 ? info?.HandCountOne ?? 0 : info?.HandCountTwo ?? 0),
-            DeckCount = (int)(seat == 0 ? info?.DeckCountOne ?? 0 : info?.DeckCountTwo ?? 0),
-            Hand = seat == room.MySeat ? cards.Select(c => (string?)c.Definition).ToArray() :
-                new string?[(int)(seat == 0 ? info?.HandCountOne ?? 0 : info?.HandCountTwo ?? 0)]
-        };
         _snapshot = new DuelSnapshot { MySeat = room.MySeat, Phase = Phase.Preparation, Stage = Phase.Preparation,
-            DecisionPlayer = room.MySeat, Players = [Player(0), Player(1)] };
+            DecisionPlayer = room.MySeat, Players = [PreparationPlayer(room, info, relikarios, 0, cards), PreparationPlayer(room, info, relikarios, 1, cards)] };
         var newlyPresented = new[] { room.MySeat, (byte)(1 - room.MySeat) }.Where(seat =>
             !_openingHandsPresented[seat] && _snapshot.Players[seat].Hand.Length == OpeningHandSize).ToArray();
         foreach (var seat in newlyPresented) _openingHandsPresented[seat] = true;
@@ -102,6 +93,23 @@ public partial class OnlineArena
                     _flights.Enqueue(new(new DuelVisualEvent { Kind = DuelVisualKind.Draw, Player = seat, Value = slot }, Duration: 0.20));
             HideOpeningDestinations(); _flightLayoutFrames = 2; _lastDisabled = null;
         }
+    }
+
+    private RoomRelikarioInfo? RelikariosForRoom(RoomInfo room) =>
+        Connection?.RoomRelikarios is { } relikarios && relikarios.RoomCode == room.Code ? relikarios : null;
+
+    private static DuelPlayerView PreparationPlayer(RoomInfo room, PreparationInfo? info, RoomRelikarioInfo? relikarios, int seat, NetworkCard[]? cards = null)
+    {
+        var definition = RelikarioCatalog.Find(seat == 0 ? relikarios?.RelikarioOne : relikarios?.RelikarioTwo) ?? RelikarioCatalog.Yuno;
+        var handCount = (int)(seat == 0 ? info?.HandCountOne ?? 0 : info?.HandCountTwo ?? 0);
+        return new DuelPlayerView
+        {
+            Name = seat == 0 ? room.PlayerOne : room.PlayerTwo,
+            RelikarioId = definition.Id, Health = definition.MaxHealth, MaxHealth = definition.MaxHealth,
+            Level = definition.Level, Dexterity = definition.StartingDexterity, HandCount = handCount,
+            DeckCount = (int)(seat == 0 ? info?.DeckCountOne ?? 0 : info?.DeckCountTwo ?? 0),
+            Hand = seat == room.MySeat && cards != null ? cards.Select(c => (string?)c.Definition).ToArray() : new string?[handCount]
+        };
     }
 
     private void SyncOpeningSelection()

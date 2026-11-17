@@ -7,6 +7,7 @@ namespace Relick;
 public partial class CardCollectionView : HBoxContainer
 {
     public IReadOnlyList<string?> Cards { get; init; } = [];
+    public Func<int, string?>? RelikarioOf { get; init; }
     public bool ShortScreen { get; init; }
     public float InspectorWidth { get; init; } = 340;
     public event Action<int>? CardPressed;
@@ -38,7 +39,7 @@ public partial class CardCollectionView : HBoxContainer
         {
             var slot = index;
             Button item = Cards[index] is string id
-                ? new HandCard { Card = CardCatalog.Get(id), PresentationScale = scale }
+                ? new HandCard { Card = CardCatalog.Get(id), PresentationScale = scale, RelikarioId = RelikarioOf?.Invoke(index) }
                 : new OpponentHandCard { FaceSize = new Vector2(126, 184) * scale };
             item.Name = "CollectionCard" + index;
             item.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;

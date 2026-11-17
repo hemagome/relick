@@ -14,10 +14,12 @@ public sealed partial class GameEngine
             return CommandResult.Fail("Selecciona un equipo de tu mano.");
         var id = p.Hand[handIndex];
         // The card waits in its owner's memory while the activation can still be answered.
-        var waiting = SendToMemory(p, id, CardZone.Hand, handIndex, notify: false)!;
+        var corruptOnMemory = p.CorruptsOnMemory(CardZone.Hand, handIndex);
+        var waiting = SendToMemory(p, id, CardZone.Hand, handIndex, notify: false, deferCorruption: true)!;
         p.RemoveHandCard(handIndex); State.ActionsLeft--;
         var frame = new EngineActivation(actor, id, 1, 0, State.Phase)
-            { Kind = ActivationKind.Equipment, MemoryIndex = waiting.Index, MemoryOwner = waiting.Owner == actor ? null : waiting.Owner };
+            { Kind = ActivationKind.Equipment, MemoryIndex = waiting.Index, MemoryOwner = waiting.Owner == actor ? null : waiting.Owner,
+                CorruptOnMemory = corruptOnMemory };
         BeginActivation(frame);
         return CommandResult.Ok();
     }
@@ -28,6 +30,11 @@ public sealed partial class GameEngine
         if (p.Equipment == null || p.Equipment == frame.CardId && CardCatalog.Get(frame.CardId).Stackable)
         {
             MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p);
+            if (frame.CorruptOnMemory)
+            {
+                p.MarkForCorruption(CardZone.Equipment, p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1);
+                frame.CorruptOnMemory = false;
+            }
             if (p.Equipment != null)
             {
                 p.EquipmentStackedCopies++;
@@ -57,8 +64,10 @@ public sealed partial class GameEngine
         if (p.Equipment == null) return;
         var id = p.Equipment;
         var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
-        ChangeZahiraHosts(Array.IndexOf(State.Players, p), FieldZone.Equipment, index < 0 ? p.EquipmentStackedCopies : index);
-        var landed = SendToMemory(p, id, CardZone.Equipment, -1);
+        var slot = index < 0 ? p.EquipmentStackedCopies : index;
+        ChangeZahiraHosts(Array.IndexOf(State.Players, p), FieldZone.Equipment, slot);
+        var landed = SendToMemory(p, id, CardZone.Equipment, -1, corruptionIndex: slot);
+        p.RemoveCorruptionSlots(CardZone.Equipment, slot);
         if (p.EquipmentStackedCopies > 0)
         {
             p.EquipmentStackedCopies--;
@@ -67,7 +76,8 @@ public sealed partial class GameEngine
         }
         p.Equipment = null; p.EquipmentDie = 0; p.EquipmentCounters = 0;
         p.EquipmentExpiresAtTurnStart = false;
-        Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: {(trap ? "queda fuera del juego" : landed!.Owner == Seat(p) ? "va a su memoria" : $"va a la memoria de {State.Players[landed.Owner].Name}, su dueño")}.");
+        Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: {(trap ? "queda fuera del juego" : landed == null ? "se corrompe" :
+            landed.Owner == Seat(p) ? "va a su memoria" : $"va a la memoria de {State.Players[landed.Owner].Name}, su dueño")}.");
     }
 
     private void ReplaceEquipment(EngineContinuation next)

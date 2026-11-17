@@ -46,6 +46,7 @@ public sealed partial class GameEngine
         ShiftSavedAttackSlots(State.PendingDestruction?.Completed, owner, slot);
         ShiftSavedAttackSlots(_pendingDieEffect?.Next, owner, slot);
         SendToMemory(p, id, CardZone.Skill, slot);
+        p.RemoveCorruptionSlots(CardZone.Skill, slot);
     }
 
     private static void ShiftSavedAttackSlots(EngineContinuation? next, int owner, int slot)

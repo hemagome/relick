@@ -22,7 +22,7 @@ public static class RelikarioArt
     }
 
     /// <summary>The portrait cut from its skill cards, shown beside decks.</summary>
-    public static Texture2D? Thumbnail(string? relikario) => Load(relikario, "thumbnail");
+    public static Texture2D? Thumbnail(string? relikario) => Load(relikario, "thumbnail") ?? Portrait(relikario);
     /// <summary>The square portrait of the Relikario picker.</summary>
     public static Texture2D? Portrait(string? relikario) => Load(relikario, "portrait");
     /// <summary>The printed Relikario card at a level.</summary>

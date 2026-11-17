@@ -6,7 +6,7 @@ Especificación proporcionada por el usuario el 7 de noviembre de 2026. Es la re
 
 | Categoría | Clasificación y datos necesarios | Comportamiento indicado |
 |---|---|---|
-| Relikario | Puntos de vida, habilidad propia, requisito de evolución, evolución y personaje animado asociado. | El Relikario determina su representación animada. Actualmente solo está codificado Yuno Gyambura, con su evolución. Cómo añadir otro: [Añadir un Relikario](#añadir-un-relikario). |
+| Relikario | Puntos de vida, habilidad propia, requisito de evolución, evolución y representación en el tablero. | Yuno Gyambura y Osamu Takahashi tienen dos niveles jugables y animaciones de combate. Véase [Añadir un Relikario](#añadir-un-relikario). |
 | Habilidad | Genérica o específica de un Relikario. | La afinidad es un dato de la carta que debe poder consultar el deckbuilding y los efectos. Magnet Shuffle y Destiny Shuffle son específicas de Yuno; no son genéricas. |
 | Ataque | Carta de ataque con ilustración asociada al Relikario. | La representación gráfica depende del Relikario. Esto no implica por sí mismo cambiar el efecto o crear una definición mecánica distinta por cada ilustración. |
 | Equipo | Equipo normal o equipo ligero. | Como máximo un equipo normal equipado. Los equipos ligeros no tienen límite de cantidad y equiparlos no exige destruir el equipo normal ni los otros ligeros. |

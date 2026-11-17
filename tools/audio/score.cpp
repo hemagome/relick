@@ -1,4 +1,4 @@
-// Original Relick score: a small orchestral synthesizer and its three compositions.
+// Original Relick score: an orchestral synthesizer and the game's compositions.
 // Build: g++ -O2 -std=c++17 -pthread tools/audio/score.cpp -o /tmp/relick-score
 // Run: /tmp/relick-score /tmp/relick-audio-wav [--stems]
 #include <algorithm>
@@ -703,6 +703,87 @@ void menu(Mix &m) {
     play(bells, 2, third, 0.6, 12);
 }
 
+// "Pulso de acero" and "La última orden" share D–E flat–A flat–A.
+// The combat arrangement leaves room between accents. The climax presses the same motif forward.
+void osamu(Mix &m, bool climax) {
+    Orchestra o(m);
+    Bus &metal = m.bus("metal", 0.12, 0.38);
+    const Chord Eb{3, 7, 10}, Ab{8, 0, 3}, Ddim{2, 5, 8};
+    const Chord main[] = {Dm, Ddim, Eb, Dm, Dm, Ab, Gm, A};
+    const Chord middle[] = {Bb, Gm, Eb, Dm, Bb, Ab, Ddim, A};
+    const std::string motif =
+        "d4:1.5 eb4:.5 ab4:1 a4:.5 r:.5 | f4:1 d4:.75 eb4:.25 d4:1.5 r:.5 | "
+        "eb4:1 g4:.5 bb4:.5 g4:1 f4:.5 eb4:.5 | d4:2 ab4:.5 a4:.5 d4:1 | "
+        "d4:1.5 eb4:.5 ab4:1 a4:1 | c5:.75 bb4:.25 ab4:1 eb4:1 f4:1 | "
+        "g4:1 d4:.5 g4:.5 bb4:1 ab4:.5 g4:.5 | a4:1 e4:.5 c#4:.5 a3:1 r:1";
+    const std::string reply =
+        "f4:2 d4:1 f4:1 | g4:1.5 f4:.5 d4:2 | eb4:1 f4:1 g4:.5 bb4:.5 g4:1 | "
+        "ab4:.5 a4:.5 f4:1 d4:1 r:1 | bb3:1.5 d4:.5 f4:2 | eb4:2 ab4:1 c5:1 | "
+        "d5:.75 c5:.25 ab4:1 f4:1 eb4:1 | e4:.5 a4:.5 c#5:1 bb4:.5 a4:1 r:.5";
+    const auto bars = m.beats / 4;
+    for (int i = 0; i < bars; ++i) {
+        const double beat = i * 4.0;
+        const int phrase = i / 8;
+        const bool bridge = phrase == 2;
+        const bool reprise = phrase >= 3;
+        const auto &chord = (bridge ? middle : main)[i % 8];
+        const int root = up(chord.root, 34);
+        const int fifth = up(chord.fifth, root + 1);
+        const int third = up(chord.third, root + 7);
+        const int pulse[] = {root, root, fifth, root, root + 12, third, fifth, root};
+        const bool sparse = !climax && (i < 4 || bridge);
+        for (int step = 0; step < 8; ++step) {
+            const bool accented = step == 0 || step == 3 || step == 6;
+            const double noteBeat = beat + step * 0.5;
+            if (!sparse || (step != 2 && step != 5 && step != 7))
+                bassNote(m, o, noteBeat, 0.4, pulse[step], accented ? 0.78 : 0.42, true);
+            if (i >= 4 || climax) {
+                const int pitch = pulse[(step + 2) % 8] + 12;
+                strings(o.ostinato, m.g, m.at(noteBeat + 0.03), m.span(0.3), pitch,
+                    accented ? 0.73 : 0.55, 0.30, true, 4, climax ? 1.3 : 0.86);
+                if (climax && !bridge && step != 7)
+                    strings(o.ostinato, m.g, m.at(noteBeat + 0.25), m.span(0.18), third + 12 + (step % 2) * 12,
+                        0.47, -0.35, true, 3, 1.1);
+            }
+        }
+        if (!sparse || bridge) chordPad(m, o, beat, 3.85, chord, climax ? 0.69 : 0.56, 50);
+        for (double offset : {0.0, 1.5, 3.0}) {
+            if (!climax && offset > 0 && i < 4) continue;
+            const double t = m.exact(beat + offset);
+            if (offset == 0 || bridge || climax) timpani(o.timpani, m.g, t, root, offset == 0 ? 0.70 : 0.46);
+            if (offset != 0 || i % 4 == 0) piano(o.piano, m.g, t, m.span(0.39), fifth + 12,
+                offset == 1.5 ? 0.65 : 0.49, 0.16);
+            if ((i + int(offset)) % 4 == 0) bell(metal, t, up(chord.fifth, 66), offset == 0 ? 0.55 : 0.35, -0.48);
+            if ((climax && !bridge) || (reprise && i % 2 == 0))
+                brass(o.horns, m.g, t, m.span(0.38), up(chord.root, 45), 0.67, -0.30, true);
+        }
+        if (i >= 4 || climax) kit(m, o, beat, climax ? (bridge ? 1 : 3) : (sparse ? 1 : 0),
+            climax ? 0.70 : 0.53, i % 8 == 7);
+        if (i % 8 == 7 && i + 1 < bars) cymbal(o.cymbals, m.g, m.exact(beat + 4), 0.47, m.span(1.5));
+    }
+
+    // Each eight-bar phrase changes the arrangement, then the final phrase returns to the opening pedal.
+    for (int phrase = 0; phrase * 32 < m.beats; ++phrase) {
+        if (!climax && phrase == 0) {
+            const auto intro = parse("d3:1 eb3:.5 ab3:.5 a3:1 r:1 | r:4 | d3:1.5 eb3:.5 ab3:1 a3:1 | r:4", 8);
+            line(m, o, Horns, intro, 0.85);
+            continue;
+        }
+        const bool bridge = phrase == 2;
+        const auto notes = parse(bridge ? reply : motif, phrase * 32);
+        line(m, o, bridge ? Violins : Horns, notes, bridge ? 0.76 : 0.90, bridge ? 0 : -12);
+        if (climax || phrase == 3) {
+            line(m, o, Violins, notes, climax ? 0.78 : 0.64, 0, -0.1);
+            if (phrase != 1 && !bridge) line(m, o, Trumpets, notes, climax ? 0.67 : 0.52, 12, 0.15);
+        }
+        if (bridge || !climax)
+            for (const auto &note : notes) {
+                if (note.len >= 1.0)
+                    bell(metal, m.exact(note.beat), note.pitch + 24, bridge ? 0.50 : 0.30, 0.38);
+            }
+    }
+}
+
 int main(int argc, char **argv) {
     std::filesystem::path output = argc > 1 ? argv[1] : "/tmp/relick-audio-wav";
     bool stems = argc > 2 && std::string(argv[2]) == "--stems";
@@ -726,5 +807,13 @@ int main(int argc, char **argv) {
         writeWav(name("yuno-to-climax.wav"), master(lead, 0.75, 2.2, 0, gain, stem("to-climax")));
     });
     calm.join(); battle.join(); crisis.join();
+    {
+        Mix m(144, 160, 6, true, 0x4f53414d); osamu(m, false); double gain = 0;
+        writeWav(name("osamu-combat.wav"), master(m, 0.73, 2.1, 0.151, gain, stem("osamu-combat")));
+    }
+    {
+        Mix m(174, 128, 6, true, 0x3030564c); osamu(m, true); double gain = 0;
+        writeWav(name("osamu-climax.wav"), master(m, 0.73, 2.1, 0.165, gain, stem("osamu-climax")));
+    }
     std::cout << "Relick score written to " << output.string() << "\n";
 }

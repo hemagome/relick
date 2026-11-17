@@ -37,7 +37,7 @@ static class DeckChecks
             peer.Connection = DbConnection.Builder().WithUri(server).WithDatabaseName(database)
                 .OnConnect((connection, _, _) => connection.SubscriptionBuilder().OnApplied(_ => peer.Ready = true)
                     .OnError((_, e) => peer.Fatal = e.Message)
-                    .Subscribe(["SELECT * FROM my_decks", "SELECT * FROM my_deck_styles", "SELECT * FROM my_account", "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel"]))
+                    .Subscribe(["SELECT * FROM my_decks", "SELECT * FROM my_deck_styles", "SELECT * FROM my_account", "SELECT * FROM my_room", "SELECT * FROM my_hand", "SELECT * FROM my_initial_skill", "SELECT * FROM my_duel", "SELECT * FROM my_room_relikarios"]))
                 .OnConnectError(e => peer.Fatal = e.Message).Build();
             void Reply(ReducerEventContext ctx)
             {
@@ -180,21 +180,31 @@ static class DeckChecks
             Check(betoCards.Any(card => !custom.Contains(card)) && betoCards.All(CardCatalog.TrainingDeck().Contains),
                 "Sin mazo activo se reparte el mazo de entrenamiento");
 
-            // The style reaches the duel: both see Ana's sleeve and die; Beto, with the training deck, plays the classic ones.
+            // The room keeps the Relikario and style of the dealt deck through preparation and into the duel.
             {
+                var osamu = CardCatalog.TrainingDeck().Where(id => DeckRules.Compatible(CardCatalog.Get(id), "osamu"))
+                    .Concat([CardCatalog.TurboSword.Id, CardCatalog.TurboSword.Id, CardCatalog.TurboOverlap.Id]).ToList();
+                await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "osamu", osamu, traps, [], "oro", "obsidiana", Id()));
+                Check(ana.Decks.Single(d => d.Id == deck.Id) is { Valid: true, Active: true, Relikario: "osamu" },
+                    "El servidor acepta y conserva activo un mazo legal de Osamu");
                 await Call(ana, r => r.CreateRoom("Ana"));
                 await Until(() => ana.Room != null);
                 await Call(beto, r => r.JoinRoom(ana.Room!.Code, "Beto"));
                 await Until(() => ana.Room!.Dealt && beto.Room?.Dealt == true);
                 var room = ana.Room!.Code; var seat = (int)ana.Room.MySeat;
-                foreach (var peer in new[] { ana, beto }) await Call(peer, r => r.ChooseInitialSkill(room, "magnet-shuffle", Id()));
+                await Until(() => new[] { ana, beto }.All(p => p.Connection.Db.MyRoomRelikarios.Iter().SingleOrDefault() is
+                    { RelikarioOne: "osamu", RelikarioTwo: "yuno" }));
+                Check(true, "Osamu y Yuno se ven en la preparación antes de elegir sus habilidades");
+                await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, bench, Id()));
+                await Call(ana, r => r.ChooseInitialSkill(room, CardCatalog.TurboOverlap.Id, Id()));
+                await Call(beto, r => r.ChooseInitialSkill(room, CardCatalog.Magnet.Id, Id()));
                 await Until(() => ana.Hand.Count == 5 && beto.Hand.Count == 5);
                 foreach (var peer in new[] { ana, beto }) await Call(peer, r => r.ConfirmPreparation(room, [], Id()));
                 await Until(() => ana.Duel != null && beto.Duel != null);
                 foreach (var view in new[] { ana.Duel!, beto.Duel! })
-                    Check(view.Players[seat] is { Sleeve: "oro", Dice: "obsidiana" } &&
-                        view.Players[1 - seat] is { Sleeve: CosmeticCatalog.DefaultSleeve, Dice: CosmeticCatalog.DefaultDice },
-                        "Ambos jugadores ven la mica y el dado de cada mazo en el duelo");
+                    Check(view.Players[seat] is { RelikarioId: "osamu", Health: 10, Dexterity: 0, Sleeve: "oro", Dice: "obsidiana" } &&
+                        view.Players[1 - seat] is { RelikarioId: "yuno", Health: 8, Sleeve: CosmeticCatalog.DefaultSleeve, Dice: CosmeticCatalog.DefaultDice },
+                        "Ambos jugadores ven los Relikarios y estilos del reparto aunque se edite un mazo después");
                 var duel = ana.Duel!;
                 await Call(ana, r => r.PlayDuelV2(room, duel.Revision, Id(), duel.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Concede), []));
                 await Until(() => ana.Duel?.Winner != null || ana.Room == null);

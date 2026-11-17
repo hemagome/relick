@@ -11,8 +11,9 @@ public static class BoardArt
     public static readonly Color Ink = new("f2f4fb");
     public static readonly Color Muted = new("8f9dbd");
     public static readonly Color Gold = new("ffc86b");
-    public static Color CardColor(CardDefinition? card) => card?.Kind switch
+    public static Color CardColor(CardDefinition? card, string? relikario = null) => card?.Kind switch
     {
+        CardKind.Attack when card.Id == CardCatalog.Attack.Id && RelikarioArt.Family(relikario) == RelikarioCatalog.Osamu.Id => new("9096ff"),
         CardKind.Attack => new("ff6f8e"), CardKind.Skill => new("4fe3b8"),
         CardKind.Attachment => new("b5a2fa"), CardKind.Equipment => new("7cc8ff"),
         CardKind.Code when card.CodeType == CodeType.Trap => new("ff6f8e"), _ => Gold
@@ -36,8 +37,10 @@ public static class BoardArt
     };
     public static Color Tint(Color color, float alpha) => new(color.R, color.G, color.B, alpha);
 
-    internal static Texture2D? LoadCardArtwork(CardDefinition card)
+    internal static Texture2D? LoadCardArtwork(CardDefinition card, string? relikario = null)
     {
+        if (card.Id == CardCatalog.Attack.Id && relikario != null && RelikarioArt.Load(relikario, "attack-card") is { } alternate)
+            return alternate;
         var path = $"res://assets/cards/{card.Id}-clean.png";
         return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
     }
@@ -588,7 +591,9 @@ public partial class SkillTile : Button
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
         FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
         _skillArt = SkillArtwork.Load(Skill);
-        TooltipText = Skill == null ? $"Enseñar una habilidad · {GameEngine.SkillSlotCosts[Slot]} PR." : Skill.Text + (Skill.Id == CardCatalog.Destiny.Id ? $"\nEsta copia: {Counters}/2 contadores." : Skill.DamagePerReroll > 0 ? $"\nEsta copia: {Counters} aumentos · {Skill.NormalDamageAt(Counters)} normal / {Skill.CriticalDamageAt(Counters)} crítico." : "");
+        TooltipText = Skill == null ? $"Enseñar una habilidad · {GameEngine.SkillSlotCosts[Slot]} PR." : Skill.Text +
+            (Skill.Id == CardCatalog.Destiny.Id || Skill.Id == CardCatalog.TurboSword.Id ? $"\nEsta copia: {Counters}/2 contadores." :
+                Skill.DamagePerReroll > 0 ? $"\nEsta copia: {Counters} aumentos · {Skill.NormalDamageAt(Counters)} normal / {Skill.CriticalDamageAt(Counters)} crítico." : "");
     }
     public override void _Draw()
     {
@@ -619,7 +624,7 @@ public partial class SkillTile : Button
             RelickVisuals.Shadow(this, new Rect2(art.Position + new Vector2(0, 3), art.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 9);
             DrawTextureRect(_skillArt, art, false);
 
-            if (Skill.Id == CardCatalog.Destiny.Id)
+            if (Skill.Id == CardCatalog.Destiny.Id || Skill.Id == CardCatalog.TurboSword.Id)
             {
                 BoardArt.Plate(this, new Rect2(8, size.Y - 24, 114, 20), RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 4);
                 BoardArt.Text(this, $"CONTADORES {Counters}/2", new(14, size.Y - 10), 10, Counters >= 2 ? new Color("ef7890") : BoardArt.Ink);
@@ -638,8 +643,8 @@ public partial class SkillTile : Button
             BoardArt.CenterText(this, Skill.Name, new(size.X / 2, 47), 19, BoardArt.Ink);
             BoardArt.Icon(this, GameIcon.Bolt, new(34, 83), 32, Accent, PresentationScale);
             BoardArt.Icon(this, GameIcon.Sword, new(65, 76), 14, BoardArt.Muted, PresentationScale);
-            BoardArt.Text(this, $"{(Skill.Id == CardCatalog.Magnet.Id ? "1D6" : Skill.NormalDamage.ToString())} daño", new(78, 81), 14, BoardArt.Ink);
-            BoardArt.Text(this, $"{Skill.CriticalDamage} crítico", new(60, 105), 12, BoardArt.Gold);
+            BoardArt.Text(this, $"{Skill.NormalDamageText()} daño", new(78, 81), 14, BoardArt.Ink);
+            BoardArt.Text(this, $"{Skill.CriticalDamageText()} crítico", new(60, 105), 12, BoardArt.Gold);
             BoardArt.Icon(this, GameIcon.Gem, new(size.X - 52, 102), 12, BoardArt.Gold, PresentationScale);
             BoardArt.Text(this, Skill.Reward.ToString(), new(size.X - 42, 107), 12, BoardArt.Gold);
         }
@@ -652,6 +657,7 @@ public partial class ExchangeTrack : VBoxContainer
 {
     public bool Compact { get; set; }
     public string OwnerCaption { get; set; } = "";
+    public string? RelikarioId { get; init; }
     public IReadOnlyList<CardDefinition> ExchangeCards { get; set; } = Array.Empty<CardDefinition>();
     public int Filled => ExchangeCards.Count;
     public CardDefinition? BonusCard { get; set; }
@@ -707,7 +713,7 @@ public partial class ExchangeTrack : VBoxContainer
                 Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = "CANJE", Accent = Accent, Compact = Compact,
                 Layout = ZoneCardLayout.Landscape, EffectUsed = ExchangeEffectsUsed.Contains(slot), SizeFlagsStretchRatio = 1.25f,
                 CustomMinimumSize = new(0, TrackWidth > 0 ? 86 : 0),
-                Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null
+                Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null, RelikarioId = RelikarioId
             };
             button.Pressed += () => ExchangeInspected?.Invoke(index);
             ExchangeButtons[slot] = button;
@@ -716,7 +722,7 @@ public partial class ExchangeTrack : VBoxContainer
         BonusButton = new ZoneCardButton
         {
             Name = Detached ? $"{Name}BonusCard" : "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard, Compact = Compact,
-            Layout = ZoneCardLayout.Portrait, EffectUsed = BonusEffectUsed, Accent = BoardArt.Gold
+            Layout = ZoneCardLayout.Portrait, EffectUsed = BonusEffectUsed, Accent = BoardArt.Gold, RelikarioId = RelikarioId
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
         row.AddChild(BonusButton);
@@ -741,6 +747,7 @@ public partial class ZoneCardButton : Button
     public ZoneCardLayout Layout { get; init; }
     public bool EffectUsed { get; init; }
     public CardDefinition? Card { get; set; }
+    public string? RelikarioId { get; init; }
     public string Caption { get; set; } = "";
     public string StatusText { get; init; } = "";
     public Color Accent { get; set; }
@@ -769,7 +776,7 @@ public partial class ZoneCardButton : Button
     internal void SetExchangePreview(string? id)
     {
         if (Card != null) return;
-        _exchangePreview = id == null ? null : BoardArt.LoadCardArtwork(CardCatalog.Get(id));
+        _exchangePreview = id == null ? null : BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId);
         QueueRedraw();
     }
 
@@ -799,7 +806,7 @@ public partial class ZoneCardButton : Button
         Disabled = Card == null;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
-        if (Card != null) _artwork = BoardArt.LoadCardArtwork(Card);
+        if (Card != null) _artwork = BoardArt.LoadCardArtwork(Card, RelikarioId);
         if (Card != null)
         {
             var description = $"{Caption} · {Card.Name}" + (CardStatus.Length > 0 ? $" · {CardStatus}" : "");
@@ -874,7 +881,7 @@ public partial class AttachmentStack : Button
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         AccessibilityName = $"Sobre el Relikario: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
         TooltipText = $"{AccessibilityName}. Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
-        _previews = Cards.TakeLast(3).Select(CardCatalog.Get).Select(BoardArt.LoadCardArtwork).OfType<Texture2D>().ToArray();
+        _previews = Cards.TakeLast(3).Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id))).OfType<Texture2D>().ToArray();
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         Resized += QueueRedraw;
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
@@ -902,8 +909,8 @@ public partial class AttachmentStack : Button
     }
 }
 
-/// <summary>Original owner of a visible hand card; used by the future sleeve customisation.</summary>
-public sealed record CardOwner(int Seat, string Name);
+/// <summary>Original owner of a visible card.</summary>
+public sealed record CardOwner(int Seat, string Name, string? RelikarioId = null);
 
 public partial class HandCard : Button
 {
@@ -934,18 +941,21 @@ public partial class HandCard : Button
     /// <summary>The card has at least one play authorized by the server in the current snapshot.</summary>
     public bool Playable { get; set; }
     public CardOwner? OriginalOwner { get; set; }
+    public string? RelikarioId { get; init; }
+    internal string? ArtworkRelikario => OriginalOwner?.RelikarioId ?? RelikarioId;
     public int? ViewerSeat { get; set; }
     /// <summary>False when the surrounding section already names the owner.</summary>
     public bool ShowOwnerBadge { get; set; } = true;
     private float _hover;
     private Texture2D? _artwork;
+    internal Texture2D? FaceTexture => _artwork;
     public bool HasSkillArtwork => Card.Kind == CardKind.Skill && _artwork != null;
     public bool HasAttackArtwork => Card.Kind == CardKind.Attack && _artwork != null;
     private bool OwnerIsForeign => OriginalOwner is { } owner && ViewerSeat is { } viewer && owner.Seat != viewer;
     public override void _Ready()
     {
         if (Card.Kind == CardKind.Attack)
-            _artwork = BoardArt.LoadCardArtwork(Card) ?? BoardArt.LoadCardArtwork(CardCatalog.Attack)
+            _artwork = BoardArt.LoadCardArtwork(Card, ArtworkRelikario) ?? BoardArt.LoadCardArtwork(CardCatalog.Attack, ArtworkRelikario)
                 ?? throw new InvalidOperationException($"No se pudo cargar la ilustración de {Card.Name}.");
         if (Card.Kind is CardKind.Equipment or CardKind.Code) _artwork = GD.Load<Texture2D>($"res://assets/cards/{Card.Id}-clean.png");
         if (Card.Kind == CardKind.Skill) _artwork = SkillArtwork.Load(Card);
@@ -979,7 +989,7 @@ public partial class HandCard : Button
     }
     public override void _Draw()
     {
-        var accent = BoardArt.CardColor(Card);
+        var accent = BoardArt.CardColor(Card, ArtworkRelikario);
         var icon = BoardArt.CardIcon(Card);
         var y = 7 - _hover * (InFan ? Lift : 5);
         var r = new Rect2(new Vector2(1, y), Face);

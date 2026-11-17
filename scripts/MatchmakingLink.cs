@@ -7,16 +7,15 @@ public enum MatchmakingLinkState { Idle, Starting, Searching, Canceling, Matched
 // Decorative only: queue membership and matched rooms always come from the server.
 public partial class MatchmakingLink : Control
 {
-    private string? _sleeve;
-    /// <summary>The player's active-deck sleeve on their own card; the rival's silhouette stays classic until known.</summary>
-    public string? Sleeve
+    private Texture2D? _thumbnail;
+    internal Texture2D? Thumbnail
     {
-        get => _sleeve;
-        set { if (_sleeve == value) return; _sleeve = value; if (IsInsideTree()) { _back = SleeveArt.Back(value); QueueRedraw(); } }
+        get => _thumbnail;
+        set { if (_thumbnail == value) return; _thumbnail = value; QueueRedraw(); }
     }
     public const double CycleSeconds = 2;
     public const double ConfirmationSeconds = 0.35;
-    private Texture2D _back = null!;
+    private Texture2D _rivalBack = null!;
     private double _elapsed;
     private bool _running, _reducedMotion, _compact;
     public MatchmakingLinkState State { get; private set; }
@@ -35,7 +34,7 @@ public partial class MatchmakingLink : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Ignore;
-        _back = SleeveArt.Back(Sleeve);
+        _rivalBack = SleeveArt.Back(null);
         Resized += QueueRedraw; VisibilityChanged += UpdateProcessing;
         Compact = _compact; UpdateProcessing();
     }
@@ -72,18 +71,20 @@ public partial class MatchmakingLink : Control
         var cardHeight = Compact ? 31f : 44f;
         var cardWidth = cardHeight * 0.71f;
         var center = new Vector2(Size.X / 2, (Size.Y - 14) / 2);
-        var offset = Compact ? 38f : 53f;
-        var own = new Rect2(center + new Vector2(-offset - cardWidth / 2, -cardHeight / 2), new(cardWidth, cardHeight));
+        var offset = Compact ? 36f : 51f;
+        var portraitSize = Compact ? 30f : 42f;
+        var own = new Rect2(center + new Vector2(-offset - portraitSize / 2, -portraitSize / 2), Vector2.One * portraitSize);
         var rival = new Rect2(center + new Vector2(offset - cardWidth / 2, -cardHeight / 2), new(cardWidth, cardHeight));
         var matched = State == MatchmakingLinkState.Matched;
         var reveal = matched ? ReducedMotion ? 1f : (float)Math.Clamp(_elapsed / (ConfirmationSeconds * 0.7), 0, 1) : 0;
         BoardArt.Plate(this, own.Grow(2), RelickVisuals.Playmat.Raised, BoardArt.Tint(RelickVisuals.State.Own, 0.6f), 3);
-        DrawTextureRect(_back, own, false);
+        if (Thumbnail is { } portrait) DrawTextureRect(portrait, BoardArt.FitArtwork(portrait, own), false);
+        else BoardArt.Text(this, "?", own.GetCenter() + new Vector2(-4, 5), 15, BoardArt.Muted);
         BoardArt.Plate(this, rival.Grow(2), RelickVisuals.Playmat.Raised,
             BoardArt.Tint(matched ? RelickVisuals.State.Rival : BoardArt.Muted, 0.5f), 3);
-        if (reveal > 0) DrawTextureRect(_back, rival, false, BoardArt.Tint(Colors.White, reveal));
+        if (reveal > 0) DrawTextureRect(_rivalBack, rival, false, BoardArt.Tint(Colors.White, reveal));
         if (reveal < 1) BoardArt.Text(this, "?", rival.Position + new Vector2(cardWidth / 2 - 4, cardHeight / 2 + 5), 15, BoardArt.Tint(BoardArt.Muted, 1 - reveal));
-        BoardArt.Text(this, "TÚ", new(own.GetCenter().X - 7, own.End.Y + 14), 11, BoardArt.Muted);
+        BoardArt.Text(this, "TÚ", new(own.GetCenter().X - 7, rival.End.Y + 14), 11, BoardArt.Muted);
         BoardArt.Text(this, "RIVAL", new(rival.GetCenter().X - 16, rival.End.Y + 14), 11, BoardArt.Muted);
         var phase = (float)(_elapsed / CycleSeconds);
         for (var i = 0; i < 3; i++)

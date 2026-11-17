@@ -24,6 +24,18 @@ public sealed record CardDefinition(
 {
     public int NormalDamageAt(int counters) => MaxNormalDamage > 0 ? Math.Min(MaxNormalDamage, NormalDamage + counters * DamagePerReroll) : NormalDamage + counters * DamagePerReroll;
     public int CriticalDamageAt(int counters) => CriticalDamage + counters * DamagePerReroll;
+    public string NormalDamageText(int counters = 0) => Id switch
+    {
+        "magnet-shuffle" => "1D6",
+        "turbo-sword" => "1D6−1 · mín. 2",
+        _ => NormalDamageAt(counters).ToString()
+    };
+    public string CriticalDamageText(int counters = 0) => Id switch
+    {
+        "turbo-sword" => "1D6+1 · mín. 4",
+        "turbo-overlap" => "2D6 · elige uno",
+        _ => CriticalDamageAt(counters).ToString()
+    };
 }
 
 public static class CardCatalog
@@ -98,6 +110,12 @@ public static class CardCatalog
         "Daño normal: 1D6 · Crítico: 5 · Premio: 500 PR. Al realizar un crítico puedes mirar la mano del adversario y tomar una carta de ella o de su Bonus.", 0, 5, 500, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition Destiny = new("destiny-shuffle", "Relick Destiny Shuffle", CardKind.Skill,
         "Daño normal: 3 · Crítico: 5 · Premio: 600 PR. Coloca 1 contador sobre esta copia y descarta 3 cartas para cancelar el daño de un ataque (4 cartas si es crítico). Con 2 contadores esta copia no puede volver a activar el efecto.", 3, 5, 600, Relikario: RelikarioCatalog.Yuno.Id);
+    public static readonly CardDefinition TurboSword = new("turbo-sword", "Relick Turbo Sword", CardKind.Skill,
+        "Antes de recibir daño, lanza 1D6. Con 5, cancela el daño y pon 1 contador en esta copia. Con 6, cancela el daño y el oponente recibe la mitad. Con 2 contadores o más, esta copia no activa su efecto.",
+        Reward: 500, Relikario: RelikarioCatalog.Osamu.Id);
+    public static readonly CardDefinition TurboOverlap = new("turbo-overlap", "Relick Turbo Overlap", CardKind.Skill,
+        "Al enseñar esta carta o realizar un crítico con ella, añade una Agilidad al 100% de tu mazo o memoria a tu mano.",
+        NormalDamage: 3, Reward: 300, Relikario: RelikarioCatalog.Osamu.Id);
     public static readonly CardDefinition Senshuni = new("senshuni", "Senshuni", CardKind.Code,
         "Roba 2 cartas.", Draw: 2, CodeType: CodeType.Character);
     public static readonly CardDefinition Pendant = new("lucky-pendant", "Colgante de la Suerte", CardKind.Equipment,
@@ -124,7 +142,7 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Reverse, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack }.ToDictionary(c => c.Id);
+        new[] { Attack, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 

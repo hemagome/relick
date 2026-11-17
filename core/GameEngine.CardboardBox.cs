@@ -14,12 +14,13 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex, int? memoryOwner = null)
+    private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex, int? memoryOwner = null, bool corruptOnMemory = false)
     {
         var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : card.ActionCost,
             CodePrCost(card) + (fromMemory ? 400 : 0), State.Phase)
         {
             Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex, MemoryOwner = memoryOwner == actor ? null : memoryOwner,
+            CorruptOnMemory = corruptOnMemory,
             // Replaying a Code from memory is a relikia effect, which Error de Carga cannot cancel (6.5, A.2).
             CanInterrupt = !fromMemory
         };

@@ -11,6 +11,8 @@ public partial class OpponentHandCard : Button
     internal Texture2D? BackTexture => _back;
     public CardDefinition? PublicCard { get; init; }
     public CardOwner? OriginalOwner { get; init; }
+    public string? RelikarioId { get; init; }
+    internal string? ArtworkRelikario => OriginalOwner?.RelikarioId ?? RelikarioId;
     public int ViewerSeat { get; init; } = -1;
     public Vector2 FaceSize { get; init; } = new(54, 76.4f);
     public bool IsFaceDown => PublicCard == null;
@@ -37,7 +39,7 @@ public partial class OpponentHandCard : Button
             var front = new HandCard
             {
                 Name = "RevealedFront", Card = PublicCard, Disabled = true, ShowBehindParent = true, Size = new(126, 184), Scale = new(scale, scale),
-                Position = (FaceSize - new Vector2(126, 184) * scale) / 2
+                Position = (FaceSize - new Vector2(126, 184) * scale) / 2, RelikarioId = ArtworkRelikario
             };
             front.Ready += () => { front.MouseFilter = MouseFilterEnum.Ignore; front.SetProcess(false); };
             AddChild(front);

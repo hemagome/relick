@@ -107,6 +107,7 @@ public static partial class Module
         foreach (var deck in ctx.Db.Deck.Owner.Filter(player).ToList()) { ctx.Db.Deck.Id.Delete(deck.Id); ctx.Db.DeckSide.Deck.Delete(deck.Id); }
         ctx.Db.Loadout.Player.Delete(player);
         ctx.Db.LoadoutStyle.Player.Delete(player);
+        ctx.Db.LoadoutRelikario.Player.Delete(player);
         ctx.Db.PlayBudget.Player.Delete(player);
         ctx.Db.Account.Player.Delete(player);
     }

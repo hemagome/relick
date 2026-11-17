@@ -80,7 +80,7 @@ public static class DuelOptions
                     for (var i = 0; i < p.Hand.Count; i++)
                     {
                         var card = CardCatalog.Get(p.Hand[i]);
-                        if (card.Kind == CardKind.Skill && !s.LearnedThisTurn && p.Skills.Count < GameEngine.MaxSkills && p.Relikia >= game.SkillCost(p))
+                        if (GameEngine.CanLearnSkill(p, card) && !s.LearnedThisTurn && p.Skills.Count < GameEngine.MaxSkills && p.Relikia >= game.SkillCost(p))
                             Add(DuelMoveKind.Learn, $"Enseñar {card.Name} · {game.SkillCost(p)} PR · carta {i + 1}", i);
                         if (card.Kind == CardKind.Attack && game.CanAttack(actor))
                             for (var skill = 0; skill < p.Skills.Count; skill++)
@@ -89,6 +89,7 @@ public static class DuelOptions
                     Add(DuelMoveKind.Advance, s.ExtraCombatStages > 0 ? "Repetir etapa de combate" : "Ir a acciones");
                     break;
                 case Phase.Actions:
+                    if (game.CanUseOsamuSearch(actor)) Add(DuelMoveKind.RelikarioSearch, "Buscar con Osamu Lv 2 · 1 acción");
                     if (p.ActionsLeft > 0)
                         for (var i = 0; i < p.Hand.Count; i++)
                         {

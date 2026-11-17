@@ -53,6 +53,7 @@ internal static class ArenaActionText
         DuelMoveKind.TrapCraft => option.Label,
         DuelMoveKind.Relikia => option.Move.Value == (int)RelikiaEffect.ReplayCode ? "Activar" : RelikiaEffects.Get((RelikiaEffect)option.Move.Value).Name,
         DuelMoveKind.Evolve => "Evolucionar",
+        DuelMoveKind.RelikarioSearch => "Buscar con Osamu",
         DuelMoveKind.Concede => "Abandonar duelo",
         _ => option.Label
     };
@@ -78,7 +79,7 @@ internal static class ArenaActionText
             case DuelMoveKind.PlayCode:
                 var card = HandCard(option, s)!;
                 return Resources(card.ActionCost, GameEngine.CodePrCost(card, s.LegacyBlueEgg), card.DiscardCost);
-            case DuelMoveKind.Equip: case DuelMoveKind.Exchange: return "1 acción";
+            case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch: return "1 acción";
             case DuelMoveKind.Learn:
                 var p = s.Players[s.MySeat];
                 var position = Enumerable.Range(0, GameEngine.MaxSkills).FirstOrDefault(i => !Enumerable.Range(0, p.Skills.Length).Any(j => p.SkillPosition(j) == i));

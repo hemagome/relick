@@ -157,7 +157,7 @@ public sealed class DuelSnapshot
             LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(),
             ErrorAfterDie = s.ErrorAfterDie && s.Phase == Phase.ErrorResponse,
             Decision = s.Phase == Phase.Decision && s.PendingDecision is { } decision ? new DecisionView { Source = decision.Source, Decider = decision.Decider,
-                Kind = decision.Kind, Title = CardCatalog.Get(decision.Source).Name, Instruction = decision.Instruction } : null,
+                Kind = decision.Kind, Title = decision.Title(), Instruction = decision.Instruction } : null,
             History = game.PublicHistory?.Entries.ToList(),
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
             Players = s.Players.Select((p, index) => new DuelPlayerView

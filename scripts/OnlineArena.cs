@@ -12,6 +12,7 @@ public partial class OnlineArena : Control
     public event Action? ReturnToLobbyRequested;
     internal bool HasFinishedResult => _snapshot?.Winner != null;
     private VBoxContainer? _root;
+    private ColorRect? _osamuChoiceShade;
     private HFlowContainer _moves = null!;
     private Label _status = null!;
     private Label _selection = null!;
@@ -89,6 +90,8 @@ public partial class OnlineArena : Control
     private DecisionKind? Deciding => _snapshot is { Phase: Phase.Decision, Decision: { } decision } s && decision.Decider == s.MySeat ? decision.Kind : null;
     /// <summary>The gallery header of a card decision: the card and what to do, as the server describes them.</summary>
     private string? DecisionGalleryTitle => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } d ? $"{d.Title} · {d.Instruction}".ToUpperInvariant() : null;
+    private bool ChoosingOsamuCards => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } decision &&
+        (RelikarioCatalog.Find(decision.Source)?.Family == RelikarioCatalog.Osamu.Id || decision.Source == CardCatalog.TurboOverlap.Id);
     private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat ||
         Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);
@@ -234,12 +237,15 @@ public partial class OnlineArena : Control
         var boardPosition = _arenaScroll?.ScrollVertical ?? 0;
         foreach (var node in _portraits.Cast<Node>().Concat(_life).Concat(_actionPools)) node.GetParent()?.RemoveChild(node);
         if (_root != null) { RemoveChild(_root); _root.QueueFree(); }
+        if (_osamuChoiceShade != null) { RemoveChild(_osamuChoiceShade); _osamuChoiceShade.QueueFree(); _osamuChoiceShade = null; }
         _root = new VBoxContainer { Name = "DuelInterface" }; AddChild(_root);
         var desktop = Desktop;
         _pulsingTargets.Clear(); _showcase = null; _combatCenter = null; _readerRail = null;
         _railReading = null; _historyFeed = null; _resolutionPanel = null; _inlineHistory = false; _relikiaPreview = null;
         foreach (var meter in _life) meter.Stacked = desktop;
         var choiceGallery = false;
+        var osamuChoices = ChoosingOsamuCards;
+        VBoxContainer? choicePanel = null;
         _fitArenaScroll = false;
         _handLowered = false;
         _root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -279,7 +285,8 @@ public partial class OnlineArena : Control
             }
             return new ArenaPlayerActions
             {
-                Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory, player.CorruptedCount),
+                Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory,
+                    player.CorruptedCount, relikarioOf: _ => player.RelikarioId),
                 Attached = () => SelectFieldPile(seat, FieldZone.Attached),
                 Equipment = () => SelectEquipment(seat),
                 EquipmentCovers = () => SelectFieldPile(seat, FieldZone.EquipmentCover),
@@ -428,42 +435,79 @@ public partial class OnlineArena : Control
             _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
             Player(1);
             foreach (var panel in arena.GetChildren().OfType<PanelContainer>()) panel.MouseFilter = MouseFilterEnum.Pass;
-            BoxContainer interaction = new HBoxContainer();
-            interaction.Name = "CardInteractionArea"; interaction.AddThemeConstantOverride("separation", Short ? 4 : 12);
-            interaction.SizeFlagsVertical = Short ? SizeFlags.ExpandFill : SizeFlags.Fill;
-            interaction.SizeFlagsStretchRatio = 0.55f;
-            body.Controls.AddChild(interaction);
+            var interaction = new HBoxContainer
+            {
+                Name = "CardInteractionArea",
+                SizeFlagsVertical = Short || osamuChoices ? SizeFlags.ExpandFill : SizeFlags.Fill,
+                SizeFlagsStretchRatio = 0.55f
+            };
+            interaction.AddThemeConstantOverride("separation", Short ? 4 : 12);
+            if (osamuChoices)
+            {
+                choiceGallery = true;
+                choicePanel = BuildOsamuChoicePanel();
+                choicePanel.AddChild(interaction);
+            }
+            else body.Controls.AddChild(interaction);
             handColumn = new VBoxContainer { Name = "HandColumn",
-                SizeFlagsHorizontal = Short ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill,
+                SizeFlagsHorizontal = Short && !osamuChoices ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill,
                 SizeFlagsVertical = SizeFlags.ExpandFill };
-            var inspectorColumn = new VBoxContainer { Name = "InspectorColumn", CustomMinimumSize = new(Short ? 270 : 480, 0),
-                SizeFlagsHorizontal = Short ? SizeFlags.ExpandFill : SizeFlags.Fill };
-            if (Short) { interaction.AddChild(inspectorColumn); interaction.AddChild(handColumn); }
+            var inspectorColumn = new VBoxContainer
+            {
+                Name = "InspectorColumn",
+                CustomMinimumSize = new(osamuChoices ? 0 : Short ? 270 : 480, 0),
+                SizeFlagsHorizontal = Short || osamuChoices ? SizeFlags.ExpandFill : SizeFlags.Fill
+            };
+            if (osamuChoices)
+            {
+                var reading = new ScrollContainer
+                {
+                    Name = "ChoiceInspectorScroll", CustomMinimumSize = new(Compact ? 240 : 270, 0),
+                    HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+                };
+                interaction.AddChild(handColumn); interaction.AddChild(reading);
+                reading.AddChild(inspectorColumn);
+            }
+            else if (Short) { interaction.AddChild(inspectorColumn); interaction.AddChild(handColumn); }
             else { interaction.AddChild(handColumn); interaction.AddChild(inspectorColumn); }
             BuildActionArea(inspectorColumn);
             BuildResultPanel(inspectorColumn);
             if (_fitArenaScroll)
             {
                 // Anything below the board that grows (a card being read, a decision) gives the board less room.
-                interaction.MinimumSizeChanged += FitArenaScroll;
+                if (!osamuChoices) interaction.MinimumSizeChanged += FitArenaScroll;
                 arena.MinimumSizeChanged += FitArenaScroll;
                 _root.Resized += FitArenaScroll;
             }
         }
+        var galleryTitle = osamuChoices ? DecisionGalleryTitle
+            : ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR"
+            : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO"
+            : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER"
+            : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA"
+            : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA"
+            : DecisionGalleryTitle ?? (ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null);
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
-            SelectInitialSkillCandidate, Short, railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short,
-                ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR" : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO" : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER" : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA" : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA" : DecisionGalleryTitle ?? (ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null), railColumns,
+            SelectInitialSkillCandidate, Short, railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short || osamuChoices && Compact,
+                galleryTitle, osamuChoices ? 0 : railColumns,
                 useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop,
-                sections: MemorySections(), ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : OwnHandCardOwner,
-                viewerSeat: s.MySeat, stackColumns: desktop ? 7 : 0);
+                sections: MemorySections(), ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : index => HandCardOwner(s.MySeat, index),
+                viewerSeat: s.MySeat, stackColumns: osamuChoices ? 4 : desktop ? 7 : 0,
+                relikario: s.Players[s.MySeat].RelikarioId, wrapTitle: osamuChoices);
         if (choiceGallery)
         {
             // The chooser scrolls on its own and carries the decision that confirms it.
             _hand.SizeFlagsVertical = SizeFlags.ExpandFill;
             _hand.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+            if (osamuChoices)
+            {
+                _hand.CustomMinimumSize = Vector2.Zero;
+                _hand.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+                _hand.FollowFocus = true;
+            }
             _decisionBar.GetParent().RemoveChild(_decisionBar);
-            handColumn.AddChild(_decisionBar);
-            if (ChoosingMemoryRecovery)
+            (choicePanel ?? handColumn).AddChild(_decisionBar);
+            if (ChoosingMemoryRecovery || osamuChoices)
             {
                 _movesScroll.CustomMinimumSize = new(0, 60);
                 _moves.Alignment = FlowContainer.AlignmentMode.End;
@@ -488,6 +532,24 @@ public partial class OnlineArena : Control
         FitArenaScroll();
         UpdateResultPresentation();
         BoardBuildCount++;
+    }
+
+    private VBoxContainer BuildOsamuChoicePanel()
+    {
+        // A sibling of the board keeps the chooser independent of its minimum size.
+        var shade = new ColorRect { Name = "ChoiceShade", Color = new Color(0.01f, 0.02f, 0.05f, 0.74f) };
+        _osamuChoiceShade = shade;
+        AddChild(shade);
+        shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var panel = new PanelContainer { Name = "ChoicePanel" };
+        panel.AddThemeStyleboxOverride("panel", RelickVisuals.Surface(BoardArt.Gold));
+        shade.AddChild(panel);
+        panel.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        ArenaViewport.ApplyInsets(panel, Compact ? 10 : 24, 12);
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(content);
+        return content;
     }
 
     private void BuildOpponentHand(VBoxContainer parent) => BuildOpponentHand((BoxContainer)parent);
@@ -520,10 +582,9 @@ public partial class OnlineArena : Control
         for (var i = 0; i < hand.Length; i++)
         {
             var id = hand[i];
-            var owner = opponent.HandOwners is { } owners && i < owners.Length && owners[i] is int seat
-                ? new CardOwner(seat, _snapshot!.Players[seat].Name) : null;
+            var owner = HandCardOwner(1 - _snapshot.MySeat, i);
             var card = new OpponentHandCard { Name = $"OpponentHandCard{i}", PublicCard = id == null ? null : CardCatalog.Get(id), Sleeve = opponent.Sleeve,
-                OriginalOwner = owner, ViewerSeat = _snapshot.MySeat, FaceSize = face };
+                OriginalOwner = owner, RelikarioId = opponent.RelikarioId, ViewerSeat = _snapshot.MySeat, FaceSize = face };
             var index = i;
             card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);
         }
@@ -534,13 +595,16 @@ public partial class OnlineArena : Control
         parent.AddChild(row);
     }
 
-    private CardOwner? OwnHandCardOwner(int index)
+    private CardOwner? HandCardOwner(int holder, int index)
     {
         var s = _snapshot!;
-        var owners = s.Players[s.MySeat].HandOwners;
+        var owners = s.Players[holder].HandOwners;
         return owners is { } seats && index >= 0 && index < seats.Length && seats[index] is int owner
-            ? new CardOwner(owner, s.Players[owner].Name) : null;
+            ? new CardOwner(owner, s.Players[owner].Name, s.Players[owner].RelikarioId) : null;
     }
+
+    private string HandArtworkRelikario(int holder, int index) =>
+        HandCardOwner(holder, index)?.RelikarioId ?? _snapshot!.Players[holder].RelikarioId;
 
     private void SelectCard(int index)
     {
@@ -648,13 +712,14 @@ public partial class OnlineArena : Control
         dialog.PopupCentered();
     }
 
-    private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null)
+    private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null,
+        Func<int, string?>? relikarioOf = null)
     {
         if (GetChildren().OfType<Window>().Any(w => w.Visible)) return;
         var dialog = new AcceptDialog { Name = "CardCollectionDialog", Title = title, OkButtonText = "Volver al duelo" };
         if (ids is { Count: > 0 })
         {
-            var view = new CardCollectionView { Cards = ids.ToArray(), ShortScreen = Short,
+            var view = new CardCollectionView { Cards = ids.ToArray(), ShortScreen = Short, RelikarioOf = relikarioOf,
                 InspectorWidth = Short ? 260 : Math.Clamp(Size.X * 0.3f, 320, 380),
                 CustomMinimumSize = new(Math.Min(960, Size.X - 72), Math.Min(480, Size.Y - 140)) };
             if (select != null) view.CardPressed += index => { select(index); dialog.QueueFree(); };

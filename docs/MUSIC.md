@@ -1,6 +1,6 @@
 # Música adaptativa y efectos
 
-El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. Las tres composiciones originales y sus dos puentes están incluidos y asignados en `assets/audio/music.tres`; los cinco efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
+El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. El menú, los temas de Yuno y Osamu y los puentes de Yuno se asignan en `assets/audio/music.tres`. Los cinco efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
 
 ## Estados
 
@@ -18,15 +18,13 @@ Volver efectivamente al lobby restablece `Menu` y permite un nuevo combate sin h
 
 `DuelPlayerView.RelikarioId` identifica públicamente al personaje de cada jugador. El cliente consulta exclusivamente `Players[1 - MySeat].RelikarioId` para escoger los temas de combate y clímax. El personaje propio y quién llegue a cero no cambian esa selección. `yuno-lv2` es un alias musical de `yuno`, de modo que evolucionar conserva su identidad y el reloj musical.
 
-El catálogo actual solo contiene Yuno y su evolución; se incluyen sus dos temas y el menú compartido. Las vistas de un servidor anterior que no envíe identidad usan `yuno` como valor compatible. Un personaje nuevo sin música asignada utiliza `DefaultEnemyTheme`, configurado como Yuno.
-
-La selección de habilidad todavía no conoce al rival y usa el tema de `yuno`; cuando haya más Relikarios, incluye su identidad en esa vista para que el combate empiece con el tema correcto.
+Las dos formas de Osamu comparten `Combat:osamu` y `Climax:osamu`. La preparación usa los Relikarios del reparto para elegir tema desde la selección de habilidad. Las vistas anteriores sin identidad y los personajes sin música asignada usan `DefaultEnemyTheme`, configurado como Yuno.
 
 Para añadir otro Relikario, agrega dos clips en `music.tres` llamados exactamente `Combat:<id>` y `Climax:<id>`, con sus archivos correspondientes. Los índices son libres; el director busca por nombre. Las variantes pueden declararse en `ThemeAliases`, en el inspector del autoload. No hace falta cambiar el director para agregar un nuevo par de pistas. Los puentes `ToCombat:<id>` y `ToClimax:<id>` son opcionales: sin ellos se aplica el fundido general.
 
 ## Transiciones
 
-Cada pieza tiene su propio compás y tempo, en re menor. La tensión sube a través de un puente: una entrada de dos compases sobre la dominante que desemboca en el primer pulso de la pieza siguiente, como los enlaces hacia los temas de batalla de Octopath Traveler.
+Cada pieza tiene su propio compás y tempo. Los temas de Yuno empiezan con un puente de dos compases sobre la dominante. En el combate de Osamu, el clímax entra al siguiente compás con un fundido cruzado de dos pulsos.
 
 | Pieza | Tempo y compás | Duración |
 | --- | --- | --- |
@@ -35,6 +33,8 @@ Cada pieza tiene su propio compás y tempo, en re menor. La tensión sube a trav
 | Climax:yuno | 168 BPM, 4/4, 160 pulsos | 57,1 s |
 | ToCombat:yuno | 160 BPM, 8 pulsos y cola | 3 s + cola |
 | ToClimax:yuno | 168 BPM, 8 pulsos y cola | 2,9 s + cola |
+| Combat:osamu | 144 BPM, 4/4, 160 pulsos | 66,7 s |
+| Climax:osamu | 174 BPM, 4/4, 128 pulsos | 44,1 s |
 
 | Cambio | Salida | Puente | Llegada |
 | --- | --- | --- | --- |
@@ -49,7 +49,7 @@ Los puentes se importan sin bucle, con **BPM** y **Beat Count = 8**. Godot progr
 
 Godot programa las transiciones en el hilo de audio. El cliente solicita la fase; no calcula compases con `_Process`, temporizadores o la latencia de red. Pedir otra vez la misma fase no vuelve a ejecutar `Play()` ni repite la transición. Si la fase cambia durante un puente, el destino pendiente se cancela y se aplica la regla del nuevo cambio.
 
-La entrada al combate tarda como máximo medio segundo de espera más los tres segundos del puente; la del clímax, hasta un compás (1,5 s) más 2,9 s. El duelo continúa mientras tanto. El silencio del bus tampoco detiene el reloj: subir el volumen conserva la reproducción.
+Los puentes de Yuno agregan tres segundos al combate y 2,9 s al clímax. Osamu entra al combate en el siguiente pulso y pasa del combate al clímax en el siguiente compás. El duelo y el reloj del audio siguen avanzando durante los cambios y cuando el bus está silenciado.
 
 Las piezas en bucle se importan con **Loop**, su **BPM**, **Beat Count** y **Bar Beats**, con el primer pulso al comienzo del archivo y la cola del final plegada sobre el principio.
 

@@ -63,6 +63,7 @@ public sealed partial class LobbyConnection : IDisposable
     public string Message { get; private set; } = "Sin conexión";
     public RoomInfo? Room => _connection?.Db.MyRoom.Iter().SingleOrDefault();
     public PreparationInfo? Preparation => _connection?.Db.MyPreparation.Iter().SingleOrDefault();
+    public RoomRelikarioInfo? RoomRelikarios => _connection?.Db.MyRoomRelikarios.Iter().SingleOrDefault();
     private PreparationInfo? _openingResult;
     private string? _openingRoom;
     public PreparationInfo? OpeningResult => _openingRoom == Room?.Code ? _openingResult : null;
@@ -144,6 +145,7 @@ public sealed partial class LobbyConnection : IDisposable
                 }).OnError((_, _) => QuickMatchAvailable = false).Subscribe(["SELECT * FROM my_quick_search"]);
                 // Apart, like the quick search: a server without deck styles still syncs the room and the decks.
                 connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_deck_styles"]);
+                connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_room_relikarios"]);
             })
             .OnConnectError(error => { Ready = Connecting = false; Message = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; })
             .OnDisconnect((_, error) => { Ready = Connecting = false; Message = "Se perdió la conexión. Pulsa Reconectar para recuperar tu sala."; });
@@ -156,6 +158,9 @@ public sealed partial class LobbyConnection : IDisposable
         _connection.Db.MyPreparation.OnInsert += (_, _) => PreparationRevision++;
         _connection.Db.MyPreparation.OnUpdate += (_, _, _) => PreparationRevision++;
         _connection.Db.MyPreparation.OnDelete += (_, _) => PreparationRevision++;
+        _connection.Db.MyRoomRelikarios.OnInsert += (_, _) => PreparationRevision++;
+        _connection.Db.MyRoomRelikarios.OnUpdate += (_, _, _) => PreparationRevision++;
+        _connection.Db.MyRoomRelikarios.OnDelete += (_, _) => PreparationRevision++;
         _connection.Db.MyInitialSkill.OnInsert += (_, _) => PreparationRevision++;
         _connection.Db.MyInitialSkill.OnUpdate += (_, _, _) => PreparationRevision++;
         _connection.Db.MyInitialSkill.OnDelete += (_, _) => PreparationRevision++;

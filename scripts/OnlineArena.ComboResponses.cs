@@ -28,16 +28,20 @@ public partial class OnlineArena
     {
         if (_deckSearchOptions.Length == 0) return null;
         var owners = _deckSearchOptions.Select(EffectCardOwner).ToArray();
-        if (owners.Any(owner => owner is not (0 or 1))) return null;
+        if (!ChoosingOsamuCards && !owners.Any(owner => owner is 0 or 1)) return null;
         var s = _snapshot!;
         var sections = new List<ArenaPresentation.HandSection>();
+        var deck = Enumerable.Range(0, owners.Length).Where(i => owners[i] == null).ToArray();
+        if (deck.Length > 0)
+            sections.Add(new("TU MAZO", ArenaPresentation.Mint, new CardOwner(s.MySeat, s.Players[s.MySeat].Name, s.Players[s.MySeat].RelikarioId), deck, FromDeck: true));
         foreach (var seat in new[] { s.MySeat, 1 - s.MySeat })
         {
             var indices = Enumerable.Range(0, _deckSearchOptions.Length).Where(i => owners[i] == seat).ToArray();
             if (indices.Length == 0) continue;
             var name = s.Players[seat].Name;
-            sections.Add(new(seat == s.MySeat ? $"TU MEMORIA · {name}" : $"MEMORIA DE {name}",
-                seat == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral, new CardOwner(seat, name), indices));
+            var title = seat != s.MySeat ? $"MEMORIA DE {name}" : ChoosingOsamuCards ? "TU MEMORIA" : $"TU MEMORIA · {name}";
+            sections.Add(new(title,
+                seat == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral, new CardOwner(seat, name, s.Players[seat].RelikarioId), indices));
         }
         return sections;
     }

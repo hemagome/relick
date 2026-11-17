@@ -48,15 +48,23 @@ public sealed partial class GameEngine
         State.PendingAttackRoll = null;
         State.LastAttackDie = die;
         State.Phase = Phase.Combat;
+        pending = pending with { Die = die, WasRerolled = rerolled };
+        if (!OfferOsamuAttackSearch(pending)) ResolveSkillAttack(pending);
+    }
+
+    private void ResolveSkillAttack(PendingAttackRoll pending)
+    {
+        var die = pending.Die;
         var p = State.Players[pending.Attacker];
         var skill = CardCatalog.Get(pending.SkillId);
+        if (RollTurboDamage(pending)) return;
         var attackDamageBonus = pending.SuperAttack ? CardCatalog.SuperAttack.DamageBonus : 0;
         if (pending.NormalDamage is int normal && pending.CriticalDamage is int critical)
             skill = skill with { NormalDamage = normal, CriticalDamage = critical };
         if (skill.Id == CardCatalog.Magnet.Id && (die is 4 or 5 || die < 4 && HasStackedTotem(pending.Attacker)))
             RollWithRelikario(p, DiePurpose.MagnetDamage, new DieEffect { Purpose = DiePurpose.MagnetDamage, Actor = pending.Attacker,
-                SkillId = skill.Id, AttackDie = die, Rerolled = rerolled, AttackDamageBonus = attackDamageBonus });
-        else ResolveAttackResult(pending.Attacker, skill, die, skill.NormalDamage, rerolled, pending.EffectsSuppressed, attackDamageBonus);
+                SkillId = skill.Id, AttackDie = die, Rerolled = pending.WasRerolled, AttackDamageBonus = attackDamageBonus });
+        else ResolveAttackResult(pending.Attacker, skill, die, skill.NormalDamage, pending.WasRerolled, pending.EffectsSuppressed, attackDamageBonus);
     }
 
     private void ResolveAttackResult(int actor, CardDefinition skill, int die, int normal, bool rerolled, bool effectsSuppressed = false, int attackDamageBonus = 0)

@@ -37,7 +37,7 @@ public sealed partial class GameEngine
         var state = new GameState { Phase = Phase.Combat, Turn = 1, CurrentPlayer = opening.StartingSeat };
         for (var seat = 0; seat < 2; seat++)
         {
-            var player = new PlayerState { Name = opening.Names[seat], Bonus = opening.Bonuses[seat],
+            var player = new PlayerState(RelikarioCatalog.Find(opening.Relikarios?.ElementAtOrDefault(seat))) { Name = opening.Names[seat], Bonus = opening.Bonuses[seat],
                 SuperMagnetCopies = Math.Clamp(opening.SuperMagnetCopies?.ElementAtOrDefault(seat) ?? 0, 0, 2),
                 ZahiraAvailable = opening.IncludeZahiraFlair, SuperAttackAvailable = opening.IncludeSuperAttack,
                 Sleeve = CosmeticCatalog.Sleeve(opening.Sleeves?.ElementAtOrDefault(seat)).Id is var sleeve && sleeve != CosmeticCatalog.DefaultSleeve ? sleeve : null,
@@ -120,9 +120,9 @@ public sealed partial class GameEngine
             Phase.Combat => FieldCombatTargets(actor).Any() ||
                 CanAttack(actor) ||
                 (!State.LearnedThisTurn && p.Skills.Count < MaxSkills && p.Relikia >= SkillCost(p) &&
-                 p.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Skill)),
+                 p.Hand.Any(id => CanLearnSkill(p, CardCatalog.Get(id)))),
             Phase.Actions => (State.ActionsLeft > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment || CodeUnavailableReason(actor, c.i) == null)) ||
-                RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
+                CanUseOsamuSearch(actor) || RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
             Phase.Discard => State.DiscardsRemaining > 0 && p.Hand.Count > 0,
             Phase.Final => p.Hand.Count > MaxHandSize,
             Phase.RelikiaChoice => true,
@@ -137,7 +137,7 @@ public sealed partial class GameEngine
         var p = State.Active;
         if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
         var id = p.Hand[handIndex];
-        if (CardCatalog.Get(id).Kind != CardKind.Skill) return CommandResult.Fail("Esta carta no es una habilidad.");
+        if (!CanLearnSkill(p, CardCatalog.Get(id))) return CommandResult.Fail("Elige una habilidad compatible con tu Relikario.");
         if (State.LearnedThisTurn)
             return CommandResult.Fail("Solo puedes enseñar una habilidad por turno.");
         if (p.Skills.Count >= MaxSkills) return CommandResult.Fail("Los cuatro espacios de habilidad están ocupados.");
@@ -145,7 +145,7 @@ public sealed partial class GameEngine
         var position = p.NextSkillPosition();
         if (p.Relikia < cost) return CommandResult.Fail($"Necesitas {cost} PR para enseñar otra habilidad.");
         p.Relikia -= cost;
-        MoveHandCardToField(p, handIndex);
+        MoveHandCardToField(p, handIndex, CardZone.Skill, p.Skills.Count);
         p.Skills.Add(id);
         if (p.SkillPositions != null || position != p.Skills.Count - 1)
         {
@@ -156,8 +156,13 @@ public sealed partial class GameEngine
         Log($"{p.Name} enseña {CardCatalog.Get(id).Name} ({cost} PR).");
         if (CardCatalog.Get(id).DrawOnExpensiveLearn && cost is 500 or 1000)
             RollWithRelikario(p, DiePurpose.SkillLearning, new DieEffect { Purpose = DiePurpose.SkillLearning, Actor = actor });
+        if (id == CardCatalog.TurboOverlap.Id)
+            OfferOsamuSearch(actor, id, OsamuAgilitySearch);
         return CommandResult.Ok();
     }
+
+    internal static bool CanLearnSkill(PlayerState player, CardDefinition card) =>
+        card.Kind == CardKind.Skill && DeckRules.Compatible(card, player.Relikario.Family);
 
     private string? AttackUnavailableReason(int actor)
     {
@@ -215,11 +220,12 @@ public sealed partial class GameEngine
         if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
-        var played = SendHandToMemory(p, handIndex);
+        var deferCorruption = card.Id == CardCatalog.GoldenTotem.Id && p.CorruptsOnMemory(CardZone.Hand, handIndex);
+        var played = SendHandToMemory(p, handIndex, deferCorruption);
         p.ActionsLeft -= card.ActionCost;
         p.Relikia -= CodePrCost(card);
         Log($"{p.Name} juega {card.Name}.");
-        ActivateCode(actor, card, false, played?.Index ?? -1, played?.Owner);
+        ActivateCode(actor, card, false, played?.Index ?? -1, played?.Owner, deferCorruption);
         return CommandResult.Ok();
     }
 
@@ -251,7 +257,7 @@ public sealed partial class GameEngine
         var p = State.Active;
         if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
         if (p.Bonus == null) return CommandResult.Fail("No hay una carta de Bonus disponible.");
-        var id = MoveHandCardToField(p, handIndex);
+        var id = MoveHandCardToField(p, handIndex, CardZone.Exchange, p.Exchange.Count);
         State.ActionsLeft--;
         PlaceInExchange(p, id);
         return CommandResult.Ok();
@@ -283,6 +289,7 @@ public sealed partial class GameEngine
             }
             ChangeZahiraHosts(actor, FieldZone.Exchange, 0, 2);
             p.Exchange.RemoveRange(0, 2);
+            p.RemoveCorruptionSlots(CardZone.Exchange, 0, 2);
             ShiftExchangeEffects(p, 0, 2);
             TakeBonus(p, p);
             Log($"{p.Name} completa el canje y obtiene su bonus.");
@@ -352,6 +359,7 @@ public sealed partial class GameEngine
         foreach (var player in State.Players)
         {
             player.AttackRerollUsedThisTurn = false;
+            player.RelikarioSearchUsedThisTurn = false;
             player.BonusEffectUsed = false; player.ExchangeEffectsUsed = null;
         }
         State.Phase = Phase.Combat;
@@ -422,12 +430,7 @@ public sealed partial class GameEngine
             Log($"Estrella del Fontanero aumenta el daño de {State.Players[owner].Name} de {original} a {amount}.");
             State.LastCombat += $" · Estrella del Fontanero: {amount} de daño";
         }
-        if (p.StarEffects > 0)
-        {
-            Log($"{p.Name} transforma {amount} de daño en 0 con Estrella del Fontanero.");
-            State.LastCombat += " · Estrella del Fontanero: 0 daño recibido";
-            Continue(completed); return;
-        }
+        if (PreventDamageWithStar(p, amount, completed)) return;
         var protection = ActiveEquipment(target);
         if (protection != null && (protection.PreventDamage || protection.DamageReduction > 0))
         {
@@ -437,7 +440,23 @@ public sealed partial class GameEngine
             amount = reduced;
             if (amount == 0) { Continue(completed); return; }
         }
-        if (protection is { DamageCounterLimit: > 0 })
+        if (!TryTurboSwordDefense(target, amount, attackDie, completed))
+            ApplyIncomingDamage(target, amount, attackDie, completed);
+    }
+
+    private bool PreventDamageWithStar(PlayerState player, int amount, EngineContinuation? completed)
+    {
+        if (player.StarEffects == 0) return false;
+        Log($"{player.Name} transforma {amount} de daño en 0 con Estrella del Fontanero.");
+        State.LastCombat += " · Estrella del Fontanero: 0 daño recibido";
+        Continue(completed);
+        return true;
+    }
+
+    private void ApplyIncomingDamage(int target, int amount, int attackDie, EngineContinuation? completed)
+    {
+        var p = State.Players[target];
+        if (ActiveEquipment(target) is { DamageCounterLimit: > 0 } protection)
         {
             p.EquipmentCounters++;
             if (p.EquipmentCounters >= protection.DamageCounterLimit)
@@ -487,10 +506,12 @@ public sealed partial class GameEngine
         }
         MoveDeckCard(p, 0, bonus, completed);
     }
-    private void MoveDeckCard(PlayerState p, int index, bool bonus, EngineContinuation? completed = null)
+    private void MoveDeckCard(PlayerState p, int index, bool bonus, EngineContinuation? completed = null, bool mark = false)
     {
         var actor = Array.IndexOf(State.Players, p);
         var id = p.Deck[index];
+        if (mark || p.CorruptsOnMemory(CardZone.Deck, index))
+            p.MarkForCorruption(bonus ? CardZone.Bonus : CardZone.Hand, bonus ? -1 : p.Hand.Count);
         if (bonus)
         {
             ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = id;
@@ -499,6 +520,7 @@ public sealed partial class GameEngine
         }
         else { p.Hand.Add(id); CardDrawn?.Invoke(actor, p.Hand.Count - 1); }
         p.Deck.RemoveAt(index);
+        p.RemoveCorruptionSlots(CardZone.Deck, index);
         if (p.Deck.Count == 0 && State.Phase != Phase.Preparation) Exhaust(p, completed);
         else Continue(completed);
     }
@@ -546,8 +568,10 @@ public sealed partial class GameEngine
     private int RollAttack(out bool modified, string caption = "", bool convertSix = false, bool superAttack = false)
     {
         var die = Roll(caption, convertSix);
-        var bonus = EffectsSuppressed(State.CurrentPlayer, FieldZone.Relikario) ? 0 : State.Active.Relikario.AttackDieBonusExceptOne;
-        modified = bonus > 0 && die is >= 2 and < 6;
+        var relikario = State.Active.Relikario;
+        var bonus = EffectsSuppressed(State.CurrentPlayer, FieldZone.Relikario) ? 0 :
+            die == 1 ? relikario.AttackDieBonusIncludingOne : relikario.AttackDieBonus;
+        modified = bonus > 0 && die < 6;
         if (modified)
         {
             var previous = die;
@@ -580,12 +604,19 @@ public sealed partial class GameEngine
         DieRolled?.Invoke(value);
         return value;
     }
-    private void Shuffle(List<string> cards)
+    private void Shuffle(PlayerState player)
     {
+        var cards = player.Deck;
+        var marks = player.CorruptionMarks?.GetValueOrDefault(CardZone.Deck);
         for (var i = cards.Count - 1; i > 0; i--)
         {
             var j = _random.Next(i + 1);
             (cards[i], cards[j]) = (cards[j], cards[i]);
+            if (marks == null || i == j) continue;
+            var first = marks.IndexOf(i);
+            var second = marks.IndexOf(j);
+            if (first >= 0) marks[first] = j;
+            if (second >= 0) marks[second] = i;
         }
     }
     private void Log(string text) => State.Log.Add(text);

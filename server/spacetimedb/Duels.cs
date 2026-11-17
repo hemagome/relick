@@ -33,7 +33,7 @@ public static partial class Module
     }
 
     private static DuelOpening InitialDuel(Opening opening, IEnumerable<Member> members, IEnumerable<Card> roomCards, Func<Identity, List<string>?> trapsOf,
-        Func<Identity, (string Sleeve, string Dice)?>? styleOf = null)
+        Func<Identity, (string Sleeve, string Dice)?> styleOf, Func<Identity, string?> relikarioOf)
     {
         var players = members.OrderBy(m => m.Seat).ToArray();
         var cards = roomCards.ToList();
@@ -47,8 +47,9 @@ public static partial class Module
             // Rooms dealt before Trap decks existed have no loadout and keep the training Traps.
             Traps = players.Select(p => trapsOf(p.Player) ?? CardCatalog.TrainingTraps()).ToArray(),
             // Cosmetic only: each seat's sleeve and die, classic when the room was dealt before styles existed.
-            Sleeves = players.Select(p => styleOf?.Invoke(p.Player)?.Sleeve ?? CosmeticCatalog.DefaultSleeve).ToArray(),
-            Dice = players.Select(p => styleOf?.Invoke(p.Player)?.Dice ?? CosmeticCatalog.DefaultDice).ToArray()
+            Sleeves = players.Select(p => styleOf(p.Player)?.Sleeve ?? CosmeticCatalog.DefaultSleeve).ToArray(),
+            Dice = players.Select(p => styleOf(p.Player)?.Dice ?? CosmeticCatalog.DefaultDice).ToArray(),
+            Relikarios = players.Select(p => relikarioOf(p.Player) ?? RelikarioCatalog.Yuno.Id).ToArray()
         };
     }
 

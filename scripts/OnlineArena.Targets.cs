@@ -81,7 +81,7 @@ public partial class OnlineArena
         {
             _selected.Clear(); _skillContext = false; _choosingAttackSkill = false; _fieldSelection = field; RefreshSelection();
         }
-        else if (zone == FieldZone.Hand) ShowCards("Mano rival", _snapshot.Players[owner].Hand);
+        else if (zone == FieldZone.Hand) ShowCards("Mano rival", _snapshot.Players[owner].Hand, relikarioOf: index => HandArtworkRelikario(owner, index));
     }
 
     private void SelectEquipment(int owner) => SelectField(owner, FieldZone.Equipment, -1);

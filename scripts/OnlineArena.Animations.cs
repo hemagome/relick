@@ -393,7 +393,7 @@ public partial class OnlineArena
         var slot = target == null ? default : ZoneRect(target);
         if (placement.IsExchangePlacement && placement.Face is { } face && target is ZoneCardButton { Card: null } exchange)
         {
-            var rect = exchange.ArtworkRect(BoardArt.LoadCardArtwork(CardCatalog.Get(face)));
+            var rect = exchange.ArtworkRect(BoardArt.LoadCardArtwork(CardCatalog.Get(face), FlightArtworkRelikario(placement.Event)));
             slot = Global(exchange, rect);
         }
         _placementPreview = target == null || !bounds.Encloses(slot) || !RectVisible(target, slot);
@@ -477,7 +477,8 @@ public partial class OnlineArena
             var id = kind == DuelVisualKind.Draw ? own && next.Event.Value < hand.Length ? hand[next.Event.Value] : null : next.Face;
             if (id != null)
             {
-                _flightFront = new HandCard { Card = CardCatalog.Get(id), Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore };
+                _flightFront = new HandCard { Card = CardCatalog.Get(id), RelikarioId = FlightArtworkRelikario(next.Event),
+                    Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore };
                 _flight.AddChild(_flightFront); _flightFront.SetProcess(false);
             }
             _flightTime = 0;
@@ -529,6 +530,15 @@ public partial class OnlineArena
         ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         Position = new(1, 7), Size = new(124, 175), MouseFilter = MouseFilterEnum.Ignore };
 
+    private string FlightArtworkRelikario(DuelVisualEvent cue)
+    {
+        if (cue.Kind is DuelVisualKind.BonusClaim or DuelVisualKind.HandSteal &&
+            HandCardOwner(cue.Target, cue.Value)?.RelikarioId is { } original)
+            return original;
+        var owner = cue.ToRivalMemory ? 1 - cue.Player : cue.Player;
+        return _snapshot!.Players[owner].RelikarioId;
+    }
+
     private void TryLaunchCompanion(Flight primary)
     {
         if (!_flights.TryPeek(out var pair) || !pair.Paired || pair.IsPlacement || pair.Event.Kind != primary.Event.Kind ||
@@ -552,9 +562,10 @@ public partial class OnlineArena
         var back = FlightBack(SleeveArt.Of(_snapshot, pair.Event.Player)); node.AddChild(back);
         var hand = _snapshot.Players[_snapshot.MySeat].Hand;
         HandCard? front = null;
-        if (!discard && own && pair.Event.Value < hand.Length)
+        if (!discard && own && hand.ElementAtOrDefault(pair.Event.Value) is { } id)
         {
-            front = new HandCard { Card = CardCatalog.Get(hand[pair.Event.Value]), Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore };
+            front = new HandCard { Card = CardCatalog.Get(id), RelikarioId = FlightArtworkRelikario(pair.Event),
+                Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore };
             node.AddChild(front); front.SetProcess(false);
         }
         _companion = new(pair, node, front, back, target, source.Value, destination.Value);

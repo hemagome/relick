@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -34,6 +34,10 @@ public sealed class DieEffect
     public bool Rerolled { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int Slot { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PendingAttackRoll? SkillAttack { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int IncomingDamage { get; set; }
     public EngineContinuation? Next { get; set; }
 }
 public enum ActivationKind { Code, Equipment, Reroll, Counter, MindReset, TurnBuff, FieldCode }
@@ -51,6 +55,8 @@ public sealed class EngineActivation
     public bool CanInterrupt { get; set; } = true;
     public bool FromMemory { get; set; }
     public int MemoryIndex { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CorruptOnMemory { get; set; }
     // Seat whose memory holds the activating card; null means the actor's own memory.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? MemoryOwner { get; set; }
@@ -95,6 +101,7 @@ public sealed partial class GameEngine
                 Continue(next.Next); break;
             case ContinuationKind.ApplyDamage: ApplyHealthDamage(next.Actor, next.Count, next.Value, next.Next); break;
             case ContinuationKind.FinishAttackDamage: FinishAttackDamage(next.Flag); break;
+            case ContinuationKind.ResolveSkillAttack: ResolveSkillAttack(next.Attack!); break;
             case ContinuationKind.RerollDraw: FinishRerollDraw(next); break;
             case ContinuationKind.TurnStartDraw: DrawAtTurnStart(); break;
             case ContinuationKind.DrawStageReady: FinishDrawStage(next.Flag); break;
@@ -140,6 +147,9 @@ public sealed partial class GameEngine
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {
+            case DiePurpose.TurboSwordDamage:
+            case DiePurpose.TurboOverlapDamage: ResolveTurboDamageDie(effect, die); break;
+            case DiePurpose.TurboSwordDefense: ResolveTurboSwordDefense(effect, die); break;
             case DiePurpose.QuickLoad: ResolveQuickLoadDie(effect.Actor, die); break;
             case DiePurpose.Zahira: ResolveZahiraDie(effect.Actor, die, effect.Slot); break;
             case DiePurpose.FieldCombat: ResolveFieldCombatDie(effect, die); break;
@@ -224,7 +234,8 @@ public sealed partial class GameEngine
         {
             if (frame.FieldSource is { } source) DestroyCardNow(source);
         }
-        else if (frame.Kind == ActivationKind.Equipment) NotifyPileMove(State.Players[frame.Actor], frame.CardId, CardZone.Activation, memoryOwner: frame.MemorySeat);
+        else if (!CorruptWaitingFieldCard(frame) && frame.Kind == ActivationKind.Equipment)
+            NotifyPileMove(State.Players[frame.Actor], frame.CardId, CardZone.Activation, memoryOwner: frame.MemorySeat);
         State.Phase = frame.ResumePhase;
         if (frame.Kind == ActivationKind.Reroll) _activeActivation = frame.Parent;
     }

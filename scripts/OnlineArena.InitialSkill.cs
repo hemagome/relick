@@ -17,7 +17,8 @@ public partial class OnlineArena
     internal void PresentInitialSkillChoice(RoomInfo room, InitialSkillInfo info, bool connected, bool pending, PreparationInfo? preparation = null)
     {
         preparation ??= Connection.Preparation;
-        var key = $"{room.Code}:{room.MySeat}:{room.PlayerOne}:{room.PlayerTwo}:{preparation?.HandCountOne}:{preparation?.HandCountTwo}:{preparation?.DeckCountOne}:{preparation?.DeckCountTwo}:" + string.Join(',', info.Options);
+        var relikarios = RelikariosForRoom(room);
+        var key = $"{room.Code}:{room.MySeat}:{room.PlayerOne}:{room.PlayerTwo}:{preparation?.HandCountOne}:{preparation?.HandCountTwo}:{preparation?.DeckCountOne}:{preparation?.DeckCountTwo}:{relikarios?.RelikarioOne}:{relikarios?.RelikarioTwo}:" + string.Join(',', info.Options);
         if (_choosingOpeningSkill && _initialSkillViewKey == key &&
             _initialSkillConnected == connected && _initialSkillPending == pending) return;
         _initialSkillViewKey = key; _availableInitialSkills = info.Options.ToArray();
@@ -25,14 +26,8 @@ public partial class OnlineArena
         _initialSkillConnected = connected; _initialSkillPending = pending;
         _choosingOpeningSkill = true; _preparing = true; _openingCards = []; _openingInfo = null;
         PreparationConfirmButton = null;
-        DuelPlayerView Player(int seat) => new() { Name = seat == 0 ? room.PlayerOne : room.PlayerTwo,
-            Level = 1, Health = RelikarioCatalog.Yuno.MaxHealth, MaxHealth = RelikarioCatalog.Yuno.MaxHealth,
-            Dexterity = RelikarioCatalog.Yuno.StartingDexterity,
-            DeckCount = (int)(seat == 0 ? preparation?.DeckCountOne ?? 0 : preparation?.DeckCountTwo ?? 0),
-            HandCount = (int)(seat == 0 ? preparation?.HandCountOne ?? 0 : preparation?.HandCountTwo ?? 0),
-            Hand = new string?[(int)(seat == 0 ? preparation?.HandCountOne ?? 0 : preparation?.HandCountTwo ?? 0)] };
         _snapshot = new DuelSnapshot { MySeat = room.MySeat, DecisionPlayer = room.MySeat, Phase = Phase.Preparation,
-            Players = [Player(0), Player(1)] };
+            Players = [PreparationPlayer(room, preparation, relikarios, 0), PreparationPlayer(room, preparation, relikarios, 1)] };
         var opponent = 1 - room.MySeat;
         if (_snapshot.Players[opponent].Hand.Length == OpeningHandSize) _openingHandsPresented[opponent] = true;
         ResetAnimations(); Render();
