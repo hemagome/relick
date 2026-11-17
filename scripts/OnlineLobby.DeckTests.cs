@@ -1,5 +1,6 @@
 using Godot;
 using Relick.Core;
+using Relick.Network;
 using Relick.Network.Types;
 
 namespace Relick;
@@ -211,5 +212,80 @@ public partial class OnlineLobby
             RemoveChild(guest); guest.QueueFree(); await Frames();
         }
         GD.Print("PVP_DECKS_PASS · lista, mazo activo, borrador, límites de copias, Trampas y banquillo, guardado e invitado; cuatro tamaños.");
+        if (OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--deck-save-server=")) is { } server)
+            await CheckDeckSaveAndLeave(server.Split('=', 2)[1]);
+    }
+
+    private async Task CheckDeckSaveAndLeave(string server)
+    {
+        using var connection = new LobbyConnection();
+        void Expect(bool ok, string reason) { if (!ok) throw new Exception("Guardado de mazos: " + reason); }
+        async Task WaitFor(Func<bool> condition)
+        {
+            var started = Time.GetTicksMsec();
+            while (!condition())
+            {
+                Expect(Time.GetTicksMsec() - started < 15_000, "tiempo agotado esperando el guardado o la conexión.");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                connection.Tick();
+            }
+        }
+        static void Press(Control editor, string name) => ((Button)editor.FindChild(name, true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
+        static bool Warns(DeckEditor editor) => editor.GetChildren().OfType<ConfirmationDialog>().Any(dialog => dialog.Visible);
+        var database = OS.GetEnvironment("RELICK_DATABASE");
+        connection.Connect(server, database.Length > 0 ? database : "relick-deck-save-test", null);
+        await WaitFor(() => connection.Ready);
+        var screen = new DeckScreen { Connection = connection };
+        AddChild(screen);
+        var sound = GetNode<SoundDirector>("/root/SoundDirector");
+        var saveSounds = 0;
+        void CountSaveSound(SoundCue cue) { if (cue == SoundCue.DeckSaved) saveSounds++; }
+        sound.SoundPlayed += CountSaveSound;
+        try
+        {
+            var cards = CardCatalog.TrainingDeck().Where(id => DeckRules.Compatible(CardCatalog.Get(id), RelikarioCatalog.Osamu.Id))
+                .Concat([CardCatalog.TurboSword.Id, CardCatalog.EquipmentRaid.Id, CardCatalog.PurpleRing.Id]).ToList();
+            screen.Edit(0, "Prueba", cards, CardCatalog.TrainingTraps(), relikario: RelikarioCatalog.Osamu.Id);
+            var editor = screen.Editor!;
+            editor.ChooseStyle(sleeve: "oro", dice: "obsidiana");
+            Press(editor, "SaveDeck");
+            Expect(connection.DeckPending, "el guardado no se envió.");
+            Expect(saveSounds == 0, "el sonido se reproduce antes de que el servidor confirme el guardado.");
+            Press(editor, "EditorBack");
+            Expect(screen.Editor == editor && !Warns(editor), "volver mientras se guarda muestra el aviso de cambios sin guardar.");
+            Expect(!editor.CanProcess() && editor.FindChild("SaveDeck", true, false) is Button { Disabled: true, Text: "Guardando…" },
+                "el mazo permite editar o repetir el guardado mientras espera confirmación.");
+            await WaitFor(() => screen.Editor == null || connection.DeckError.Length > 0);
+            Expect(connection.DeckError.Length == 0, connection.DeckError);
+            var saved = connection.Decks.Single();
+            Expect(saved.Sleeve == "oro" && saved.Dice == "obsidiana" && saved.Relikario == RelikarioCatalog.Osamu.Id &&
+                saved.Cards.Order().SequenceEqual(cards.Order()), "la lista no recuperó el mazo de Osamu con las cartas y el estilo guardados.");
+            Expect(saveSounds == 1, "crear el mazo debe sonar una sola vez.");
+            Press((Control)screen.FindChild("Deck" + saved.Id, true, false)!, "Edit");
+            editor = screen.Editor!;
+            Press(editor, "EditorBack");
+            Expect(screen.Editor == null && !Warns(editor), "volver sin editar el mazo guardado muestra el aviso.");
+
+            Press((Control)screen.FindChild("Deck" + saved.Id, true, false)!, "Edit");
+            editor = screen.Editor!;
+            editor.ChooseStyle(sleeve: CosmeticCatalog.DefaultSleeve);
+            Press(editor, "SaveDeck");
+            Expect(saveSounds == 1, "el sonido se reproduce antes de que el servidor confirme la actualización.");
+            await WaitFor(() => screen.Editor == null || connection.DeckError.Length > 0);
+            Expect(connection.DeckError.Length == 0 && connection.Decks.Single().Sleeve == CosmeticCatalog.DefaultSleeve,
+                "la actualización no guardó la mica: " + connection.DeckError);
+            Expect(saveSounds == 2, "actualizar el mazo debe sonar una sola vez.");
+
+            screen.Edit(ulong.MaxValue, saved.Name, saved.Cards, saved.Traps);
+            editor = screen.Editor!;
+            editor.ChooseStyle(sleeve: "oro");
+            Press(editor, "SaveDeck");
+            await WaitFor(() => connection.DeckError.Length > 0 && !((Button)editor.FindChild("SaveDeck", true, false)!).Disabled);
+            Expect(saveSounds == 2, "un guardado rechazado reproduce el sonido de confirmación.");
+            Press(editor, "EditorBack");
+            Expect(screen.Editor == editor && Warns(editor), "un guardado rechazado permite salir sin avisar de los cambios pendientes.");
+        }
+        finally { sound.SoundPlayed -= CountSaveSound; RemoveChild(screen); screen.QueueFree(); }
+        GD.Print("PVP_DECK_SAVE_AND_LEAVE_PASS · espera la confirmación, reabre el mazo guardado y conserva los cambios rechazados.");
     }
 }

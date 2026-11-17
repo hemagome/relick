@@ -1,6 +1,6 @@
 # Audio de Relick
 
-Las composiciones instrumentales se sintetizan específicamente para este proyecto mediante `tools/audio/score.cpp`, y los efectos de robo, curación y ataque mediante `tools/audio/render.cpp`, sin muestras ni melodías de terceros. La música es orquestal, al estilo de un RPG: cuerdas, trompetas y trompas, flauta, guitarra y arpa pulsadas, piano, timbales, batería y platillos, en una sala con reverberación. Los efectos de dado y barajado utilizan grabaciones con licencia CC0, detalladas abajo.
+Las composiciones instrumentales se sintetizan específicamente para este proyecto mediante `tools/audio/score.cpp`, y los efectos de robo, curación, ataque y guardado mediante `tools/audio/render.cpp`, sin muestras ni melodías de terceros. La música es orquestal, al estilo de un RPG: cuerdas, trompetas y trompas, flauta, guitarra y arpa pulsadas, piano, timbales, batería y platillos, en una sala con reverberación. Los efectos de dado y barajado utilizan grabaciones con licencia CC0, detalladas abajo.
 
 | Archivo | Título | Uso |
 | --- | --- | --- |
@@ -21,6 +21,7 @@ Las piezas comparten re como centro tonal. Los clímax retoman el motivo del com
 | `sfx/dice-roll.wav` | 1,37 s | Grabación real de un dado de madera rodando sobre una mesa. |
 | `sfx/heal.wav` | 1,05 s | Campanas ascendentes con cola suave. |
 | `sfx/attack.wav` | 0,46 s | Barrido corto y golpe de baja frecuencia. |
+| `sfx/deck-saved.wav` | 0,39 s | Frase ascendente de ondas de pulso con un cierre a dos voces. |
 
 Los másteres son estéreo a 44,1 kHz. Las piezas se distribuyen en OGG Vorbis y los efectos en WAV PCM de 16 bits. Los generadores usan una semilla fija para que los recursos sean reproducibles.
 

@@ -63,13 +63,14 @@ La arena llama a `PresentDuel(RoomCode, snapshot)` al presentar un estado autori
 
 ## Efectos y volumen
 
-`SoundDirector` mantiene cinco reproductores con hasta cuatro voces simultáneas por efecto, en el bus `Sfx`:
+`SoundDirector` reproduce los efectos en el bus `Sfx`, con hasta cuatro voces simultáneas por efecto.
 
 - Robo: al comenzar a retirar cada carta de la cola de vuelos, también si su destino está fuera de pantalla. Incluye reparto inicial, mulligan y robos de ambos jugadores.
 - Barajado: grabación CC0 de Brian MacIntosh (BMacZero), de 0,78 segundos. Suena una sola vez al retirar un evento `Shuffle` de la cola de animación, también si el mazo queda fuera de pantalla.
 - Dado: grabación real de un dado de madera, publicada por Wuzzy bajo CC0. `DiceFace.RollStarted` la reproduce al empezar cada lanzamiento o relanzamiento, incluidos los dos dados de iniciativa. Dura 1,37 segundos y termina dentro de los 1,45 segundos de la animación. Ajustar el resultado no vuelve a lanzar el sonido.
 - Curación: al comenzar la animación de una curación efectiva.
 - Ataque: al comenzar la animación del ataque ejecutado.
+- Guardado de mazo. Suena una vez cuando el servidor confirma que se creó o se actualizó el mazo, incluidos los borradores.
 
 Las vistas de recuperación y los cambios de diseño no reproducen efectos históricos: reutilizan el filtro existente de revisiones y las colas de animación.
 

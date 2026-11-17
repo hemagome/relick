@@ -38,6 +38,7 @@ public partial class DeckEditor : VBoxContainer
     private Label _totals = null!;
     private Label _problems = null!;
     private Label _notice = null!;
+    private Button _back = null!;
     private Button _save = null!;
     private VBoxContainer _rows = null!;
     private Button _deckTab = null!;
@@ -60,6 +61,7 @@ public partial class DeckEditor : VBoxContainer
     internal IReadOnlyDictionary<string, int> Counts => _counts;
     internal IReadOnlyDictionary<string, int> SideCounts => _side;
     internal bool Dirty => Fingerprint() != _saved;
+    internal bool Saving { get; private set; }
     internal List<string> Main => Listed(_counts, card => !DeckRules.IsTrap(card));
     internal List<string> Traps => Listed(_counts, DeckRules.IsTrap);
     internal List<string> Side => Listed(_side, _ => true);
@@ -101,8 +103,8 @@ public partial class DeckEditor : VBoxContainer
         _sleeve = CosmeticCatalog.Sleeve(InitialSleeve).Id; _dice = CosmeticCatalog.DiceFor(InitialDice).Id;
 
         var header = new HBoxContainer(); header.AddThemeConstantOverride("separation", 12); AddChild(header);
-        var back = ArenaPresentation.Button(header, "← Mazos", RequestClose);
-        back.Name = "EditorBack"; back.CustomMinimumSize = new(120, 48);
+        _back = ArenaPresentation.Button(header, "← Mazos", RequestClose);
+        _back.Name = "EditorBack"; _back.CustomMinimumSize = new(120, 48);
         _name = new LineEdit { Name = "DeckName", Text = DeckName, PlaceholderText = "Nombre del mazo", MaxLength = 32,
             CustomMinimumSize = new(180, 48), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _name.TextChanged += _ => Refresh();
@@ -302,20 +304,25 @@ public partial class DeckEditor : VBoxContainer
     /// <summary>The owner calls this once the server has accepted the save.</summary>
     public void MarkSaved() => _saved = Fingerprint();
 
-    public void SetBusy(bool busy)
+    internal void SetSaving(bool saving)
     {
-        _save.Disabled = busy;
-        if (busy) _save.Text = "Guardando…"; else Refresh();
+        Saving = saving;
+        ProcessMode = saving ? ProcessModeEnum.Disabled : ProcessModeEnum.Inherit;
+        _back.Disabled = _save.Disabled = saving;
+        if (saving) { _save.Text = "Guardando…"; Notify(""); }
+        else Refresh();
     }
 
     private void Save()
     {
+        if (Saving) return;
         if (_name.Text.Trim().Length == 0) { Notify("Ponle un nombre al mazo antes de guardarlo."); _name.GrabFocus(); return; }
         SaveRequested?.Invoke(_name.Text.Trim(), Main, Traps, Side, _sleeve, _dice);
     }
 
     private void RequestClose()
     {
+        if (Saving) return;
         if (!Dirty) { Closed?.Invoke(); return; }
         var dialog = new ConfirmationDialog { Title = "Cambios sin guardar", DialogText = "Si sales ahora perderás los cambios de este mazo.",
             OkButtonText = "Salir sin guardar", CancelButtonText = "Seguir editando" };

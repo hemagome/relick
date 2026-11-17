@@ -117,6 +117,30 @@ Audio effect(int kind) {
     return a;
 }
 
+Audio deckSaved() {
+    Audio audio(int(0.39 * SR));
+    // A dotted pickup and a two-voice finish, played with band-limited pulse waves.
+    struct Note { double start, duration; int pitch; double gain; int duty; };
+    for (const auto &note : std::array<Note, 5>{{
+            {0.000, 0.080, 76, 0.72, 4}, {0.090, 0.043, 81, 0.68, 4},
+            {0.142, 0.049, 83, 0.65, 4}, {0.202, 0.163, 88, 0.74, 2},
+            {0.202, 0.157, 81, 0.32, 4}}}) {
+        const double frequency = hz(note.pitch);
+        const int start = std::lround(note.start * SR);
+        const int count = std::lround(note.duration * SR);
+        for (int i = 0; i < count; i++) {
+            const double time = double(i) / SR;
+            double pulse = 0;
+            for (int harmonic = 1; harmonic <= 7; harmonic++) {
+                pulse += sine(frequency * time * harmonic) * std::sin(PI * harmonic / note.duty) / harmonic;
+            }
+            const double envelope = std::min({1.0, time / 0.003, (note.duration - time) / 0.026}) * std::exp(-time * 3.5);
+            add(audio, start + i, pulse * envelope * note.gain, 0, false);
+        }
+    }
+    return audio;
+}
+
 int main(int argc, char **argv) {
     std::filesystem::path output = argc > 1 ? argv[1] : "/tmp/relick-audio-wav";
     std::filesystem::create_directories(output);
@@ -124,4 +148,5 @@ int main(int argc, char **argv) {
     rng.discard(8184512);
     std::array<std::string,3> sounds = {"card-draw", "heal", "attack"};
     for (int i = 0; i < 3; i++) writeWav((output/(sounds[i]+".wav")).string(), effect(i), false, 0.18);
+    writeWav((output / "deck-saved.wav").string(), deckSaved(), false, 0.14);
 }

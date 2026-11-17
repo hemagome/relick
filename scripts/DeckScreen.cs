@@ -25,10 +25,7 @@ public partial class DeckScreen : Control
     private int _shownRevision = -1;
     private bool _shownPending;
     private string _shownError = "";
-    private ulong _editingId;
-    private string _editingRelikario = RelikarioCatalog.Yuno.Id;
     private int _savesBeforeEdit;
-    private bool _saving;
 
     private IReadOnlyList<DeckInfo> Decks => PreviewDecks ?? Connection.Decks;
     private bool ShortScreen => ArenaViewport.Short(this);
@@ -225,28 +222,35 @@ public partial class DeckScreen : Control
         string? sleeve = null, string? dice = null)
     {
         Clear();
-        _editingId = id; _saving = false; _editingRelikario = relikario ?? RelikarioCatalog.Yuno.Id;
-        Editor = new DeckEditor { DeckName = name, Relikario = _editingRelikario, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen,
+        var editor = new DeckEditor { DeckName = name, Relikario = relikario ?? RelikarioCatalog.Yuno.Id, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen,
             InitialSleeve = sleeve ?? CosmeticCatalog.DefaultSleeve, InitialDice = dice ?? CosmeticCatalog.DefaultDice };
-        Editor.Closed += ShowList;
-        Editor.SaveRequested += (deckName, main, trapDeck, bench, deckSleeve, deckDice) =>
+        Editor = editor;
+        editor.Closed += ShowList;
+        editor.SaveRequested += (deckName, main, trapDeck, bench, deckSleeve, deckDice) =>
         {
+            if (!Connection.Ready) { editor.Notify("No hay conexión con el servidor. Inténtalo de nuevo al reconectar."); return; }
             if (Connection.DeckPending) return;
-            _savesBeforeEdit = Connection.DeckSaves; _saving = true;
-            Connection.SaveDeck(_editingId, deckName, _editingRelikario, main, trapDeck, bench, deckSleeve, deckDice);
-            // Without a connection the request is not sent at all.
-            if (!Connection.DeckPending) { _saving = false; Editor.Notify("No hay conexión con el servidor. Inténtalo de nuevo al reconectar."); }
+            _savesBeforeEdit = Connection.DeckSaves;
+            Connection.SaveDeck(id, deckName, editor.Relikario, main, trapDeck, bench, deckSleeve, deckDice);
+            if (Connection.DeckPending) editor.SetSaving(true);
+            else editor.Notify(Connection.DeckError.Length > 0 ? Connection.DeckError : "No se pudo enviar la solicitud de guardado.");
         };
-        _margin.AddChild(Editor);
+        _margin.AddChild(editor);
     }
 
     private void PresentEditor()
     {
-        if (!_saving) return;
-        Editor!.SetBusy(Connection.DeckPending);
-        if (Connection.DeckPending) return;
-        _saving = false;
-        if (Connection.DeckSaves > _savesBeforeEdit) { Editor.MarkSaved(); ShowList(); }
-        else Editor.Notify(Connection.DeckError.Length > 0 ? Connection.DeckError : "No se pudo guardar el mazo. Inténtalo de nuevo.");
+        if (Editor is not { Saving: true } editor || Connection.DeckPending && Connection.Ready) return;
+        if (Connection.DeckSaves > _savesBeforeEdit)
+        {
+            editor.MarkSaved();
+            GetNodeOrNull<SoundDirector>("/root/SoundDirector")?.Play(SoundCue.DeckSaved);
+            ShowList();
+            return;
+        }
+
+        editor.SetSaving(false);
+        editor.Notify(!Connection.Ready ? "Se perdió la conexión antes de confirmar el guardado."
+            : Connection.DeckError.Length > 0 ? Connection.DeckError : "No se pudo guardar el mazo. Inténtalo de nuevo.");
     }
 }
