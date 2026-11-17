@@ -103,7 +103,7 @@ public partial class DeckScreen : Control
         _create.TooltipText = decks.Count >= 20 ? "Puedes guardar hasta 20 mazos." : "";
 
         var training = CardCatalog.TrainingDeck(); var trainingTraps = CardCatalog.TrainingTraps();
-        AddRow("Training", RelikarioCatalog.Yuno.Id, "Mazo de entrenamiento", $"{trainingTraps.Count} Códigos Trampa", decks.All(deck => !deck.Active), true, busy,
+        AddRow("Training", RelikarioCatalog.Yuno.Id, "Mazo de entrenamiento", null, decks.All(deck => !deck.Active), busy,
             use: () => Connection.SetActiveDeck(0),
             edit: null,
             copy: Guest ? null : () => Edit(0, "Copia de entrenamiento", training, trainingTraps),
@@ -111,16 +111,12 @@ public partial class DeckScreen : Control
         foreach (var deck in decks)
         {
             var problems = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, deck.Side);
-            // A legal deck always has its full count, and the check mark says it is ready; a draft keeps its numbers and its problem.
-            var summary = problems.Count == 0
-                ? $"{deck.Traps.Count} Códigos Trampa" + (deck.Side.Count > 0 ? $" · {deck.Side.Count} en banquillo" : "")
-                : $"{deck.Cards.Count} cartas · {deck.Traps.Count} Códigos Trampa · " + (deck.Side.Count > 0 ? $"{deck.Side.Count} en banquillo · " : "") + "Borrador: " + problems[0];
             var saved = deck;
-            AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, summary, deck.Active, problems.Count == 0, busy,
+            AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, problems.FirstOrDefault(), deck.Active, busy,
                 use: () => Connection.SetActiveDeck(saved.Id),
                 edit: () => Edit(saved.Id, saved.Name, saved.Cards, saved.Traps, saved.Side, saved.Relikario, saved.Sleeve, saved.Dice),
                 copy: decks.Count >= 20 ? null : () => Edit(0, Shorten("Copia de " + saved.Name), saved.Cards, saved.Traps, saved.Side, saved.Relikario, saved.Sleeve, saved.Dice),
-                delete: () => ConfirmDelete(saved));
+                delete: () => ConfirmDelete(saved), sleeve: deck.Sleeve, dice: deck.Dice);
         }
     }
 
@@ -130,7 +126,8 @@ public partial class DeckScreen : Control
     internal static Texture2D? Thumbnail(string relikario) =>
         RelikarioArt.Thumbnail(relikario);
 
-    private void AddRow(string key, string relikario, string name, string summary, bool active, bool valid, bool busy, Action use, Action? edit, Action? copy, Action? delete)
+    private void AddRow(string key, string relikario, string name, string? problem, bool active, bool busy, Action use, Action? edit, Action? copy, Action? delete,
+        string? sleeve = null, string? dice = null)
     {
         var panel = new PanelContainer { Name = key, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var style = RelickVisuals.Frame(RelickVisuals.Playmat.Surface, active ? ArenaPresentation.Mint : RelickVisuals.Playmat.Frame, 8, active ? 2 : 1);
@@ -154,14 +151,13 @@ public partial class DeckScreen : Control
             var badge = ArenaPresentation.Text("EN USO", 12, ArenaPresentation.Mint); badge.Name = "ActiveBadge";
             badge.SizeFlagsVertical = SizeFlags.ShrinkCenter; heading.AddChild(badge);
         }
-        var summaryRow = new HBoxContainer(); summaryRow.AddThemeConstantOverride("separation", 6); titles.AddChild(summaryRow);
-        if (valid)
-            summaryRow.AddChild(new IconView { Name = "ReadyMark", Icon = GameIcon.Check, Color = ArenaPresentation.Mint,
-                CustomMinimumSize = new(16, 16), SizeFlagsVertical = SizeFlags.ShrinkCenter });
-        var detail = ArenaPresentation.Text(summary, 14, valid ? BoardArt.Muted : ArenaPresentation.Coral);
-        detail.Name = "DeckSummary"; detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; detail.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        if (valid) { detail.MouseFilter = MouseFilterEnum.Pass; detail.TooltipText = "Listo para jugar"; detail.AccessibilityName = summary + " · Listo para jugar"; }
-        summaryRow.AddChild(detail);
+        AddStylePreviews(titles, sleeve, dice);
+        if (problem != null)
+        {
+            var draft = ArenaPresentation.Text($"Borrador: {problem}", 14, ArenaPresentation.Coral);
+            draft.Name = "DeckProblem"; draft.AutowrapMode = TextServer.AutowrapMode.WordSmart; titles.AddChild(draft);
+        }
+        var valid = problem == null;
         var actions = new HBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter }; actions.AddThemeConstantOverride("separation", 8); row.AddChild(actions);
         var useButton = ArenaPresentation.Button(actions, "Usar", use, busy || active || !valid);
         useButton.Name = "Use"; useButton.CustomMinimumSize = new(96, 44);
@@ -180,6 +176,29 @@ public partial class DeckScreen : Control
         Secondary("Edit", "Editar", GameIcon.Pencil, edit);
         Secondary("Copy", "Duplicar", GameIcon.Copy, copy);
         Secondary("Delete", "Borrar", GameIcon.Trash, delete);
+    }
+
+    private void AddStylePreviews(VBoxContainer titles, string? sleeveId, string? diceId)
+    {
+        var sleeve = CosmeticCatalog.Sleeve(sleeveId);
+        var dice = CosmeticCatalog.DiceFor(diceId);
+        var height = ShortScreen ? 26 : 32;
+        var styles = new HFlowContainer();
+        styles.AddThemeConstantOverride("h_separation", 14);
+        styles.AddThemeConstantOverride("v_separation", 4);
+        titles.AddChild(styles);
+
+        void Preview(Control art, string caption)
+        {
+            var pair = new HBoxContainer(); pair.AddThemeConstantOverride("separation", 5); styles.AddChild(pair);
+            art.MouseFilter = MouseFilterEnum.Ignore; art.SizeFlagsVertical = SizeFlags.ShrinkCenter; pair.AddChild(art);
+            var label = ArenaPresentation.Text(caption, 13, BoardArt.Muted);
+            label.SizeFlagsVertical = SizeFlags.ShrinkCenter; pair.AddChild(label);
+        }
+
+        Preview(new TextureRect { Name = "DeckSleeve", Texture = SleeveArt.Back(sleeve.Id), CustomMinimumSize = new(height * 0.72f, height),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered }, $"Mica {sleeve.Name}");
+        Preview(new DiceSwatch { Name = "DeckDice", Style = dice.Id, CustomMinimumSize = new(height, height) }, $"Dado {dice.Name}");
     }
 
     private void ConfirmDelete(DeckInfo deck)

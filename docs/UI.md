@@ -215,16 +215,16 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. T
 
 Cada mazo guardado tiene una mica y un dado. Son solo cosméticos y no cambian ninguna regla. El catálogo está en `core/CosmeticCatalog.cs`:
 
-- **Micas:** Clásica, Menta, Coral, Oro, Violeta y Medianoche.
+- **Micas:** Transparente, Menta, Coral, Oro, Violeta y Medianoche.
 - **Dados:** Clásico, Menta, Coral, Oro, Violeta y Obsidiana.
 
 Funcionamiento:
 
-- **Editor.** La pestaña «Estilo», junto a Mazo y Banquillo, muestra una ficha por opción, con la elegida enmarcada en dorado. Mientras está abierta, pulsar el catálogo solo consulta la carta. Cambiar la mica o el dado marca el mazo como modificado, y guardar los envía con él. Duplicar un mazo copia su estilo. El mazo de entrenamiento usa la mica y el dado clásicos.
-- **Micas.** `SleeveArt` recolorea en bitono el reverso impreso: los negros toman el tono oscuro de la mica y los blancos el claro, y se añade un borde con su color de canto. Cada reverso se genera una vez, a 512 px de alto, y se conserva durante la sesión. La Clásica es el reverso impreso sin cambios.
+- **Editor.** La pestaña «Estilo», junto a Mazo y Banquillo, muestra una ficha por opción, con la elegida enmarcada en dorado. Mientras está abierta, pulsar el catálogo solo consulta la carta. Cambiar la mica o el dado marca el mazo como modificado, y guardar los envía con él. Duplicar un mazo copia su estilo. El mazo de entrenamiento usa la mica Transparente y el dado Clásico.
+- **Micas.** `SleeveArt` recolorea en bitono el reverso impreso: los negros toman el tono oscuro de la mica y los blancos el claro, y se añade un borde con su color de canto. Cada reverso se genera una vez, a 512 px de alto, y se conserva durante la sesión. La mica Transparente deja ver el reverso impreso original.
   - Se ve en el mazo y en las cartas corruptas de cada jugador, en la mano oculta del rival y en las cartas que vuelan.
 - **Dados.** `DiceFace.ApplyStyle` recolorea el cuerpo y los puntos del dado 3D. Cada tirada muestra el dado de quien tira, también cuando lanza el defensor (por ejemplo, con Esquivar), porque el evento visual del dado ahora indica quién tiró. Los dados de iniciativa conservan el estilo clásico, porque la preparación aún no conoce los estilos.
-- **Visibilidad.** Ambos jugadores ven la mica y el dado del otro: viajan en la apertura del duelo y en la vista pública de cada jugador (`DuelPlayerView.Sleeve` y `Dice`). Una partida anterior a esta versión usa los clásicos.
+- **Visibilidad.** Ambos jugadores ven la mica y el dado del otro: viajan en la apertura del duelo y en la vista pública de cada jugador (`DuelPlayerView.Sleeve` y `Dice`). Las partidas anteriores a la personalización usan la mica Transparente y el dado Clásico.
 
 Pruebas:
 

@@ -330,8 +330,6 @@ public partial class DeckEditor : VBoxContainer
     /// <summary>The sleeve and die pickers: one tile per option, the chosen one framed in gold.</summary>
     private void BuildStyleRows()
     {
-        var help = ArenaPresentation.Text("Solo cambian el aspecto: tu rival verá esta mica en tus cartas boca abajo y este dado en tus tiradas.", 13, BoardArt.Muted);
-        help.Name = "StyleHelp"; help.AutowrapMode = TextServer.AutowrapMode.WordSmart; _rows.AddChild(help);
         void Section(string title, IEnumerable<(string Id, string Name)> options, string chosen, Func<string, Control> picture, Action<string> choose, string prefix)
         {
             _rows.AddChild(ArenaPresentation.Text(title, 12, BoardArt.Muted));

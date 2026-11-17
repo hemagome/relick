@@ -980,11 +980,10 @@ public partial class HandCard : Button
     private bool OwnerIsForeign => OriginalOwner is { } owner && ViewerSeat is { } viewer && owner.Seat != viewer;
     public override void _Ready()
     {
-        if (Card.Kind == CardKind.Attack)
-            _artwork = BoardArt.LoadCardArtwork(Card, ArtworkRelikario) ?? BoardArt.LoadCardArtwork(CardCatalog.Attack, ArtworkRelikario)
+        _artwork = Card.Kind == CardKind.Skill ? SkillArtwork.Load(Card) : BoardArt.LoadCardArtwork(Card, ArtworkRelikario);
+        if (Card.Kind == CardKind.Attack && _artwork == null)
+            _artwork = BoardArt.LoadCardArtwork(CardCatalog.Attack, ArtworkRelikario)
                 ?? throw new InvalidOperationException($"No se pudo cargar la ilustración de {Card.Name}.");
-        if (Card.Kind is CardKind.Equipment or CardKind.Code) _artwork = GD.Load<Texture2D>($"res://assets/cards/{Card.Id}-clean.png");
-        if (Card.Kind == CardKind.Skill) _artwork = SkillArtwork.Load(Card);
         CustomMinimumSize = (Wide ? new Vector2(177, 133) : new Vector2(126, 184)) * PresentationScale;
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         MouseDefaultCursorShape = CursorShape.PointingHand;

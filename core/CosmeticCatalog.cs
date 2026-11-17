@@ -23,7 +23,7 @@ public static class CosmeticCatalog
 
     public static readonly IReadOnlyList<SleeveStyle> Sleeves =
     [
-        new(DefaultSleeve, "Clásica"),
+        new(DefaultSleeve, "Transparente"),
         new("menta", "Menta", "4fe3b8", "06241d", "4fe3b8"),
         new("coral", "Coral", "ff6f8e", "2a0812", "ff6f8e"),
         new("oro", "Oro", "ffc86b", "2b1a02", "ffc86b"),

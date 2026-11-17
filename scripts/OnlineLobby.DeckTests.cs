@@ -15,8 +15,10 @@ public partial class OnlineLobby
         var training = CardCatalog.TrainingDeck();
         var samples = new List<DeckInfo>
         {
-            new() { Id = 1, Name = "Yuno agresivo", Relikario = "yuno", Cards = training, Traps = CardCatalog.TrainingTraps(), Side = ["senshuni", "dodge"], Valid = true, Active = true },
-            new() { Id = 2, Name = "Idea a medias", Relikario = "yuno", Cards = training.Take(30).ToList(), Traps = [], Valid = false, Active = false }
+            new() { Id = 1, Name = "Yuno agresivo", Relikario = "yuno", Cards = training, Traps = CardCatalog.TrainingTraps(), Side = ["senshuni", "dodge"],
+                Sleeve = "oro", Dice = "obsidiana", Valid = true, Active = true },
+            new() { Id = 2, Name = "Idea a medias", Relikario = "yuno", Cards = training.Take(30).ToList(), Traps = [],
+                Sleeve = "medianoche", Dice = "violeta", Valid = false, Active = false }
         };
         foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
         {
@@ -41,8 +43,21 @@ public partial class OnlineLobby
             Expect(active.FindChild("ActiveBadge", true, false) != null && builtIn.FindChild("ActiveBadge", true, false) == null, "el mazo activo no se distingue.");
             Expect(((Button)active.FindChild("Use", true, false)).Disabled && ((Button)draft.FindChild("Use", true, false)).Disabled &&
                 !((Button)builtIn.FindChild("Use", true, false)).Disabled, "Usar debe ofrecerse solo en mazos legales que no están en uso.");
-            Expect(((Label)active.FindChild("DeckSummary", true, false)).Text.Contains("2 en banquillo"), "la lista no muestra el banquillo del mazo.");
-            Expect(((Label)draft.FindChild("DeckSummary", true, false)).Text.Contains("Borrador") && builtIn.FindChild("Delete", true, false) == null &&
+            foreach (var (deckRow, sleeveId, diceId) in new[] { (active, "oro", "obsidiana"), (draft, "medianoche", "violeta"),
+                (builtIn, CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice) })
+            {
+                var back = deckRow.FindChild("DeckSleeve", true, false) as TextureRect;
+                var die = deckRow.FindChild("DeckDice", true, false) as DiceSwatch;
+                Expect(back?.Texture == SleeveArt.Back(sleeveId) && die?.Style == diceId, "la fila no muestra la mica y el dado del mazo.");
+                Expect(deckRow.GetGlobalRect().Encloses(back!.GetGlobalRect()) && deckRow.GetGlobalRect().Encloses(die!.GetGlobalRect()),
+                    "la mica o el dado se salen de la fila.");
+                Expect(deckRow.FindChild("ReadyMark", true, false) == null && deckRow.FindChild("DeckSummary", true, false) == null,
+                    "la fila conserva el check o los conteos.");
+            }
+            Expect(builtIn.FindChildren("*", "Label", true, false).OfType<Label>().Any(label => label.Text == "Mica Transparente"),
+                "la lista no llama Transparente a la mica predeterminada.");
+            Expect(draft.FindChild("DeckProblem", true, false) is Label problem && problem.Text.StartsWith("Borrador") &&
+                builtIn.FindChild("Delete", true, false) == null &&
                 builtIn.FindChild("Edit", true, false) == null, "el borrador o el mazo de entrenamiento se presentan mal.");
             Expect(new[] { builtIn, active, draft }.All(row => row.FindChild("RelikarioThumbnail", true, false) is TextureRect { Texture: not null } thumb &&
                 thumb.GetGlobalRect().Position.X >= row.GetGlobalRect().Position.X && thumb.GetGlobalRect().End.X <= row.GetGlobalRect().End.X),
@@ -101,6 +116,9 @@ public partial class OnlineLobby
             ((Button)screen.Picker!.FindChild("CreateDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             var editor = screen.Editor!;
             Expect(editor.Relikario == "yuno" && editor.Main.Count == 12, "elegir a Yuno no abre el editor con sus 12 Ataques.");
+            Expect(editor.FindChild("Catalog_" + CardCatalog.EquipmentRaid.Id, true, false) is HandCard raid &&
+                raid.FaceTexture?.ResourcePath == "res://assets/cards/robo-de-equipos-clean.png",
+                "el catálogo debe mostrar la ilustración de Misión: Robo de Equipos.");
             Expect(!editor.Dirty && editor.Problems.Count > 0 && ((Button)editor.FindChild("SaveDeck", true, false)).Text == "Guardar borrador",
                 "un mazo nuevo debe empezar como borrador sin cambios.");
             Expect(editor.AddBlocked(CardCatalog.Attack) != null, "se permite un Ataque de más.");
@@ -154,6 +172,9 @@ public partial class OnlineLobby
             Expect(editor.EditingStyle && editor.FindChild("SleeveOptions", true, false) is HFlowContainer sleeves &&
                 sleeves.GetChildCount() == CosmeticCatalog.Sleeves.Count && editor.FindChild("DiceOptions", true, false) is HFlowContainer dice &&
                 dice.GetChildCount() == CosmeticCatalog.Dice.Count, "la pestaña Estilo no ofrece todas las micas y dados.");
+            Expect(editor.FindChild("StyleHelp", true, false) == null, "la pestaña Estilo conserva el texto explicativo.");
+            Expect(editor.FindChild("Sleeve_" + CosmeticCatalog.DefaultSleeve, true, false) is Button { TooltipText: "Transparente" },
+                "el selector no llama Transparente a la mica predeterminada.");
             ((Button)editor.FindChild("Catalog_" + playable[0].Id, true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Expect(editor.Main.Count == cardsBefore, "pulsar el catálogo en la pestaña Estilo añade cartas.");
             ((Button)editor.FindChild("Sleeve_oro", true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
