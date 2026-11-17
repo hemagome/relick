@@ -10,6 +10,8 @@ public sealed class DuelVisualEvent
     public int Player { get; set; }
     public int Value { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int SecondDie { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int SourceIndex { get; set; }
     // Final attack die, separate from damage or a secondary damage roll; zero for non-attack damage.
     public int AttackDie { get; set; }
@@ -37,7 +39,15 @@ public static class DuelVisualEvents
         var events = new List<DuelVisualEvent>();
         void Add(DuelVisualKind kind, int player, int value = 0, string caption = "")
             => events.Add(new() { Kind = kind, Player = player, Value = value, Caption = caption });
-        game.DieRolled += value => Add(DuelVisualKind.Die, game.CurrentDieRoller, value, game.CurrentDieCaption);
+        game.DieRolled += value =>
+        {
+            if (game.CompletesDiePair && events.LastOrDefault() is { Kind: DuelVisualKind.Die } first)
+            {
+                first.SecondDie = value;
+                first.Caption = game.CurrentDieCaption;
+            }
+            else Add(DuelVisualKind.Die, game.CurrentDieRoller, value, game.CurrentDieCaption);
+        };
         game.DieAdjusted += value => Add(DuelVisualKind.DieAdjustment, -1, value, game.CurrentDieCaption);
         game.AttackPerformed += player => Add(DuelVisualKind.Attack, player);
         game.DamageReceived += (player, amount, attackDie) => events.Add(new()

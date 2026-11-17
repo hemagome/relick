@@ -34,6 +34,7 @@ public partial class OnlineArena
             FieldZone.Bonus when _root!.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track => track.BonusButton,
             FieldZone.Exchange when _root!.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track =>
                 track.ExchangeButtons.ElementAtOrDefault(field.Index),
+            FieldZone.Zahira => _root!.FindChild(ZahiraNodeName(relative, GameEngine.ZahiraSlot(field.Index)), true, false) as Control,
             FieldZone.Hand when relative == 1 && field.Index >= 0 =>
                 _root!.FindChild("OpponentHandCard" + field.Index, true, false) as Control,
             _ => null

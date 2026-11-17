@@ -93,14 +93,55 @@ public partial class OnlineArena
         }
         if (!game.ResolveZahiraTarget(0, 1, FieldZone.Relikario, -1).Success)
             throw new Exception("No se coloca Zahira Flair.");
+        var rival = game.State.Players[1];
+        rival.Skills.AddRange([CardCatalog.Destiny.Id, CardCatalog.Destiny.Id]);
+        rival.SkillPositions = new() { [0] = 0, [1] = 3 };
+        game.State.Players[0].ZahiraHost2 = new(1, FieldZone.Skill, 1, CardCatalog.Destiny.Id);
+        rival.ZahiraHost = new(0, FieldZone.Zahira, 1, CardCatalog.ZahiraFlair.Id);
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
         foreach (var seat in new[] { 0, 1 })
         {
+            GetWindow().Size = size; GetWindow().ContentScaleSize = size;
             await Layout(seat);
-            var trap = _root!.FindChild(seat == 0 ? "Zahira0" : "Zahira1", true, false) as Button;
-            if (trap?.Icon == null || !trap.Text.Contains("Beto"))
-                throw new Exception("Falta el arte o el objetivo público de Zahira Flair.");
+            var rivalSide = 1 - seat;
+            var attached = ZoneNode(rivalSide, CardZone.Attached, -1)!;
+            var skill = ZoneNode(rivalSide, CardZone.Skill, 1)!;
+            var trap = attached.GetNodeOrNull<TextureButton>(ZahiraNodeName(seat, 0));
+            var second = skill.GetNodeOrNull<TextureButton>(ZahiraNodeName(seat, 1));
+            var stacked = second?.GetNodeOrNull<TextureButton>(ZahiraNodeName(rivalSide, 0));
+            if (trap?.TextureNormal == null || !trap.TooltipText.Contains("Beto") || second == null || stacked == null ||
+                !attached.GetGlobalRect().Grow(1).Encloses(trap.GetGlobalRect()) ||
+                !skill.GetGlobalRect().Grow(1).Encloses(second.GetGlobalRect()) ||
+                !second.GetGlobalRect().Grow(1).Encloses(stacked.GetGlobalRect()))
+                throw new Exception($"Zahira Flair no se dibuja sobre su objetivo en {size}, asiento {seat}.");
+            if (Desktop)
+            {
+                GuiInputTestDriver.Click(trap);
+                if (_fieldSelection != (0, FieldZone.Zahira, -1))
+                    throw new Exception("No se puede inspeccionar la carta sobre el Relikario.");
+            }
         }
-        GD.Print("PVP_ZAHIRA_PASS · receta, selección privada, arte y objetivo público.");
+        game.State.Players[0].ZahiraHost = new(1, FieldZone.Bonus, -1, rival.Bonus!);
+        await Layout(0);
+        var bonus = ZoneNode(1, CardZone.Bonus, -1)!;
+        if (!bonus.HasNode(ZahiraNodeName(0, 0)) || ZoneNode(1, CardZone.Attached, -1)!.HasNode(ZahiraNodeName(0, 0)))
+            throw new Exception("Zahira Flair debe cambiar de zona al cambiar de objetivo.");
+        rival.AttachedCards.AddRange([CardCatalog.Attack.Id, CardCatalog.SuperAttack.Id]);
+        game.State.Players[0].ZahiraHost = new(1, FieldZone.Attached, 0, CardCatalog.Attack.Id);
+        await Layout(0);
+        var pile = ZoneNode(1, CardZone.Attached, -1)!;
+        var covered = pile.GetChildren().OfType<TextureRect>().SingleOrDefault();
+        var overlay = pile.GetNode<TextureButton>(ZahiraNodeName(0, 0));
+        if (covered == null || covered.Texture != BoardArt.LoadCardArtwork(CardCatalog.Attack, rival.Relikario.Id) ||
+            !covered.GetGlobalRect().Intersects(overlay.GetGlobalRect()))
+            throw new Exception("Zahira Flair debe mostrar la carta cubierta aunque esté debajo de otra en su pila.");
+        game.State.Players[0].ZahiraHost2 = game.State.Players[0].ZahiraHost;
+        await Layout(0);
+        pile = ZoneNode(1, CardZone.Attached, -1)!;
+        if (pile.GetNode<TextureButton>(ZahiraNodeName(0, 0)).GetGlobalRect()
+            .Intersects(pile.GetNode<TextureButton>(ZahiraNodeName(0, 1)).GetGlobalRect()))
+            throw new Exception("Las dos Zahira Flair de una pila deben quedar visibles y al alcance.");
+        GD.Print("PVP_ZAHIRA_PASS · receta, selección privada, cambio de zona y cartas dibujadas sobre su anfitrión.");
     }
 
     internal async Task CheckSuperMagnetLayout()

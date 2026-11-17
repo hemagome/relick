@@ -550,7 +550,7 @@ public partial class OnlineArena
         var text = _snapshot.Winner != null ? _decisionHint : !Connection.Ready
             ? "Conexión interrumpida. Reconecta para continuar."
             : Connection.PlayPending ? "Enviando tu decisión…"
-            : IsAnimating ? _die.IsBusy ? "Resolviendo el dado…" : "Resolviendo la jugada…"
+            : IsAnimating ? DiceBusy ? "Resolviendo la tirada…" : "Resolviendo la jugada…"
             : _decisionHint;
         _inspector.SetHint(text);
     }

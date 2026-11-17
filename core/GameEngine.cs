@@ -607,9 +607,11 @@ public sealed partial class GameEngine
     }
     /// <summary>Whose die the latest roll was, for presentation only: the roller's cosmetic die is shown.</summary>
     public int CurrentDieRoller { get; private set; } = -1;
-    private int Roll(string caption = "", bool convertSix = false, int roller = -1)
+    internal bool CompletesDiePair { get; private set; }
+    private int Roll(string caption = "", bool convertSix = false, int roller = -1, bool completesPair = false)
     {
         CurrentDieRoller = roller >= 0 ? roller : State.CurrentPlayer;
+        CompletesDiePair = completesPair;
         var value = _random.Next(6) + 1;
         State.LastDie = value;
         CurrentDieCaption = convertSix && value == 6 ? $"{State.Players[CurrentDieRoller].Relikario.DisplayName} · 6 se convierte en 5" : caption;

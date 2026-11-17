@@ -52,11 +52,11 @@ public sealed partial class GameEngine
     // A continuation pauses the effect before it consumes the chosen result.
     private DieEffect? _pendingDieEffect;
 
-    private void RollWithRelikario(PlayerState p, DiePurpose purpose, DieEffect effect)
+    private void RollWithRelikario(PlayerState p, DiePurpose purpose, DieEffect effect, int? rolledDie = null)
     {
         var actor = Array.IndexOf(State.Players, p);
         var equipment = ActiveEquipment(actor)?.Id;
-        var die = Roll(roller: actor, caption: purpose switch
+        var caption = purpose switch
         {
             DiePurpose.Zahira => "Zahira Flair · Etapa final",
             DiePurpose.QuickLoad => "Carga Rápida · Robo o descarte",
@@ -70,7 +70,12 @@ public sealed partial class GameEngine
             DiePurpose.TurboSwordDamage => "Turbo Sword · Daño",
             DiePurpose.TurboOverlapDamage => $"Turbo Overlap · Dado de daño {(effect.Slot == 0 ? 1 : 2)}",
             _ => ""
-        });
+        };
+        var die = rolledDie ?? Roll(caption, roller: actor);
+        if (purpose == DiePurpose.TurboOverlapDamage && effect.Slot == 0 && !ReplaySequentialOverlap)
+            effect.OverlapSecondDie = Roll("Turbo Overlap · Dados de daño", roller: actor, completesPair: true);
+        if (rolledDie.HasValue) CurrentDieCaption = caption;
+        State.LastDie = die;
         if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
         {
             _pendingDieEffect = effect;

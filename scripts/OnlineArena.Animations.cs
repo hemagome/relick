@@ -363,13 +363,28 @@ public partial class OnlineArena
     {
         // Each roll shows the roller's cosmetic die; older servers do not say who rolled, so the turn's player's is shown.
         if (cue.Kind == DuelVisualKind.Die)
-            _die.QueueRoll(cue.Value, cue.Caption, _snapshot?.Players.ElementAtOrDefault(cue.Player is 0 or 1 ? cue.Player : _snapshot.CurrentPlayer)?.Dice);
+        {
+            var style = _snapshot?.Players.ElementAtOrDefault(cue.Player is 0 or 1 ? cue.Player : _snapshot.CurrentPlayer)?.Dice;
+            _die.QueueRoll(cue.Value, cue.Caption, style, cue.SecondDie is >= 1 and <= 6 ? () =>
+            {
+                _secondDie.Show();
+                _secondDie.QueueRoll(cue.SecondDie, style: style);
+            } : null);
+        }
         else _die.ShowAdjustedResult(cue.Value, cue.Caption);
+    }
+
+    private void UpdateDiceOverlay()
+    {
+        _diceOverlay.Visible = _die.IsPresented;
+        _secondDie.Visible = _secondDie.IsPresented;
+        _diceOverlay.Modulate = new Color(1, 1, 1, _die.PresentationOpacity);
+        if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
     }
 
     private void PlayPendingPortraits()
     {
-        if (_die.IsBusy || _flight != null || _flights.Count > 0 || _openingInitiative != null || _snapshot == null) return;
+        if (DiceBusy || _flight != null || _flights.Count > 0 || _openingInitiative != null || _snapshot == null) return;
         for (var i = 0; i < _pendingPortraits.Count;)
         {
             var (player, motion) = _pendingPortraits[i];
@@ -678,6 +693,8 @@ public partial class OnlineArena
         ResetOpeningInitiative();
         _placementDice.Clear(); _queuedPlay = null;
         _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); FinishFlight(); _die.Value = 0;
+        _secondDie.Value = 0;
+        _secondDie.Hide();
         _impacts.Clear();
         foreach (var portrait in _portraits) portrait.ReturnToRest();
     }

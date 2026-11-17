@@ -166,12 +166,33 @@ static class OsamuTests
             Check(fromMemory.Move.Apply(game, 0).Success && p.Hand.Contains(CardCatalog.Agility.Id));
             p.Hand.Remove(CardCatalog.Agility.Id);
             random.EnqueueDie(6); random.EnqueueDie(2); random.EnqueueDie(5);
+            var cues = DuelVisualEvents.Capture(game);
             Check(game.Attack(0, 0, 0).Success && game.State.PendingDecision?.Kind == DecisionKind.Confirm);
+            var dice = cues.Where(cue => cue.Kind == DuelVisualKind.Die).ToArray();
+            Check(dice is [{ Value: 6, SecondDie: 0 }, { Value: 2, SecondDie: 5 }]);
             game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
             Check(game.DecisionChoices(0).Select(o => o.Value).SequenceEqual([2, 5]) && game.ResolveDecision(0, 0).Success);
             Check(game.State.OtherHealth() == 6 && game.State.Phase == Phase.Decision);
             Check(game.ResolveDecision(0, 0).Success && game.State.Active.Hand.Single() == CardCatalog.Agility.Id &&
                 game.State.Active.Relikia == 300 && !game.State.Active.CorruptsOnMemory(CardZone.Hand, 0));
+        }),
+        ("Turbo Overlap: ambos dados salen juntos, conservan sus modificadores y se pueden elegir aunque empaten", () =>
+        {
+            var random = new ScriptedRandom();
+            var game = Open(random, RelikarioCatalog.OsamuLv2);
+            game.State.Active.Skills.Add(CardCatalog.TurboOverlap.Id);
+            game.State.Active.Hand.Add(CardCatalog.Attack.Id);
+            game.State.Active.Dexterity = 1;
+            random.EnqueueDie(6); random.EnqueueDie(3); random.EnqueueDie(2);
+            var cues = DuelVisualEvents.Capture(game);
+            Check(game.Attack(0, 0, 0).Success && game.State.PendingDieRoll?.Die == 3);
+            Check(cues.Last() is { Kind: DuelVisualKind.Die, Value: 3, SecondDie: 2 });
+            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+            cues = DuelVisualEvents.Capture(game);
+            Check(game.ResolveDieReroll(0, false).Success && game.State.PendingDieRoll?.Die == 2 && cues.Count == 0);
+            Check(game.UseDexterity(0).Success && cues.Single() is { Kind: DuelVisualKind.DieAdjustment, Value: 3 });
+            Check(game.DecisionChoices(1).Count == 0 && game.DecisionChoices(0).Select(choice => choice.Value).SequenceEqual([3, 3]));
+            Check(game.ResolveDecision(0, 1).Success && game.State.OtherHealth() == 5);
         })
     ];
 

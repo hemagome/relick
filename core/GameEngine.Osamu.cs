@@ -53,9 +53,9 @@ public sealed partial class GameEngine
 
     private IReadOnlyList<DecisionChoice> OsamuDecisionChoices(PendingDecision decision) => decision.Step switch
     {
-        OverlapDamageChoice => decision.Picks!.Distinct().Select(damage => new DecisionChoice
+        OverlapDamageChoice => decision.Picks!.Select((damage, index) => new DecisionChoice
         {
-            Label = $"Infligir {damage} de daño crítico", Public = $"elige {damage} de daño crítico.", Value = damage, Primary = true
+            Label = $"Dado {index + 1} · {damage} de daño crítico", Public = $"elige {damage} de daño crítico.", Value = damage, Primary = true
         }).ToArray(),
         OsamuSuccessfulAttack or OsamuFailedAttack or OsamuActionSearch or OsamuEvolutionSearch or OsamuAgilitySearch =>
             OsamuSearchChoices(decision).ToArray(),
@@ -117,6 +117,8 @@ public sealed partial class GameEngine
         }
     }
 
+    internal bool ReplaySequentialOverlap { get; set; }
+
     private bool RollTurboDamage(PendingAttackRoll attack)
     {
         var critical = attack.Die == 6;
@@ -143,9 +145,9 @@ public sealed partial class GameEngine
         else if (effect.Slot == 0)
         {
             effect.Slot = die;
-            RollWithRelikario(State.Players[effect.Actor], effect.Purpose, effect);
+            RollWithRelikario(State.Players[effect.Actor], effect.Purpose, effect, effect.OverlapSecondDie);
         }
-        else if (effect.Slot == die) ResolveTurboAttack(attack, die);
+        else if (effect.OverlapSecondDie == null && effect.Slot == die) ResolveTurboAttack(attack, die);
         else AskDecision(new PendingDecision
         {
             Source = attack.SkillId, Step = OverlapDamageChoice, Decider = attack.Attacker, Kind = DecisionKind.Confirm,

@@ -14,7 +14,7 @@ public partial class DiceFace : Control
     private const float HalfSize = 0.68f;
     private static readonly Vector3[] FaceNormals =
         { Vector3.Zero, Vector3.Back, Vector3.Up, Vector3.Right, Vector3.Left, Vector3.Down, Vector3.Forward };
-    private readonly Queue<(int Value, string Caption, bool Adjusted, string? Style)> _queuedRolls = new();
+    private readonly Queue<(int Value, string Caption, bool Adjusted, string? Style, Action? OnStart)> _queuedRolls = new();
     private StandardMaterial3D? _bodyMaterial, _pipMaterial;
     /// <summary>The cosmetic die on show (CosmeticCatalog id); each roll may bring its roller's.</summary>
     public string Style { get; private set; } = CosmeticCatalog.DefaultDice;
@@ -74,7 +74,7 @@ public partial class DiceFace : Control
     }
     internal void ShowAdjustedResult(int value, string caption)
     {
-        if (IsBusy) { _queuedRolls.Enqueue((value, caption, true, null)); return; }
+        if (IsBusy) { _queuedRolls.Enqueue((value, caption, true, null, null)); return; }
         ApplyAdjustedResult(value, caption);
     }
     private void ApplyAdjustedResult(int value, string caption)
@@ -238,11 +238,11 @@ public partial class DiceFace : Control
     });
 
     /// <param name="style">The roller's cosmetic die; null keeps the one on show.</param>
-    public void QueueRoll(int result, string caption = "", string? style = null)
+    public void QueueRoll(int result, string caption = "", string? style = null, Action? onStart = null)
     {
         if (result is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(result));
-        if (IsBusy) _queuedRolls.Enqueue((result, caption, false, style));
-        else StartRoll(result, caption, style);
+        if (IsBusy) _queuedRolls.Enqueue((result, caption, false, style, onStart));
+        else StartRoll(result, caption, style, onStart);
     }
 
     /// <summary>Recolours the die's body and pips; an unknown id shows the classic die.</summary>
@@ -260,7 +260,7 @@ public partial class DiceFace : Control
         StartRoll(result);
     }
 
-    private void StartRoll(int result, string caption = "", string? style = null)
+    private void StartRoll(int result, string caption = "", string? style = null, Action? onStart = null)
     {
         if (result < 1 || result > 6) throw new ArgumentOutOfRangeException(nameof(result));
         if (style != null) ApplyStyle(style);
@@ -274,6 +274,7 @@ public partial class DiceFace : Control
         _resultRemaining = 0;
         IsRolling = true; IsTurning = false;
         UpdatePose();
+        onStart?.Invoke();
         RollStarted?.Invoke();
     }
 
@@ -285,7 +286,7 @@ public partial class DiceFace : Control
         {
             var next = _queuedRolls.Dequeue();
             if (next.Adjusted) ApplyAdjustedResult(next.Value, next.Caption);
-            else StartRoll(next.Value, next.Caption, next.Style);
+            else StartRoll(next.Value, next.Caption, next.Style, next.OnStart);
         }
         if (!IsRolling && !IsTurning && _resultRemaining <= 0 && _glow <= 0) return;
         delta = Math.Max(0, delta);

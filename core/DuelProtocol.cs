@@ -166,10 +166,13 @@ public sealed class DuelRandom : IGameRandom
 
 public static class DuelReplay
 {
-    public static (GameEngine Game, DuelRandom Random) Restore(DuelOpening opening, IEnumerable<DuelEntry> entries, bool legacyBlueEgg = false)
+    public static (GameEngine Game, DuelRandom Random) Restore(DuelOpening opening, IEnumerable<DuelEntry> entries,
+        bool legacyBlueEgg = false, bool sequentialOverlap = false)
     {
         var random = new DuelRandom();
         var game = GameEngine.FromOpening(opening, random, legacyBlueEgg);
+        // Old replays may have recorded the second damage die in a later move.
+        game.ReplaySequentialOverlap = sequentialOverlap;
         foreach (var entry in entries)
         {
             random.Replay(entry.RandomValues);
@@ -177,6 +180,7 @@ public static class DuelReplay
             if (!result.Success) throw new InvalidOperationException("El registro de la partida no coincide con las reglas: " + result.Message);
             random.Finish();
         }
+        game.ReplaySequentialOverlap = false;
         return (game, random);
     }
 }

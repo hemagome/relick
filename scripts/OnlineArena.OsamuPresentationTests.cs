@@ -75,7 +75,61 @@ public partial class OnlineArena
         Check(high.Motion == PortraitMotion.Idle, "Después de curarse, Osamu debe recuperar su guardia.");
         low.QueueFree(); high.QueueFree();
         await CheckAttackProjectiles(game);
+        await CheckTurboOverlapDice();
         GD.Print("PVP_OSAMU_ART_PASS · Ataques por Relikario, siete movimientos continuos a 120 Hz y regreso a la guardia.");
+    }
+
+    private async Task CheckTurboOverlapDice()
+    {
+        var random = new DuelRandom();
+        random.Replay([5, 1, 4]);
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Osamu", "Yuno"], Relikarios = [RelikarioCatalog.OsamuLv2.Id, RelikarioCatalog.Yuno.Id],
+            Hands = [[CardCatalog.Attack.Id], []], Decks = [[], []], Bonuses = [null, null]
+        }, random);
+        game.State.Turn = 2;
+        game.State.Active.Skills.Add(CardCatalog.TurboOverlap.Id);
+        var cues = DuelVisualEvents.Capture(game);
+        if (!game.Attack(0, 0, 0).Success) throw new Exception("No se pudo lanzar el crítico de Turbo Overlap.");
+        random.Finish();
+        var snapshot = DuelSnapshot.For(game, 0, 105);
+        snapshot.Visuals = cues;
+        // The client receives these cues through the public JSON projection.
+        var payload = System.Text.Json.JsonSerializer.Serialize(snapshot, DuelJson.Default.DuelSnapshot);
+        snapshot = System.Text.Json.JsonSerializer.Deserialize(payload, DuelJson.Default.DuelSnapshot)!;
+        PresentTestSnapshot(snapshot);
+        _die.SetProcess(false); _secondDie.SetProcess(false);
+        try
+        {
+            Animate(snapshot.Visuals, []);
+            if (!_die.IsRolling || _die.Value != 6 || _secondDie.IsPresented)
+                throw new Exception("El dado de ataque debe salir antes de los dos dados de daño.");
+            _die.AdvancePlayback(DiceFace.RollSeconds + DiceFace.ResultSeconds);
+            _die.AdvancePlayback(0);
+            UpdateDiceOverlay();
+            for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (!_die.IsRolling || !_secondDie.IsRolling || !_secondDie.IsVisibleInTree() ||
+                _die.GetGlobalRect().Intersects(_secondDie.GetGlobalRect()))
+                throw new Exception("Los dos dados de daño de Turbo Overlap deben rodar juntos y en paralelo.");
+            _die.AdvancePlayback(DiceFace.RollSeconds);
+            if (!IsAnimating) throw new Exception("La selección se abre antes de que caigan los dos dados.");
+            _secondDie.AdvancePlayback(DiceFace.RollSeconds);
+            var choices = _moveButtons.Where(button => PresentedOption(button)?.Move.Kind == DuelMoveKind.Choose).ToArray();
+            if (IsAnimating || _die.TopFaceValue != 2 || _secondDie.TopFaceValue != 5 || choices.Length != 2 ||
+                !choices[0].Text.Contains("2 de daño") || !choices[1].Text.Contains("5 de daño"))
+                throw new Exception("Falta la selección entre los dos resultados de daño crítico.");
+            var rival = DuelSnapshot.For(game, 1, 105);
+            if (rival.Options.Any(option => option.Move.Kind == DuelMoveKind.Choose) ||
+                !PresentedOption(choices[1])!.Move.Apply(game, 0).Success || game.State.Players[1].Health != 3)
+                throw new Exception("El resultado elegido debe aplicarse y solo el atacante puede elegir.");
+        }
+        finally
+        {
+            ResetAnimations(); UpdateDiceOverlay();
+            _die.SetProcess(true); _secondDie.SetProcess(true);
+        }
+        GD.Print("PVP_TURBO_OVERLAP_PASS · crítico con dos dados simultáneos y elección del atacante.");
     }
 
     private async Task CheckAttackProjectiles(GameEngine game)

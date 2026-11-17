@@ -32,6 +32,7 @@ public partial class OnlineArena : Control
         new() { Name = "RivalActionsCounter", Accent = ArenaPresentation.Coral }
     ];
     private readonly DiceFace _die = new() { Name = "AnimatedDice", CustomMinimumSize = new(260, 210) };
+    private readonly DiceFace _secondDie = new() { Name = "SecondAnimatedDice", CustomMinimumSize = new(260, 210), Visible = false };
     private CenterContainer _diceOverlay = null!;
     private Label _diceCaption = null!;
     private DuelSnapshot? _snapshot;
@@ -48,7 +49,8 @@ public partial class OnlineArena : Control
     private ScrollContainer? _arenaScroll;
     internal int BoardBuildCount { get; private set; }
     internal int PlayedVisualRevisions { get; private set; }
-    public bool IsAnimating => _die.IsBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null;
+    private bool DiceBusy => _die.IsBusy || _secondDie.IsBusy;
+    public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null;
     private bool Compact => ArenaViewport.Compact(this);
     private bool Short => ArenaViewport.Short(this);
     // The full board needs the desktop canvas; smaller windows keep the stacked layouts.
@@ -120,9 +122,13 @@ public partial class OnlineArena : Control
         var panel = ArenaPresentation.Panel(_diceOverlay, "111f2c", new("927b54"));
         var column = new VBoxContainer(); panel.AddChild(column);
         // The rolling die needs no title; the caption below says whose roll it is and what modifies it.
-        column.AddChild(_die);
+        var dice = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        column.AddChild(dice);
+        dice.AddChild(_die);
+        dice.AddChild(_secondDie);
         _diceCaption = ArenaPresentation.Text("", 13); _diceCaption.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(_diceCaption);
         _die.RollFinished += PlayPendingPortraits;
+        _secondDie.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
         BuildStageBanner();
         BuildResultOverlay();
@@ -174,6 +180,12 @@ public partial class OnlineArena : Control
             var placement = animate ? CaptureExchangePlacement(snapshot, previous!, origins) ??
                 CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!) : null;
             if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.Value = snapshot.Die; }
+            if (animate && snapshot.Visuals.FirstOrDefault(cue => cue.Kind is DuelVisualKind.Die or DuelVisualKind.DieAdjustment) is { } nextDie)
+            {
+                // A modifier turns from the value of the pending die, which may be the second die of a pair.
+                if (nextDie.Kind == DuelVisualKind.DieAdjustment) _die.Value = previous!.Die;
+                _secondDie.Value = 0;
+            }
             _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
             if (!animate)
             {
@@ -198,10 +210,8 @@ public partial class OnlineArena : Control
         if (_status.Text != Connection.Message) _status.Text = Connection.Message;
         PresentQueuedStageAnnouncement();
         UpdateFlights(delta);
-        _diceOverlay.Visible = _die.IsPresented;
-        _diceOverlay.Modulate = new Color(1, 1, 1, _die.PresentationOpacity);
+        UpdateDiceOverlay();
         UpdateResolutionPresentation();
-        if (_die.IsPresented) _diceCaption.Text = _die.RollCaption;
         UpdateRelikiaPreview();
         UpdateEnabled(); RefreshRuntimeGuidance(); RefreshDecisionFeedback();
         PositionCardActions();
@@ -275,14 +285,6 @@ public partial class OnlineArena : Control
             crystals.Visible = !_preparing && s.Phase != Phase.Preparation;
             _portraits[relative].SetRelikario(player.RelikarioId);
             _portraits[relative].SetHealth(player.Health);
-            var zahiras = new List<(string, Action)>();
-            for (var slot = 0; slot < PlayerState.ZahiraSlots; slot++)
-            {
-                if (player.Zahira(slot) is not { } host) continue;
-                var index = GameEngine.ZahiraIndex(slot);
-                zahiras.Add(($"Zahira Flair sobre {(host.Zone == FieldZone.Relikario ? RelikarioCatalog.NameOf(s.Players[host.Owner].RelikarioId) : CardCatalog.Get(host.CardId).Name)} · {s.Players[host.Owner].Name}",
-                    () => SelectField(seat, FieldZone.Zahira, index)));
-            }
             return new ArenaPlayerActions
             {
                 Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory,
@@ -292,7 +294,6 @@ public partial class OnlineArena : Control
                 Equipment = () => SelectEquipment(seat),
                 LightEquipment = () => SelectFieldPile(seat, FieldZone.LightEquipment),
                 EquipmentCovers = () => SelectFieldPile(seat, FieldZone.EquipmentCover),
-                Zahiras = zahiras,
                 Skill = slot =>
                 {
                     if (slot >= player.Skills.Length) return;
@@ -529,6 +530,7 @@ public partial class OnlineArena : Control
             _exchangeTracks[relative] = _root.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack;
         }
         _opponentCards.Clear(); _opponentCards.AddRange(_root.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>());
+        PlaceZahiras(s);
         MoveChild(_cardActions, GetChildCount() - 1);
         MoveChild(_diceOverlay, GetChildCount() - 1);
         BuildMoves(); BindInspectorPreviews();

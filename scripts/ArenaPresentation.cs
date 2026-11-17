@@ -12,8 +12,6 @@ public sealed class ArenaPlayerActions
     public Action Equipment { get; init; } = () => { };
     public Action LightEquipment { get; init; } = () => { };
     public Action EquipmentCovers { get; init; } = () => { };
-    // One entry per Zahira Flair the player has on the field; a Trap deck allows two.
-    public IReadOnlyList<(string Caption, Action Press)> Zahiras { get; init; } = [];
     public Action<int> Skill { get; init; } = _ => { };
     public Action<int> InspectSkill { get; init; } = _ => { };
     public Action Evolve { get; init; } = () => { };
@@ -166,15 +164,6 @@ public static class ArenaPresentation
             evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
             evolve.CustomMinimumSize = new(0, 28); evolve.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
             if (actions.CanEvolve && owner.Level == 1) InviteEvolution(evolve);
-        }
-        for (var copy = 0; copy < actions.Zahiras.Count; copy++)
-        {
-            var (zahiraCaption, press) = actions.Zahiras[copy];
-            var zahira = Button(stand, zahiraCaption, press);
-            zahira.Name = copy == 0 ? $"Zahira{index}" : $"Zahira{index}Copy{copy + 1}"; zahira.ClipText = true; zahira.TooltipText = zahiraCaption;
-            zahira.Icon = BoardArt.LoadCardArtwork(CardCatalog.ZahiraFlair);
-            zahira.AddThemeConstantOverride("icon_max_width", 20);
-            zahira.AddThemeFontSizeOverride("font_size", 11); zahira.CustomMinimumSize = new(0, 30);
         }
         Put(hero, 306, top, 286, H);
 
@@ -411,16 +400,6 @@ public static class ArenaPresentation
         portrait.CustomMinimumSize = new(0, portrait.PortraitHeight);
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
         if (narrow) column.AddChild(memories);
-        for (var copy = 0; copy < actions.Zahiras.Count; copy++)
-        {
-            var (zahiraCaption, press) = actions.Zahiras[copy];
-            var zahira = Button(column, zahiraCaption, press);
-            zahira.Name = copy == 0 ? $"Zahira{index}" : $"Zahira{index}Copy{copy + 1}";
-            zahira.ClipText = true;
-            zahira.TooltipText = zahiraCaption;
-            zahira.Icon = BoardArt.LoadCardArtwork(CardCatalog.ZahiraFlair);
-            zahira.AddThemeConstantOverride("icon_max_width", 24);
-        }
         var skills = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         skills.AddThemeConstantOverride("h_separation", 6); skills.AddThemeConstantOverride("v_separation", 6);
         var nextLesson = NextLessonSlot(owner, !enemy && actions.CanLearn);
