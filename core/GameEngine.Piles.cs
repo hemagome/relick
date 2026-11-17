@@ -1,8 +1,8 @@
 namespace Relick.Core;
 
-public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck }
+public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck, Area, LightEquipment }
 /// <summary>Owner is the player the card leaves; MemoryOwner is the memory that receives it.</summary>
-public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1)
+public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1, int? DestinationPlayer = null)
 {
     public bool ToRivalMemory => Destination == CardZone.Memory && MemoryOwner >= 0 && MemoryOwner != Owner;
 }
@@ -13,8 +13,24 @@ public sealed partial class GameEngine
 
     private int Seat(PlayerState p) => Array.IndexOf(State.Players, p);
 
-    private void NotifyPileMove(PlayerState p, string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory, int memoryOwner = -1)
-        => CardMovedToPile?.Invoke(new(Seat(p), id, source, index, destination, memoryOwner));
+    private void NotifyPileMove(PlayerState p, string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory,
+        int memoryOwner = -1, int? destinationPlayer = null)
+        => CardMovedToPile?.Invoke(new(Seat(p), id, source, index, destination, memoryOwner, destinationPlayer));
+
+    private void AttachAttackFromDeck(PlayerState p, int index)
+    {
+        var id = p.Deck[index];
+        if (p.CorruptsOnMemory(CardZone.Deck, index)) p.MarkForCorruption(CardZone.Attached, p.AttachedCards.Count);
+        p.Deck.RemoveAt(index);
+        p.RemoveCorruptionSlots(CardZone.Deck, index);
+        p.AttachedCards.Add(id);
+        NotifyPileMove(p, id, CardZone.Deck, destination: CardZone.Attached);
+        State.LastCombat = $"{p.Name} coloca un Ataque debajo de su Relikario y baraja su mazo.";
+        Log(State.LastCombat);
+        Shuffle(p);
+        if (p.Deck.Count == 0) Exhaust(p);
+        else CardsReturnedToDeck?.Invoke(Seat(p));
+    }
 
     /// <summary>Returns where the card landed, or null when a trap leaves the game.</summary>
     private MemorySelection? SendHandToMemory(PlayerState p, int index, bool deferCorruption = false)
@@ -33,7 +49,13 @@ public sealed partial class GameEngine
         bool deferCorruption = false, int? corruptionIndex = null)
     {
         var holder = Seat(p);
-        var foreign = source == CardZone.Hand ? p.IsForeignHandCard(index) : p.ReleaseForeignFieldCard(id);
+        var foreign = source switch
+        {
+            CardZone.Hand => p.IsForeignHandCard(index),
+            CardZone.Area => p.AreaIsBorrowed,
+            CardZone.LightEquipment => p.LightEquipment![index].Borrowed,
+            _ => p.ReleaseForeignFieldCard(id)
+        };
         var owner = foreign ? 1 - holder : holder;
         var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
         var corrupt = !trap && !deferCorruption && p.CorruptsOnMemory(source, corruptionIndex ?? index);
@@ -56,16 +78,20 @@ public sealed partial class GameEngine
     {
         var id = p.Hand[index];
         if (p.CorruptsOnMemory(CardZone.Hand, index)) p.MarkForCorruption(zone, slot);
-        if (p.RemoveHandCard(index)) p.MarkForeignFieldCard(id);
+        var borrowed = p.RemoveHandCard(index);
+        if (zone == CardZone.Area) p.AreaIsBorrowed = borrowed;
+        else if (borrowed) MarkBorrowedFieldCard(p, id);
         return id;
     }
 
     /// <summary>Removes a memory card that returns to play under <paramref name="holder"/>'s control.</summary>
-    private void MoveMemoryCardToField(MemorySelection source, PlayerState holder)
+    private void MoveMemoryCardToField(MemorySelection source, PlayerState holder, bool lightEquipment = false)
     {
         var id = State.Players[source.Owner].Memory[source.Index];
         State.Players[source.Owner].Memory.RemoveAt(source.Index); ShiftSniperIndices(source.Owner, source.Index);
-        if (source.Owner != Seat(holder)) holder.MarkForeignFieldCard(id);
+        var borrowed = source.Owner != Seat(holder);
+        if (lightEquipment) InstallLightEquipment(holder, id, borrowed);
+        else if (borrowed) MarkBorrowedFieldCard(holder, id);
     }
 
     /// <summary>Returns the seat whose deck received the card, or -1 when a trap left the game.</summary>

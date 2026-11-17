@@ -1465,6 +1465,70 @@ public partial class OnlineArena
         GD.Print("PVP_BOMB_LAYOUT_PASS · seis zonas, cuatro tamaños, ambos asientos y mano rival oculta.");
     }
 
+    internal async Task CheckTakeEquipmentLayout()
+    {
+        if (BoardArt.LoadCardArtwork(CardCatalog.TakeEquipment) == null)
+            throw new Exception("Falta la ilustración de ¡Dame ese equipo!.");
+        async Task Layout()
+        {
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(844, 390) })
+        foreach (var actor in new[] { 0, 1 })
+        {
+            GetWindow().ContentScaleSize = size;
+            await Layout();
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Yuno", "Osamu"], Relikarios = [RelikarioCatalog.Yuno.Id, RelikarioCatalog.Osamu.Id],
+                Hands = [[], []], Decks = [[], []], Bonuses = [null, null], StartingSeat = actor
+            }, new SeededRandom(109));
+            game.State.Phase = Phase.Actions;
+            game.State.Active.Hand.Add(CardCatalog.TakeEquipment.Id);
+            game.State.Active.Deck.AddRange([CardCatalog.Attack.Id, CardCatalog.Dodge.Id]);
+            game.State.Active.Equipment = CardCatalog.Pendant.Id;
+            game.State.Players[1 - actor].Equipment = CardCatalog.DiamondHelmet.Id;
+            if (!game.PlayCode(actor, 0).Success) throw new Exception("No se abre la selección de equipo rival.");
+            var before = DuelSnapshot.For(game, actor, 11);
+            ResetAnimations(); PresentTestSnapshot(before);
+            await Layout();
+            var own = (ZoneCardButton)ZoneNode(0, CardZone.Equipment, -1)!;
+            var rival = (ZoneCardButton)ZoneNode(1, CardZone.Equipment, -1)!;
+            var choice = before.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose);
+            if (!rival.Targetable || own.Targetable || PresentsOption(choice))
+                throw new Exception("La carta debe señalar solamente el equipo rival y esperar a que se seleccione.");
+            SelectEquipment(1 - actor);
+            if (PresentedButton(choice)?.Text != "Tomar equipo" || !rival.Chosen)
+                throw new Exception("La selección del equipo rival no muestra su acción.");
+
+            var cues = DuelVisualEvents.Capture(game);
+            if (!choice.Move.Apply(game, actor).Success) throw new Exception("La selección no transfiere el equipo.");
+            var after = DuelSnapshot.For(game, actor, 12); after.Visuals = cues;
+            var origins = CaptureOrigins(after, before);
+            if (CaptureEquipmentInstall(after, before) != null ||
+                !origins.Values.Any(f => f.Event.DestinationPlayer == actor && f.Face == CardCatalog.DiamondHelmet.Id) ||
+                !origins.Values.Any(f => f.Event is { Source: CardZone.Deck, Destination: CardZone.Attached } &&
+                    f.Face == CardCatalog.Attack.Id && f.StartsFaceUp == false))
+                throw new Exception("La transferencia y el Ataque deben producir sus vuelos desde el equipo rival y el mazo.");
+            PresentTestSnapshot(after);
+            await Layout();
+            if (ZoneNode(0, CardZone.Equipment, -1) is not ZoneCardButton { Card.Id: "diamond-helmet" } ||
+                ZoneNode(1, CardZone.Equipment, -1) is not ZoneCardButton { Card: null } ||
+                ZoneNode(0, CardZone.Attached, -1) is not AttachmentStack stack ||
+                stack.Cards.Single() != CardCatalog.Attack.Id || !stack.AccessibilityName.StartsWith("Debajo del Relikario"))
+                throw new Exception("El tablero no muestra el equipo transferido y el Ataque bajo el Relikario.");
+            var received = ZoneNode(0, CardZone.Equipment, -1)!;
+            Animate(cues, origins);
+            if (received.Modulate.A != 0 || stack.Modulate.A != 0)
+                throw new Exception("Los destinos deben esperar la llegada de cada carta.");
+            for (var i = 0; i < 12 && IsAnimating; i++) UpdateFlights(1);
+            if (IsAnimating || received.Modulate.A != 1 || stack.Modulate.A != 1)
+                throw new Exception("La animación deja ocultos el equipo o el Ataque.");
+        }
+        GD.Print("PVP_TAKE_EQUIPMENT_PASS · arte, selección rival, transferencias y Ataque anexado en escritorio y compacto.");
+    }
+
     internal async Task CheckVisualCues(DuelSnapshot snapshot)
     {
         ResetAnimations(); PresentTestSnapshot(snapshot);
@@ -1489,6 +1553,7 @@ public partial class OnlineArena
                 throw new Exception("La devolución de una mano oculta revela una carta.");
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
+        _impacts._Process(1);
         PlayPendingPortraits();
         if (IsAnimating || _die.TopFaceValue != 3 || _portraits[0].Motion != PortraitMotion.Attack || _portraits[1].Motion != PortraitMotion.Hit)
             throw new Exception("No termina la secuencia visual o se pierde un efecto.");

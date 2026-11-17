@@ -26,6 +26,7 @@ public partial class DeckEditor : VBoxContainer
         ("Habilidades", card => card.Kind == CardKind.Skill),
         ("Códigos", card => card.Kind == CardKind.Code && !DeckRules.IsTrap(card)),
         ("Equipos", card => card.Kind == CardKind.Equipment),
+        ("Áreas", card => card.Kind == CardKind.Area),
         ("Códigos Trampa", DeckRules.IsTrap)
     ];
 

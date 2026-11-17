@@ -32,7 +32,7 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch, ActivateArea, UsePurpleRing
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -51,7 +51,11 @@ public sealed class DuelMove
         if (Kind == DuelMoveKind.ComboResponses) return ApplyRules(game, actor);
         using var observation = new PublicDuelObservation(game, actor, this);
         var result = ApplyRules(game, actor);
-        if (result.Success) observation.Complete();
+        if (result.Success)
+        {
+            game.PresentPendingArea();
+            observation.Complete();
+        }
         return result;
     }
 
@@ -61,6 +65,8 @@ public sealed class DuelMove
         DuelMoveKind.Attack => game.Attack(actor, Index, Value),
         DuelMoveKind.PlayCode => game.PlayCode(actor, Index),
         DuelMoveKind.Equip => game.Equip(actor, Index),
+        DuelMoveKind.ActivateArea => game.ActivateArea(actor, Index),
+        DuelMoveKind.UsePurpleRing => game.UsePurpleRing(actor, Index),
         DuelMoveKind.Exchange => game.Exchange(actor, Index),
         DuelMoveKind.Advance => game.Advance(actor),
         DuelMoveKind.Discard => game.Discard(actor, Index),
@@ -71,7 +77,7 @@ public sealed class DuelMove
         DuelMoveKind.PassDefense => game.PassDefense(actor),
         DuelMoveKind.BoxDefense => game.CancelAttackWithBox(actor),
         DuelMoveKind.DestinyDefense => game.ResolveDefense(actor, Index, Discards),
-        DuelMoveKind.Magnet => game.ResolveMagnet(actor, Flag, Index),
+        DuelMoveKind.Magnet => game.ResolveMagnet(actor, Flag, Index, Value == (int)FieldZone.Area),
         DuelMoveKind.SkipMagnet => game.SkipMagnet(actor),
         DuelMoveKind.CodeResponse => game.ResolveCodeResponse(actor, Flag),
         DuelMoveKind.PassError => game.PassErrorResponse(actor),

@@ -3,7 +3,7 @@ namespace Relick.Core;
 // Subtypes referenced by the official rules and by effects such as Caja de Cartón.
 public enum CodeType { None, Character, Object, Play, Trap }
 
-public enum CardKind { Attack, Skill, Code, Attachment, Equipment }
+public enum CardKind { Attack, Skill, Code, Attachment, Equipment, Area }
 
 /// <summary>
 /// Only cards supplied by the user; no sample cards in the playable catalogue. A card whose rules live in an
@@ -20,7 +20,7 @@ public sealed record CardDefinition(
     bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false,
     int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false,
     // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
-    string? Relikario = null, bool Special = false)
+    string? Relikario = null, bool Special = false, bool LightEquipment = false)
 {
     public int NormalDamageAt(int counters) => MaxNormalDamage > 0 ? Math.Min(MaxNormalDamage, NormalDamage + counters * DamagePerReroll) : NormalDamage + counters * DamagePerReroll;
     public int CriticalDamageAt(int counters) => CriticalDamage + counters * DamagePerReroll;
@@ -101,9 +101,17 @@ public static class CardCatalog
     public static readonly CardDefinition TimeBomb = new("time-bomb", "Bomba de Tiempo", CardKind.Code,
         "Escoge una de estas opciones: zona de equipos, mano al azar o zona Bonus. Destruye una carta de ese lugar.",
         CodeType: CodeType.Object);
+    public static readonly CardDefinition TakeEquipment = new("dame-ese-equipo", "¡Dame ese equipo!", CardKind.Code,
+        "Selecciona un equipo en la zona de equipos del adversario y equípatelo tú. Luego, coloca 1 carta de Ataque de tu mazo debajo de tu Relikario y revuelve el mazo.",
+        CodeType: CodeType.Play);
+    public static readonly CardDefinition EquipmentRaid = new("robo-de-equipos", "Misión: Robo de Equipos", CardKind.Area,
+        "Lado A: cuando llega a ser el Área, puedes colocar 1 Ataque de la memoria del adversario debajo de tu Relikario. Añade ¡Dame ese equipo! de tu mazo o memoria a tu mano.\nLado B: cuando llega a ser el Área, equípate un Equipo de tu mazo. Si tu adversario añade a su campo o mano un Equipo del que eres dueño original, él gana 1500 PR, mira tu mano y añade una de esas cartas a su mano. Luego, destruye esta Área.");
     public static readonly CardDefinition DiamondHelmet = new("diamond-helmet", "Casco de Diamantes", CardKind.Equipment,
         "Resta 2 puntos a cualquier daño que recibas. Si en el dado de ataque alguien saca 1: destruye esta carta.",
         DamageReduction: 2, DestroyOnAttackOne: true);
+    public static readonly CardDefinition PurpleRing = new("anillo-morado", "Anillo Morado", CardKind.Equipment,
+        "Equipo ligero. Puedes destruir esta carta para ganar 500 PR o, cuando recibas daño, recibir solo la mitad de ese daño.",
+        LightEquipment: true);
     public static readonly CardDefinition Attack = new("attack", "Ataque", CardKind.Attack,
         "Consume esta carta para atacar con una habilidad enseñada.");
     public static readonly CardDefinition Magnet = new("magnet-shuffle", "Relick Magnet Shuffle", CardKind.Skill,
@@ -142,7 +150,7 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack }.ToDictionary(c => c.Id);
+        new[] { Attack, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 

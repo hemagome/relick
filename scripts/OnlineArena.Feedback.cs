@@ -102,7 +102,7 @@ public partial class OnlineArena
         if (s != null && !_preparing && s.Winner == null && !ChoosingRecycling && !ChoosingEffectCards)
             foreach (var option in s.Options)
                 if (option.Move.Index >= 0 && option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or
-                    DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange)
+                    DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Exchange)
                     playable.Add(option.Move.Index);
         foreach (var card in _handCards)
         {

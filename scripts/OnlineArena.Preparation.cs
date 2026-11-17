@@ -204,6 +204,11 @@ public partial class OnlineArena
                 DuelVisualKind.BonusClaim or DuelVisualKind.HandSteal => ZoneNode(flight.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, flight.Event.Value),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.Pile when flight.IsPlacement => ZoneNode(relative, flight.Event.Destination, flight.Event.Value),
+                DuelVisualKind.Pile when flight.Event.DestinationPlayer != null ||
+                    flight.Event.Destination == CardZone.Area ||
+                    flight.Event is { Source: CardZone.Deck, Destination: CardZone.Attached or CardZone.Equipment or CardZone.LightEquipment } =>
+                    ZoneNode(PileRecipient(flight.Event) == _snapshot.MySeat ? 0 : 1, flight.Event.Destination,
+                        flight.Event.Destination == CardZone.Hand ? flight.Event.Value : -1),
                 _ => null
             };
             SetDestinationPending(flight, target, pending);

@@ -48,10 +48,12 @@ public partial class OnlineArena
             DuelMoveKind.Destroy => move.Target == field.Owner && move.Value == (int)field.Zone &&
                 (move.Index == field.Index || field.Zone == FieldZone.Hand && move.Index < 0),
             // A card decision names its board target; a hand is one zone, its card drawn at random.
-            DuelMoveKind.Choose => option?.Field is { } t && t.Owner == field.Owner && t.Zone == field.Zone &&
+            DuelMoveKind.Choose or DuelMoveKind.UsePurpleRing => option?.Field is { } t && t.Owner == field.Owner && t.Zone == field.Zone &&
                 (t.Index == field.Index || field.Zone == FieldZone.Hand && t.Index < 0),
             DuelMoveKind.FieldCode => field.Owner == s.MySeat && move.Value == (int)field.Zone && move.Index == field.Index,
-            DuelMoveKind.Magnet => field.Owner != s.MySeat && (move.Flag ? field.Zone == FieldZone.Bonus : field.Zone == FieldZone.Hand && move.Index == field.Index),
+            DuelMoveKind.Magnet => field.Owner != s.MySeat && (move.Flag
+                ? field.Zone == (move.Value == (int)FieldZone.Area ? FieldZone.Area : FieldZone.Bonus)
+                : field.Zone == FieldZone.Hand && move.Index == field.Index),
             DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
             DuelMoveKind.CodeResponse => move.Flag && field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
             _ => false
@@ -64,7 +66,8 @@ public partial class OnlineArena
         return field.Zone switch
         {
             FieldZone.Equipment => p.Equipment, FieldZone.EquipmentCover => p.EquipmentCovers?.ElementAtOrDefault(field.Index),
-            FieldZone.Bonus => p.Bonus, FieldZone.Exchange => p.Exchange.ElementAtOrDefault(field.Index),
+            FieldZone.LightEquipment => p.LightEquipment?.ElementAtOrDefault(field.Index),
+            FieldZone.Bonus => p.Bonus, FieldZone.Area => p.Area, FieldZone.Exchange => p.Exchange.ElementAtOrDefault(field.Index),
             FieldZone.Hand => p.Hand.ElementAtOrDefault(field.Index), FieldZone.Skill => p.Skills.ElementAtOrDefault(field.Index),
             FieldZone.Attached => p.Attached.ElementAtOrDefault(field.Index),
             FieldZone.Zahira when p.Zahira(GameEngine.ZahiraSlot(field.Index)) != null => CardCatalog.ZahiraFlair.Id, _ => null
@@ -88,11 +91,24 @@ public partial class OnlineArena
 
     private void SelectFieldPile(int owner, FieldZone zone)
     {
-        var ids = zone == FieldZone.EquipmentCover ? _snapshot!.Players[owner].EquipmentCovers ?? [] : _snapshot!.Players[owner].Attached;
+        var player = _snapshot!.Players[owner];
+        var ids = zone switch
+        {
+            FieldZone.EquipmentCover => player.EquipmentCovers ?? [],
+            FieldZone.LightEquipment => player.LightEquipment ?? [],
+            _ => player.Attached
+        };
         var targetable = _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)zone ||
-            o.Move.Kind == DuelMoveKind.Choose && o.Field is { } t && t.Owner == owner && t.Zone == zone);
-        if (ids.Length == 1 && targetable) { SelectField(owner, zone, 0); return; }
-        ShowCards(zone == FieldZone.EquipmentCover ? "Sobre el equipo" : $"Sobre {RelikarioCatalog.DisplayNameOf(_snapshot.Players[owner].RelikarioId)}", ids, select: targetable ? index => SelectField(owner, zone, index) : null);
+            o.Move.Kind is DuelMoveKind.Choose or DuelMoveKind.UsePurpleRing && o.Field is { } t && t.Owner == owner && t.Zone == zone);
+        if (ids.Length == 1 && (targetable || zone == FieldZone.LightEquipment)) { SelectField(owner, zone, 0); return; }
+        var relikario = player.RelikarioId;
+        var title = zone switch
+        {
+            FieldZone.EquipmentCover => "Sobre el equipo",
+            FieldZone.LightEquipment => $"Equipos ligeros · {player.Name}",
+            _ => AttachmentStack.Location(ids, RelikarioCatalog.DisplayNameOf(relikario))
+        };
+        ShowCards(title, ids, select: targetable ? index => SelectField(owner, zone, index) : null, relikarioOf: _ => relikario);
     }
 
     private void SelectSkill(int index)
@@ -135,16 +151,24 @@ public partial class OnlineArena
             void Mark(ZoneCardButton? node, FieldZone zone, int index)
             {
                 if (node == null) return;
-                node.Targetable = s.Options.Any(o => MatchesField(o, (owner, zone, index)));
-                node.Chosen = _fieldSelection == (owner, zone, index); node.QueueRedraw();
+                node.Targetable = zone == FieldZone.LightEquipment
+                    ? Enumerable.Range(0, s.Players[owner].LightEquipment?.Length ?? 0)
+                        .Any(slot => s.Options.Any(o => MatchesField(o, (owner, zone, slot))))
+                    : s.Options.Any(o => MatchesField(o, (owner, zone, index)));
+                node.Chosen = zone == FieldZone.LightEquipment
+                    ? _fieldSelection is { } selected && selected.Owner == owner && selected.Zone == zone
+                    : _fieldSelection == (owner, zone, index);
+                node.QueueRedraw();
                 if (node.Targetable) _pulsingTargets.Add(node);
             }
             Mark(_equipmentZones[relative], FieldZone.Equipment, -1);
+            Mark(ZoneNode(relative, CardZone.LightEquipment, -1) as ZoneCardButton, FieldZone.LightEquipment, -1);
             var covers = s.Players[owner].EquipmentCovers;
             Mark(_coverZones[relative], FieldZone.EquipmentCover, (covers?.Length ?? 0) - 1);
             if (_exchangeTracks[relative] is { } track)
             {
                 Mark(track.BonusButton, FieldZone.Bonus, -1);
+                Mark(track.AreaButton, FieldZone.Area, -1);
                 for (var i = 0; i < track.ExchangeButtons.Length; i++) Mark(track.ExchangeButtons[i], FieldZone.Exchange, i);
             }
         }

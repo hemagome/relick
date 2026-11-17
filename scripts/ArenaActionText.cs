@@ -11,6 +11,7 @@ internal static class ArenaActionText
         DuelMoveKind.Attack => "Atacar",
         DuelMoveKind.PlayCode => HandCard(option, s)?.CancelActivation == true ? "Anular" : HandCard(option, s)?.IsCombo == true ? "Activar" : "Jugar",
         DuelMoveKind.Equip => "Equipar",
+        DuelMoveKind.UsePurpleRing => "Ganar 500 PR",
         DuelMoveKind.Exchange => "Canjear",
         DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => "Descartar",
         DuelMoveKind.Advance => s.Phase switch
@@ -80,6 +81,9 @@ internal static class ArenaActionText
                 var card = HandCard(option, s)!;
                 return Resources(card.ActionCost, GameEngine.CodePrCost(card, s.LegacyBlueEgg), card.DiscardCost);
             case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch: return "1 acción";
+            case DuelMoveKind.UsePurpleRing:
+            case DuelMoveKind.Choose when s.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field != null:
+                return "Destruye Anillo Morado";
             case DuelMoveKind.Learn:
                 var p = s.Players[s.MySeat];
                 var position = Enumerable.Range(0, GameEngine.MaxSkills).FirstOrDefault(i => !Enumerable.Range(0, p.Skills.Length).Any(j => p.SkillPosition(j) == i));

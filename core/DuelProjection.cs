@@ -41,7 +41,13 @@ public sealed class DuelPlayerView
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int[]? ExchangeEffectsUsed { get; set; }
     public string? Equipment { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? LightEquipment { get; set; }
     public string? Bonus { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Area { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? AreaSide { get; set; }
     public string[] Attached { get; set; } = [];
     public string[] Exchange { get; set; } = [];
     public string[] Memory { get; set; } = [];
@@ -174,6 +180,8 @@ public sealed class DuelSnapshot
                 BonusEffectUsed = p.BonusEffectUsed, ExchangeEffectsUsed = p.ExchangeEffectsUsed?.ToArray(),
                 ZahiraHost = p.ZahiraHost, ZahiraHost2 = p.ZahiraHost2,
                 Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, EquipmentStackedCopies = p.EquipmentStackedCopies, EquipmentCovers = p.EquipmentCovers?.ToArray(), StarEffects = p.StarEffects, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
+                LightEquipment = p.LightEquipment?.Select(c => c.CardId).ToArray(),
+                Area = p.Area, AreaSide = p.AreaSideA is int sideA ? sideA == index ? "A" : "B" : null,
                 Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
             }).ToArray()
         };

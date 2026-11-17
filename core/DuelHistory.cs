@@ -124,11 +124,15 @@ internal sealed class PublicDuelObservation : IDisposable
     private void Pile(PileMovement move)
     {
         // Hidden hand/deck moves and face-down corruption never contribute identities.
-        if (move.Destination == CardZone.Memory && move.Source is CardZone.Equipment or CardZone.EquipmentCover or CardZone.Skill or CardZone.Bonus or CardZone.Exchange or CardZone.Attached or CardZone.Activation)
+        if (move.Destination == CardZone.Memory && move.Source is CardZone.Equipment or CardZone.EquipmentCover or CardZone.LightEquipment or CardZone.Skill or CardZone.Bonus or CardZone.Area or CardZone.Exchange or CardZone.Attached or CardZone.Activation)
             _outcomes.Add(move.ToRivalMemory ? $"{Card(move.CardId)} de {Player(move.Owner)} va a la memoria de {Player(move.MemoryOwner)}, su dueño."
                 : $"{Card(move.CardId)} de {Player(move.Owner)} va a memoria.");
         if (move.Destination == CardZone.OutOfGame && move.Source != CardZone.Hand)
             _outcomes.Add($"{Card(move.CardId)} de {Player(move.Owner)} queda fuera del juego.");
+        if (move.Source == CardZone.Deck && move.Destination == CardZone.Attached)
+            _outcomes.Add($"{Player(move.Owner)} coloca un Ataque debajo de su Relikario y baraja el mazo.");
+        if (move.Destination == CardZone.LightEquipment)
+            _outcomes.Add($"{Player(move.DestinationPlayer ?? move.Owner)} equipa {Card(move.CardId)} como equipo ligero.");
     }
     public void Complete()
     {
@@ -185,7 +189,7 @@ internal sealed class PublicDuelObservation : IDisposable
         if (actor is not (0 or 1)) return null;
         var p = g.State.Players[actor];
         // Only these hand plays announce their identity to everybody on acceptance.
-        if (m.Kind is DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Exchange)
+        if (m.Kind is DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Exchange)
             return p.Hand.ElementAtOrDefault(m.Index);
         return m.Kind switch
         {
@@ -194,6 +198,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.FieldCode => m.Value == (int)FieldZone.Bonus ? p.Bonus : p.Exchange.ElementAtOrDefault(m.Index),
             DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse when m.Flag => CardCatalog.CardboardBox.Id,
             DuelMoveKind.Pc => CardCatalog.Pc.Id, DuelMoveKind.Pendant => CardCatalog.Pendant.Id,
+            DuelMoveKind.UsePurpleRing => CardCatalog.PurpleRing.Id,
             DuelMoveKind.TrapCraft when m.Flag => g.State.TrapCraftQueue?.FirstOrDefault() is { } craft
                 ? craft.Options.ElementAtOrDefault(m.Value) ?? craft.CardId : null,
             DuelMoveKind.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
@@ -208,7 +213,7 @@ internal sealed class PublicDuelObservation : IDisposable
         string Target() => m.Target is 0 or 1 ? g.State.Players[m.Target].Name : "el objetivo";
         return m.Kind switch
         {
-            DuelMoveKind.PlayCode => $"{name} activa {card}.",
+            DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea => $"{name} activa {card}.",
             DuelMoveKind.Attack when actor is 0 or 1 && g.State.Players[actor].Hand.ElementAtOrDefault(m.Index) == CardCatalog.SuperAttack.Id
                 => $"{name} usa Súper Ataque con {card}.",
             DuelMoveKind.Attack => $"{name} ataca con {card}.",
@@ -220,13 +225,14 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.BoxDefense => $"{name} cancela el daño con Caja de Cartón.", DuelMoveKind.DestinyDefense => $"{name} se defiende con {card}.",
             DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => m.Flag ? $"{name} relanza con {(actor is 0 or 1 ? g.State.Players[actor].Relikario.DisplayName : "su Relikario")}." : $"{name} confirma el resultado del dado.",
             DuelMoveKind.Pc or DuelMoveKind.Pendant => $"{name} modifica el dado con {card}.",
+            DuelMoveKind.UsePurpleRing => $"{name} usa {card} para ganar 500 PR.",
             DuelMoveKind.Dexterity => $"{name} usa una ficha de destreza.", DuelMoveKind.LearningDie => $"{name} relanza por Reverse Shuffle.",
             DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => $"{name} descarta una carta.",
             DuelMoveKind.Points => $"{name} {(m.Flag ? "aumenta" : "reduce")} los PR de {Target()}.",
             DuelMoveKind.Destroy => $"{name} elige destruir una carta de {Target()} ({(FieldZone)m.Value switch { FieldZone.Hand => "mano al azar", FieldZone.Bonus => "Bonus", FieldZone.Equipment => "equipo", _ => "campo" }}).",
             DuelMoveKind.Choose => g.DecisionChoices(actor).ElementAtOrDefault(m.Index) is { } choice ? $"{name} {choice.Public}" : $"{name} decide.",
             DuelMoveKind.BlueEggDraw => m.Flag ? $"{name} paga {GameEngine.BlueEggDrawCost} PR para robar con Huevo Azul Explosivo." : $"{name} continúa sin robar con Huevo Azul Explosivo.",
-            DuelMoveKind.Magnet => $"{name} elige tomar una carta {(m.Flag ? "del Bonus rival" : "de la mano rival")} por Magnet Shuffle.",
+            DuelMoveKind.Magnet => $"{name} elige tomar una carta {(m.Value == (int)FieldZone.Area ? "del Área rival" : m.Flag ? "del Bonus rival" : "de la mano rival")} por Magnet Shuffle.",
             DuelMoveKind.SkipMagnet => $"{name} decide no tomar una carta por Magnet Shuffle.",
             DuelMoveKind.Placement => $"{name} coloca una carta {(m.Value == (int)CardDestination.Exchange ? "en canje" : "al fondo del mazo")}.",
             DuelMoveKind.Relikia => $"{name} activa Relikia: {RelikiaEffects.All.FirstOrDefault(e => e.Id == (RelikiaEffect)m.Value)?.Name ?? "efecto"}.",

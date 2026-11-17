@@ -288,7 +288,9 @@ public partial class OnlineArena : Control
                 Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory,
                     player.CorruptedCount, relikarioOf: _ => player.RelikarioId),
                 Attached = () => SelectFieldPile(seat, FieldZone.Attached),
+                Area = () => SelectField(seat, FieldZone.Area, -1),
                 Equipment = () => SelectEquipment(seat),
+                LightEquipment = () => SelectFieldPile(seat, FieldZone.LightEquipment),
                 EquipmentCovers = () => SelectFieldPile(seat, FieldZone.EquipmentCover),
                 Zahiras = zahiras,
                 Skill = slot =>
@@ -431,6 +433,7 @@ public partial class OnlineArena : Control
             Player(0);
             var combat = ArenaPresentation.Combat(arena, _preparing, s.Winner != null, combatMessage, relativePlayers, BuildOpponentHand,
                 relative => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Bonus, -1),
+                relative => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Area, -1),
                 (relative, slot) => SelectField(relative == 0 ? s.MySeat : 1 - s.MySeat, FieldZone.Exchange, slot), boardCompact, BuildResolution);
             _combatMessage = (Label)combat.FindChild("CombatMessage", true, false);
             Player(1);

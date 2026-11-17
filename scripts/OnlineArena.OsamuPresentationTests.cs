@@ -74,6 +74,61 @@ public partial class OnlineArena
         high.AdvancePlayback(RelikarioPortrait.DurationFor(PortraitMotion.Heal) + .2);
         Check(high.Motion == PortraitMotion.Idle, "Después de curarse, Osamu debe recuperar su guardia.");
         low.QueueFree(); high.QueueFree();
+        await CheckAttackProjectiles(game);
         GD.Print("PVP_OSAMU_ART_PASS · Ataques por Relikario, siete movimientos continuos a 120 Hz y regreso a la guardia.");
+    }
+
+    private async Task CheckAttackProjectiles(GameEngine game)
+    {
+        var glove = RelikarioArt.Load(RelikarioCatalog.Yuno.Id, "attack-projectile");
+        var bomb = RelikarioArt.Load(RelikarioCatalog.Osamu.Id, "attack-projectile");
+        if (glove == null || bomb == null || glove == bomb)
+            throw new Exception("Yuno y Osamu necesitan proyectiles propios.");
+        var leftGlove = RelikarioArt.Load(RelikarioCatalog.Yuno.Id, "attack-projectile-left");
+        if (leftGlove == null || leftGlove == glove || leftGlove.GetSize() != glove.GetSize())
+            throw new Exception("El guantelete necesita una imagen hacia la izquierda con los botones legibles y el mismo tamaño.");
+        var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+        var reducedMotion = _impacts.ReducedMotion;
+        try
+        {
+            _impacts.ReducedMotion = false;
+            foreach (var seat in new[] { 0, 1 })
+            foreach (var actor in new[] { 0, 1 })
+            {
+                game.State.Players[0].Relikario = seat == 0 ? RelikarioCatalog.Osamu : RelikarioCatalog.OsamuLv2;
+                game.State.Players[1].Relikario = seat == 0 ? RelikarioCatalog.Yuno : RelikarioCatalog.YunoLv2;
+                ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 104));
+                for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var relative = seat == actor ? 0 : 1;
+                var defender = _portraits[1 - relative];
+                Animate([new() { Kind = DuelVisualKind.Attack, Player = actor },
+                    new() { Kind = DuelVisualKind.Hit, Player = 1 - actor, Value = 2, AttackDie = 5 }], []);
+                _impacts.SetProcess(false);
+                _impacts._Process(.65);
+                for (var i = 0; i < 3; i++) UpdateFlights(0);
+                if (_portraits[relative].Motion != PortraitMotion.Attack || !_impacts.AttackInFlightTo(defender) ||
+                    defender.Motion != PortraitMotion.Idle || _impacts.LastNumberAt != null)
+                    throw new Exception("El daño se muestra antes de que llegue el proyectil al rival.");
+                if (directory != null && DisplayServer.GetName() != "headless")
+                {
+                    _portraits[relative].AdvancePlayback(.65);
+                    await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                    System.IO.Directory.CreateDirectory(directory);
+                    GetViewport().GetTexture().GetImage().SavePng($"{directory}/attack-{_portraits[relative].RelikarioId}-seat-{seat}.png");
+                }
+                _impacts._Process(.25);
+                UpdateFlights(0);
+                if (_impacts.AttackInFlightTo(defender) || defender.Motion != PortraitMotion.HitNormal || _impacts.LastNumberAt == null)
+                    throw new Exception("El proyectil llega sin mostrar el daño.");
+            }
+            ResetAnimations();
+            _impacts.ReducedMotion = true;
+            Animate([new() { Kind = DuelVisualKind.Attack, Player = 1 },
+                new() { Kind = DuelVisualKind.Hit, Player = 0, Value = 2, AttackDie = 5 }], []);
+            if (_impacts.AttackInFlightTo(_portraits[1]) || _portraits[1].Motion != PortraitMotion.HitNormal)
+                throw new Exception("El movimiento reducido debe mostrar el daño sin esperar el vuelo.");
+        }
+        finally { _impacts.ReducedMotion = reducedMotion; ResetAnimations(); }
+        GD.Print("PVP_ATTACK_PROJECTILES_PASS · Yuno y Osamu, ambos asientos y niveles, impacto al llegar y movimiento reducido.");
     }
 }

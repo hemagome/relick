@@ -27,7 +27,9 @@ public partial class OnlineArena
         return field.Zone switch
         {
             FieldZone.Equipment => _root!.FindChild("EquipmentZone" + relative, true, false) as Control,
+            FieldZone.LightEquipment => ZoneNode(relative, CardZone.LightEquipment, -1),
             FieldZone.EquipmentCover => _root!.FindChild("EquipmentCoverZone" + relative, true, false) as Control,
+            FieldZone.Area => ZoneNode(relative, CardZone.Area, -1),
             FieldZone.Attached => _root!.FindChild("AttachmentStack" + relative, true, false) as Control,
             FieldZone.Bonus when _root!.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track => track.BonusButton,
             FieldZone.Exchange when _root!.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track =>
@@ -41,7 +43,8 @@ public partial class OnlineArena
     private static GameIcon CardActionSymbol(DuelMove move) => move.Kind switch
     {
         DuelMoveKind.Attack or DuelMoveKind.Destroy or DuelMoveKind.Choose => GameIcon.Sword,
-        DuelMoveKind.Equip or DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse or DuelMoveKind.ProtectDestruction => GameIcon.Shield,
+        DuelMoveKind.Equip or DuelMoveKind.UsePurpleRing or DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse or DuelMoveKind.ProtectDestruction => GameIcon.Shield,
+        DuelMoveKind.ActivateArea => GameIcon.Flag,
         DuelMoveKind.Exchange => GameIcon.Exchange,
         DuelMoveKind.Placement when move.Value == (int)CardDestination.Exchange => GameIcon.Exchange,
         DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => GameIcon.Memory,

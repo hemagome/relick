@@ -72,6 +72,7 @@ public sealed partial class GameEngine
                 ChangeZahiraHosts(actor, FieldZone.Bonus, -1, movedTo: new(actor, FieldZone.Exchange, p.Exchange.Count, bonus));
                 ForgetFieldCodeSource(p, FieldZone.Bonus);
                 p.Bonus = null;
+                p.InitialAreaWaitingInBonus = false;
                 PlaceInExchange(p, bonus, new EngineContinuation { Kind = ContinuationKind.RefillBonus, Actor = actor }, fieldPlacedTurn: bonusPlacedTurn);
                 break;
             case RelikiaEffect.DrawAndPlace:
@@ -160,12 +161,24 @@ public sealed partial class GameEngine
         ChangeZahiraHosts(Array.IndexOf(State.Players, source), FieldZone.Bonus, -1);
         ForgetFieldCodeSource(source, FieldZone.Bonus);
         source.Bonus = null;
+        source.InitialAreaWaitingInBonus = false;
         var owner = source.ReleaseForeignFieldCard(id) ? 1 - Seat(source) : Seat(source);
         if (source.CorruptsOnMemory(CardZone.Bonus, -1)) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count);
         source.ClearCorruptionMarks(CardZone.Bonus);
         recipient.Hand.Add(id);
-        if (owner != Seat(recipient)) recipient.MarkForeignHandCard(recipient.Hand.Count - 1);
+        if (owner != Seat(recipient)) MarkBorrowedHandCard(recipient, recipient.Hand.Count - 1);
         BonusClaimed?.Invoke(Array.IndexOf(State.Players, source), Array.IndexOf(State.Players, recipient), recipient.Hand.Count - 1, id);
+    }
+
+    private void TakeArea(PlayerState source, PlayerState recipient)
+    {
+        var id = source.Area!;
+        var owner = source.AreaIsBorrowed ? 1 - Seat(source) : Seat(source);
+        if (source.CorruptsOnMemory(CardZone.Area, -1)) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count);
+        recipient.Hand.Add(id);
+        if (owner != Seat(recipient)) MarkBorrowedHandCard(recipient, recipient.Hand.Count - 1);
+        NotifyPileMove(source, id, CardZone.Area, recipient.Hand.Count - 1, CardZone.Hand, destinationPlayer: Seat(recipient));
+        ClearArea(source);
     }
 
     private void DealBonus(PlayerState p, EngineContinuation? completed = null) => MoveTopCard(p, true, completed);

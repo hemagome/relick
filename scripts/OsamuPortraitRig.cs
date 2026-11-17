@@ -17,19 +17,16 @@ internal sealed class OsamuPortraitRig(Texture2D body, Texture2D sword)
     // Grip anchors measured on the source textures, including their transparent margins.
     private static readonly Vector2 Hand = BodyRect.Position + BodyRect.Size * new Vector2(.738f, .563f);
     private static readonly Rect2 SwordRect = new(-28, -42, 246, 82);
-    private static readonly Color BladeLight = new("75eaff");
-    private static readonly Color BladeShadow = new("597cfa");
     private static readonly Color MendLight = new("5df3b4");
     private static readonly Color ImpactLight = new("ff9c8b");
 
     private static readonly (float Time, Pose Pose)[] Attack =
     [
         (0, Guard),
-        (.25f, new(new(-22, 8), -5, -101, .973f, 0)),
-        (.34f, new(new(-18, 10), -4, -110, .965f, .10f)),
-        (.47f, new(new(30, 0), 9, 24, 1.025f, 1)),
-        (.61f, new(new(26, 8), 7, 47, .985f, .43f)),
-        (.76f, new(new(9, 4), 3, 10, .994f, 0)),
+        (.22f, new(new(-32, 7), -9, -62, .98f, 0)),
+        (.35f, new(new(34, -10), 10, -38, 1.02f, 0)),
+        (.53f, new(new(20, 5), 8, -32, .98f, 0)),
+        (.73f, new(new(5, 3), 2, -44, .99f, 0)),
         (1, Guard)
     ];
     private static readonly (float Time, Pose Pose)[] Heal =
@@ -88,14 +85,8 @@ internal sealed class OsamuPortraitRig(Texture2D body, Texture2D sword)
         var blade = torso * new Transform2D(Mathf.DegToRad(pose.SwordAngle), Hand);
         var progress = Mathf.Clamp((float)(elapsed / RelikarioPortrait.DurationFor(motion)), 0, 1);
 
-        if (motion == PortraitMotion.Attack && pose.Effect > .01f)
-        {
-            canvas.DrawSetTransformMatrix(torso);
-            DrawSlash(canvas, pose);
-        }
-
         canvas.DrawSetTransformMatrix(blade);
-        var glow = .035f * (.5f + .5f * Mathf.Sin((float)_clock * 3.4f)) + (motion == PortraitMotion.Attack ? pose.Effect * .22f : 0);
+        var glow = .035f * (.5f + .5f * Mathf.Sin((float)_clock * 3.4f));
         canvas.DrawTextureRect(sword, SwordRect, false, new Color(1, 1 + glow, 1 + glow * 1.7f));
         canvas.DrawSetTransformMatrix(torso);
         canvas.DrawTextureRect(body, BodyRect, false);
@@ -131,24 +122,6 @@ internal sealed class OsamuPortraitRig(Texture2D body, Texture2D sword)
     {
         var tremor = Mathf.Sin(time * 2.24f) + .36f * Mathf.Sin(time * 5.38f);
         return new(new(-14, 22 + tremor * 2.8f), 12 + tremor * 1.4f, 50 + tremor * 6, .896f, 0);
-    }
-
-    private static void DrawSlash(CanvasItem canvas, Pose pose)
-    {
-        const int segments = 20;
-        var angle = Mathf.DegToRad(pose.SwordAngle);
-        for (var i = 1; i <= segments; i++)
-        {
-            var t = i / (float)segments;
-            var start = angle - .16f - (1 - (i - 1f) / segments) * 1.67f;
-            var end = angle - .16f - (1 - t) * 1.67f;
-            var width = 1 + Mathf.Sin(t * Mathf.Pi) * 13;
-            var radius = 201 + 23 * t;
-            var a = Hand + Vector2.FromAngle(start) * radius;
-            var b = Hand + Vector2.FromAngle(end) * radius;
-            canvas.DrawLine(a, b, BoardArt.Tint(BladeShadow, pose.Effect * t * .63f), width, true);
-            canvas.DrawLine(a, b, BoardArt.Tint(BladeLight, pose.Effect * t * .90f), width * .29f, true);
-        }
     }
 
     private static void DrawMend(CanvasItem canvas, float progress, float power)

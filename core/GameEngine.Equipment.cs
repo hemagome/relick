@@ -27,7 +27,18 @@ public sealed partial class GameEngine
     private void FinishEquipmentInstall()
     {
         var frame = _activeActivation!; var p = State.Players[frame.Actor];
-        if (p.Equipment == null || p.Equipment == frame.CardId && CardCatalog.Get(frame.CardId).Stackable)
+        var card = CardCatalog.Get(frame.CardId);
+        if (card.LightEquipment)
+        {
+            var slot = p.LightEquipment?.Count ?? 0;
+            MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p, lightEquipment: true);
+            if (frame.CorruptOnMemory) p.MarkForCorruption(CardZone.LightEquipment, slot);
+            frame.CorruptOnMemory = false;
+            Log($"{p.Name} se equipa {card.Name} como equipo ligero (1 acción).");
+            CompleteActivationIfFinished();
+            return;
+        }
+        if (CanInstallEquipment(p, card))
         {
             MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p);
             if (frame.CorruptOnMemory)
@@ -43,17 +54,15 @@ public sealed partial class GameEngine
             }
             p.Equipment = frame.CardId; p.EquipmentDie = 0; p.EquipmentCounters = 0;
             p.EquipmentStackedCopies = 0;
-            var card = CardCatalog.Get(frame.CardId);
             p.EquipmentExpiresAtTurnStart = card.DestroyAtNextTurnStart;
             Log($"{p.Name} pone {card.Name} en su zona de equipo (1 acción).");
             if (card.Heal > 0) Heal(p, card.Heal);
             if (frame.FinishSniperExchange) CompleteExchange(p);
-            if (card.StoreDie)
-                RollWithRelikario(p, DiePurpose.PcStore, new DieEffect { Purpose = DiePurpose.PcStore, Actor = frame.Actor });
+            if (card.StoreDie) RollEquipmentStorage(p);
         }
         else
         {
-            Log($"{p.Name} conserva su equipo protegido; {CardCatalog.Get(frame.CardId).Name} queda en memoria porque la zona sigue ocupada.");
+            Log($"{p.Name} conserva su equipo protegido; {card.Name} queda en memoria porque la zona sigue ocupada.");
             if (frame.FinishSniperExchange) CompleteExchange(p);
         }
         CompleteActivationIfFinished();
@@ -74,8 +83,7 @@ public sealed partial class GameEngine
             Log($"{p.Name} destruye una copia de {CardCatalog.Get(id).Name}: quedan {p.EquipmentStackedCopies + 1} equipadas.");
             return;
         }
-        p.Equipment = null; p.EquipmentDie = 0; p.EquipmentCounters = 0;
-        p.EquipmentExpiresAtTurnStart = false;
+        ClearEquipment(p);
         Log($"{p.Name} destruye {CardCatalog.Get(id).Name}: {(trap ? "queda fuera del juego" : landed == null ? "se corrompe" :
             landed.Owner == Seat(p) ? "va a su memoria" : $"va a la memoria de {State.Players[landed.Owner].Name}, su dueño")}.");
     }
@@ -83,9 +91,100 @@ public sealed partial class GameEngine
     private void ReplaceEquipment(EngineContinuation next)
     {
         var frame = _activeActivation!; var p = State.Players[frame.Actor];
-        if (next.Prevented || p.Equipment == null || p.Equipment == frame.CardId && CardCatalog.Get(frame.CardId).Stackable)
+        if (next.Prevented || CanInstallEquipment(p, CardCatalog.Get(frame.CardId)))
             FinishEquipmentInstall();
         else DestroyEquipment(p, next);
+    }
+
+    private static void ClearEquipment(PlayerState p)
+    {
+        p.Equipment = null;
+        p.EquipmentDie = 0;
+        p.EquipmentCounters = 0;
+        p.EquipmentExpiresAtTurnStart = false;
+    }
+
+    private static bool CanInstallEquipment(PlayerState p, CardDefinition card) =>
+        card.LightEquipment || p.Equipment == null || p.Equipment == card.Id && card.Stackable;
+
+    private IEnumerable<FieldTarget> EquipmentTransferTargets(int owner)
+    {
+        if (State.Players[owner].Equipment is { } id && (CardCatalog.Get(id).Kind == CardKind.Equipment || id == CardCatalog.SuperMagnet.Id))
+            yield return new(owner, FieldZone.Equipment, -1, id);
+        foreach (var light in LightEquipmentTargets(owner)) yield return light;
+    }
+
+    private void RollEquipmentStorage(PlayerState p, EngineContinuation? completed = null) =>
+        RollWithRelikario(p, DiePurpose.PcStore, new DieEffect { Purpose = DiePurpose.PcStore, Actor = Seat(p), Next = completed });
+
+    private void PrepareEquipmentTransfer(FieldTarget target, EngineContinuation completed)
+    {
+        var p = State.Players[completed.Actor];
+        if (CanInstallEquipment(p, CardCatalog.Get(target.CardId))) Continue(completed);
+        else DestroyEquipment(p, completed);
+    }
+
+    private bool FinishEquipmentTransfer(int actor, FieldTarget target, EngineContinuation completed)
+    {
+        var p = State.Players[actor];
+        var source = State.Players[target.Owner];
+        var card = CardCatalog.Get(target.CardId);
+        if (!CanInstallEquipment(p, card)) return false;
+        if (target.Zone == FieldZone.LightEquipment)
+        {
+            TransferLightEquipment(source, p, target);
+            Log($"{p.Name} se equipa {card.Name} de {source.Name} como equipo ligero.");
+            Continue(completed);
+            return true;
+        }
+
+        var slot = p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1;
+        TransferEquipmentCard(source, p, CardZone.Equipment, FieldZone.Equipment, source.EquipmentStackedCopies, slot, card.Id);
+        if (slot == 0)
+        {
+            p.Equipment = card.Id;
+            p.EquipmentDie = source.EquipmentDie;
+            p.EquipmentCounters = source.EquipmentCounters;
+            p.EquipmentExpiresAtTurnStart = card.DestroyAtNextTurnStart;
+        }
+        else p.EquipmentStackedCopies = slot;
+
+        if (source.EquipmentStackedCopies > 0) source.EquipmentStackedCopies--;
+        else
+        {
+            ClearEquipment(source);
+            if (source.EquipmentCovers is { } covers)
+            {
+                p.EquipmentCovers ??= [];
+                var first = p.EquipmentCovers.Count;
+                for (var i = covers.Count - 1; i >= 0; i--)
+                    TransferEquipmentCard(source, p, CardZone.EquipmentCover, FieldZone.EquipmentCover, i, first + i, covers[i]);
+                p.EquipmentCovers.AddRange(covers);
+                source.EquipmentCovers = null;
+            }
+        }
+
+        Log($"{p.Name} se equipa {card.Name} de {source.Name}.");
+        var active = ActiveEquipment(actor);
+        if (active?.Heal > 0) Heal(p, active.Heal);
+        if (active?.StoreDie == true)
+        {
+            p.EquipmentDie = 0;
+            RollEquipmentStorage(p, completed);
+        }
+        else Continue(completed);
+        return true;
+    }
+
+    private void TransferEquipmentCard(PlayerState source, PlayerState recipient, CardZone zone, FieldZone field,
+        int slot, int destinationSlot, string id)
+    {
+        var owner = Seat(recipient);
+        if (!source.ReleaseForeignFieldCard(id)) MarkBorrowedFieldCard(recipient, id);
+        if (source.CorruptsOnMemory(zone, slot)) recipient.MarkForCorruption(zone, destinationSlot);
+        source.RemoveCorruptionSlots(zone, slot);
+        ChangeZahiraHosts(Seat(source), field, slot, movedTo: new(owner, field, destinationSlot, id));
+        NotifyPileMove(source, id, zone, slot, zone, destinationPlayer: owner);
     }
 
     public bool CanUseRelikarioOnPendingDie(int actor)

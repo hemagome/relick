@@ -11,7 +11,8 @@ internal static class FieldDestruction
     /// <summary>The zone as the public history names it, without revealing a hand card.</summary>
     private static string PublicZone(FieldZone zone) => zone switch
     {
-        FieldZone.Hand => "mano al azar", FieldZone.Bonus => "Bonus", FieldZone.Equipment => "equipo", _ => "campo"
+        FieldZone.Hand => "mano al azar", FieldZone.Bonus => "Bonus", FieldZone.Area => "Área",
+        FieldZone.Equipment => "equipo", FieldZone.LightEquipment => "equipo ligero", _ => "campo"
     };
 
     public static DecisionChoice Card(GameEngine.EffectContext ctx, FieldTarget t) => new()

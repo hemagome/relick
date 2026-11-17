@@ -57,6 +57,23 @@ public partial class RelikarioPortrait : Control
     /// <summary>Any form's Id; forms of one Relikario share their clips.</summary>
     public string RelikarioId { get; private set; } = RelikarioCatalog.Yuno.Id;
 
+    internal (Vector2 Point, float Width) AttackLaunch(bool lob)
+    {
+        // Match the glove in Yuno's extended frame and the hand in Osamu's release pose.
+        var target = Placement().Target;
+        var transform = GetGlobalTransform();
+        return (FigurePoint(target, lob ? new(.67f, .54f) : new(.79f, .69f)), target.Size.X * transform.Scale.X);
+    }
+
+    internal Vector2 AttackTarget => FigurePoint(Placement().Target,
+        _osamu != null ? new(.32f, .50f) : new(.44f, .62f));
+
+    private Vector2 FigurePoint(Rect2 target, Vector2 uv)
+    {
+        if (FlipHorizontal) uv.X = 1 - uv.X;
+        return GetGlobalTransform() * (target.Position + target.Size * uv);
+    }
+
     public override void _Ready()
     {
         MouseFilter = Inspectable ? MouseFilterEnum.Pass : MouseFilterEnum.Ignore;

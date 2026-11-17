@@ -51,7 +51,7 @@ public sealed partial class GameEngine
         source.Memory.RemoveAt(memoryIndex); ShiftSniperIndices(owner, memoryIndex);
         recipient.Hand.Add(id);
         if (mark) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count - 1);
-        if (owner != actor) recipient.MarkForeignHandCard(recipient.Hand.Count - 1);
+        if (owner != actor) MarkBorrowedHandCard(recipient, recipient.Hand.Count - 1);
         MemoryCardClaimed?.Invoke(owner, actor, memoryIndex, recipient.Hand.Count - 1);
         // The source memory is public, but the card is not marked revealed in its new hand.
         State.LastCombat = $"{recipient.Name} añade {CardCatalog.Get(id).Name} de la memoria de {source.Name} a su mano con {effectName}.";

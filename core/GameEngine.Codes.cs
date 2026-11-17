@@ -1,5 +1,5 @@
 namespace Relick.Core;
-public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover, Relikario, Zahira }
+public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover, Relikario, Zahira, Area, LightEquipment }
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
@@ -20,12 +20,14 @@ public sealed partial class GameEngine
         {
             var p = State.Players[owner];
             if (p.Equipment != null) yield return new(owner, FieldZone.Equipment, -1, p.Equipment);
+            foreach (var light in LightEquipmentTargets(owner)) yield return light;
             for (var i = 0; i < (p.EquipmentCovers?.Count ?? 0); i++)
                 yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
             for (var slot = 0; slot < PlayerState.ZahiraSlots; slot++)
-                if (ZahiraRootZone(owner, slot) is FieldZone.Equipment or FieldZone.EquipmentCover or FieldZone.Bonus)
+                if (ZahiraRootZone(owner, slot) is FieldZone.Equipment or FieldZone.EquipmentCover or FieldZone.LightEquipment or FieldZone.Bonus or FieldZone.Area)
                     yield return new(owner, FieldZone.Zahira, ZahiraIndex(slot), CardCatalog.ZahiraFlair.Id);
             if (p.Bonus != null) yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
+            if (p.Area != null) yield return new(owner, FieldZone.Area, -1, p.Area);
             if (p.Hand.Count > (owner == excludedOwner && excludedHand >= 0 ? 1 : 0))
                 yield return new(owner, FieldZone.Hand, -1, "");
         }
@@ -47,12 +49,14 @@ public sealed partial class GameEngine
         {
             var p = State.Players[owner];
             if (p.Equipment != null && CardCatalog.Get(p.Equipment).Kind != CardKind.Skill) yield return new(owner, FieldZone.Equipment, -1, p.Equipment);
+            foreach (var light in LightEquipmentTargets(owner)) yield return light;
             for (var i = 0; i < (p.EquipmentCovers?.Count ?? 0); i++)
                 yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
             for (var i = 0; i < p.AttachedCards.Count; i++)
                 if (CardCatalog.Get(p.AttachedCards[i]).Kind != CardKind.Skill) yield return new(owner, FieldZone.Attached, i, p.AttachedCards[i]);
             if (p.Bonus != null && CardCatalog.Get(p.Bonus).Kind != CardKind.Skill)
                 yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
+            if (p.Area != null) yield return new(owner, FieldZone.Area, -1, p.Area);
             for (var i = 0; i < p.Exchange.Count; i++)
                 if (CardCatalog.Get(p.Exchange[i]).Kind != CardKind.Skill)
                     yield return new(owner, FieldZone.Exchange, i, p.Exchange[i]);
@@ -118,7 +122,8 @@ public sealed partial class GameEngine
                 (t.Index == index || pending.Source != CardCatalog.TimeBomb.Id && zone is FieldZone.Equipment or FieldZone.Bonus)) is { } answered) return answered;
         // Legacy: a duel saved while the destruction phase was pending.
         if (State.Phase != Phase.DestroyChoice || State.DestroyActor != actor) return CommandResult.Fail("No te corresponde elegir objetivo.");
-        if (IsZoneDestruction && index != -1 && zone != FieldZone.EquipmentCover) return CommandResult.Fail("Elige una zona; la carta de la mano se escoge al azar.");
+        if (IsZoneDestruction && index != -1 && zone is not (FieldZone.EquipmentCover or FieldZone.LightEquipment))
+            return CommandResult.Fail("Elige una zona; la carta de la mano se escoge al azar.");
         var target = DestructionTargets().FirstOrDefault(t => t.Owner == owner && t.Zone == zone && (zone is FieldZone.Equipment or FieldZone.Bonus || t.Index == index));
         if (target == null) return CommandResult.Fail("Elige un objetivo válido para esta destrucción.");
         var p = State.Players[owner];

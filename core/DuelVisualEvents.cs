@@ -22,6 +22,8 @@ public sealed class DuelVisualEvent
     // Pile cues only: the card lands in the memory of Player's rival, its original owner.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool ToRivalMemory { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? DestinationPlayer { get; set; }
     // Chain cues only: the resolved Error de Carga chain, in activation order. Every card in it was already announced
     // publicly (DuelResolutionView), so this repeats no hidden identity; it only adds which links ended canceled.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -56,7 +58,8 @@ public static class DuelVisualEvents
         game.HandCardTaken += (owner, recipient, sourceIndex, slot) => events.Add(new()
             { Kind = DuelVisualKind.HandSteal, Player = owner, Target = recipient, SourceIndex = sourceIndex, Value = slot, Source = CardZone.Hand, Destination = CardZone.Hand });
         game.CardMovedToPile += movement => events.Add(new() { Kind = DuelVisualKind.Pile, Player = movement.Owner,
-            Source = movement.Source, Destination = movement.Destination, Value = movement.Index, ToRivalMemory = movement.ToRivalMemory });
+            Source = movement.Source, Destination = movement.Destination, Value = movement.Index, ToRivalMemory = movement.ToRivalMemory,
+            DestinationPlayer = movement.DestinationPlayer });
         game.ChainResolved += chain => events.Add(new()
             { Kind = DuelVisualKind.Chain, Player = chain[0].Actor, Value = chain.Count, Chain = chain });
         return events;

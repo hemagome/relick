@@ -49,7 +49,9 @@ public sealed partial class GameEngine
             state.Players[seat] = player;
         }
         var game = new GameEngine(state, random) { LegacyBlueEgg = legacyBlueEgg };
+        game.PromoteInitialAreas();
         if (game.HasTimeBenderForDraw()) state.Phase = Phase.Draw;
+        game.PresentPendingArea();
         return game;
     }
 
@@ -93,6 +95,7 @@ public sealed partial class GameEngine
         foreach (var _ in indices) DrawOne(player);
         if (indices.Length > 0) Log($"{player.Name} cambia {indices.Length} carta(s) de su mano inicial.");
         foreach (var p in State.Players) DealBonus(p);
+        PromoteInitialAreas();
         int first, second;
         do { first = Roll(); second = Roll(); } while (first == second);
         State.CurrentPlayer = first > second ? 0 : 1;
@@ -115,13 +118,15 @@ public sealed partial class GameEngine
         var p = State.Active;
         if (p.Hand.Select((id, index) => (id, index)).Any(card => CardCatalog.Get(card.id).IsCombo && CodeUnavailableReason(actor, card.index) == null)) return true;
         if (CanEvolve(actor)) return true;
+        if (AvailablePurpleRings(actor).Any(c => CanUsePurpleRing(actor, c.Index))) return true;
         return State.Phase switch
         {
             Phase.Combat => FieldCombatTargets(actor).Any() ||
                 CanAttack(actor) ||
                 (!State.LearnedThisTurn && p.Skills.Count < MaxSkills && p.Relikia >= SkillCost(p) &&
                  p.Hand.Any(id => CanLearnSkill(p, CardCatalog.Get(id)))),
-            Phase.Actions => (State.ActionsLeft > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment || CodeUnavailableReason(actor, c.i) == null)) ||
+            Phase.Actions => (State.ActionsLeft > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment ||
+                CanActivateArea(actor, c.i) || CodeUnavailableReason(actor, c.i) == null)) ||
                 CanUseOsamuSearch(actor) || RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
             Phase.Discard => State.DiscardsRemaining > 0 && p.Hand.Count > 0,
             Phase.Final => p.Hand.Count > MaxHandSize,
@@ -399,7 +404,7 @@ public sealed partial class GameEngine
     private void CompletePendingPlay()
     {
         CompleteAttackIfReady();
-        if (!TryPresentTrapCraft()) CompleteEndTurnIfReady();
+        if (!PresentPendingArea() && !TryPresentTrapCraft()) CompleteEndTurnIfReady();
     }
 
     private void CompleteEndTurnIfReady()
@@ -453,7 +458,10 @@ public sealed partial class GameEngine
         return true;
     }
 
-    private void ApplyIncomingDamage(int target, int amount, int attackDie, EngineContinuation? completed)
+    private void ApplyIncomingDamage(int target, int amount, int attackDie, EngineContinuation? completed) =>
+        OfferPurpleRingDamage(target, amount, attackDie, completed);
+
+    private void ApplyDamageAfterRings(int target, int amount, int attackDie, EngineContinuation? completed)
     {
         var p = State.Players[target];
         if (ActiveEquipment(target) is { DamageCounterLimit: > 0 } protection)
@@ -512,17 +520,21 @@ public sealed partial class GameEngine
         var id = p.Deck[index];
         if (mark || p.CorruptsOnMemory(CardZone.Deck, index))
             p.MarkForCorruption(bonus ? CardZone.Bonus : CardZone.Hand, bonus ? -1 : p.Hand.Count);
-        if (bonus)
-        {
-            ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = id;
-            if (CardCatalog.Get(id).FieldCombatDie) p.BonusPlacedTurn = Math.Max(1, State.Turn);
-            BonusPlaced?.Invoke(actor, id);
-        }
+        if (bonus) PlaceBonus(p, id);
         else { p.Hand.Add(id); CardDrawn?.Invoke(actor, p.Hand.Count - 1); }
         p.Deck.RemoveAt(index);
         p.RemoveCorruptionSlots(CardZone.Deck, index);
         if (p.Deck.Count == 0 && State.Phase != Phase.Preparation) Exhaust(p, completed);
         else Continue(completed);
+    }
+
+    private void PlaceBonus(PlayerState p, string id)
+    {
+        ForgetFieldCodeSource(p, FieldZone.Bonus);
+        p.Bonus = id;
+        p.InitialAreaWaitingInBonus = false;
+        if (CardCatalog.Get(id).FieldCombatDie) p.BonusPlacedTurn = Math.Max(1, State.Turn);
+        BonusPlaced?.Invoke(Seat(p), id);
     }
     private void Exhaust(PlayerState p, EngineContinuation? completed = null)
     {

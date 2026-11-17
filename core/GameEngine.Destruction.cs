@@ -72,6 +72,10 @@ public sealed partial class GameEngine
         switch (target.Zone)
         {
             case FieldZone.Equipment: DestroyEquipmentNow(p, target.Index); return;
+            case FieldZone.LightEquipment:
+                SendToMemory(p, target.CardId, CardZone.LightEquipment, target.Index);
+                RemoveLightEquipment(p, target.Index);
+                return;
             case FieldZone.Zahira: RemoveZahira(target.Owner, ZahiraSlot(target.Index)); return;
             case FieldZone.EquipmentCover:
                 ChangeZahiraHosts(target.Owner, target.Zone, target.Index);
@@ -80,6 +84,10 @@ public sealed partial class GameEngine
                 break;
             case FieldZone.Hand: SendHandToMemory(p, target.Index); return;
             case FieldZone.Skill: RemoveLearnedSkill(target.Owner, target.Index); return;
+            case FieldZone.Area:
+                SendToMemory(p, target.CardId, CardZone.Area, -1);
+                ClearArea(p);
+                return;
             case FieldZone.Attached:
                 ChangeZahiraHosts(target.Owner, target.Zone, target.Index); p.AttachedCards.RemoveAt(target.Index); break;
             case FieldZone.Exchange:
@@ -87,7 +95,8 @@ public sealed partial class GameEngine
                 ForgetFieldCodeSource(p, FieldZone.Exchange, target.Index); p.Exchange.RemoveAt(target.Index);
                 ShiftExchangeEffects(p, target.Index, 1); break;
             case FieldZone.Bonus:
-                ChangeZahiraHosts(target.Owner, target.Zone, -1); ForgetFieldCodeSource(p, FieldZone.Bonus); p.Bonus = null; break;
+                ChangeZahiraHosts(target.Owner, target.Zone, -1); ForgetFieldCodeSource(p, FieldZone.Bonus);
+                p.Bonus = null; p.InitialAreaWaitingInBonus = false; break;
         }
         var source = target.Zone switch
         {

@@ -93,11 +93,13 @@ public static partial class Module
             var view = DuelSnapshot.For(game, member.Seat, revision);
             var own = view.Players[member.Seat];
             var rival = view.Players[1 - member.Seat];
-            var magnet = game.State.Phase == Phase.MagnetChoice && game.State.CurrentPlayer == member.Seat;
+            var seesOpponentHand = game.State.Phase == Phase.MagnetChoice && game.State.CurrentPlayer == member.Seat ||
+                game.State.Phase == Phase.Decision && game.State.PendingDecision is { } decision &&
+                decision.Decider == member.Seat && decision.ShowsHandOf == 1 - member.Seat;
             var privateJson = JsonSerializer.Serialize(new DuelPrivateData { MySeat = member.Seat,
                 AutoPassCombos = view.AutoPassCombos,
                 OwnHand = own.Hand, OwnHandOwners = own.HandOwners,
-                OpponentHand = magnet ? rival.Hand : [], OpponentHandOwners = magnet ? rival.HandOwners : null }, DuelJson.Default.DuelPrivateData);
+                OpponentHand = seesOpponentHand ? rival.Hand : [], OpponentHandOwners = seesOpponentHand ? rival.HandOwners : null }, DuelJson.Default.DuelPrivateData);
             var hand = ctx.Db.DuelHand.Player.Find(member.Player);
             var handVersion = hand?.Revision ?? revision;
             if (hand == null || hand.Value.Json != privateJson)

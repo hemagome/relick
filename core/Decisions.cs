@@ -63,6 +63,8 @@ public sealed class PendingDecision
     public PendingDecision? Suspended { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingAttackRoll? Attack { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public EngineContinuation? Continuation { get; set; }
 
     public string Title() => CardCatalog.All.TryGetValue(Source, out var card) ? card.Name : RelikarioCatalog.NameOf(Source);
 }
@@ -99,7 +101,7 @@ internal static class CardEffects
         new ICardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
             new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
-            new DodgeEffect(), new GoldenTotemEffect() }.ToDictionary(e => e.CardId);
+            new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect() }.ToDictionary(e => e.CardId);
 
     public static ICardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
@@ -154,6 +156,13 @@ public sealed partial class GameEngine
         public void ReloadBothHands() => _engine.BeginReloadHands(Actor);
         /// <summary>Shows these Tótems de Salvación and places them with Tótem de Oro on top, through the engine's placement sequence.</summary>
         public void DeployGoldenTotem(int[] handIndices) => _engine.DeployGoldenTotem(Actor, handIndices);
+        public IEnumerable<FieldTarget> RivalEquipment() => _engine.EquipmentTransferTargets(1 - Actor);
+        public void TakeEquipment(FieldTarget target, EngineContinuation then)
+        {
+            if (!_engine.TryReplaceOpponentFieldEffect(Actor, target, then)) _engine.PrepareEquipmentTransfer(target, then);
+        }
+        public bool FinishEquipmentTransfer(FieldTarget target, EngineContinuation then) => _engine.FinishEquipmentTransfer(Actor, target, then);
+        public void AttachAttackFromDeck(int index) => _engine.AttachAttackFromDeck(Player, index);
         /// <summary>The pending attack against this player is negated: the attacker loses a prize already paid and combat goes on.</summary>
         public void NegatePendingAttack()
         {
@@ -222,6 +231,8 @@ public sealed partial class GameEngine
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor) return [];
         if (CardEffects.For(decision.Source) is { } effect)
             return effect.Choices(EffectFor(actor, decision.Source), decision);
+        if (decision.Source == CardCatalog.EquipmentRaid.Id) return EquipmentRaidChoices(decision);
+        if (decision.Source == CardCatalog.PurpleRing.Id) return PurpleRingChoices(decision);
         return OsamuDecisionChoices(decision);
     }
 
@@ -235,6 +246,8 @@ public sealed partial class GameEngine
         State.Phase = decision.ResumePhase;
         if (CardEffects.For(decision.Source) is { } effect)
             effect.Choose(EffectFor(actor, decision.Source), decision, choices[choice]);
+        else if (decision.Source == CardCatalog.EquipmentRaid.Id) ResolveEquipmentRaidChoice(decision, choices[choice]);
+        else if (decision.Source == CardCatalog.PurpleRing.Id) ResolvePurpleRingChoice(decision, choices[choice]);
         else ResolveOsamuDecision(decision, choices[choice]);
         CompleteActivationIfFinished();
         return CommandResult.Ok();
@@ -282,7 +295,9 @@ public sealed partial class GameEngine
         {
             FieldZone.Hand => own ? "Tu mano al azar" : "Mano rival al azar",
             FieldZone.Equipment => own ? "Tu equipo" : "Equipo rival",
+            FieldZone.LightEquipment => $"{(own ? "Tu" : "Rival")} {CardCatalog.Get(t.CardId).Name} · equipo ligero {t.Index + 1}",
             FieldZone.EquipmentCover => $"{(own ? "Tu" : "Rival")} Tótem de Oro · copia {t.Index + 1}",
+            FieldZone.Area => own ? "Tu Área" : "Área rival",
             FieldZone.Zahira => $"{(own ? "Tu" : "Rival")} Zahira Flair{(ZahiraSlot(t.Index) > 0 ? " · segunda copia" : "")}",
             _ => own ? "Tu Bonus" : "Bonus rival"
         };
@@ -292,8 +307,10 @@ public sealed partial class GameEngine
     {
         var zone = t.Zone switch
         {
-            FieldZone.Equipment or FieldZone.EquipmentCover => "equipo", FieldZone.Attached => $"sobre {s.Players[t.Owner].Relikario.DisplayName}",
-            FieldZone.Bonus => "Bonus", _ => "canje"
+            FieldZone.Equipment or FieldZone.EquipmentCover => "equipo",
+            FieldZone.LightEquipment => "equipo ligero",
+            FieldZone.Attached => $"{(DeckRules.IsAttack(CardCatalog.Get(t.CardId)) ? "debajo de" : "sobre")} {s.Players[t.Owner].Relikario.DisplayName}",
+            FieldZone.Bonus => "Bonus", FieldZone.Area => "Área", _ => "canje"
         };
         return $"{zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : "");
     }

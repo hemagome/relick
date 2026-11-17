@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -19,6 +19,8 @@ public sealed class EngineContinuation
     public PendingAttackRoll? Attack { get; set; }
     public PendingDieRoll? Die { get; set; }
     public DieEffect? SavedDieEffect { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<int>? UsedLightEquipment { get; set; }
 }
 public sealed class DieEffect
 {
@@ -83,6 +85,11 @@ public sealed partial class GameEngine
             case ContinuationKind.FinishCodeDestruction: FinishCodeDestruction(next); break;
             case ContinuationKind.OfferBlueEggDraw: OfferBlueEggDraw(next.Actor); break;
             case ContinuationKind.CardEffectStep: ContinueCardEffect(next); break;
+            case ContinuationKind.AreaRaidSideB: PresentRaidSideB(next.Value, next.Actor); break;
+            case ContinuationKind.EquipFromDeck: FinishEquipFromDeck(next); break;
+            case ContinuationKind.CheckAreaEquipDeck: Exhaust(p); break;
+            case ContinuationKind.PurpleRingPoints: AwardPurpleRingPoints(next.Actor); CompletePendingPlay(); break;
+            case ContinuationKind.PurpleRingDamage: FinishPurpleRingDamage(next); break;
             case ContinuationKind.UsePendant: FinishPendant(next.Actor, (PendantEffect)next.Value); break;
             case ContinuationKind.UsePc: FinishPc(next.Actor, next.Value); break;
             case ContinuationKind.BoxDefense:
@@ -160,6 +167,7 @@ public sealed partial class GameEngine
             case DiePurpose.PcStore:
                 if (p.Equipment == CardCatalog.Pc.Id) p.EquipmentDie = die;
                 Log($"{p.Name} guarda un {die} sobre PC 8BITS.");
+                if (effect.Next != null) Continue(effect.Next);
                 break;
             case DiePurpose.Dodge:
                 _activeActivation = null;

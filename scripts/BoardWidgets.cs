@@ -16,12 +16,13 @@ public static class BoardArt
         CardKind.Attack when card.Id == CardCatalog.Attack.Id && RelikarioArt.Family(relikario) == RelikarioCatalog.Osamu.Id => new("9096ff"),
         CardKind.Attack => new("ff6f8e"), CardKind.Skill => new("4fe3b8"),
         CardKind.Attachment => new("b5a2fa"), CardKind.Equipment => new("7cc8ff"),
+        CardKind.Area => new("b5a2fa"),
         CardKind.Code when card.CodeType == CodeType.Trap => new("ff6f8e"), _ => Gold
     };
     public static GameIcon CardIcon(CardDefinition? card) => card?.Kind switch
     {
         CardKind.Attack => GameIcon.Sword, CardKind.Skill => GameIcon.Bolt,
-        CardKind.Attachment => GameIcon.Flag, CardKind.Equipment => GameIcon.Shield,
+        CardKind.Attachment or CardKind.Area => GameIcon.Flag, CardKind.Equipment => GameIcon.Shield,
         CardKind.Code => (card.Heal > 0 || card.HealFromDie) ? GameIcon.Heart : GameIcon.Reload, _ => GameIcon.Cards
     };
     public static string CardType(CardDefinition card) => card.Kind switch
@@ -33,7 +34,8 @@ public static class BoardArt
             CodeType.Play => "CÓDIGO · JUGADA", CodeType.Object => "CÓDIGO · OBJETO",
             CodeType.Character => "CÓDIGO · PERSONAJE", CodeType.Trap => "CÓDIGO TRAMPA", _ => "CÓDIGO"
         },
-        CardKind.Attachment => "SOBRE EL RELIKARIO", _ => "EQUIPO"
+        CardKind.Attachment => "SOBRE EL RELIKARIO", CardKind.Area => "ÁREA",
+        CardKind.Equipment when card.LightEquipment => "EQUIPO LIGERO", _ => "EQUIPO"
     };
     public static Color Tint(Color color, float alpha) => new(color.R, color.G, color.B, alpha);
 
@@ -661,17 +663,21 @@ public partial class ExchangeTrack : VBoxContainer
     public IReadOnlyList<CardDefinition> ExchangeCards { get; set; } = Array.Empty<CardDefinition>();
     public int Filled => ExchangeCards.Count;
     public CardDefinition? BonusCard { get; set; }
+    public CardDefinition? AreaCard { get; init; }
+    public string? AreaSide { get; init; }
     public bool Preparing { get; set; }
     public bool BonusEffectUsed { get; set; }
     public IReadOnlyCollection<int> ExchangeEffectsUsed { get; set; } = Array.Empty<int>();
     public Color Accent { get; set; }
     public ZoneCardButton BonusButton { get; private set; } = null!;
+    public ZoneCardButton? AreaButton { get; private set; }
     public ZoneCardButton[] ExchangeButtons { get; private set; } = null!;
     /// <summary>Board rows give the track a fixed footprint instead of the centre column's width.</summary>
     public float TrackWidth { get; init; }
     /// <summary>The rival's lane reads from the outside in: Bonus first, toward their field's edge.</summary>
     public bool Mirrored { get; init; }
     public event Action? BonusInspected;
+    public event Action? AreaInspected;
     public event Action<int>? ExchangeInspected;
     /// <summary>The desktop board places the zones itself; the track only owns and names them.</summary>
     public bool Detached { get; init; }
@@ -726,6 +732,17 @@ public partial class ExchangeTrack : VBoxContainer
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
         row.AddChild(BonusButton);
+        if (Detached || AreaCard != null)
+        {
+            AreaButton = new ZoneCardButton
+            {
+                Name = $"AreaZone{Name.ToString().Replace("BonusTrack", "")}", Caption = "ÁREA", Card = AreaCard,
+                SlotWidth = Detached ? BoardCanvas.CardWidth : Compact ? 54 : 70, Compact = Compact,
+                Accent = BoardArt.Gold, StatusText = AreaSide == null ? "" : $"LADO {AreaSide}"
+            };
+            AreaButton.Pressed += () => AreaInspected?.Invoke();
+            row.AddChild(AreaButton);
+        }
         if (Mirrored) row.MoveChild(BonusButton, 0);
         if (!Detached) return;
         foreach (var zone in row.GetChildren()) row.RemoveChild(zone);
@@ -826,7 +843,7 @@ public partial class ZoneCardButton : Button
         BoardArt.Socket(this, bounds, Accent, AwaitingEquipment ? 1.6f : showCard ? 0.55f : 1);
         if (!showCard)
         {
-            var caption = AwaitingEquipment ? "EQUIPO" : Caption;
+            var caption = Caption;
             BoardArt.CenterText(this, caption, new(Size.X / 2, 15), 9, BoardArt.Tint(AwaitingEquipment ? Accent : BoardArt.Muted, AwaitingEquipment ? 1 : 0.8f));
             if (Size.Y > 60)
                 BoardArt.Icon(this, Caption.StartsWith("BONUS") ? GameIcon.Gift : Caption.StartsWith("CANJE") ? GameIcon.Exchange :
@@ -857,6 +874,7 @@ public partial class ZoneCardButton : Button
 public partial class AttachmentStack : Button
 {
     public IReadOnlyList<string> Cards { get; init; } = [];
+    public string? RelikarioId { get; init; }
     /// <summary>Board rows widen the slot so the fanned copies keep the row's full height.</summary>
     public float SlotWidth { get; init; }
     /// <summary>On the desktop board the top card fills the zone; the count tells how many lie under it.</summary>
@@ -864,6 +882,14 @@ public partial class AttachmentStack : Button
     private int Amount => Cards.Count;
     private Texture2D[] _previews = [];
     internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(Vector2.Zero, Size) : PreviewRect(_previews.Length - 1);
+
+    internal static string Location(IReadOnlyList<string> cards, string? relikario = null)
+    {
+        var attacks = cards.Count(id => DeckRules.IsAttack(CardCatalog.Get(id)));
+        if (attacks == 0) return $"Sobre {relikario ?? "el Relikario"}";
+        var zone = attacks == cards.Count ? "Debajo" : "Anexos";
+        return $"{zone} {(relikario == null ? "del Relikario" : $"de {relikario}")}";
+    }
 
     private Rect2 PreviewRect(int index)
     {
@@ -879,9 +905,9 @@ public partial class AttachmentStack : Button
         CustomMinimumSize = new(SlotWidth > 0 ? SlotWidth : 92, 86);
         Disabled = Amount == 0;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
-        AccessibilityName = $"Sobre el Relikario: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
+        AccessibilityName = $"{Location(Cards)}: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
         TooltipText = $"{AccessibilityName}. Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
-        _previews = Cards.TakeLast(3).Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id))).OfType<Texture2D>().ToArray();
+        _previews = Cards.TakeLast(3).Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId)).OfType<Texture2D>().ToArray();
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         Resized += QueueRedraw;
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;

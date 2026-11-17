@@ -5,6 +5,17 @@ public sealed partial class GameEngine
     // Presentation signal: owner, recipient, number of cards. Never carries identities.
     public event Action<int, int, int>? HandTransferred;
 
+    private void MoveCardBetweenHands(PlayerState source, PlayerState receiver, int index)
+    {
+        var id = source.Hand[index];
+        var slot = receiver.Hand.Count;
+        if (source.CorruptsOnMemory(CardZone.Hand, index)) receiver.MarkForCorruption(CardZone.Hand, slot);
+        var returning = source.RemoveHandCard(index);
+        receiver.Hand.Add(id);
+        if (!returning) MarkBorrowedHandCard(receiver, slot);
+        HandCardTaken?.Invoke(Seat(source), Seat(receiver), index, slot);
+    }
+
     private void SwapHands(int actor)
     {
         var p = State.Players[actor]; var rival = State.Players[1 - actor];
@@ -16,6 +27,8 @@ public sealed partial class GameEngine
         var borrowed = p.ForeignHandSlots ?? []; var rivalBorrowed = rival.ForeignHandSlots ?? [];
         p.ForeignHandSlots = Enumerable.Range(0, p.Hand.Count).Except(rivalBorrowed).ToArray();
         rival.ForeignHandSlots = Enumerable.Range(0, rival.Hand.Count).Except(borrowed).ToArray();
+        foreach (var index in p.ForeignHandSlots ?? []) ObserveBorrowedEquipment(actor, p.Hand[index]);
+        foreach (var index in rival.ForeignHandSlots ?? []) ObserveBorrowedEquipment(1 - actor, rival.Hand[index]);
         var revealed = p.RevealedHandSlots;
         p.RevealedHandSlots = rival.RevealedHandSlots;
         rival.RevealedHandSlots = revealed;

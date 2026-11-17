@@ -20,6 +20,14 @@ public static class DuelOptions
             Add(DuelMoveKind.Evolve, $"Evolucionar a {next.DisplayName} Lv {next.Level} · {next.EvolutionCost} PR");
         if (s.DecisionPlayer == actor)
         {
+            if (s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)
+                for (var i = 0; i < (p.LightEquipment?.Count ?? 0); i++)
+                {
+                    if (!game.CanUsePurpleRing(actor, i)) continue;
+                    Add(DuelMoveKind.UsePurpleRing, $"Destruir Anillo Morado · ganar 500 PR · equipo ligero {i + 1}", i);
+                    result[^1].Field = new(actor, FieldZone.LightEquipment, i, CardCatalog.PurpleRing.Id);
+                    result[^1].CardId = CardCatalog.PurpleRing.Id;
+                }
             switch (s.Phase)
             {
                 case Phase.TrapCraftChoice:
@@ -36,10 +44,12 @@ public static class DuelOptions
                         {
                             FieldZone.Equipment when s.Players[host.Owner].EquipmentStackedCopies > 0 => $" · equipo {host.Index + 1}",
                             FieldZone.EquipmentCover => $" · cobertura {host.Index + 1}",
+                            FieldZone.LightEquipment => $" · equipo ligero {host.Index + 1}",
                             FieldZone.Skill => $" · habilidad {s.Players[host.Owner].SkillPosition(host.Index) + 1}",
                             FieldZone.Exchange => $" · canje {host.Index + 1}",
                             FieldZone.Attached => $" · anexo {host.Index + 1}",
                             FieldZone.Bonus => " · Bonus",
+                            FieldZone.Area => " · Área",
                             _ => ""
                         };
                         Add(DuelMoveKind.ZahiraTarget, $"{game.FieldCardName(host)} · {s.Players[host.Owner].Name}{position}",
@@ -95,6 +105,7 @@ public static class DuelOptions
                         {
                             if (CardCatalog.Get(p.Hand[i]).Kind == CardKind.Equipment)
                                 Add(DuelMoveKind.Equip, $"Equipar {Card(p.Hand[i])} · carta {i + 1}", i);
+                            if (game.CanActivateArea(actor, i)) Add(DuelMoveKind.ActivateArea, $"Activar {Card(p.Hand[i])} · carta {i + 1}", i);
                             if (p.Bonus != null) Add(DuelMoveKind.Exchange, $"Canjear {Card(p.Hand[i])} · carta {i + 1}", i);
                         }
                     foreach (var effect in RelikiaEffects.All)
@@ -185,6 +196,7 @@ public static class DuelOptions
                     Add(DuelMoveKind.SkipMagnet, "No tomar ninguna carta");
                     var opponent = s.Players[1 - actor];
                     if (opponent.Bonus != null) Add(DuelMoveKind.Magnet, "Tomar Bonus rival: " + Card(opponent.Bonus), flag: true);
+                    if (opponent.Area != null) Add(DuelMoveKind.Magnet, "Tomar Área rival: " + Card(opponent.Area), value: (int)FieldZone.Area, flag: true);
                     for (var i = 0; i < opponent.Hand.Count; i++) Add(DuelMoveKind.Magnet, $"Tomar {Card(opponent.Hand[i])} · carta rival {i + 1}", i);
                     break;
                 case Phase.CodeResponse:
@@ -213,12 +225,15 @@ public static class DuelOptions
                                 FieldZone.Equipment => own ? "Tu equipo" : "Equipo rival",
                                 FieldZone.EquipmentCover => $"{(own ? "Tu" : "Rival")} Tótem de Oro · copia {t.Index + 1}",
                                 FieldZone.Zahira => $"{(own ? "Tu" : "Rival")} Zahira Flair{(GameEngine.ZahiraSlot(t.Index) > 0 ? " · segunda copia" : "")}",
+                                FieldZone.Area => own ? "Tu Área" : "Área rival",
+                                FieldZone.LightEquipment => GameEngine.FieldPlace(s, t, actor),
                                 _ => own ? "Tu Bonus" : "Bonus rival"
                             };
                             Add(DuelMoveKind.Destroy, place, t.Index, (int)t.Zone, t.Owner);
                             continue;
                         }
-                        var zone = t.Zone switch { FieldZone.Equipment or FieldZone.EquipmentCover => "equipo", FieldZone.Attached => $"sobre {s.Players[t.Owner].Relikario.DisplayName}", FieldZone.Bonus => "Bonus", _ => "canje" };
+                        var zone = t.Zone switch { FieldZone.Equipment or FieldZone.EquipmentCover => "equipo", FieldZone.LightEquipment => "equipo ligero",
+                            FieldZone.Attached => $"sobre {s.Players[t.Owner].Relikario.DisplayName}", FieldZone.Bonus => "Bonus", _ => "canje" };
                         Add(DuelMoveKind.Destroy, $"Destruir {Card(t.CardId)} de {s.Players[t.Owner].Name} · {zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : ""), t.Index, (int)t.Zone, t.Owner);
                     }
                     break;

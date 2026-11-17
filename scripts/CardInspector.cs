@@ -18,7 +18,8 @@ internal static class CardInspectorText
                 CodeType.Trap => "Código Trampa", _ => "Código"
             },
             CardKind.Attack when card.CodeType == CodeType.Trap => "Código Trampa · Ataque",
-            CardKind.Equipment => "Equipo", CardKind.Attack => "Ataque", _ => BoardArt.CardType(card)
+            CardKind.Equipment => card.LightEquipment ? "Equipo ligero" : "Equipo",
+            CardKind.Attack => "Ataque", _ => BoardArt.CardType(card)
         };
         return card.IsCombo ? type + " · COMBO" : type;
     }

@@ -73,7 +73,8 @@ public sealed partial class GameEngine
             OfferOsamuSearch(attack.Attacker, attack.SkillId, OsamuAgilitySearch)) return;
         // Canceling damage does not undo the critical result or its skill effect.
         if (!State.IsOver && attack.Critical && !attack.EffectsSuppressed && attack.SkillId == CardCatalog.Magnet.Id &&
-            (State.Players[1 - attack.Attacker].Hand.Count > 0 || State.Players[1 - attack.Attacker].Bonus != null))
+            (State.Players[1 - attack.Attacker].Hand.Count > 0 || State.Players[1 - attack.Attacker].Bonus != null ||
+             State.Players[1 - attack.Attacker].Area != null))
             State.Phase = Phase.MagnetChoice;
         if (!deferCompletion) CompletePendingPlay();
     }
@@ -102,30 +103,24 @@ public sealed partial class GameEngine
     // Presentation signal: owner, recipient, slot in the owner's hand, slot in the recipient's hand. Never carries identities.
     public event Action<int, int, int, int>? HandCardTaken;
 
-    public CommandResult ResolveMagnet(int actor, bool fromBonus, int handIndex = -1)
+    public CommandResult ResolveMagnet(int actor, bool fromBonus, int handIndex = -1, bool fromArea = false)
     {
         var error = ValidateTurn(actor, Phase.MagnetChoice);
         if (error != null) return CommandResult.Fail(error);
         var rival = State.Players[1 - actor];
-        if (fromBonus ? rival.Bonus == null : !InHand(rival, handIndex))
+        var zone = fromArea ? FieldZone.Area : FieldZone.Bonus;
+        var fieldCard = fromArea ? rival.Area : rival.Bonus;
+        if (fromArea && !fromBonus || (fromBonus ? fieldCard == null : !InHand(rival, handIndex)))
             return CommandResult.Fail("Elige una carta de la mano del rival o de su Bonus.");
-        var id = fromBonus ? rival.Bonus! : rival.Hand[handIndex];
+        var id = fromBonus ? fieldCard! : rival.Hand[handIndex];
         State.Phase = Phase.Combat;
-        if (fromBonus && TryReplaceOpponentFieldEffect(actor, new(1 - actor, FieldZone.Bonus, -1, id)))
+        if (fromBonus && TryReplaceOpponentFieldEffect(actor, new(1 - actor, zone, -1, id)))
             return CommandResult.Ok();
-        if (fromBonus) TakeBonus(rival, State.Active);
-        else
-        {
-            // A copy the rival had borrowed simply comes home.
-            if (rival.CorruptsOnMemory(CardZone.Hand, handIndex))
-                State.Active.MarkForCorruption(CardZone.Hand, State.Active.Hand.Count);
-            var returning = rival.RemoveHandCard(handIndex);
-            State.Active.Hand.Add(id);
-            if (!returning) State.Active.MarkForeignHandCard(State.Active.Hand.Count - 1);
-            HandCardTaken?.Invoke(1 - actor, actor, handIndex, State.Active.Hand.Count - 1);
-        }
-        Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
-        if (fromBonus) RefillBonus(rival);
+        if (fromArea) TakeArea(rival, State.Active);
+        else if (fromBonus) TakeBonus(rival, State.Active);
+        else MoveCardBetweenHands(rival, State.Active, handIndex);
+        Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromArea ? "Área" : fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
+        if (fromBonus && !fromArea) RefillBonus(rival);
         CompletePendingPlay();
         return CommandResult.Ok();
     }

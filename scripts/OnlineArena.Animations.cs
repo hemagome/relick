@@ -19,8 +19,6 @@ public partial class OnlineArena
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
     // Cosmetic only: the amounts come from the same authorized cues that move the portraits.
     private readonly List<(int Player, int Amount, bool Critical)> _pendingImpacts = [];
-    // Attack streaks need the rebuilt board laid out before they can read portrait rectangles.
-    private readonly List<(int Attacker, int Defender)> _pendingBeams = [];
     private Control? _flight;
     // Mirrored flight for the other player (Cartucho de Re-carga): it starts and lands with the primary one.
     private sealed record Companion(Flight Flight, Control Node, HandCard? Front, TextureRect Back, Control? Target, Rect2 Source, Rect2 Destination);
@@ -41,11 +39,14 @@ public partial class OnlineArena
         CardZone.Hand => _root?.FindChild((relative == 0 ? "HandCard" : "OpponentHandCard") + slot, true, false) as Control,
         CardZone.Memory or CardZone.Corrupted => _root?.FindChild((zone == CardZone.Corrupted ? "CorruptedMemory" : "Memory") + "Button" + relative, true, false) as Control,
         CardZone.Bonus => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.BonusButton,
+        CardZone.Area => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.AreaButton,
         CardZone.Exchange => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.ExchangeButtons.ElementAtOrDefault(slot),
         CardZone.Equipment => _root?.FindChild("EquipmentZone" + relative, true, false) as Control,
+        CardZone.LightEquipment => _root?.FindChild("LightEquipmentZone" + relative, true, false) as Control,
         CardZone.EquipmentCover => _root?.FindChild("EquipmentCoverZone" + relative, true, false) as Control,
         CardZone.Skill => _root?.FindChild($"Skill{relative}_{_snapshot!.Players[relative == 0 ? _snapshot.MySeat : 1 - _snapshot.MySeat].SkillPosition(slot)}", true, false) as Control,
         CardZone.Attached => _root?.FindChild("AttachmentStack" + relative, true, false) as Control,
+        CardZone.Deck => _root?.FindChild("DeckStack" + relative, true, false) as Control,
         _ => null
     };
     private static Rect2 ZoneRect(Control control) => control switch
@@ -53,6 +54,7 @@ public partial class OnlineArena
         MemoryZoneButton pile => Global(pile, pile.CardRect),
         ZoneCardButton zone => Global(zone, zone.CardRect),
         AttachmentStack attached => Global(attached, attached.CardRect),
+        DeckStack deck => Global(deck, deck.TopRect),
         HandCard { InFan: true } card => Upright(card),
         OpponentHandCard card => Upright(card),
         _ => control.GetGlobalRect()
@@ -81,8 +83,9 @@ public partial class OnlineArena
             var player = previous.Players[cue.Player];
             string? id = source switch
             {
-                CardZone.Hand => player.Hand.ElementAtOrDefault(slot), CardZone.Bonus => player.Bonus,
+                CardZone.Hand => player.Hand.ElementAtOrDefault(slot), CardZone.Bonus => player.Bonus, CardZone.Area => player.Area,
                 CardZone.Equipment => player.Equipment, CardZone.EquipmentCover => player.EquipmentCovers?.ElementAtOrDefault(cue.Value), CardZone.Skill => player.Skills.ElementAtOrDefault(cue.Value), CardZone.Attached => player.Attached.ElementAtOrDefault(cue.Value),
+                CardZone.LightEquipment => player.LightEquipment?.ElementAtOrDefault(cue.Value),
                 CardZone.Exchange => player.Exchange.ElementAtOrDefault(cue.Value), CardZone.Memory => player.Memory.ElementAtOrDefault(slot), _ => null
             };
             if (cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard) id = null; // One face-down packet per hand, regardless of its size.
@@ -104,6 +107,23 @@ public partial class OnlineArena
                     origin = PreviewRect(hand.GetGlobalRect().GetCenter());
                 result[cue] = new Flight(cue, origin, id ?? landing, Duration: 0.72, OriginRotation: rotation,
                     StartsFaceUp: id != null, EndsFaceUp: landing != null);
+                continue;
+            }
+            if (source == CardZone.Deck && cue.Destination == CardZone.Attached)
+            {
+                result[cue] = new Flight(cue, origin, current.Players[cue.Player].Attached.LastOrDefault(), StartsFaceUp: false);
+                continue;
+            }
+            if (source == CardZone.Deck && cue.Destination is CardZone.Equipment or CardZone.LightEquipment)
+            {
+                var destination = current.Players[cue.Player];
+                var face = cue.Destination == CardZone.LightEquipment ? destination.LightEquipment?.LastOrDefault() : destination.Equipment;
+                result[cue] = new Flight(cue, origin, face, StartsFaceUp: false);
+                continue;
+            }
+            if (source == CardZone.Hand && cue.Destination == CardZone.Area)
+            {
+                result[cue] = new Flight(cue, origin, current.Players[cue.Player].Area, StartsFaceUp: id != null);
                 continue;
             }
             result[cue] = new Flight(cue, origin, id, OriginRotation: rotation);
@@ -180,27 +200,30 @@ public partial class OnlineArena
         {
             var before = previous.Players[actor];
             var after = current.Players[actor];
-            if (after.Equipment is not { } id) continue;
-            if (current.Visuals.Any(c => c.Player == actor && c.Kind == DuelVisualKind.Pile && c.Destination == CardZone.Equipment))
-                continue; // Tótem de Oro already emits a flight for each installed copy.
+            var light = (after.LightEquipment?.Length ?? 0) > (before.LightEquipment?.Length ?? 0);
+            var destination = light ? CardZone.LightEquipment : CardZone.Equipment;
+            var id = light ? after.LightEquipment?.LastOrDefault() : after.Equipment;
+            if (id == null) continue;
+            if (current.Visuals.Any(c => (c.DestinationPlayer ?? c.Player) == actor && c.Kind == DuelVisualKind.Pile && c.Destination == destination))
+                continue; // The effect already emitted a flight for the equipped copy.
 
-            var stacked = before.Equipment == id && after.EquipmentStackedCopies > before.EquipmentStackedCopies;
+            var stacked = !light && before.Equipment == id && after.EquipmentStackedCopies > before.EquipmentStackedCopies;
             var replaced = current.Visuals.Any(c => c.Player == actor && c.Kind == DuelVisualKind.Pile &&
                 c.Source == CardZone.Equipment && c.Destination == CardZone.Memory);
-            if (before.Equipment == id && !stacked && (!replaced || after.EquipmentStackedCopies < before.EquipmentStackedCopies))
+            if (!light && before.Equipment == id && !stacked && (!replaced || after.EquipmentStackedCopies < before.EquipmentStackedCopies))
                 continue;
 
             var relative = actor == current.MySeat ? 0 : 1;
             var previousStatus = stacked ? (ZoneNode(relative, CardZone.Equipment, -1) as ZoneCardButton)?.StatusText : null;
             if (previous.Phase == Phase.Actions && actor == previous.CurrentPlayer && before.HandCount == after.HandCount + 1)
-                return CaptureHandPlacement(current, previous, actor, id, CardZone.Equipment, previousEquipmentStatus: previousStatus);
+                return CaptureHandPlacement(current, previous, actor, id, destination, previousEquipmentStatus: previousStatus);
 
             var fromMemory = previous.Phase == Phase.SniperChoice && id == CardCatalog.Sniper.Id;
             var source = fromMemory ? ZoneNode(relative, CardZone.Memory, -1) :
                 _root?.FindChild("CombatCenter", true, false) as Control;
             Rect2? origin = source == null ? null : fromMemory ? ZoneRect(source) : PreviewRect(source.GetGlobalRect().GetCenter());
             var cue = new DuelVisualEvent { Kind = DuelVisualKind.Pile, Player = actor,
-                Source = fromMemory ? CardZone.Memory : CardZone.Activation, Destination = CardZone.Equipment };
+                Source = fromMemory ? CardZone.Memory : CardZone.Activation, Destination = destination };
             return new Flight(cue, origin, id, Duration: 0.60, IsPlacement: true, PreviousEquipmentStatus: previousStatus);
         }
         return null;
@@ -347,44 +370,44 @@ public partial class OnlineArena
     private void PlayPendingPortraits()
     {
         if (_die.IsBusy || _flight != null || _flights.Count > 0 || _openingInitiative != null || _snapshot == null) return;
-        // A revision rebuilds the board just before animating it. Portrait clips and sounds can start
-        // immediately, but any effect placed from a rectangle waits for the containers to sort.
-        var layoutReady = _flightLayoutFrames == 0;
-        foreach (var (player, motion) in _pendingPortraits)
+        for (var i = 0; i < _pendingPortraits.Count;)
         {
+            var (player, motion) = _pendingPortraits[i];
             var relative = player == _snapshot.MySeat ? 0 : 1;
-            _portraits[relative].Play(motion);
+            var portrait = _portraits[relative];
+            if (motion is PortraitMotion.Hit or PortraitMotion.HitNormal or PortraitMotion.HitCritical &&
+                _impacts.AttackInFlightTo(portrait))
+            {
+                i++;
+                continue;
+            }
+            _pendingPortraits.RemoveAt(i);
+            portrait.Play(motion);
             if (motion == PortraitMotion.Attack)
             {
                 PlaySound(SoundCue.Attack);
-                if (layoutReady) ShowBeam(relative, 1 - relative);
-                else _pendingBeams.Add((relative, 1 - relative));
+                _impacts.LaunchAttack(portrait, _portraits[1 - relative]);
             }
             if (motion == PortraitMotion.Heal) PlaySound(SoundCue.Heal);
         }
-        _pendingPortraits.Clear();
-        if (!layoutReady) return;
-        foreach (var (attacker, defender) in _pendingBeams) ShowBeam(attacker, defender);
-        _pendingBeams.Clear();
-        foreach (var (player, amount, critical) in _pendingImpacts)
+        // Numbers read the portrait rectangle after the rebuilt board has been laid out.
+        if (_flightLayoutFrames > 0) return;
+        for (var i = 0; i < _pendingImpacts.Count;)
         {
+            var (player, amount, critical) = _pendingImpacts[i];
             var portrait = _portraits[player == _snapshot.MySeat ? 0 : 1];
+            if (amount < 0 && _impacts.AttackInFlightTo(portrait))
+            {
+                i++;
+                continue;
+            }
+            _pendingImpacts.RemoveAt(i);
             if (!portrait.IsVisibleInTree()) continue;
             var rect = portrait.GetGlobalRect();
             _impacts.Number(new Vector2(rect.GetCenter().X, rect.Position.Y + rect.Size.Y * 0.62f), amount > 0 ? $"+{amount}" : amount.ToString(),
                 amount > 0 ? new Color("5dffa8") : critical ? BoardArt.Gold : RelickVisuals.State.Danger, critical);
             if (amount < 0) _impacts.Flash(critical ? BoardArt.Gold : RelickVisuals.State.Danger);
         }
-        _pendingImpacts.Clear();
-    }
-
-    private void ShowBeam(int attackerRelative, int defenderRelative)
-    {
-        var attacker = _portraits[attackerRelative];
-        var defender = _portraits[defenderRelative];
-        if (!attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
-        _impacts.Beam(attacker.GetGlobalRect().GetCenter(), defender.GetGlobalRect().GetCenter(),
-            attackerRelative == 0 ? ArenaPresentation.Mint : ArenaPresentation.Coral);
     }
 
     private (Rect2 Source, Rect2 Destination) PlacementPath(Flight placement, Control? target)
@@ -427,7 +450,8 @@ public partial class OnlineArena
             var target = kind switch
             {
                 DuelVisualKind.Return or DuelVisualKind.Shuffle => null,
-                DuelVisualKind.Pile => ZoneNode(next.Event.ToRivalMemory ? 1 - relative : relative, next.Event.Destination, next.IsPlacement ? next.Event.Value : -1),
+                DuelVisualKind.Pile => ZoneNode(PileRecipient(next.Event) == _snapshot.MySeat ? 0 : 1, next.Event.Destination,
+                    next.IsPlacement || next.Event.Destination == CardZone.Hand ? next.Event.Value : -1),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.BonusClaim or DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, next.Event.Value),
                 DuelVisualKind.HandTransfer => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, 0),
@@ -538,6 +562,8 @@ public partial class OnlineArena
         var owner = cue.ToRivalMemory ? 1 - cue.Player : cue.Player;
         return _snapshot!.Players[owner].RelikarioId;
     }
+
+    private static int PileRecipient(DuelVisualEvent cue) => cue.DestinationPlayer ?? (cue.ToRivalMemory ? 1 - cue.Player : cue.Player);
 
     private void TryLaunchCompanion(Flight primary)
     {
@@ -651,7 +677,7 @@ public partial class OnlineArena
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
         _placementDice.Clear(); _queuedPlay = null;
-        _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); _pendingBeams.Clear(); FinishFlight(); _die.Value = 0;
+        _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); FinishFlight(); _die.Value = 0;
         _impacts.Clear();
         foreach (var portrait in _portraits) portrait.ReturnToRest();
     }

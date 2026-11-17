@@ -6,9 +6,11 @@ namespace Relick;
 // Presentation accepts only public/player-authorized data. It never executes rules.
 public sealed class ArenaPlayerActions
 {
+    public Action? Area { get; init; }
     public Action<bool> Memory { get; init; } = _ => { };
     public Action Attached { get; init; } = () => { };
     public Action Equipment { get; init; } = () => { };
+    public Action LightEquipment { get; init; } = () => { };
     public Action EquipmentCovers { get; init; } = () => { };
     // One entry per Zahira Flair the player has on the field; a Trap deck allows two.
     public IReadOnlyList<(string Caption, Action Press)> Zahiras { get; init; } = [];
@@ -112,11 +114,13 @@ public static class ArenaPresentation
         var track = new ExchangeTrack { Name = $"BonusTrack{index}", Detached = true, OwnerCaption = index == 0 ? "TÚ" : "RIVAL",
             ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing, RelikarioId = owner.RelikarioId,
             BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
-            BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = accent };
+            BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = accent,
+            AreaCard = owner.Area == null ? null : CardCatalog.Get(owner.Area), AreaSide = owner.AreaSide };
         track.BonusInspected += bonusPressed; track.ExchangeInspected += exchangePressed;
+        track.AreaInspected += actions.Area;
         track.Build();
         canvas.Place(track, new Rect2(), BoardAnchor.Top);
-        Put(new ZoneCardButton { Name = $"AreaZone{index}", Caption = "ÁREA", Accent = BoardArt.Gold, SlotWidth = W }, 8, -H / 2, W, H);
+        Put(track.AreaButton!, 8, -H / 2, W, H);
         Put(track.BonusButton, 156, -H / 2, W, H);
         for (var slot = 0; slot < track.ExchangeButtons.Length; slot++)
             Put(track.ExchangeButtons[slot], (302 - H) / 2, 131 + slot * (W + 10), H, W);
@@ -186,7 +190,9 @@ public static class ArenaPresentation
         var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W };
         equipment.Pressed += actions.Equipment; Put(equipment, 306, bottom, W, H);
-        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, SlotWidth = W, Board = true };
+        if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W) is { } lights)
+            Put(lights, 1150, top, W, H);
+        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId, SlotWidth = W, Board = true };
         attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, bottom, W, H);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
@@ -378,7 +384,7 @@ public static class ArenaPresentation
         var permanent = new VBoxContainer { CustomMinimumSize = new(92, 0),
             SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.Fill };
         permanent.AddThemeConstantOverride("separation", 6);
-        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached };
+        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId };
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
@@ -399,6 +405,8 @@ public static class ArenaPresentation
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("81c8ef"),
             Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
+        if (LightEquipmentZone(owner, index, actions.LightEquipment, compact) is { } lights)
+            permanent.AddChild(lights);
         portrait.SizeFlagsVertical = narrow ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ExpandFill;
         portrait.CustomMinimumSize = new(0, portrait.PortraitHeight);
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
@@ -434,12 +442,25 @@ public static class ArenaPresentation
         column.AddChild(skills);
     }
 
+    private static ZoneCardButton? LightEquipmentZone(DuelPlayerView owner, int index, Action inspect, bool compact, float width = 0)
+    {
+        if (owner.LightEquipment is not { Length: > 0 } cards) return null;
+        var zone = new ZoneCardButton
+        {
+            Name = $"LightEquipmentZone{index}", Caption = "EQUIPOS LIGEROS", Card = CardCatalog.Get(cards[^1]),
+            StatusText = cards.Length == 1 ? "LIGERO" : $"×{cards.Length}", Accent = new("7cc8ff"),
+            SlotWidth = width, Compact = compact
+        };
+        zone.Pressed += inspect;
+        return zone;
+    }
+
     /// <summary>Skills are taught in the first free space, in cost order; -1 when teaching is not offered.</summary>
     internal static int NextLessonSlot(DuelPlayerView owner, bool canLearn) =>
         canLearn ? Enumerable.Range(0, GameEngine.MaxSkills).FirstOrDefault(slot => owner.SkillIndexAtPosition(slot) < 0, -1) : -1;
 
     public static PanelContainer Combat(Node arena, bool preparing, bool over, string message,
-        DuelPlayerView[] players, Action<VBoxContainer> opponentHand, Action<int> bonusPressed,
+        DuelPlayerView[] players, Action<VBoxContainer> opponentHand, Action<int> bonusPressed, Action<int> areaPressed,
         Action<int, int> exchangePressed, bool compact, Action<VBoxContainer, Label, Label>? resolution = null)
     {
         var panel = Panel(arena, RelickVisuals.Playmat.Surface.ToHtml(), RelickVisuals.Playmat.Frame); panel.Name = "CombatCenter";
@@ -462,8 +483,10 @@ public static class ArenaPresentation
                 Compact = compact, RelikarioId = owner.RelikarioId,
                 ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing,
                 BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
-                BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = index == 0 ? Mint : Coral };
-            track.BonusInspected += () => bonusPressed(index); track.ExchangeInspected += slot => exchangePressed(index, slot); column.AddChild(track);
+                BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = index == 0 ? Mint : Coral,
+                AreaCard = owner.Area == null ? null : CardCatalog.Get(owner.Area), AreaSide = owner.AreaSide };
+            track.BonusInspected += () => bonusPressed(index); track.AreaInspected += () => areaPressed(index);
+            track.ExchangeInspected += slot => exchangePressed(index, slot); column.AddChild(track);
         }
         return panel;
     }

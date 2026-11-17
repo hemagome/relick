@@ -133,6 +133,21 @@ public partial class OnlineLobby
                 await online.CheckDecisionFeedback(); online.QueueFree(); await Layout();
                 GD.Print("PVP_FEEDBACK_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--take-equipment-only"))
+            {
+                await online.CheckTakeEquipmentLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--equipment-raid-only"))
+            {
+                await online.CheckEquipmentRaidLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--purple-ring-only"))
+            {
+                await online.CheckPurpleRingLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--inspector-only"))
             {
                 await online.CheckCardInspector(); online.QueueFree(); await Layout();
@@ -300,6 +315,9 @@ public partial class OnlineLobby
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
             await online.CheckTimeBombLayout();
+            await online.CheckTakeEquipmentLayout();
+            await online.CheckEquipmentRaidLayout();
+            await online.CheckPurpleRingLayout();
             await online.CheckDeckSearchLayout();
             await online.CheckOsamuSearchLayout();
             await online.CheckOsamuPresentation();

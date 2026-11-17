@@ -42,11 +42,13 @@ public sealed partial class GameEngine
             yield return new(owner, FieldZone.Relikario, -1, p.Relikario.Id);
             if (p.Equipment is { } equipment)
                 for (var i = 0; i <= p.EquipmentStackedCopies; i++) yield return new(owner, FieldZone.Equipment, i, equipment);
+            foreach (var light in LightEquipmentTargets(owner)) yield return light;
             for (var i = 0; i < (p.EquipmentCovers?.Count ?? 0); i++)
                 yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
             for (var i = 0; i < p.Skills.Count; i++) yield return new(owner, FieldZone.Skill, i, p.Skills[i]);
             for (var i = 0; i < p.AttachedCards.Count; i++) yield return new(owner, FieldZone.Attached, i, p.AttachedCards[i]);
             if (p.Bonus is { } bonus) yield return new(owner, FieldZone.Bonus, -1, bonus);
+            if (p.Area is { } area) yield return new(owner, FieldZone.Area, -1, area);
             for (var i = 0; i < p.Exchange.Count; i++) yield return new(owner, FieldZone.Exchange, i, p.Exchange[i]);
             for (var slot = 0; slot < PlayerState.ZahiraSlots; slot++)
                 if (p.Zahira(slot) != null) yield return new(owner, FieldZone.Zahira, ZahiraIndex(slot), CardCatalog.ZahiraFlair.Id);

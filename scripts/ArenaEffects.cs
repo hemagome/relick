@@ -84,8 +84,14 @@ public partial class ImpactLayer : Control
     private const double NumberSeconds = 1.25, RingSeconds = 0.42;
     private readonly List<(Vector2 At, string Text, Color Color, bool Heavy, double Age)> _numbers = [];
     private readonly List<(Rect2 Rect, Color Color, double Age)> _rings = [];
-    private const double BeamSeconds = 0.34, FlashSeconds = 0.22;
-    private readonly List<(Vector2 From, Vector2 To, Color Color, double Age)> _beams = [];
+    private const double FlashSeconds = 0.22;
+    private sealed record Projectile(RelikarioPortrait Attacker, RelikarioPortrait Defender, Texture2D RightArt, Texture2D? LeftArt, bool Lob)
+    {
+        public double Age { get; set; }
+        public double Release => Lob ? 0.42 : 0.48;
+        public double Travel => Lob ? 0.44 : 0.34;
+    }
+    private readonly List<Projectile> _projectiles = [];
     private double _flash = FlashSeconds;
     private Color _flashColor;
     internal bool ReducedMotion { get; set; }
@@ -109,7 +115,7 @@ public partial class ImpactLayer : Control
     internal Rect2? SummonTarget => _summon?.To;
     internal Vector2? SummonMeet => _summon?.Meet;
     internal int SummonEchoes => _summon?.Ingredients.Length ?? 0;
-    internal int ActiveCount => _numbers.Count + _rings.Count + _beams.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0) + (_summon != null ? 1 : 0);
+    internal int ActiveCount => _numbers.Count + _rings.Count + _projectiles.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0) + (_summon != null ? 1 : 0);
     internal Vector2? LastNumberAt => _numbers.Count == 0 ? null : _numbers[^1].At;
 
     public override void _Ready()
@@ -134,11 +140,16 @@ public partial class ImpactLayer : Control
         SetProcess(true); QueueRedraw();
     }
 
-    /// <summary>A streak from the attacker toward the defender as the attack clip starts.</summary>
-    internal void Beam(Vector2 from, Vector2 to, Color color)
+    internal bool AttackInFlightTo(RelikarioPortrait defender) => _projectiles.Exists(p => p.Defender == defender);
+
+    internal void LaunchAttack(RelikarioPortrait attacker, RelikarioPortrait defender)
     {
-        if (ReducedMotion) return;
-        _beams.Add((from, to, color, 0));
+        if (ReducedMotion || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree() ||
+            RelikarioArt.Load(attacker.RelikarioId, "attack-projectile") is not { } art) return;
+        var lob = RelikarioArt.Family(attacker.RelikarioId) == RelikarioCatalog.Osamu.Id;
+        // A directional sprite can preserve lettering that would be reversed by a horizontal flip.
+        var leftArt = lob ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile-left");
+        _projectiles.Add(new(attacker, defender, art, leftArt, lob));
         SetProcess(true); QueueRedraw();
     }
 
@@ -171,7 +182,7 @@ public partial class ImpactLayer : Control
 
     internal void Clear()
     {
-        _numbers.Clear(); _rings.Clear(); _beams.Clear(); _flash = FlashSeconds; _card = null; _summon = null;
+        _numbers.Clear(); _rings.Clear(); _projectiles.Clear(); _flash = FlashSeconds; _card = null; _summon = null;
         SetProcess(false); QueueRedraw();
     }
 
@@ -188,16 +199,42 @@ public partial class ImpactLayer : Control
             var r = _rings[i]; r.Age += step;
             if (r.Age >= RingSeconds) _rings.RemoveAt(i); else _rings[i] = r;
         }
-        for (var i = _beams.Count - 1; i >= 0; i--)
+        for (var i = _projectiles.Count - 1; i >= 0; i--)
         {
-            var b = _beams[i]; b.Age += step;
-            if (b.Age >= BeamSeconds) _beams.RemoveAt(i); else _beams[i] = b;
+            var projectile = _projectiles[i]; projectile.Age += step;
+            if (projectile.Age >= projectile.Release + projectile.Travel) _projectiles.RemoveAt(i);
         }
         if (_flash < FlashSeconds) _flash = Math.Min(FlashSeconds, _flash + step);
         if (_card is { } card) _card = card.Age + step >= CardSeconds ? null : card with { Age = card.Age + step };
         if (_summon is { } summon) { summon.Age += step; if (summon.Age >= summon.Duration) _summon = null; }
         if (ActiveCount == 0) SetProcess(false);
         QueueRedraw();
+    }
+
+    private void DrawProjectile(Projectile projectile, Vector2 origin)
+    {
+        var (attacker, defender, rightArt, leftArt, lob) = projectile;
+        if (projectile.Age < projectile.Release || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
+        var (from, portraitWidth) = attacker.AttackLaunch(lob);
+        var to = defender.AttackTarget;
+        var path = to - from;
+        var direction = path.X < 0 ? -1 : 1;
+        var art = direction < 0 ? leftArt ?? rightArt : rightArt;
+        var t = (float)((projectile.Age - projectile.Release) / projectile.Travel);
+        var flight = lob ? t : t * (0.65f + 0.35f * t);
+        var at = from.Lerp(to, flight) - origin;
+        var size = art.GetSize() * (portraitWidth * (lob ? .46f : .39f) / Math.Max(art.GetWidth(), art.GetHeight()));
+        var rotation = Mathf.Atan2(path.Y, Math.Abs(path.X)) * direction;
+        if (lob)
+        {
+            at.Y -= Math.Min(path.Length() * .23f, size.Y * 1.3f) * 4 * t * (1 - t);
+            rotation = Mathf.Lerp(-.3f, .5f, t) * direction;
+        }
+        var pivot = new Vector2(.5f, lob ? .74f : .5f);
+        var flip = direction < 0 && leftArt == null && !lob;
+        DrawSetTransform(at, rotation, new(flip ? -1 : 1, 1));
+        DrawTextureRect(art, new Rect2(-size * pivot, size), false, new Color(1, 1, 1, Math.Min(1, (1 - t) * 9)));
+        DrawSetTransform(Vector2.Zero);
     }
 
     private void DrawSummon(Summon s, Vector2 origin)
@@ -265,16 +302,7 @@ public partial class ImpactLayer : Control
             DrawTextureRect(played.Art, rect, false, new Color(1, 1, 1, alpha));
             BoardArt.Outline(this, rect, BoardArt.Tint(played.Accent, alpha), 8, 2);
         }
-        foreach (var (from, to, color, age) in _beams)
-        {
-            var t = (float)(age / BeamSeconds);
-            var head = (from - origin).Lerp(to - origin, Mathf.SmoothStep(0, 1, Math.Min(1, t * 1.5f)));
-            var tail = (from - origin).Lerp(to - origin, Mathf.SmoothStep(0, 1, Math.Max(0, t * 1.5f - 0.5f)));
-            var alpha = 1 - t * t;
-            DrawLine(tail, head, BoardArt.Tint(color, 0.25f * alpha), 22, true);
-            DrawLine(tail, head, BoardArt.Tint(color, 0.55f * alpha), 9, true);
-            DrawLine(tail, head, BoardArt.Tint(Colors.White, 0.9f * alpha), 3, true);
-        }
+        foreach (var projectile in _projectiles) DrawProjectile(projectile, origin);
         foreach (var (rect, color, age) in _rings)
         {
             var t = (float)(age / RingSeconds);

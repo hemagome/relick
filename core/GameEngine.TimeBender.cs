@@ -28,6 +28,7 @@ public sealed partial class GameEngine
     private void FinishDrawStage(bool explicitStage)
     {
         State.Phase = explicitStage || HasTimeBenderForDraw() ? Phase.Draw : Phase.Combat;
+        PresentPendingArea();
     }
 
     private void ResolveRepeatedStage()

@@ -61,8 +61,9 @@ internal static class ArenaGuidance
             Phase.Combat when Has(DuelMoveKind.Attack) => "Elige un Ataque y la habilidad que usarás.",
             Phase.Combat when Has(DuelMoveKind.Learn) => "Puedes enseñar una habilidad antes de avanzar.",
             Phase.Combat when Has(DuelMoveKind.FieldCode) => "Puedes activar una carta iluminada en Bonus o canje.",
-            Phase.Actions when Has(DuelMoveKind.Equip) || Has(DuelMoveKind.Exchange) || Has(DuelMoveKind.PlayCode) => "Elige una carta para ver sus jugadas disponibles.",
+            Phase.Actions when Has(DuelMoveKind.Equip) || Has(DuelMoveKind.Exchange) || Has(DuelMoveKind.PlayCode) || Has(DuelMoveKind.ActivateArea) => "Elige una carta para ver sus jugadas disponibles.",
             Phase.Actions when Has(DuelMoveKind.Relikia) => "Puedes activar una Relikia antes de terminar.",
+            _ when Has(DuelMoveKind.UsePurpleRing) => "Selecciona Anillo Morado en tus equipos ligeros para usarlo.",
             _ when Has(DuelMoveKind.PlayCode) => "Puedes activar un COMBO o avanzar de fase.",
             _ when Has(DuelMoveKind.Evolve) => "Puedes evolucionar antes de avanzar.",
             _ => "Elige una opción para continuar la resolución."
@@ -98,6 +99,8 @@ internal static class ArenaGuidance
             return "Solo puedes enseñar una habilidad por turno.";
         }
         if (card.Kind == CardKind.Equipment && s.Phase != Phase.Actions) return "Los equipos se colocan en tu fase de acciones.";
+        if (card.Kind == CardKind.Area && s.Phase != Phase.Actions) return "Las Áreas se activan en tu fase de acciones.";
+        if (card.Kind == CardKind.Area && p.Area != null) return "Retira primero tu Área activa.";
         if (card.Kind == CardKind.Code && !card.IsCombo && s.Phase != Phase.Actions) return "Este código se juega en tu fase de acciones.";
         if (p.Actions < (card.Kind == CardKind.Equipment ? 1 : card.ActionCost)) return "No te quedan acciones suficientes para jugar esta carta.";
         if (s.Turn < card.EarliestTurn) return $"Esta carta puede activarse a partir del turno {card.EarliestTurn}.";
