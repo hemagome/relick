@@ -195,7 +195,7 @@ public partial class OnlineArena
         return after.ElementAtOrDefault(before.Length + preceding);
     }
 
-    private Flight? CaptureEquipmentInstall(DuelSnapshot current, DuelSnapshot previous)
+    private Flight? CaptureEquipmentInstall(DuelSnapshot current, DuelSnapshot previous, TrapRecipe? recipe = null)
     {
         for (var actor = 0; actor < current.Players.Length; actor++)
         {
@@ -205,6 +205,8 @@ public partial class OnlineArena
             var destination = light ? CardZone.LightEquipment : CardZone.Equipment;
             var id = light ? after.LightEquipment?.LastOrDefault() : after.Equipment;
             if (id == null) continue;
+            if (!light && id == CardCatalog.SuperMagnet.Id && recipe?.Entry.Actor == actor && recipe.Entry.CardId == id)
+                continue; // The recipe summon already delivers this copy to the equipment slot.
             if (current.Visuals.Any(c => (c.DestinationPlayer ?? c.Player) == actor && c.Kind == DuelVisualKind.Pile && c.Destination == destination))
                 continue; // The effect already emitted a flight for the equipped copy.
 
@@ -698,7 +700,7 @@ public partial class OnlineArena
         if (!preserveStageAnnouncements) ResetStageBanner();
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
-        _placementDice.Clear(); _queuedPlay = null;
+        _placementDice.Clear(); _queuedPlay = null; FinishSummonedEquipment();
         _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); FinishFlight(); _die.Value = 0;
         _secondDie.Value = 0;
         _secondDie.Hide();

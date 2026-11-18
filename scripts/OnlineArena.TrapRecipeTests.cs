@@ -53,17 +53,25 @@ public partial class OnlineArena
                 if (seat == 0 && size.X == 1820 && trap == CardCatalog.SuperAttack) await Capture($"trap-recipe-decision-{size.X}x{size.Y}");
 
                 // «Crear»: echoes meet over the exchange and the Trap goes to its place.
+                var cues = DuelVisualEvents.Capture(game);
                 Check(new DuelMove { Kind = DuelMoveKind.TrapCraft, Flag = true }.Apply(game, 0).Success, "No se crea la trampa.");
                 var created = DuelSnapshot.For(game, seat, 1101);
+                created.Visuals = cues;
+                var recipe = CaptureTrapRecipe(asked, created);
+                Check(recipe?.Entry.CardId == trap.Id, "No se prepara la invocación al crear la trampa.");
+                var install = CaptureEquipmentInstall(created, asked, recipe);
+                Check(install == null, $"{trap.Name} también prepara un vuelo genérico de equipo.");
+                var origins = CaptureOrigins(created, asked);
                 // Live path: the board is rebuilt for the new revision and the summon waits for its layout,
                 // so it meets over the exchange instead of the top-left corner of a board not yet laid out.
-                _impacts.Clear(); PresentTestSnapshot(created); _queuedPlay = (asked, created);
+                _impacts.Clear(); PresentTestSnapshot(created); Animate(cues, origins, install);
+                QueuePlayedCard(asked, created, recipe);
+                var equipment = trap == CardCatalog.SuperMagnet ? (ZoneCardButton)ZoneNode(seat == 0 ? 0 : 1, CardZone.Equipment, -1)! : null;
+                Check(equipment == null || equipment.AwaitingEquipment, "Súper Imán aparece en Equipo antes de iniciar la invocación.");
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); PresentQueuedPlay(); // The arena's next _Process (off in tests).
                 var liveExchange = _exchangeTracks[seat == 0 ? 0 : 1]!.ExchangeButtons.Select(b => b.GetGlobalRect()).Aggregate((a, b) => a.Merge(b));
                 Check(_impacts.SummonMeet is { } meet && liveExchange.Grow(4).HasPoint(meet) && liveExchange.Size.X > 0,
                     $"La invocación en vivo no aparece sobre el canje ({trap.Name}, asiento {seat}, {size}).");
-                ResetAnimations(); PresentTestSnapshot(created); await Layout();
-                _impacts.Clear(); FlashPlayedCard(asked, created); SummonCreatedTrap(asked, created);
                 Check(_impacts.ShowingSummon && !_impacts.ShowingCard && _impacts.SummonEchoes == 2,
                     $"La creación de {trap.Name} no invoca con sus dos ecos o repite el destello genérico.");
                 var place = trap == CardCatalog.SuperMagnet ? (Control)_root!.FindChild($"EquipmentZone{(seat == 0 ? 0 : 1)}", true, false)
@@ -80,11 +88,22 @@ public partial class OnlineArena
                     Check(IsInstanceValid(card) && card!.Modulate.A > 0.99f,
                         $"Súper Ataque no aparece en la mano al aterrizar ({size}, asiento {seat}).");
                 }
+                else
+                {
+                    Check(equipment!.AwaitingEquipment && _impacts.SummonTarget == ZoneRect(equipment) && !IsAnimating,
+                        "Súper Imán se ve antes de aterrizar o repite su vuelo.");
+                    await ToSignal(GetTree().CreateTimer(ImpactLayer.SummonLanding + 0.1), SceneTreeTimer.SignalName.Timeout);
+                    Check(!equipment.AwaitingEquipment && equipment.Card?.Id == trap.Id,
+                        "Súper Imán no se revela al aterrizar en Equipo.");
+                    QueuePlayedCard(asked, created, recipe); PresentQueuedPlay();
+                    ResetAnimations();
+                    Check(!equipment.AwaitingEquipment && !_impacts.ShowingSummon, "Interrumpir la invocación deja Súper Imán oculto.");
+                }
                 if (seat == 0 && size.X == 1820)
                 {
                     foreach (var (moment, tag) in new[] { (0.3, "echoes"), (0.62, "summoned") })
                     {
-                        _impacts.Clear(); SummonCreatedTrap(asked, created); _impacts._Process(moment); _impacts.SetProcess(false); _impacts.QueueRedraw();
+                        _impacts.Clear(); SummonCreatedTrap(created, recipe!); _impacts._Process(moment); _impacts.SetProcess(false); _impacts.QueueRedraw();
                         await Capture($"trap-recipe-{tag}-{trap.Id}-{size.X}x{size.Y}");
                     }
                     _impacts.SetProcess(true);
@@ -93,12 +112,47 @@ public partial class OnlineArena
                 // «Pasar» calls nothing; reduced motion keeps the board still.
                 var passed = Exchanged(first, second); var passAsked = DuelSnapshot.For(passed, seat, 1102);
                 Check(new DuelMove { Kind = DuelMoveKind.TrapCraft, Flag = false }.Apply(passed, 0).Success, "No se puede pasar sin crear.");
-                _impacts.Clear(); SummonCreatedTrap(passAsked, DuelSnapshot.For(passed, seat, 1103));
+                var passResult = DuelSnapshot.For(passed, seat, 1103);
+                _impacts.Clear(); PresentTestSnapshot(passResult); QueuePlayedCard(passAsked, passResult, CaptureTrapRecipe(passAsked, passResult));
+                PresentQueuedPlay();
                 Check(!_impacts.ShowingSummon, "Pasar sin crear invoca una trampa.");
-                _impacts.ReducedMotion = true; _impacts.Clear(); SummonCreatedTrap(asked, created);
-                Check(!_impacts.ShowingSummon, "La invocación ignora el movimiento reducido.");
+                _impacts.ReducedMotion = true; _impacts.Clear(); PresentTestSnapshot(created);
+                QueuePlayedCard(asked, created, recipe); PresentQueuedPlay();
+                Check(!_impacts.ShowingSummon && (trap != CardCatalog.SuperMagnet ||
+                    ZoneNode(seat == 0 ? 0 : 1, CardZone.Equipment, -1) is ZoneCardButton { AwaitingEquipment: false }),
+                    "La invocación ignora el movimiento reducido u oculta el equipo sin animarlo.");
                 _impacts.ReducedMotion = reduced; _impacts.Clear();
             }
+        }
+
+        foreach (var protect in new[] { false, true })
+        {
+            var game = Exchanged(CardCatalog.Bonfire, CardCatalog.Attack);
+            var player = game.State.Players[0];
+            player.Equipment = CardCatalog.SuperMagnet.Id;
+            player.Skills.Add(CardCatalog.Reverse.Id);
+            var asked = DuelSnapshot.For(game, 0, 1104);
+            ResetAnimations(); PresentTestSnapshot(asked);
+            Check(new DuelMove { Kind = DuelMoveKind.TrapCraft, Flag = true }.Apply(game, 0).Success &&
+                game.State.Phase == Phase.DestructionResponse, "No se ofrece proteger el Súper Imán anterior.");
+            var waiting = DuelSnapshot.For(game, 0, 1105);
+            var recipe = CaptureTrapRecipe(asked, waiting);
+            PresentTestSnapshot(waiting); QueuePlayedCard(asked, waiting, recipe); await Layout(); PresentQueuedPlay();
+            Check(recipe == null && !_impacts.ShowingSummon &&
+                ZoneNode(0, CardZone.Equipment, -1) is ZoneCardButton { AwaitingEquipment: false },
+                "Súper Imán se invoca antes de resolver la protección del equipo anterior.");
+
+            var cues = DuelVisualEvents.Capture(game);
+            Check(new DuelMove { Kind = DuelMoveKind.ProtectDestruction, Index = protect ? 0 : -1 }.Apply(game, 0).Success,
+                "No se resuelve la protección del equipo.");
+            var result = DuelSnapshot.For(game, 0, 1106);
+            result.Visuals = cues;
+            recipe = CaptureTrapRecipe(waiting, result);
+            Check(CaptureEquipmentInstall(result, waiting, recipe) == null, "El reemplazo protegido o confirmado duplica el vuelo.");
+            PresentTestSnapshot(result); QueuePlayedCard(waiting, result, recipe); await Layout(); PresentQueuedPlay();
+            Check(_impacts.ShowingSummon == !protect && _impacts.SummonEchoes == (protect ? 0 : 2),
+                "La receta diferida no refleja la decisión de protección.");
+            ResetAnimations();
         }
         GD.Print("PVP_TRAP_RECIPE_PASS · receta visible para quien decide, invocación desde la memoria hasta la mano o el equipo, sin destello genérico, pasar y movimiento reducido; dos tamaños y ambos asientos.");
     }

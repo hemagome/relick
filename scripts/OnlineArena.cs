@@ -177,8 +177,9 @@ public partial class OnlineArena : Control
             var openingFlights = IsLiveOpening(snapshot) ? CaptureMulliganOrigins(snapshot) : null;
             var animate = !_preparing && !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
             var origins = CaptureOrigins(snapshot, previous);
+            var recipe = animate ? CaptureTrapRecipe(previous!, snapshot) : null;
             var placement = animate ? CaptureExchangePlacement(snapshot, previous!, origins) ??
-                CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!) : null;
+                CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!, recipe) : null;
             if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.Value = snapshot.Die; }
             if (animate && snapshot.Visuals.FirstOrDefault(cue => cue.Kind is DuelVisualKind.Die or DuelVisualKind.DieAdjustment) is { } nextDie)
             {
@@ -189,6 +190,7 @@ public partial class OnlineArena : Control
             _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
             if (!animate)
             {
+                _pendingTrapRecipe = null;
                 ResetAnimations(); _die.Value = snapshot.Die;
                 for (var relative = 0; relative < 2; relative++)
                 {
@@ -201,7 +203,7 @@ public partial class OnlineArena : Control
             else if (animate) Animate(snapshot.Visuals, origins, placement);
             // Render just rebuilt the board; its controls get their places at the end of this frame, so the
             // played-code flash and the Trap summon read them on the next one (see PresentQueuedPlay).
-            if (animate) _queuedPlay = (previous!, snapshot);
+            if (animate) QueuePlayedCard(previous!, snapshot, recipe);
             SyncResponseChain(snapshot, animate);
             QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
         }
