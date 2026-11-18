@@ -709,8 +709,10 @@ public partial class OnlineArena
         foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
         foreach (var seat in new[] { 0, 1 })
         foreach (var actor in new[] { 0, 1 })
+        foreach (var initialMemory in new[] { Array.Empty<string>(), new[] { CardCatalog.Bonfire.Id } })
         {
             var game = Fixture(actor);
+            game.State.Active.Memory.AddRange(initialMemory);
             GetWindow().ContentScaleSize = size;
             await Layout();
             var relative = actor == seat ? 0 : 1;
@@ -739,9 +741,19 @@ public partial class OnlineArena
                 var tile = (ZoneCardButton)ZoneNode(relative, CardZone.Exchange, index)!;
                 var first = (ZoneCardButton)ZoneNode(relative, CardZone.Exchange, 0)!;
                 var bonus = index == 1 ? ZoneNode(relative, CardZone.Hand, 0) : null;
+                var memory = (MemoryZoneButton?)ZoneNode(relative, CardZone.Memory, -1);
+                void CheckMemory(int arrivals)
+                {
+                    if (memory == null) return;
+                    var expected = after.Players[actor].Memory.Take(initialMemory.Length + arrivals).ToArray();
+                    Check(memory.IsVisibleInTree() && memory.Modulate.A == 1 && memory.DisplayedAmount == expected.Length &&
+                        (memory.GetNodeOrNull<HandCard>("MemoryTopCard")?.Card.Id) == expected.LastOrDefault(),
+                        $"Memoria cambia antes del aterrizaje o se oculta en {size}, asiento {seat}, tras {arrivals} llegadas.");
+                }
                 Check(tile.AwaitingExchange && _flights.Peek() == placement && (index == 0 || first.HasExchangePreview),
                     "El tablero adelanta el resultado antes de colocar la carta de canje.");
                 Check(bonus == null || bonus.Modulate.A == 0, "El Bonus aparece en la mano antes de completar el canje.");
+                CheckMemory(0);
                 await Layout();
                 UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
                 Check(_activeFlight == placement && _flightTarget == tile && _flightFront?.Visible == (actor == seat),
@@ -761,12 +773,29 @@ public partial class OnlineArena
                 {
                     Check(tile.HasExchangePreview && _flights.Peek().LeavesExchange,
                         "La segunda carta desaparece antes de la salida hacia memoria.");
+                    CheckMemory(0);
+                    if (size.X == 1440)
+                    {
+                        Check(memory != null, "Falta la zona de memoria en el tablero de escritorio.");
+                        for (var arriving = 0; arriving < 2; arriving++)
+                        {
+                            UpdateFlights(0.04);
+                            Check(_activeFlight?.IsExchangePileArrival == true && _flightTarget == memory,
+                                "La carta del canje no vuela hacia memoria.");
+                            CheckMemory(arriving);
+                            UpdateFlights(0.5);
+                            CheckMemory(arriving + 1);
+                        }
+                    }
                     for (var frame = 0; IsAnimating && frame < 16; frame++) UpdateFlights(0.5);
+                    CheckMemory(2);
                     Check(!first.HasExchangePreview && !tile.HasExchangePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1),
                         "El canje no retira ambas cartas o no entrega el Bonus.");
                     Animate(cues, origins, placement);
                     UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
+                    CheckMemory(0);
                     ResetAnimations();
+                    CheckMemory(2);
                     Check(!tile.AwaitingExchange && !first.HasExchangePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1),
                         "Interrumpir el canje deja una carta oculta o una animación pendiente.");
                 }

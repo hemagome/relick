@@ -13,6 +13,7 @@ public partial class OnlineArena
         public bool IsSkillLesson => IsPlacement && Event.Destination == CardZone.Skill;
         public bool IsExchangePlacement => IsPlacement && Event.Destination == CardZone.Exchange;
         public bool LeavesExchange => Event.Kind == DuelVisualKind.Pile && Event.Source == CardZone.Exchange;
+        public bool IsExchangePileArrival => LeavesExchange && Event.Destination is CardZone.Memory or CardZone.Corrupted;
         public bool TurnsSideways => IsSkillLesson || IsExchangePlacement;
     }
     private readonly Queue<Flight> _flights = new();
@@ -659,9 +660,15 @@ public partial class OnlineArena
         _placementPreview = false;
     }
 
-    private static void SetDestinationPending(Flight flight, Control? target, bool pending)
+    private static void SetDestinationPending(Flight flight, Control? target, bool pending, bool queued = false)
     {
-        if (target is SkillTile skill) skill.SetLessonPending(pending);
+        if (flight.IsExchangePileArrival && target is MemoryZoneButton pile)
+        {
+            // Count each card when queued and reveal it when the flight is resolved or skipped.
+            if (queued || !pending)
+                pile.ChangePendingExchangeArrivals(pending ? 1 : -1);
+        }
+        else if (target is SkillTile skill) skill.SetLessonPending(pending);
         else if (flight.IsExchangePlacement && target is ZoneCardButton exchange)
             exchange.SetExchangePending(pending);
         else if (flight.IsPlacement && target is ZoneCardButton equipment)

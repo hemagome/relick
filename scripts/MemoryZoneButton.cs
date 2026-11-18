@@ -9,13 +9,15 @@ public partial class MemoryZoneButton : Button
     /// <summary>The owner's cosmetic sleeve, shown on face-down corrupted cards.</summary>
     public string? Sleeve { get; init; }
     internal Texture2D? BackTexture => _back;
-    public int Amount { get; init; }
+    public int CorruptedCount { get; init; }
     public bool Corrupted { get; init; }
-    public CardDefinition? TopCard { get; init; }
+    public string[] Cards { get; init; } = [];
     public string? RelikarioId { get; init; }
     public Color Accent { get; init; } = new("b5a2fa");
     private Texture2D? _back;
     private HandCard? _preview;
+    private int _pendingExchangeArrivals;
+    internal int DisplayedAmount => Math.Max(0, (Corrupted ? CorruptedCount : Cards.Length) - _pendingExchangeArrivals);
     /// <summary>On the desktop board the pile fills its zone, like every other card.</summary>
     public bool Board { get; init; }
     // Legacy docks keep the compact counter; board rows show the top card as a real pile.
@@ -45,55 +47,82 @@ public partial class MemoryZoneButton : Button
     {
         CustomMinimumSize = new(Math.Max(70, CustomMinimumSize.X), 58);
         MouseDefaultCursorShape = CursorShape.PointingHand;
-        TooltipText = Corrupted ? $"Cartas corruptas: {Amount}. Boca abajo. Pulsa para consultar esta zona."
-            : $"Memoria: {Amount} carta(s) boca arriba. Pulsa para ver las cartas y sus efectos.";
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
-        if (Corrupted && Amount > 0) _back = SleeveArt.Back(Sleeve);
-        if (!Corrupted && TopCard != null)
+        if (Corrupted && CorruptedCount > 0) _back = SleeveArt.Back(Sleeve);
+        UpdatePile();
+        Resized += () => { PlacePreview(); QueueRedraw(); };
+        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
+        FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
+    }
+
+    internal void ChangePendingExchangeArrivals(int change)
+    {
+        _pendingExchangeArrivals = Math.Max(0, _pendingExchangeArrivals + change);
+        UpdatePile();
+    }
+
+    private void UpdatePile()
+    {
+        if (!Corrupted)
+            SetPreview(DisplayedAmount == 0 ? null : CardCatalog.Get(Cards[DisplayedAmount - 1]));
+        TooltipText = Corrupted
+            ? $"Cartas corruptas: {DisplayedAmount}. Boca abajo. Pulsa para consultar esta zona."
+            : $"Memoria: {DisplayedAmount} carta(s) boca arriba. Pulsa para ver las cartas y sus efectos.";
+        QueueRedraw();
+    }
+
+    private void SetPreview(CardDefinition? card)
+    {
+        if (_preview?.Card == card) return;
+        if (_preview != null)
         {
-            var preview = new HandCard { Name = "MemoryTopCard", Card = TopCard, RelikarioId = RelikarioId, Disabled = true, ShowBehindParent = Board,
+            RemoveChild(_preview);
+            _preview.QueueFree();
+            _preview = null;
+        }
+        if (card != null)
+        {
+            var preview = new HandCard { Name = "MemoryTopCard", Card = card, RelikarioId = RelikarioId, Disabled = true, ShowBehindParent = Board,
                 Size = new(126, 184), Scale = new(0.2f, 0.2f), Position = new(6, 17) };
             preview.Ready += () => { preview.MouseFilter = MouseFilterEnum.Ignore; preview.SetProcess(false); };
             AddChild(preview); _preview = preview;
+            PlacePreview();
         }
-        Resized += () => { PlacePreview(); QueueRedraw(); };
-        PlacePreview();
-        MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
-        FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
     }
 
     public override void _Draw()
     {
         if (Board) { DrawBoardPile(); return; }
-        BoardArt.Socket(this, new Rect2(Vector2.Zero, Size), Accent, Amount == 0 ? 1 : 0.55f);
+        var amount = DisplayedAmount;
+        BoardArt.Socket(this, new Rect2(Vector2.Zero, Size), Accent, amount == 0 ? 1 : 0.55f);
         BoardArt.CenterText(this, Corrupted ? "CORRUPTAS" : "MEMORIA", new(Size.X / 2, 13), 8, Accent);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, IsHovered(), HasFocus());
         var thumb = CardRect;
-        if (Tall && Amount > 0)
+        if (Tall && amount > 0)
         {
-            var layers = Math.Min(3, Amount - 1);
+            var layers = Math.Min(3, amount - 1);
             RelickVisuals.Shadow(this, new Rect2(thumb.Position + new Vector2(layers * 1.5f, layers * 1.5f + 2), thumb.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 7);
             for (var layer = layers; layer > 0; layer--)
                 BoardArt.Plate(this, new Rect2(thumb.Position + new Vector2(layer * 1.5f, layer * 1.5f), thumb.Size),
                     new Color("1d2740"), new Color("5f6f96"), 3);
         }
-        if (_back != null)
+        if (_back != null && amount > 0)
         {
             var scale = Math.Min(thumb.Size.X / _back.GetWidth(), thumb.Size.Y / _back.GetHeight());
             var extent = _back.GetSize() * scale;
             DrawTextureRect(_back, new Rect2(thumb.Position + (thumb.Size - extent) / 2, extent), false);
         }
-        else if (Corrupted || TopCard == null)
+        else if (Corrupted || _preview == null)
         {
             if (!Tall) BoardArt.Plate(this, thumb, new Color("0d1322"), Accent.Darkened(0.5f), 3);
             BoardArt.Icon(this, Corrupted ? GameIcon.Cards : GameIcon.Memory, thumb.GetCenter(), Tall ? 20 : 17, BoardArt.Tint(Accent, Tall ? 0.16f : 0.8f));
         }
         if (!Tall)
         {
-            BoardArt.CenterText(this, Amount.ToString(), new(50, 43), Amount < 100 ? 21 : 15, BoardArt.Ink);
+            BoardArt.CenterText(this, amount.ToString(), new(50, 43), amount < 100 ? 21 : 15, BoardArt.Ink);
             return;
         }
-        var text = Amount.ToString();
+        var text = amount.ToString();
         var width = Math.Max(26, ThemeDB.FallbackFont.GetStringSize(text, fontSize: 14).X + 14);
         var chip = new Rect2((Size.X - width) / 2, Size.Y - 24, width, 19);
         BoardArt.Plate(this, chip, new Color(0, 0, 0, 0.5f), BoardArt.Tint(Accent, 0.45f), 4);
@@ -107,7 +136,8 @@ public partial class MemoryZoneButton : Button
         var bounds = new Rect2(Vector2.Zero, Size);
         var caption = Corrupted ? "CORRUPTAS" : "MEMORIA";
         var card = CardRect;
-        if (Amount == 0 || !Corrupted && TopCard == null)
+        var amount = DisplayedAmount;
+        if (amount == 0 || !Corrupted && _preview == null)
         {
             BoardArt.Socket(this, bounds, Accent);
             BoardArt.CenterText(this, caption, new(Size.X / 2, 15), 9, BoardArt.Tint(Accent, 0.9f));
@@ -122,7 +152,7 @@ public partial class MemoryZoneButton : Button
             BoardArt.Plate(this, tab, new Color("0b1020"), BoardArt.Tint(Accent, 0.7f), 4);
             BoardArt.CenterText(this, caption, new(Size.X / 2, 12), 9, Accent);
         }
-        var text = Amount.ToString();
+        var text = amount.ToString();
         var chipWidth = Math.Max(28, ThemeDB.FallbackFont.GetStringSize(text, fontSize: 14).X + 14);
         var chip = new Rect2((Size.X - chipWidth) / 2, Size.Y - 26, chipWidth, 20);
         BoardArt.Plate(this, chip, new Color("0b1020"), BoardArt.Tint(Accent, 0.6f), 4);
