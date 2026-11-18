@@ -133,7 +133,6 @@ public partial class OnlineArena : Control
         _secondDie.RollFinished += PlayPendingPortraits;
         BuildInitiativeOverlay();
         BuildStageBanner();
-        BuildResultOverlay();
         _cardActions.AddThemeConstantOverride("separation", 4);
         AddChild(_cardActions);
         AddChild(_responseChain);
@@ -217,10 +216,10 @@ public partial class OnlineArena : Control
         UpdateDiceOverlay();
         UpdateResolutionPresentation();
         UpdateRelikiaPreview();
-        UpdateEnabled(); RefreshRuntimeGuidance(); RefreshDecisionFeedback();
-        PositionCardActions();
+        UpdateEnabled(); RefreshRuntimeGuidance();
+        PositionCardActions(); RefreshDecisionFeedback();
         PositionResponseChain();
-        UpdateResultPresentation(); PositionResultOverlay();
+        UpdateResultPresentation();
         PresentPlaymat();
         foreach (var target in _pulsingTargets)
             if (IsInstanceValid(target)) target.QueueRedraw();
@@ -252,12 +251,13 @@ public partial class OnlineArena : Control
         foreach (var node in _portraits.Cast<Node>().Concat(_life).Concat(_actionPools)) node.GetParent()?.RemoveChild(node);
         if (_root != null) { RemoveChild(_root); _root.QueueFree(); }
         if (_deckChoiceShade != null) { RemoveChild(_deckChoiceShade); _deckChoiceShade.QueueFree(); _deckChoiceShade = null; }
+        if (_decisionPopup != null) { RemoveChild(_decisionPopup); _decisionPopup.QueueFree(); _decisionPopup = null; }
         _root = new VBoxContainer { Name = "DuelInterface" }; AddChild(_root);
         var desktop = Desktop;
         _pulsingTargets.Clear(); _showcase = null; _combatCenter = null; _readerRail = null;
         _railReading = null; _historyFeed = null; _resolutionPanel = null; _inlineHistory = false; _relikiaPreview = null;
         foreach (var meter in _life) meter.Stacked = desktop;
-        var choiceGallery = false;
+        var choiceGallery = _choosingOpeningSkill || ChoosingRecycling || ChoosingEffectCards;
         VBoxContainer? choicePanel = null;
         _fitArenaScroll = false;
         _handLowered = false;
@@ -366,7 +366,6 @@ public partial class OnlineArena : Control
             BindStageStatus(bar);
 
             // Choices among cards outside the hand open over the board; the hand itself stays low.
-            choiceGallery = _choosingOpeningSkill || ChoosingRecycling || ChoosingEffectCards;
             if (choiceGallery)
             {
                 var shade = new ColorRect { Name = "ChoiceShade", Color = new Color(0.01f, 0.02f, 0.05f, 0.74f) };
@@ -377,6 +376,8 @@ public partial class OnlineArena : Control
                 var panelSize = new Vector2(BoardCanvas.DesignWidth - 260, 690);
                 if (deckChoices) (deckColumns, panelSize) = FitDeckChoicePanel(panelSize, sections, desktop: true);
                 canvas.Place(chooser, new Rect2((BoardCanvas.DesignWidth - panelSize.X) / 2, BoardCanvas.Seam - panelSize.Y / 2, panelSize.X, panelSize.Y));
+                // A container can grow during its first measurement and must return to the board's fixed rectangle.
+                chooser.MinimumSizeChanged += () => chooser.SetDeferred(Control.PropertyName.Size, panelSize);
                 handColumn = new VBoxContainer { Name = "HandColumn" };
                 handColumn.AddThemeConstantOverride("separation", 10); chooser.AddChild(handColumn);
             }
@@ -408,8 +409,7 @@ public partial class OnlineArena : Control
             inspectorColumn.AddChild(_showcase);
             var reading = new VBoxContainer { Name = "RailReading" };
             inspectorColumn.AddChild(reading); _railReading = reading;
-            BuildActionArea(reading);
-            BuildResultPanel(reading);
+            BuildInspector(reading);
             BuildHistoryFeed(inspectorColumn);
         }
         else
@@ -450,27 +450,26 @@ public partial class OnlineArena : Control
             var interaction = new HBoxContainer
             {
                 Name = "CardInteractionArea",
-                SizeFlagsVertical = Short || deckChoices ? SizeFlags.ExpandFill : SizeFlags.Fill,
+                SizeFlagsVertical = Short || choiceGallery ? SizeFlags.ExpandFill : SizeFlags.Fill,
                 SizeFlagsStretchRatio = 0.55f
             };
             interaction.AddThemeConstantOverride("separation", Short ? 4 : 12);
-            if (deckChoices)
+            if (choiceGallery)
             {
-                choiceGallery = true;
-                choicePanel = BuildDeckChoicePanel(sections, out deckColumns);
+                choicePanel = BuildDeckChoicePanel(header, sections, out deckColumns);
                 choicePanel.AddChild(interaction);
             }
             else body.Controls.AddChild(interaction);
             handColumn = new VBoxContainer { Name = "HandColumn",
-                SizeFlagsHorizontal = Short && !deckChoices ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill,
+                SizeFlagsHorizontal = Short && !choiceGallery ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill,
                 SizeFlagsVertical = SizeFlags.ExpandFill };
             var inspectorColumn = new VBoxContainer
             {
                 Name = "InspectorColumn",
-                CustomMinimumSize = new(deckChoices ? 0 : Short ? 270 : 480, 0),
-                SizeFlagsHorizontal = Short || deckChoices ? SizeFlags.ExpandFill : SizeFlags.Fill
+                CustomMinimumSize = new(choiceGallery ? 0 : Short ? 270 : 480, 0),
+                SizeFlagsHorizontal = Short || choiceGallery ? SizeFlags.ExpandFill : SizeFlags.Fill
             };
-            if (deckChoices)
+            if (choiceGallery)
             {
                 var reading = new ScrollContainer
                 {
@@ -482,12 +481,11 @@ public partial class OnlineArena : Control
             }
             else if (Short) { interaction.AddChild(inspectorColumn); interaction.AddChild(handColumn); }
             else { interaction.AddChild(handColumn); interaction.AddChild(inspectorColumn); }
-            BuildActionArea(inspectorColumn);
-            BuildResultPanel(inspectorColumn);
+            BuildInspector(inspectorColumn);
             if (_fitArenaScroll)
             {
-                // Anything below the board that grows (a card being read, a decision) gives the board less room.
-                if (!deckChoices) interaction.MinimumSizeChanged += FitArenaScroll;
+                // A card being read can change how much room is left for the scrollable board.
+                if (!choiceGallery) interaction.MinimumSizeChanged += FitArenaScroll;
                 arena.MinimumSizeChanged += FitArenaScroll;
                 _root.Resized += FitArenaScroll;
             }
@@ -499,8 +497,8 @@ public partial class OnlineArena : Control
             : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA"
             : DecisionGalleryTitle ?? (ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null);
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
-            SelectInitialSkillCandidate, Short, railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short || deckChoices && Compact,
-                galleryTitle, deckChoices ? 0 : railColumns,
+            SelectInitialSkillCandidate, Short, choiceGallery ? 0 : railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short || choiceGallery && Compact,
+                galleryTitle, choiceGallery ? 0 : railColumns,
                 useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop,
                 sections: sections, ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : index => HandCardOwner(s.MySeat, index),
                 viewerSeat: s.MySeat, stackColumns: desktop ? 7 : 0,
@@ -510,19 +508,19 @@ public partial class OnlineArena : Control
             // The chooser scrolls on its own and carries the decision that confirms it.
             _hand.SizeFlagsVertical = SizeFlags.ExpandFill;
             _hand.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
-            if (deckChoices)
+            if (!_choosingOpeningSkill && (deckChoices || !desktop))
             {
                 _hand.CustomMinimumSize = Vector2.Zero;
                 _hand.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
                 _hand.FollowFocus = true;
             }
-            _decisionBar.GetParent().RemoveChild(_decisionBar);
-            (choicePanel ?? handColumn).AddChild(_decisionBar);
-            if (ChoosingMemoryRecovery || deckChoices)
-            {
-                _movesScroll.CustomMinimumSize = new(0, 60);
-                _moves.Alignment = FlowContainer.AlignmentMode.End;
-            }
+        }
+        BuildDecisionPrompt(choiceGallery ? choicePanel ?? handColumn : null);
+        BuildResultPanel();
+        if (choiceGallery && (ChoosingMemoryRecovery || deckChoices))
+        {
+            _movesScroll.CustomMinimumSize = new(0, 60);
+            _moves.Alignment = FlowContainer.AlignmentMode.End;
         }
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, handVerticalPosition);
@@ -550,9 +548,9 @@ public partial class OnlineArena : Control
 
     private (int Columns, Vector2 Size) FitDeckChoicePanel(Vector2 available, IReadOnlyList<ArenaPresentation.HandSection>? sections, bool desktop)
     {
-        var counts = sections?.Select(section => section.Indices.Count).ToArray() ?? [_deckSearchOptions.Length];
-        var scale = ArenaPresentation.DeckChoiceCardScale(desktop, Short || Compact);
-        var card = new Vector2(126, 184) * scale;
+        var counts = sections?.Select(section => section.Indices.Count).ToArray() ?? [_choosingOpeningSkill ? _availableInitialSkills.Length : SelectableCards.Count];
+        var card = _choosingOpeningSkill ? new Vector2(177, 133) * (Short ? 0.6f : 1.3f) :
+            new Vector2(126, 184) * ArenaPresentation.DeckChoiceCardScale(desktop, Short || Compact);
         const float gap = ArenaPresentation.DeckChoiceGap;
         // Include the surface padding, a vertical scrollbar and room for the side inspector when shown.
         var horizontalChrome = 24 + 16 + (desktop ? 0 : DeckChoiceInspectorWidth + (Short ? 4 : 12));
@@ -569,18 +567,21 @@ public partial class OnlineArena : Control
         return (columns, new(width, height));
     }
 
-    private VBoxContainer BuildDeckChoicePanel(IReadOnlyList<ArenaPresentation.HandSection>? sections, out int columns)
+    private VBoxContainer BuildDeckChoicePanel(Control header, IReadOnlyList<ArenaPresentation.HandSection>? sections, out int columns)
     {
         // A sibling of the board keeps the chooser independent of its minimum size.
         var shade = new ColorRect { Name = "ChoiceShade", Color = new Color(0.01f, 0.02f, 0.05f, 0.74f) };
+        shade.GuiInput += ClearContextOnFieldClick;
         _deckChoiceShade = shade;
         AddChild(shade);
         shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        // Keep the arena menu reachable while a gallery is open, including during preparation.
+        shade.OffsetTop = _root!.OffsetTop + header.GetCombinedMinimumSize().Y + 6;
         var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
         shade.AddChild(center);
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         ArenaViewport.ApplyInsets(center, Compact ? 10 : 24, 12);
-        var available = Size + new Vector2(center.OffsetRight - center.OffsetLeft, center.OffsetBottom - center.OffsetTop);
+        var available = Size + new Vector2(center.OffsetRight - center.OffsetLeft, center.OffsetBottom - center.OffsetTop - shade.OffsetTop);
         var layout = FitDeckChoicePanel(available, sections, desktop: false);
         columns = layout.Columns;
         var panel = new PanelContainer { Name = "ChoicePanel", CustomMinimumSize = layout.Size };
@@ -685,7 +686,8 @@ public partial class OnlineArena : Control
         if (_advanceButton != null) _moveButtons.Add(_advanceButton);
         if (_preparing)
         {
-            BuildPreparationMoves(); RefreshInspector(); return;
+            BuildPreparationMoves(); _decisionHint = _selection.Text;
+            RefreshDecisionPrompt(); RefreshInspector(); return;
         }
         RefreshBoardTargets(); BuildContextMoves(); RefreshPlayableHand();
         _lastDisabled = null; UpdateEnabled();
@@ -735,7 +737,7 @@ public partial class OnlineArena : Control
     private void PlayOption(int index, DuelSnapshot state)
     {
         if (!Connection.Ready || Connection.PlayPending || IsAnimating) return;
-        ClearRejection(); RememberPlayAnchor();
+        ClearRejection(); RememberPlayAnchor(state.Options[index]);
         if (state.Options[index].Move.Kind == DuelMoveKind.Concede) ConfirmConcede(index, state);
         else Connection.Play(index, state.Options[index].RequiredDiscards > 0 ? _selected : null, state.Revision, RoomCode, state);
     }

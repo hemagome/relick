@@ -50,7 +50,7 @@ public partial class OnlineArena
             PresentInitialSkillChoice(room, skills, true, false, beforeDeal); await Layout();
             Check(InitialSkillConfirmButton!.Disabled && _snapshot!.Players[seat].Hand.Length == 0, "Se reparte antes de elegir habilidad.");
             var buildCount = BoardBuildCount; var confirmId = InitialSkillConfirmButton.GetInstanceId();
-            GuiInputTestDriver.Click((Control)_root!.FindChild("InitialSkillCard0", true, false)); await Layout();
+            GuiInputTestDriver.Click(_initialSkillCards[0]); await Layout();
             Check(BoardBuildCount == buildCount && InitialSkillConfirmButton!.GetInstanceId() == confirmId, "Elegir habilidad reconstruye el tablero.");
             Check(!InitialSkillConfirmButton!.Disabled && _initialSkillCandidate == "destiny-shuffle", "No se puede elegir Destiny.");
             Check(_inspector.TitleLabel.Text == CardCatalog.Destiny.Name && _inspector.Attributes.Visible &&

@@ -6,25 +6,31 @@ namespace Relick;
 public partial class OnlineArena
 {
     private PanelContainer? _resultPanel;
+    private CenterContainer? _resultControls;
     private Label? _resultStatus, _resultCloseHint;
     private Button? _resultReturn;
     private bool _resultDismissed;
     private bool ResultSettled => !IsAnimating && _pendingPortraits.Count == 0 && _portraits.All(p => !p.IsActionPlaying);
 
-    private void BuildResultPanel(VBoxContainer parent)
+    private void BuildResultPanel()
     {
+        if (_resultControls != null) { RemoveChild(_resultControls); _resultControls.QueueFree(); _resultControls = null; }
         _resultPanel = null; _resultReturn = null; _resultStatus = null;
         if (_snapshot?.Winner is not int winner) return;
         var s = _snapshot;
-        var panel = new PanelContainer { Name = "DuelResultPanel", Visible = false,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        panel.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame));
-        parent.AddChild(panel); _resultPanel = panel;
+        _resultControls = new CenterContainer { Name = "DuelResultControls", MouseFilter = MouseFilterEnum.Ignore, ZIndex = 21 };
+        AddChild(_resultControls); _resultControls.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var panel = new PanelContainer { Name = "DuelResultPanel", Visible = false, CustomMinimumSize = new(Math.Min(Size.X - 40, Short ? 430 : 520), 0) };
+        var accent = winner == -1 ? BoardArt.Gold : winner == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral;
+        panel.AddThemeStyleboxOverride("panel", RelickVisuals.Glass(RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Surface,
+            accent, 11, 10, BoardArt.Tint(accent, 0.25f)));
+        _resultControls.AddChild(panel); _resultPanel = panel;
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 6); panel.AddChild(column);
         var title = ArenaPresentation.Text(winner == -1 ? "EMPATE" : winner == s.MySeat ? "VICTORIA" : "DERROTA", Short ? 22 : 28,
             winner == -1 ? BoardArt.Gold : winner == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral);
-        title.Name = "DuelResultTitle"; column.AddChild(title);
-        var reading = new ScrollContainer { Name = "DuelResultReading", CustomMinimumSize = new(0, 40),
+        title.Name = "DuelResultTitle"; title.HorizontalAlignment = HorizontalAlignment.Center;
+        title.AddThemeFontOverride("font", RelickVisuals.Display); column.AddChild(title);
+        var reading = new ScrollContainer { Name = "DuelResultReading", CustomMinimumSize = new(0, Short ? 104 : 132),
             SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         column.AddChild(reading);
         var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -53,10 +59,15 @@ public partial class OnlineArena
 
     private void UpdateResultPresentation()
     {
-        if (_resultPanel == null) { HideResultOverlay(); return; }
+        if (_resultPanel == null) return;
         var visible = !_resultDismissed && ResultSettled;
-        UpdateResultOverlay(visible);
-        _resultPanel.Visible = visible; _actionDock.Visible = !visible;
+        if (visible && !_resultPanel.Visible)
+        {
+            _resultPanel.Modulate = _impacts.ReducedMotion ? Colors.White : new Color(1, 1, 1, 0);
+            if (!_impacts.ReducedMotion)
+                _resultPanel.CreateTween().TweenProperty(_resultPanel, "modulate:a", 1f, 0.25);
+        }
+        _resultPanel.Visible = visible;
         var closing = Connection.PendingRoomRequest == RoomRequest.Leave;
         _resultReturn!.Disabled = !Connection.Ready || Connection.PendingRoomRequest != RoomRequest.None || !ResultSettled;
         _resultReturn.Text = closing ? "Cerrando sala…" : "Volver al lobby";

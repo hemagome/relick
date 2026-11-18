@@ -50,7 +50,7 @@ public partial class OnlineArena
             ShakeRejected();
         }
         if (_root == null || _snapshot == null) return;
-        _inspector.SetAlert(ShowingRejection ? _rejectionText : "");
+        RefreshDecisionPrompt();
         RefreshStageStatus(_snapshot);
     }
 
@@ -94,13 +94,15 @@ public partial class OnlineArena
         if (_stageStatusIcon != null) { _stageStatusIcon.Icon = icon; _stageStatusIcon.Color = color; _stageStatusIcon.QueueRedraw(); }
     }
 
+    private bool ShowCardActivations => _snapshot is { Winner: null } && !_preparing && !ChoosingRecycling && !ChoosingEffectCards;
+
     /// <summary>Marks hand cards that have at least one play the server authorized for this snapshot.</summary>
     private void RefreshPlayableHand()
     {
         var s = _snapshot;
         var playable = new HashSet<int>();
-        if (s != null && !_preparing && s.Winner == null && !ChoosingRecycling && !ChoosingEffectCards)
-            foreach (var option in s.Options)
+        if (ShowCardActivations)
+            foreach (var option in s!.Options)
                 if (option.Move.Index >= 0 && option.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or
                     DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Exchange)
                     playable.Add(option.Move.Index);

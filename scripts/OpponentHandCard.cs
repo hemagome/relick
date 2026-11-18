@@ -59,13 +59,5 @@ public partial class OpponentHandCard : Button
             DrawTextureRect(_back, rect, false);
         }
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, IsHovered(), HasFocus());
-        if (_back != null || OriginalOwner is not { } owner || ViewerSeat < 0) return;
-        var mine = owner.Seat == ViewerSeat;
-        var accent = mine ? RelickVisuals.State.Own : RelickVisuals.State.Rival;
-        BoardArt.Outline(this, new Rect2(Vector2.One, Size - Vector2.One * 2), accent, 5, mine ? 2 : 1);
-        if (!mine) return;
-        var badge = new Rect2(Size.X / 2 - 18, Size.Y - 18, 36, 13);
-        BoardArt.Plate(this, badge, new Color("0b1020"), accent, 3, 1);
-        BoardArt.CenterText(this, "TUYA", new(badge.GetCenter().X, badge.Position.Y + 10), 7, accent);
     }
 }

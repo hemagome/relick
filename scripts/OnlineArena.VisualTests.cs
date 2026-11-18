@@ -326,6 +326,8 @@ public partial class OnlineArena
                     var status = step < 2 ? "×3" : step == 2 ? "×2" : "";
                     if (equipment?.StatusText != status || snapshot.Stage != Phase.Combat || snapshot.Players[owner].Health != (step == 3 ? 5 : 3))
                         throw new Exception("Tótem pierde la pila, etapa o vida al reconstruir el tablero.");
+                    if (equipment.Playable != (step == 1 && owner == seat) || equipment.Targetable)
+                        throw new Exception("Tótem debe brillar solo mientras su dueño puede cancelar el daño.");
                     if (step == 1)
                     {
                         var options = snapshot.Options.Where(o => o.Move.Kind == DuelMoveKind.Totem).ToArray();
@@ -762,8 +764,10 @@ public partial class OnlineArena
                     }
                     if (!track.ExchangeButtons[1].Disabled)
                         throw new Exception("Una ranura de canje vacía se puede seleccionar.");
-                    if ((track.BonusButton.Targetable ? 1 : 0) + (track.ExchangeButtons[0].Targetable ? 1 : 0) != (step == 0 && actor == seat ? 2 : 0))
-                        throw new Exception("Jessica no ilumina sus zonas al dueño en su combate, o permite repetir el efecto.");
+                    var canActivate = step == 0 && actor == seat;
+                    if (track.BonusButton.Playable != canActivate || exchange.Playable != canActivate ||
+                        track.BonusButton.Targetable || exchange.Targetable || track.ExchangeButtons[1].Playable)
+                        throw new Exception("El brillo de Jessica debe marcar solo las copias que el dueño puede activar desde Bonus y canje.");
                     if (step == 0 && actor == seat)
                     {
                         SelectField(actor, FieldZone.Bonus, -1);
@@ -1047,7 +1051,7 @@ public partial class OnlineArena
         {
             if (button != null && RectVisible(button, button.GetGlobalRect()) &&
                 GetGlobalRect().Grow(1).Encloses(button.GetGlobalRect())) return true;
-            issues.Add($"{context} · botón {button?.GetGlobalRect()} · pantalla {Size}");
+            issues.Add($"{context} · botón {button?.GetGlobalRect()} · pantalla {Size} · panel {(FindChild("ChoicePanel", true, false) as Control)?.Size} · mano {_hand?.Size}/{_hand?.GetCombinedMinimumSize()} · pie {_decisionBar.Size}/{_decisionBar.GetCombinedMinimumSize()}");
             return false;
         }
         var window = GetWindow();
@@ -1239,6 +1243,8 @@ public partial class OnlineArena
                     var skill = _root!.FindChild($"Skill{relative}_2", true, false) as SkillTile;
                     if (skill is not { HasSkillArtwork: true } || skill.Skill?.Id != CardCatalog.Reverse.Id || skill.Counters != (step == 0 ? 0 : 1))
                         throw new Exception("Reverse no presenta la ilustración o los aumentos públicos de esta copia.");
+                    if (skill.Playable != (step != 1 && actor == seat) || skill.Targetable)
+                        throw new Exception("Reverse debe brillar solo para el dueño cuando puede relanzar o proteger una carta.");
                     if (step == 0 && PresentsKind(DuelMoveKind.LearningDie) != (actor == seat))
                         throw new Exception("El aprendizaje no ofrece su relanzamiento al dueño correcto.");
                     if (step == 2 && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.ProtectDestruction && o.Move.Index >= 0 && PresentsOption(o)) != (actor == seat))
@@ -1411,9 +1417,9 @@ public partial class OnlineArena
                     GuiInputTestDriver.Click(card); await Layout();
                     var discard = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Discard && o.Move.Index == 0);
                     if (PresentedButton(discard) is not { Text: "Descartar" } button ||
-                        button.GetParent() != _cardActions || !button.IsVisibleInTree() || _cardActionAnchor != card ||
+                        button.GetParent() != _moves || !button.IsVisibleInTree() || !_selected.Contains(0) ||
                         !new Rect2(GlobalPosition, Size).Grow(1).Encloses(button.GetGlobalRect()))
-                        throw new Exception($"Descartar no está visible junto a la carta elegida en {size}, asiento {seat}.");
+                        throw new Exception($"Descartar no está visible en el aviso central para la carta elegida en {size}, asiento {seat}.");
                 }
                 else if (_snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Discard))
                     throw new Exception("El rival puede descartar la mano activa.");

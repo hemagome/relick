@@ -153,7 +153,17 @@ public partial class OnlineArena
                 if (seat == 0 && index is 0 or 2 or 3) await Capture($"inspector-{definition.Id}-{size.X}x{size.Y}");
             }
             Check(_inspector.ClassificationLabel.Text == "Código Personaje" && _inspector.DescriptionLabel.Text == "Roba 2 cartas.", "Senshuni pierde la clasificación completa o repite su robo.");
-            ClearContext(); SelectSkill(0); await Layout();
+            var selectedCard = _handCards[^1];
+            Check(selectedCard.Chosen, "La carta debe estar seleccionada antes de hacer clic en el campo.");
+            ClickEmptyField(); await Layout();
+            Check(_selected.Count == 0 && !selectedCard.Chosen && !_inspector.HasCard,
+                $"El campo vacío no deselecciona la carta de la mano en {size}.");
+            if (!Short)
+            {
+                await ToSignal(GetTree().CreateTimer(0.65), SceneTreeTimer.SignalName.Timeout);
+                Check(selectedCard.DrawnLift < 0.1f, $"La carta sigue elevada tras hacer clic en el campo vacío en {size}.");
+            }
+            SelectSkill(0); await Layout();
             var values = _inspector.Attributes.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text).ToArray();
             Check(values.Contains("4") && values.Contains("6"), "Reverse no muestra el daño de su copia con contadores.");
             SelectSkill(1); await Layout();

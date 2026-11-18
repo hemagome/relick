@@ -87,14 +87,12 @@ public partial class CardInspector : PanelContainer
     internal Label DescriptionLabel { get; private set; } = null!;
     internal Label CounterLabel { get; private set; } = null!;
     internal HBoxContainer Attributes { get; private set; } = null!;
-    internal Label AlertLabel { get; private set; } = null!;
     internal VBoxContainer Outlook { get; private set; } = null!;
     internal HBoxContainer Recipe { get; private set; } = null!;
     internal Label RecipeNames { get; private set; } = null!;
     private readonly List<TextureRect> _recipeCards = [];
     internal Label OutlookCaption { get; private set; } = null!;
     internal Label OutlookNotes { get; private set; } = null!;
-    private PanelContainer _alert = null!;
     private readonly List<Label> _outlookValues = [];
     internal IReadOnlyList<Label> OutlookValues => _outlookValues;
     private readonly List<Label> _attributeValues = [];
@@ -116,16 +114,6 @@ public partial class CardInspector : PanelContainer
         style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 4 : 8;
         AddThemeStyleboxOverride("panel", style);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", ShortScreen ? 3 : 6); AddChild(column);
-        // A refused play is told here, where the player is already looking, not in the header status line.
-        _alert = new PanelContainer { Name = "PlayRejection", Visible = false };
-        var alertStyle = RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.State.Danger, 0.16f), BoardArt.Tint(RelickVisuals.State.Danger, 0.85f), 6, 2);
-        alertStyle.ContentMarginTop = alertStyle.ContentMarginBottom = 6; alertStyle.ContentMarginLeft = 8;
-        _alert.AddThemeStyleboxOverride("panel", alertStyle); column.AddChild(_alert);
-        var alertRow = new HBoxContainer(); alertRow.AddThemeConstantOverride("separation", 8); _alert.AddChild(alertRow);
-        alertRow.AddChild(new IconView { Icon = GameIcon.Alert, Color = RelickVisuals.State.Danger,
-            CustomMinimumSize = new(20, 20), SizeFlagsVertical = SizeFlags.ShrinkCenter });
-        AlertLabel = Wrapped("PlayRejectionText", ShortScreen ? 13 : 14, BoardArt.Ink); alertRow.AddChild(AlertLabel);
-        // Decisions and card identity remain visible while only the description scrolls.
         HintLabel = Wrapped("ContextHint", ShortScreen ? 13 : 14, BoardArt.Ink); column.AddChild(HintLabel);
         var header = new VBoxContainer { Name = "InspectorHeader" };
         header.AddThemeConstantOverride("separation", ShortScreen ? 2 : 6); column.AddChild(header);
@@ -227,13 +215,6 @@ public partial class CardInspector : PanelContainer
         for (var face = 0; face < _outlookValues.Count; face++) _outlookValues[face].Text = outlook.Damage(face + 4);
         OutlookNotes.Text = outlook.Notes;
         OutlookNotes.Visible = OutlookNotes.Text.Length > 0;
-    }
-
-    /// <summary>Shows or clears the refused-play notice; unchanged text does no work, so it may be called every frame.</summary>
-    internal void SetAlert(string text)
-    {
-        if (AlertLabel.Text == text && _alert.Visible == text.Length > 0) return;
-        AlertLabel.Text = text; AlertLabel.TooltipText = text; _alert.Visible = text.Length > 0;
     }
 
     private static Label Wrapped(string name, int size, Color? color = null)

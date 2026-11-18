@@ -679,7 +679,7 @@ public partial class OnlineArena
         if (_companion is not { } pair) return;
         _companion = null;
         if (landed)
-            _impacts.Ring(pair.Destination, pair.Flight.Event.Player == _snapshot?.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral);
+            _impacts.Ring(pair.Destination, RelickVisuals.State.Focus);
         SetDestinationPending(pair.Flight, GodotObject.IsInstanceValid(pair.Target) ? pair.Target : null, false);
         pair.Node.QueueFree();
     }
@@ -690,8 +690,7 @@ public partial class OnlineArena
         if (landed && _activeFlight is { } arrived && !_placementPreview && arrived.Event.Kind != DuelVisualKind.Shuffle)
         {
             // A short flash marks where the card came to rest.
-            var own = (arrived.IsSteal ? arrived.Event.Target : arrived.Event.Player) == _snapshot?.MySeat;
-            var color = arrived.IsPlacement ? BoardArt.Gold : own ? ArenaPresentation.Mint : ArenaPresentation.Coral;
+            var color = arrived.IsPlacement ? BoardArt.Gold : RelickVisuals.State.Focus;
             _impacts.Ring(arrived.TurnsSideways ? PortraitFootprint(_flightDestination) : _flightDestination, color);
         }
         if (_activeFlight != null)

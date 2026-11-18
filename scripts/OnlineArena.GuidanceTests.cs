@@ -71,6 +71,16 @@ public partial class OnlineArena
                 var own = seat == actor;
                 Check(ArenaGuidance.SuggestAdvance(_snapshot!) == own, "La invitación no respeta al jugador que decide.");
                 Check(own ? _selection.Text.Contains("Pasa a acciones") : _selection.Text.Contains("rival") && !_selection.Text.Contains("COMBO"), "La instrucción no explica avanzar o esperar.");
+                async Task CheckSilentInspection()
+                {
+                    var code = _handCards[2];
+                    _hand!.EnsureControlVisible(code); await Layout();
+                    code.Disabled = false;
+                    GuiInputTestDriver.Click(code); await Layout();
+                    Check(_decisionPopup is { Visible: false } && _selection.Text.Length == 0 &&
+                        _inspector.HasCard && _contextTitle.Text == CardCatalog.Senshuni.Name,
+                        $"Consultar un código {(!own ? "en el turno rival" : "fuera de acciones")} abre un aviso u oculta la carta en {size}.");
+                }
                 if (own)
                 {
                     var button = _advanceButton!; var rect = button.GetGlobalRect();
@@ -87,9 +97,7 @@ public partial class OnlineArena
                     SelectCard(0);
                     await Layout();
                     Check(_selection.Text.Contains("Ya realizaste tu ataque"), "Tocar un Ataque agotado no explica su bloqueo.");
-                    SelectCard(2);
-                    await Layout();
-                    Check(_selection.Text.Contains("fase de acciones"), "Tocar un código en combate no explica cuándo jugarlo.");
+                    await CheckSilentInspection();
                     Check(_advanceButton == button && button.GetGlobalRect() == rect,
                         $"El inspector reemplaza o desplaza el avance en {size}.");
                     ClearContext(); RefreshRuntimeGuidance();
@@ -122,6 +130,7 @@ public partial class OnlineArena
                             $"El avance pierde su posición o el color de destino para {phase} en {size}.");
                     }
                 }
+                else await CheckSilentInspection();
                 Check(game.SaveSnapshot() == before, "El pulso o la consulta ejecutan una jugada automáticamente.");
                 var minimum = _root!.GetCombinedMinimumSize();
                 Check(minimum.X <= Size.X + 1 && minimum.Y <= Size.Y + 1, $"Las instrucciones desbordan {size}: {minimum}.");

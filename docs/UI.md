@@ -16,15 +16,15 @@ Con un lienzo de al menos 1400×980 unidades lógicas, `OnlineArena` construye e
 
 - **Lienzo único.** `BoardCanvas` coloca todas las zonas en un espacio de diseño de 1440×1024 que se escala de forma uniforme a la ventana. Todas las cartas ocupan 138×193; las zonas apaisadas (habilidades y canje) usan esa misma carta girada. Con una ventana más estrecha que 16:9 el lienzo se reduce entero y el margen sobrante se reparte por encima y por debajo de los campos.
 - **Campos enfrentados.** `ArenaPresentation.Field` construye el campo propio en la mitad inferior; el rival es el mismo campo girado 180°. Desde el borde exterior: los dos espacios de canje apaisados, el Relikario (retrato, nombre, vidas, cristales de acción, Destreza y PR) sobre su equipo y las cartas sobre el Relikario, las cuatro habilidades en un bloque 2×2 (500 y 1000 PR arriba, 0 y 300 PR abajo), Memoria sobre Corruptas y el mazo en la esquina. El espacio junto al mazo queda libre para un Relikario que juegue con dos mazos. Un espacio de habilidad vacío solo muestra su coste, grande y centrado.
-- **Bonus y Área.** Cada jugador tiene un marco con dos espacios, Bonus y Área, montado sobre la línea central —mitad en cada campo— y junto a sus canjes. El espacio de Área es todavía un marcador: el estado del juego aún no incluye áreas.
+- **Bonus y Área.** Cada jugador tiene un marco con dos espacios, Bonus y Área, montado sobre la línea central y junto a sus canjes. El marco y los espacios se delinean en verde para el jugador y en rojo para el rival.
 - **Barra de fase.** Sobre la línea central, `ArenaPresentation.PhaseBar` muestra el turno, las cuatro etapas (las completadas con confirmación, la actual resaltada) y el botón de avance. Toma el color de quien tiene el turno; sus celdas tienen ancho fijo para que el botón no se mueva entre etapas. Conserva los nombres `CombatCenter`, `StageIndicator` y `TurnDock`.
-- **Manos.** La mano propia cuelga del borde inferior con las cartas al tamaño del tablero: en reposo solo el cuadro de efecto queda bajo la pantalla. La carta bajo el cursor, con foco o seleccionada sube hasta verse completa y sus acciones la acompañan; el área de pulsación no se mueve. La mano rival cuelga del borde superior y solo asoma su franja inferior.
+- **Manos.** La mano propia cuelga del borde inferior con las cartas al tamaño del tablero: en reposo solo el cuadro de efecto queda bajo la pantalla. La carta bajo el cursor, con foco o seleccionada sube hasta verse completa y sus acciones la acompañan; el área de pulsación no se mueve. Un borde rojo identifica las cartas del rival que tienes en mano. La mano rival cuelga del borde superior y solo asoma su franja inferior.
 - **Elecciones.** Elegir entre cartas que no están en la mano —Disquete, reciclaje, búsqueda en el mazo, Resetear la Mente, corrupción, código de Relikia y habilidad inicial— abre un panel sobre el tablero atenuado. Las memorias se apilan en bloques con el color de su dueño y la decisión que confirma la elección va al pie del panel.
 - **Riel de lectura.** A la derecha: COMBO y Menú, la resolución en curso y, debajo, la carta señalada o seleccionada con su inspector. Cuando no hay carta que leer, ese espacio muestra el historial de jugadas públicas, la más reciente primero y con el color de quien jugó; el botón Historial ya no existe en escritorio y el menú conserva el diálogo completo.
 - **Relikia.** El contador de PR del jugador abre un menú que solo nombra los cuatro efectos. El efecto bajo el cursor se explica en el riel con su lámina (`assets/relikia/`) y su coste.
 - **Lienzo lógico.** En escritorio el alto lógico es 1024 y el ancho sigue la proporción de la ventana (entre 1440 y 2280), de modo que un monitor panorámico no muestra bandas laterales.
 
-Entre el tablero de escritorio y las pantallas compactas (ancho de 1100 o más y menos de 980 de alto, como 1366×768 o un tablet), los dos campos van dentro de `ArenaScroll`. Si caben, ocupan su alto completo; si no, el desplazamiento recibe solo el alto que dejan la mano, el inspector y sus decisiones, de modo que el botón que confirma una elección —habilidad inicial, Disquete, reciclaje— nunca queda fuera de la ventana. `--choice-preview-dir=DIRECTORIO` (con `--choice-sizes=1366x768,…` opcional) informa y captura esos botones en cada tamaño.
+Entre el tablero de escritorio y las pantallas compactas (ancho de 1100 o más y menos de 980 de alto, como 1366×768 o un tablet), los dos campos van dentro de `ArenaScroll`. Si caben, ocupan su alto completo. En caso contrario, el desplazamiento ocupa el espacio que dejan la mano y el inspector. Las galerías centradas, como habilidad inicial, Disquete y reciclaje, conservan su confirmación visible al desplazarse. `--choice-preview-dir=DIRECTORIO` (con `--choice-sizes=1366x768,…` opcional) informa y captura esos botones en cada tamaño.
 
 `./jugar.sh -- --pvp-ui-test --board-preview-dir=DIRECTORIO` guarda capturas del tablero en reposo, con una carta seleccionada, con el menú de Relikia y con Disquete, a 1820×1024 y 1440×1024.
 
@@ -92,8 +92,8 @@ pantallas pequeñas; los campos conservan el texto para poder corregirlo.
 
 El duelo terminado presenta victoria, derrota o empate, causa pública y vidas/PR
 finales de ambos jugadores. Espera al dado, los movimientos de cartas y el último
-impacto antes de reemplazar el inspector por el resultado. «Revisar tablero»
-recupera la lectura de cartas; Menú → Ver resultado permite volver. El historial
+impacto antes de abrir el resultado en el centro. «Revisar tablero» cierra el
+panel y Menú → Ver resultado permite volver. El historial
 sigue disponible. «Volver al lobby» cierra la sala, muestra la espera de
 confirmación y permite a cada jugador terminar de leer su resultado aunque el
 rival ya la haya cerrado. El resultado autorizado se conserva en memoria hasta
@@ -113,6 +113,10 @@ inventada para resultados antiguos sin ese dato.
 Al pulsar una carta aparecen junto a ella las acciones disponibles, con iconos y
 etiquetas breves como Jugar, Equipar, Canjear o Atacar. Si hay varias habilidades
 para atacar, Atacar permite elegir una de las que se resaltan en el tablero.
+Las decisiones pendientes, las respuestas y las confirmaciones se abren en el
+centro. «Ver tablero» recoge el aviso temporalmente y «Volver a la decisión»
+recupera sus opciones y la selección. Las galerías para elegir cartas llevan
+su confirmación en el pie del panel.
 El inspector acrílico muestra el nombre, el efecto y el coste de la carta.
 Pasar el cursor sobre una carta visible abre su vista previa.
 Un clic en el campo vacío limpia la selección del duelo y cierra la vista previa.
@@ -140,10 +144,10 @@ El coste ocupa una sola fila, separado de los botones, y prioriza la opción
 autorizada de la acción actual. Al consultar una carta sin una acción disponible
 se puede mostrar su coste de catálogo; eso no habilita jugadas. Los contadores y
 el daño de una habilidad enseñada corresponden a su copia autorizada. Limpiar la
-selección retira esos datos. Sin una carta para mostrar, el inspector se contrae a la
-instrucción actual; no reserva una zona de lectura vacía. Al consultar una carta,
-clasificación, nombre, atributos y contadores permanecen en la cabecera. Solo la
-descripción se desplaza: instrucción, coste y botones quedan fuera de esa lectura.
+selección retira esos datos. Sin una carta para mostrar, el inspector se contrae y
+el riel de escritorio muestra el historial. Al consultar una carta, clasificación,
+nombre, atributos y contadores permanecen en la cabecera. Solo se desplaza la
+descripción. El coste queda visible debajo.
 En escritorio, la lectura recibe parte del espacio libre al seleccionar una carta.
 Elegir la habilidad inicial actualiza el inspector existente sin reconstruir la arena.
 
@@ -182,7 +186,7 @@ cartas ni durante el envío. El cero sigue visible con tratamiento atenuado y el
 contador se omite durante la preparación. Los costes de cartas conservan su
 campo único; el título contextual no repite el presupuesto disponible.
 
-El inspector prioriza una instrucción concreta en descartes, objetivos, respuestas y dados. Al tocar una carta sin jugadas disponibles explica el bloqueo usando la fase, los recursos visibles y las opciones autorizadas del propio jugador. La espera solo anuncia un COMBO si el servidor ofrece uno. Enviar una decisión, perder conexión y resolver una animación tienen mensajes específicos; una instrucción nueva vuelve al inicio de la lectura. Los costes permanecen en su campo único.
+El aviso central da la instrucción de descartes, objetivos, respuestas y dados. Puedes consultar un código fuera de su fase o una carta que no es COMBO durante el turno rival sin abrir un aviso. Durante el turno rival, el aviso de COMBO aparece cuando hay una respuesta autorizada. La mano y el campo se pueden seguir consultando mientras se decide.
 
 `ArenaGuidance.SuggestAdvance` consulta todas las opciones del snapshot, independientemente de la carta seleccionada. Solo sugiere avanzar al jugador de turno que debe decidir, en robo, combate, acciones o final, si existe `Advance` y las únicas otras opciones son abandonar. Un COMBO legal, evolución, aprendizaje, Bonus/canje o Relikia impiden la sugerencia. Un COMBO sin sus condiciones cumplidas no la impide.
 
@@ -195,8 +199,8 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. C
 Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas: todas leen el snapshot autorizado y la conexión.
 
 - **Estado en la barra de fase.** En el tablero de escritorio, la primera celda de la barra (`StageStatusCell`) dice con texto e icono qué ocurre. Los estados posibles son «TU TURNO», «RESPONDE» (decides durante el turno rival), «RIVAL RESPONDE», «TURNO RIVAL», «ENVIANDO…», «RESOLVIENDO…», «JUGADA RECHAZADA» y «SIN CONEXIÓN». Debajo aparecen el turno y la fase especial (por ejemplo, «TURNO 02 · DEFENSA»). El color solo repite el mensaje. La celda se actualiza en cada fotograma sin reconstruir la arena. Cuando no se puede avanzar, un hueco del tamaño del botón de avance mantiene el ancho de la barra en el turno rival. Las composiciones compactas conservan su indicador propio, que ya incluía «TÚ/RIVAL».
-- **Jugada rechazada.** `LobbyConnection` publica `PlayRejection` y `PlayRejectionSerial` cuando el servidor rechaza una jugada o una preferencia COMBO, o cuando la partida cambió antes de enviarla. Una entrega incierta no cuenta como rechazo: conserva su orden para la reconexión. El inspector muestra el motivo en un recuadro de peligro durante seis segundos o hasta la siguiente jugada. El recuadro sobrevive a la reconstrucción del tablero. Los rechazos anteriores a abrir la arena se ignoran.
-- **Cartas jugables.** Una carta de la mano con al menos una opción autorizada de enseñar, atacar, jugar o activar, equipar o canjear lleva un borde menta fijo y un rayo en la esquina superior izquierda, que el abanico nunca tapa. La señal no late, para no competir con los objetivos, y queda atenuada mientras la mano está bloqueada. Los COMBO legales durante el turno rival también se marcan. No se marca nada en la preparación, las galerías de elección ni el resultado.
+- **Jugada rechazada.** `LobbyConnection` publica `PlayRejection` y `PlayRejectionSerial` cuando el servidor rechaza una jugada o una preferencia COMBO, o cuando la partida cambió antes de enviarla. Una entrega incierta conserva su orden para la reconexión. El aviso central muestra el motivo durante seis segundos o hasta la siguiente jugada y sobrevive a la reconstrucción del tablero. Los rechazos anteriores a abrir la arena se ignoran.
+- **Cartas jugables.** Un halo amarillo fijo rodea las cartas que tienen una jugada autorizada. Incluye los COMBO disponibles durante el turno rival y las cartas activables en el campo, como Jessica Lee en Bonus o canje. El cian señala los objetivos de una jugada. El halo en mano se atenúa durante el bloqueo y se oculta durante la preparación, las galerías de elección y el resultado.
 - **Tabla de ataque.** Al leer una habilidad, el inspector muestra el resultado por cara final del D6, en el orden del manual: 1–3 fallo, 4 reducido (mitad redondeada hacia arriba, con `GameEngine.DamageFor`), 5 normal y 6 crítico.
   - Usa los aumentos de esa copia y avisa de Lv 2 (+1 al dado salvo con 1) y de Estrella del Fontanero (daño multiplicado), que son públicos.
   - Magnet muestra «½·1D6» y «1D6».
@@ -248,7 +252,7 @@ Cuatro efectos cosméticos. Ninguno forma parte de `IsAnimating`: no bloquean ju
 - **Jugada rechazada.** Además del aviso del inspector, la carta o zona cuya acción se envió se sacude 0,2 s. Lo que se desplaza es su posición dibujada, que vuelve exactamente a su sitio.
 - **Golpe final.** Con 0 vidas, el brillo rojo del corazón late en un ciclo de 1,6 s. Con movimiento reducido el brillo queda fijo.
 - **Resultado central.** Cuando el duelo termina y ya acabaron el dado, los vuelos y el último impacto, aparece un momento central sobre el tapete. Muestra el resultado, la causa pública y las vidas y PR finales, y entra con una escala breve. Nunca toma el puntero y no tapa el riel, que conserva «Volver al lobby», «Revisar tablero» y el historial. Pasados 1,5 s, cualquier clic o tecla lo retira sin consumir el evento. «Revisar tablero» también lo cierra, y no reaparece para el mismo duelo.
-- **Código jugado.** Cuando el historial público registra la activación de un código nuevo, de cualquiera de los dos jugadores, su ilustración aparece 0,8 s sobre el centro del tablero con el color del jugador. Una decisión dentro de la misma resolución, como elegir la carta de Disquete, no repite el destello.
+- **Código jugado.** Cuando el historial público registra la activación de un código nuevo, su ilustración aparece 0,8 s sobre el centro del tablero con un destello dorado. Una decisión dentro de la misma resolución, como elegir la carta de Disquete, no repite el destello.
 
 - **Creación de un Código Trampa.** Respeta el orden del reglamento (§ 4.6 y § 5.3): primero el canje se completa, con las dos cartas a Memoria, el Bonus a la mano y la reposición; después se decide si crear la trampa.
   - Al decidir, el inspector muestra la trampa y las dos cartas canjeadas que cumplieron su receta, en miniatura junto a «Canjeaste X y Y». Ese dato viene de `DuelSnapshot.TrapIngredients`, que los servidores anteriores dejan vacío.

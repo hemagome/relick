@@ -41,6 +41,16 @@ public partial class OnlineArena
 
             var zone = (ZoneCardButton)ZoneNode(1, CardZone.Area, -1)!;
             var bonus = (ZoneCardButton)ZoneNode(1, CardZone.Bonus, -1)!;
+            for (var relative = 0; relative < 2; relative++)
+            {
+                var track = _exchangeTracks[relative]!;
+                var accent = relative == 0 ? RelickVisuals.State.Own : RelickVisuals.State.Rival;
+                if (track.BonusButton.Accent != accent || track.AreaButton?.Accent != accent)
+                    throw new Exception($"Bonus y Área pierden el color de su dueño en {size}.");
+                if (Desktop && (_root!.FindChild($"BonusFrame{relative}", true, false) is not Panel frame ||
+                    frame.GetThemeStylebox("panel") is not StyleBoxFlat style || style.BorderColor != BoardArt.Tint(accent, 0.8f)))
+                    throw new Exception($"El marco de Bonus y Área pierde el color de su dueño en {size}.");
+            }
             if (zone.Card?.Id != area || zone.StatusText != "LADO B" || bonus.Card?.Id != attack ||
                 !zone.Targetable || !bonus.Targetable || zone.GetGlobalRect().Intersects(bonus.GetGlobalRect()))
                 throw new Exception($"El Área y el Bonus deben aparecer por separado y ser seleccionables en {size}.");

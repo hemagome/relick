@@ -81,7 +81,7 @@ internal static class ArenaGuidance
         var normal = s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final;
         if (card.IsCombo && s.AutoPassCombos && (!own || !normal))
             return "Pulsa COMBO hasta ver la mano alzada para responder con esta carta.";
-        if (!own && !card.IsCombo) return "Es el turno del rival. Puedes consultar esta carta mientras esperas.";
+        if (!own && !card.IsCombo) return "";
         if (!normal) return "Completa primero la decisión pendiente. " + Instruction(s);
         if (card.Kind is CardKind.Attack or CardKind.Skill)
         {
@@ -101,7 +101,7 @@ internal static class ArenaGuidance
         if (card.Kind == CardKind.Equipment && s.Phase != Phase.Actions) return "Los equipos se colocan en tu fase de acciones.";
         if (card.Kind == CardKind.Area && s.Phase != Phase.Actions) return "Las Áreas se activan en tu fase de acciones.";
         if (card.Kind == CardKind.Area && p.Area != null) return "Retira primero tu Área activa.";
-        if (card.Kind == CardKind.Code && !card.IsCombo && s.Phase != Phase.Actions) return "Este código se juega en tu fase de acciones.";
+        if (card.Kind == CardKind.Code && !card.IsCombo && s.Phase != Phase.Actions) return "";
         if (p.Actions < (card.Kind == CardKind.Equipment ? 1 : card.ActionCost)) return "No te quedan acciones suficientes para jugar esta carta.";
         if (s.Turn < card.EarliestTurn) return $"Esta carta puede activarse a partir del turno {card.EarliestTurn}.";
         if (p.Pr < GameEngine.CodePrCost(card, s.LegacyBlueEgg)) return "No tienes PR suficientes para activar esta carta.";

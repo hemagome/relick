@@ -52,6 +52,7 @@ public partial class OnlineArena
         var origin = GlobalPosition;
         Rect2 Local(Control c) { var r = c.GetGlobalRect(); return new(r.Position - origin, r.Size); }
         var controls = new List<Control>(_moveButtons.Where(b => IsInstanceValid(b) && b.IsVisibleInTree()));
+        if (_decisionPopup is { Visible: true }) controls.Add(_decisionPopup);
         if (_cardActions.IsVisibleInTree()) controls.Add(_cardActions);
         if (_advanceButton != null && IsInstanceValid(_advanceButton) && _advanceButton.IsVisibleInTree()) controls.Add(_advanceButton);
         // The top bar of the stacked layouts holds the COMBO toggle and the menus: it counts as buttons.

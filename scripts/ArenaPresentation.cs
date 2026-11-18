@@ -107,7 +107,7 @@ public static class ArenaPresentation
 
         // Bonus and Área share one frame, half on each field, next to their owner's canje.
         var frame = new Panel { Name = $"BonusFrame{index}", MouseFilter = Control.MouseFilterEnum.Ignore };
-        frame.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.Playmat.Surface, 0.94f), BoardArt.Tint(BoardArt.Gold, 0.8f), 10, 2));
+        frame.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.Playmat.Surface, 0.94f), BoardArt.Tint(accent, 0.8f), 10, 2));
         Put(frame, 0, -112.5f, 302, 225);
         var track = new ExchangeTrack { Name = $"BonusTrack{index}", Detached = true, OwnerCaption = index == 0 ? "TÚ" : "RIVAL",
             ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing, RelikarioId = owner.RelikarioId,
@@ -538,13 +538,20 @@ public static class ArenaPresentation
         }
         var scroll = CardGallery("HandScroll", shortScreen, railColumns);
         scroll.FollowFocus = fanned;
+        if (fitted)
+        {
+            scroll.CustomMinimumSize = Vector2.Zero;
+            scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+            scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+            scroll.FollowFocus = true;
+        }
         Control cards;
         if (grouped)
         {
             cards = SectionedContents(hand, sections!, selected, pressed, shortScreen, railColumns, viewerSeat,
                 fitted ? fittedColumns : stackColumns, fitted ? DeckChoiceCardScale(desktop, shortScreen) : null);
             // The section heading adds one text line above the cards.
-            scroll.CustomMinimumSize = new(scroll.CustomMinimumSize.X, (shortScreen ? 120 : 196) + 16);
+            if (!fitted) scroll.CustomMinimumSize = new(scroll.CustomMinimumSize.X, (shortScreen ? 120 : 196) + 16);
         }
         else
         {

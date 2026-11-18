@@ -146,7 +146,7 @@ public partial class MemoryZoneButton : Button
         else
         {
             if (_back != null) DrawTextureRect(_back, BoardArt.FitArtwork(_back, new Rect2(4, 4, Size.X - 8, Size.Y - 8)), false);
-            BoardArt.Outline(this, card.Grow(2), BoardArt.Tint(Accent, 0.55f), 6);
+            BoardArt.Outline(this, card.Grow(2), BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.55f), 6);
             var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 9).X + 14;
             var tab = new Rect2((Size.X - width) / 2, 0, width, 16);
             BoardArt.Plate(this, tab, new Color("0b1020"), BoardArt.Tint(Accent, 0.7f), 4);

@@ -83,35 +83,19 @@ public partial class OnlineArena
             Check(!_impacts.ShowingCard, "El destello ignora el movimiento reducido.");
             _impacts.ReducedMotion = reduced; _impacts.Clear();
 
-            // Finished duel: one central moment that never takes the pointer and gives way to the rail.
             foreach (var seat in new[] { 0, 1 })
             {
                 var finished = DuelSnapshot.For(Fixture(), seat, 904 + (ulong)seat);
                 finished.Winner = 0; finished.EndReason = "Beto recibe el daño definitivo.";
-                _resultDismissed = false; ResetAnimations(); PresentTestSnapshot(finished); UpdateResultPresentation(); await Layout();
-                Check(ResultOverlayVisible && ResultOverlayTitle == (seat == 0 ? "¡VICTORIA!" : "DERROTA") &&
-                    _resultOverlay.MouseFilter == MouseFilterEnum.Ignore, $"El resultado central no aparece o toma el puntero en {size}, asiento {seat}.");
-                PositionResultOverlay(); await Layout();
+                _resultDismissed = false; ResetAnimations(); PresentTestSnapshot(finished); await Layout();
+                Check(_resultPanel is { Visible: true } && _resultControls?.GetParent() == this &&
+                    _resultPanel.GetGlobalRect().GetCenter().DistanceTo(GetGlobalRect().GetCenter()) < 2,
+                    $"El resultado no se centra en la arena en {size}, asiento {seat}.");
                 if (size.X == 1820 && seat == 0) { await Wait(0.4); await Capture($"polish-result-{size.X}x{size.Y}"); }
-                if (_readerRail != null && IsInstanceValid(_readerRail))
-                {
-                    var rail = _readerRail.GetGlobalRect(); var card = _resultCard.GetGlobalRect();
-                    Check(!card.Intersects(rail) && card.Position.X >= GlobalPosition.X &&
-                        Math.Abs(card.GetCenter().X - (GlobalPosition.X + rail.Position.X) / 2) < 40,
-                        $"El resultado central no queda centrado sobre el tapete en {size}: {card} · riel {rail}.");
-                }
-                var click = new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = Size / 2 };
-                // A screenshot can take longer than the hold; start it again so the click is really immediate.
-                _resultOverlayShownAt = Time.GetTicksMsec();
-                _Input(click);
-                Check(ResultOverlayVisible, "Un clic inmediato descarta el resultado antes de poder leerlo.");
-                ExpireResultOverlayHold(); _Input(click);
-                Check(!ResultOverlayVisible, "Tras la espera, un clic no descarta el resultado.");
-                UpdateResultPresentation();
-                Check(!ResultOverlayVisible, "El resultado central reaparece para el mismo duelo.");
-                _resultDismissed = true; UpdateResultPresentation(); _resultDismissed = false;
+                GuiInputTestDriver.Click((Button)_resultPanel!.FindChild("ReviewResultBoard", true, false)); await Layout();
+                Check(!_resultPanel.Visible, "Revisar el tablero no cierra el resultado.");
+                _resultDismissed = false;
             }
-            _resultOverlayKey = null;
         }
         GD.Print("PVP_POLISH_PASS · sacudida del rechazo, latido del golpe final, destello del código jugado y resultado central sin bloquear; movimiento reducido, dos tamaños y ambos asientos.");
     }

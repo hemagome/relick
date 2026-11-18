@@ -76,6 +76,13 @@ public partial class OnlineArena
             if (landed == null || landed.Modulate.A < 0.99f) throw new Exception("La carta robada no aparece al aterrizar.");
             if (seat == actor && _opponentCards.Any(c => !c.IsFaceDown))
                 throw new Exception("El robo revela la mano del rival.");
+            if (seat == actor)
+            {
+                if (landed is not HandCard { ShowsRivalOwnerEdge: true } ||
+                    _handCards.Any(card => card != landed && card.ShowsRivalOwnerEdge))
+                    throw new Exception("El borde rojo debe distinguir únicamente la carta robada en la mano propia.");
+                await Capture("hand-steal-landed");
+            }
         }
         _selected.Clear(); ResetAnimations();
         GD.Print("PVP_HAND_STEAL_PASS · abanico rival simétrico y robo animado en ambos asientos y tamaños.");

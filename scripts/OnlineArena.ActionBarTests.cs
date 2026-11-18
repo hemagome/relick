@@ -140,14 +140,17 @@ public partial class OnlineArena
                 var withThirdAction = DuelSnapshot.For(game, seat, 310);
                 withThirdAction.Options.Add(new DuelOption { Label = "Descartar Hoguera", Move = new DuelMove { Kind = DuelMoveKind.Discard, Index = 0 } });
                 PresentTestSnapshot(withThirdAction); await Layout(); await TapCard(0);
-                Check(_cardActions.GetChildren().OfType<CardActionButton>().Select(b => b.Text).SequenceEqual(["Equipar", "Canjear", "Descartar"]),
-                    "La tercera jugada no aparece junto a la misma carta.");
-                var strip = _cardActions.GetGlobalRect();
-                Check(new Rect2(GlobalPosition, Size).Grow(1).Encloses(strip) && _cardActions.GetChildren().OfType<Button>().All(b => b.Size.Y >= 48),
-                    $"Las tres acciones no caben en {size} o sus botones pierden el tamaño táctil.");
+                Check(_decisionPopup is { Visible: true } && !_inspector.IsAncestorOf(_decisionBar) &&
+                    _moves.GetChildren().OfType<Button>().Select(b => b.Text).SequenceEqual(["Equipar", "Canjear", "Descartar"]),
+                    "El descarte y las opciones de la carta no aparecen en el aviso central.");
+                var prompt = _decisionPopup!.GetGlobalRect();
+                Check(prompt.GetCenter().DistanceTo(GetGlobalRect().GetCenter()) <= 2 &&
+                    GetGlobalRect().Grow(1).Encloses(prompt) && _moves.GetChildren().OfType<Button>().All(b => b.Size.Y >= 48),
+                    $"La decisión no se centra en {size} o sus botones pierden el tamaño táctil.");
                 await Capture($"context-three-actions-seat{seat}-{size.X}x{size.Y}");
                 if (size.X == 700)
                 {
+                    PresentTestSnapshot(DuelSnapshot.For(game, seat, 310)); await Layout();
                     await TapCard(3);
                     Check(_cardActions.Visible && _cardActionAnchor == _handCards[3], "La barra no sigue una carta al desplazar la mano.");
                     _hand!.ScrollVertical = 0; await Layout();
@@ -162,13 +165,17 @@ public partial class OnlineArena
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 311)); await Layout(); await TapCard(2);
                 Check(_ownSkills.Count(t => t.Targetable) == 2 && !PresentsKind(DuelMoveKind.Attack) && _selection.Text.Contains("habilidad"),
                     "Atacar no pide elegir una habilidad entre los objetivos válidos.");
-                Check(_selection.GetGlobalRect().End.Y <= ((Control)_inspector.FindChild("InspectorReading", true, false)).GetGlobalRect().End.Y + 1,
-                    "La instrucción de elegir una habilidad queda detrás de la descripción.");
                 var chooseAttack = (Button)_cardActions.GetNode("ChooseAttackSkill");
                 chooseAttack.Disabled = false;
                 GuiInputTestDriver.Click(chooseAttack); await Layout();
                 Check(_choosingAttackSkill && !_cardActions.Visible && _ownSkills.Count(t => t.Targetable) == 2,
                     "Atacar no deja el tablero listo para elegir una habilidad.");
+                Check(_decisionPopup is { Visible: true } && _decisionPopup.IsAncestorOf(_selection) && !_inspector.HintLabel.Visible,
+                    "La elección de habilidad no se indica fuera del inspector.");
+                GuiInputTestDriver.Click(_decisionToggle!); await Layout();
+                Check(_decisionMinimized && !_selection.Visible && _choosingAttackSkill, "Ver tablero pierde la elección pendiente.");
+                GuiInputTestDriver.Click(_decisionToggle!); await Layout();
+                Check(!_decisionMinimized && _selection.IsVisibleInTree(), "No se puede volver a la elección de habilidad.");
                 ClearContext(); await TapCard(2);
                 var skill = _ownSkills.Single(t => t.SkillIndex == 1); _arenaScroll?.EnsureControlVisible(skill); await Layout();
                 GuiInputTestDriver.Click(skill); await Layout();
@@ -188,7 +195,8 @@ public partial class OnlineArena
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 312)); await Layout();
                 Check(!PresentsKind(DuelMoveKind.Choose), "Se listan todos los objetivos de destrucción como botones.");
                 var equipment = (ZoneCardButton)_root!.FindChild("EquipmentZone0", true, false);
-                Check(equipment.Targetable && equipment.CardRect.Size.Y > 39, "El equipo propio no se ilumina o no muestra su miniatura ampliada.");
+                Check(equipment.Targetable && !equipment.Playable && equipment.CardRect.Size.Y > 39,
+                    "El equipo propio debe marcarse como objetivo de destrucción y mostrar su miniatura ampliada.");
                 _arenaScroll?.EnsureControlVisible(equipment); await Layout();
                 await Capture($"equipped-card-seat{seat}-{size.X}x{size.Y}");
                 GuiInputTestDriver.Click(equipment); await Layout();
@@ -204,7 +212,7 @@ public partial class OnlineArena
                 p.Hand.Add(CardCatalog.TimeBomb.Id); Check(game.PlayCode(actor, p.Hand.Count - 1).Success, "No empieza Bomba en el fixture de mano.");
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 314)); await Layout(); await TapCard(0);
                 var ownHand = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } f && f.Owner == actor);
-                Check(PresentedButton(ownHand)?.Text == "Destruir" && _contextTitle.Text == "Mi mano" && _selection.Text.Contains("azar"), "Bomba confunde la mano al azar con la carta tocada.");
+                Check(PresentedButton(ownHand)?.Text == "Destruir" && _selection.Text.Contains("azar"), "Bomba confunde la mano al azar con la carta tocada.");
 
                 var memoryGame = new GameEngine(41); memoryGame.State.Phase = Phase.Actions; memoryGame.State.CurrentPlayer = actor;
                 memoryGame.State.Active.Relikia = 500; memoryGame.State.Active.Memory.Add(CardCatalog.Senshuni.Id);

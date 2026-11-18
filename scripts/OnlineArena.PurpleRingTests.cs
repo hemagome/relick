@@ -39,7 +39,7 @@ public partial class OnlineArena
             await Layout();
             var light = (ZoneCardButton)ZoneNode(0, CardZone.LightEquipment, -1)!;
             var equipment = (ZoneCardButton)ZoneNode(0, CardZone.Equipment, -1)!;
-            if (light.Card?.Id != ring.Id || !light.Targetable || equipment.Card?.Id != normal ||
+            if (light.Card?.Id != ring.Id || !light.Playable || light.Targetable || equipment.Card?.Id != normal ||
                 light.GetGlobalRect().Intersects(equipment.GetGlobalRect()))
                 throw new Exception($"El equipo ligero debe estar separado del normal en {size}.");
             SelectFieldPile(seat, FieldZone.LightEquipment);
@@ -59,6 +59,9 @@ public partial class OnlineArena
             rng.Finish();
             PresentTestSnapshot(DuelSnapshot.For(game, seat, 43));
             await Layout();
+            light = (ZoneCardButton)ZoneNode(0, CardZone.LightEquipment, -1)!;
+            if (!light.Playable || light.Targetable)
+                throw new Exception("El Anillo disponible para responder al daño debe mostrar el brillo de activación.");
             var choices = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
             if (!PresentsOption(choices.Single(o => o.Field == null)))
                 throw new Exception("Debe poder conservarse el Anillo.");

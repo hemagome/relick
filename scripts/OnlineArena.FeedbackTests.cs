@@ -26,17 +26,20 @@ public partial class OnlineArena
         {
             var game = GameEngine.FromOpening(new DuelOpening { Names = ["Ana", "Beto"], StartingSeat = actor,
                 Hands = [[CardCatalog.Attack.Id, CardCatalog.Magnet.Id, CardCatalog.Senshuni.Id, CardCatalog.PlumberStar.Id],
-                    [CardCatalog.Attack.Id, CardCatalog.Senshuni.Id]],
+                    [CardCatalog.Attack.Id, CardCatalog.Senshuni.Id, CardCatalog.PlumberStar.Id, CardCatalog.Reroll.Id]],
                 Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()], Bonuses = [null, null] }, new SeededRandom(91));
             game.State.Turn = 2; game.State.Phase = Phase.Combat;
             game.State.Players[actor].Skills.AddRange([CardCatalog.Destiny.Id, CardCatalog.Reverse.Id]);
             game.State.Players[actor].Relikia = 500;
+            game.State.Players[actor].Bonus = CardCatalog.Jessica.Id;
+            game.State.Players[actor].Exchange.Add(CardCatalog.Jessica.Id);
             game.State.Players[rival].Skills.Add(CardCatalog.Magnet.Id);
             return game;
         }
         string[] Faces() => _inspector.OutlookValues.Select(v => v.Text).ToArray();
         IEnumerable<int> Expected(DuelSnapshot s) => s.Options
-            .Where(o => o.Move.Index >= 0 && o.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or DuelMoveKind.Equip or DuelMoveKind.Exchange)
+            .Where(o => o.Move.Index >= 0 && o.Move.Kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or
+                DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Exchange)
             .Select(o => o.Move.Index).Distinct().Order();
 
         // Every status branch, without a server: words and icons, not only colours.
@@ -69,6 +72,8 @@ public partial class OnlineArena
                 Check(PlayableHandIndices.SequenceEqual(expected), $"Cartas jugables {string.Join(",", PlayableHandIndices)} ≠ autorizadas {string.Join(",", expected)} en {size}.");
                 if (own) Check(expected.Contains(0) && expected.Contains(1) && expected.Contains(3) && !expected.Contains(2),
                     "El fixture no ofrece Ataque, aprendizaje y COMBO, o permite Senshuni en combate.");
+                else Check(PlayableHandIndices.SequenceEqual([2]) && _decisionPopup is { Visible: true } && _decisionTitle.Text == "COMBO disponible",
+                    "El COMBO disponible durante el turno rival debe brillar y anunciarse en el centro.");
                 if (own && size.X == 1820)
                 {
                     // The offline fixture disables the hand; enable it to see the halo as a player does.
@@ -93,20 +98,28 @@ public partial class OnlineArena
                 // A refused play is told in the inspector and survives a rebuild of the board.
                 Connection.RejectPlay("La partida cambió. Revisa el tablero antes de volver a jugar.");
                 RefreshDecisionFeedback();
-                Check(_inspector.AlertLabel.IsVisibleInTree() && _inspector.AlertLabel.Text.Contains("La partida cambió"), "El rechazo no aparece en el inspector.");
+                Check(_decisionRejection.IsVisibleInTree() && _decisionRejection.Text.Contains("La partida cambió"), "El rechazo no aparece en el aviso central.");
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 702)); RefreshDecisionFeedback(); await Layout();
-                Check(_inspector.AlertLabel.IsVisibleInTree(), "El rechazo desaparece al reconstruir el tablero.");
+                Check(_decisionRejection.IsVisibleInTree(), "El rechazo desaparece al reconstruir el tablero.");
                 if (own && size.X == 1440) await Capture($"feedback-rejection-{size.X}x{size.Y}");
                 _rejectionUntil = Time.GetTicksMsec() - 1; RefreshDecisionFeedback();
-                Check(!_inspector.AlertLabel.IsVisibleInTree(), "El rechazo no caduca.");
+                Check(!_decisionRejection.IsVisibleInTree(), "El rechazo no caduca.");
                 Connection.RejectPlay("Otra"); RefreshDecisionFeedback(); ClearRejection(); RefreshDecisionFeedback();
-                Check(!_inspector.AlertLabel.IsVisibleInTree(), "Jugar de nuevo no retira el rechazo.");
+                Check(!_decisionRejection.IsVisibleInTree(), "Jugar de nuevo no retira el rechazo.");
 
                 // A rival skill on the board: Magnet's normal damage is its own die.
                 SelectField(rival, FieldZone.Skill, 0); await Layout();
                 Check(_inspector.Outlook.IsVisibleInTree() && Faces().SequenceEqual(["½·1D6", "1D6", "5"]), $"Tabla de Magnet incorrecta: {string.Join(" ", Faces())}.");
                 ClearContext();
-                if (!own) { Check(game.SaveSnapshot() == before, "La consulta alteró el duelo."); continue; }
+                if (!own)
+                {
+                    Check(game.SaveSnapshot() == before, "La consulta alteró el duelo.");
+                    game.SetComboResponses(seat, false);
+                    ApplyPrivateComboPreference(DuelSnapshot.For(game, seat, 702)); await Layout();
+                    Check(PlayableHandIndices.Count == 0 && _decisionPopup is { Visible: false },
+                        "El COMBO sigue anunciado con las respuestas omitidas.");
+                    continue;
+                }
 
                 // A skill card in hand has no copy yet: base values, labelled as such.
                 SelectCard(1); await Layout();

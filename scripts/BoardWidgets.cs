@@ -569,6 +569,7 @@ public partial class SkillTile : Button
     public int SkillIndex { get; set; } = -1;
     public bool Chosen { get; set; }
     public bool Targetable { get; set; }
+    internal bool Playable { get; set; }
     public int Counters { get; set; }
     /// <summary>The empty space the next skill would be taught in, lit only while teaching is authorized.</summary>
     public bool NextLesson { get; set; }
@@ -602,6 +603,7 @@ public partial class SkillTile : Button
         var size = Size / PresentationScale;
         DrawSetTransform(Vector2.Zero, 0, Vector2.One * PresentationScale);
         var bounds = new Rect2(0, 0, size.X, size.Y);
+        var cardRect = bounds;
         if (Skill == null || AwaitingLesson)
         {
             // An empty space only says its cost, and quietly: occupied cards, lives and decisions come first.
@@ -623,6 +625,7 @@ public partial class SkillTile : Button
             var fit = Math.Min((size.X - 4) / _skillArt.GetWidth(), (size.Y - 4) / _skillArt.GetHeight());
             var artSize = _skillArt.GetSize() * fit;
             var art = new Rect2((size - artSize) / 2, artSize);
+            cardRect = art;
             RelickVisuals.Shadow(this, new Rect2(art.Position + new Vector2(0, 3), art.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 9);
             DrawTextureRect(_skillArt, art, false);
 
@@ -650,7 +653,8 @@ public partial class SkillTile : Button
             BoardArt.Icon(this, GameIcon.Gem, new(size.X - 52, 102), 12, BoardArt.Gold, PresentationScale);
             BoardArt.Text(this, Skill.Reward.ToString(), new(size.X - 42, 107), 12, BoardArt.Gold);
         }
-        RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, size), Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
+        if (Playable && !AwaitingLesson) RelickVisuals.Playable(this, cardRect);
+        RelickVisuals.Interaction(this, bounds, Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
     }
 }
 
@@ -728,7 +732,7 @@ public partial class ExchangeTrack : VBoxContainer
         BonusButton = new ZoneCardButton
         {
             Name = Detached ? $"{Name}BonusCard" : "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard, Compact = Compact,
-            Layout = ZoneCardLayout.Portrait, EffectUsed = BonusEffectUsed, Accent = BoardArt.Gold, RelikarioId = RelikarioId
+            Layout = ZoneCardLayout.Portrait, EffectUsed = BonusEffectUsed, Accent = Accent, RelikarioId = RelikarioId
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
         row.AddChild(BonusButton);
@@ -738,7 +742,7 @@ public partial class ExchangeTrack : VBoxContainer
             {
                 Name = $"AreaZone{Name.ToString().Replace("BonusTrack", "")}", Caption = "ÁREA", Card = AreaCard,
                 SlotWidth = Detached ? BoardCanvas.CardWidth : Compact ? 54 : 70, Compact = Compact,
-                Accent = BoardArt.Gold, StatusText = AreaSide == null ? "" : $"LADO {AreaSide}"
+                Accent = Accent, StatusText = AreaSide == null ? "" : $"LADO {AreaSide}"
             };
             AreaButton.Pressed += () => AreaInspected?.Invoke();
             row.AddChild(AreaButton);
@@ -756,6 +760,7 @@ public enum ZoneCardLayout { Portrait, Landscape }
 public partial class ZoneCardButton : Button
 {
     public bool Targetable { get; set; }
+    internal bool Playable { get; set; }
     public bool Chosen { get; set; }
     public bool Compact { get; set; }
     public bool LargePreview { get; init; }
@@ -865,6 +870,7 @@ public partial class ZoneCardButton : Button
         }
         else if (Card != null)
             BoardArt.Icon(this, BoardArt.CardIcon(Card), Size / 2, 32, Accent);
+        if (Playable && showCard) RelickVisuals.Playable(this, CardRect);
         var status = AwaitingEquipment ? _previousEquipmentStatus : CardStatus;
         if (showCard && status is { Length: > 0 }) BoardArt.CardBadge(this, Size, status);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
@@ -972,6 +978,7 @@ public partial class HandCard : Button
     public int? ViewerSeat { get; set; }
     /// <summary>False when the surrounding section already names the owner.</summary>
     public bool ShowOwnerBadge { get; set; } = true;
+    internal bool ShowsRivalOwnerEdge => ShowOwnerBadge && OwnerIsForeign;
     private float _hover;
     private Texture2D? _artwork;
     internal Texture2D? FaceTexture => _artwork;
@@ -1027,12 +1034,10 @@ public partial class HandCard : Button
         RelickVisuals.Shadow(this, new Rect2(r.Position + new Vector2(0, 4 + 5 * _hover), r.Size).Grow(-3), new Color(0, 0, 0, 0.5f), (int)(9 + 7 * _hover), 8);
         if (_artwork != null)
         {
-            if (_hover > 0.01f && !Chosen) RelickVisuals.Shadow(this, r.Grow(-2), BoardArt.Tint(accent, 0.45f * _hover), 12, 8);
             if (Wide)
             {
                 DrawTextureRect(_artwork, r, false);
-                DrawSelection(y, accent);
-                DrawOwner(y);
+                DrawSelection(y);
                 return;
             }
             if (Card.Kind == CardKind.Skill)
@@ -1042,8 +1047,7 @@ public partial class HandCard : Button
                 DrawTextureRect(_artwork, new Rect2(0, 0, r.Size.Y, r.Size.X), false);
                 DrawSetTransform(origin, 0, Vector2.One * scale);
 
-                DrawSelection(y, accent);
-                DrawOwner(y);
+                DrawSelection(y);
                 return;
             }
             var imageSize = _artwork.GetSize();
@@ -1051,8 +1055,7 @@ public partial class HandCard : Button
             var extent = imageSize * imageScale;
             DrawTextureRect(_artwork, new Rect2(r.Position + (r.Size - extent) / 2, extent), false);
 
-            DrawSelection(y, accent);
-            DrawOwner(y);
+            DrawSelection(y);
             return;
         }
         BoardArt.Plate(this, r, RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 12, Chosen ? 2 : 1);
@@ -1066,28 +1069,22 @@ public partial class HandCard : Button
         var fontSize = name.Length > 11 ? 14 : 17;
         while (fontSize > 11 && ThemeDB.FallbackFont.GetStringSize(name, HorizontalAlignment.Left, -1, fontSize).X > DrawSize.X - 18) fontSize--;
         BoardArt.CenterText(this, name, new(DrawSize.X / 2, y + 122), fontSize, BoardArt.Ink);
-        DrawSelection(y, accent);
-        DrawOwner(y);
+        DrawSelection(y);
     }
 
-    // A sleeve edge marks every card whose owner is known; the rival's red edge needs no label.
-    private void DrawOwner(float y)
-    {
-        if (OriginalOwner is not { } owner) return;
-        var foreign = OwnerIsForeign;
-        var color = foreign ? RelickVisuals.State.Rival : RelickVisuals.State.Own;
-        var left = 3f; var right = Face.X - 1; var bottom = y + Face.Y;
-        DrawLine(new Vector2(left, y + 8), new Vector2(left, bottom - 8), color, foreign ? 4 : 3, true);
-        DrawLine(new Vector2(left + 4, y + 2), new Vector2(right - 4, y + 2), color, foreign ? 3 : 2, true);
-    }
-
-    private void DrawSelection(float y, Color accent)
+    private void DrawSelection(float y)
     {
         var face = Face;
         var rect = new Rect2(new Vector2(1, y), face);
-        if (Playable && !Chosen && !Mulligan) RelickVisuals.Playable(this, rect, Disabled);
+        if (Playable && !Mulligan) RelickVisuals.Playable(this, rect, Disabled);
         RelickVisuals.Interaction(this, rect, Chosen, false, !Disabled && IsHovered(), HasFocus());
         if (Chosen && Mulligan) BoardArt.CenterText(this, "CAMBIAR", new(1 + face.X / 2, y + face.Y * 0.57f), 9, RelickVisuals.State.Selected);
+        if (ShowsRivalOwnerEdge)
+        {
+            var color = RelickVisuals.State.Rival;
+            DrawLine(new Vector2(3, y + 8), new Vector2(3, rect.End.Y - 8), color, 4, true);
+            DrawLine(new Vector2(7, y + 2), new Vector2(rect.End.X - 6, y + 2), color, 3, true);
+        }
     }
 
 }

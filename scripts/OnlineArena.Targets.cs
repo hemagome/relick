@@ -55,10 +55,18 @@ public partial class OnlineArena
                 ? field.Zone == (move.Value == (int)FieldZone.Area ? FieldZone.Area : FieldZone.Bonus)
                 : field.Zone == FieldZone.Hand && move.Index == field.Index),
             DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
-            DuelMoveKind.CodeResponse => move.Flag && field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
+            DuelMoveKind.CodeResponse or DuelMoveKind.Totem => move.Flag && field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
             _ => false
         };
     }
+
+    private bool IsFieldActivation(DuelOption option) => option.Move.Kind switch
+    {
+        DuelMoveKind.FieldCode or DuelMoveKind.UsePurpleRing or DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => true,
+        DuelMoveKind.CodeResponse or DuelMoveKind.Totem => option.Move.Flag,
+        DuelMoveKind.Choose => _snapshot!.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field?.Zone == FieldZone.LightEquipment,
+        _ => false
+    };
 
     private string? FieldCardId((int Owner, FieldZone Zone, int Index) field)
     {
@@ -137,10 +145,16 @@ public partial class OnlineArena
         if (!attack) _choosingAttackSkill = false;
         if (attack && !available.Contains(_selectedSkill)) _selectedSkill = available.Length == 1 ? available[0] : -1;
         _pulsingTargets.Clear();
+        var showActivations = ShowCardActivations;
+        // Teaching appends the new skill to the list, independently of its board position.
+        var learningReroll = s.Options.Any(o => o.Move.Kind == DuelMoveKind.LearningDie)
+            ? s.Players[s.MySeat].Skills.Length - 1 : -1;
         foreach (var tile in _ownSkills)
         {
-            tile.Targetable = tile.Skill != null && (available.Contains(tile.SkillIndex) || s.Options.Any(o =>
-                o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && o.Move.Index >= 0 && o.Move.Index == tile.SkillIndex));
+            tile.Targetable = tile.Skill != null && available.Contains(tile.SkillIndex);
+            tile.Playable = showActivations && tile.Skill != null &&
+                (tile.SkillIndex == learningReroll && tile.Skill.Id == CardCatalog.Reverse.Id || s.Options.Any(o =>
+                    o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && o.Move.Index == tile.SkillIndex));
             tile.Chosen = tile.Skill != null && tile.SkillIndex == _selectedSkill && (attack || _skillContext);
             if (tile.Targetable) _pulsingTargets.Add(tile);
             tile.QueueRedraw();
@@ -151,10 +165,15 @@ public partial class OnlineArena
             void Mark(ZoneCardButton? node, FieldZone zone, int index)
             {
                 if (node == null) return;
-                node.Targetable = zone == FieldZone.LightEquipment
-                    ? Enumerable.Range(0, s.Players[owner].LightEquipment?.Length ?? 0)
-                        .Any(slot => s.Options.Any(o => MatchesField(o, (owner, zone, slot))))
-                    : s.Options.Any(o => MatchesField(o, (owner, zone, index)));
+                bool MatchesZone(DuelOption option)
+                {
+                    if (zone != FieldZone.LightEquipment) return MatchesField(option, (owner, zone, index));
+                    var slot = option.Field?.Index ?? option.Move.Index;
+                    return slot >= 0 && slot < s.Players[owner].LightEquipment?.Length && MatchesField(option, (owner, zone, slot));
+                }
+                node.Playable = showActivations && owner == s.MySeat && node.Card != null &&
+                    s.Options.Any(o => IsFieldActivation(o) && MatchesZone(o));
+                node.Targetable = s.Options.Any(o => !IsFieldActivation(o) && MatchesZone(o));
                 node.Chosen = zone == FieldZone.LightEquipment
                     ? _fieldSelection is { } selected && selected.Owner == owner && selected.Zone == zone
                     : _fieldSelection == (owner, zone, index);

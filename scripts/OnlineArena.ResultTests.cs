@@ -29,7 +29,8 @@ public partial class OnlineArena
                 if (ending == 3) s.EndReason = null; // Older finished checkpoints have no public cause.
                 GetWindow().ContentScaleSize = size; await Layout();
                 ResetAnimations(); _resultDismissed = false; PresentTestSnapshot(s); await Layout();
-                Check(_resultPanel is { Visible: true } && !_actionDock.Visible, "El resultado no sustituye al área de jugadas.");
+                Check(_resultPanel is { Visible: true } && _actionDock.Visible && _resultControls?.GetParent() == this,
+                    "El resultado debe abrirse en el centro con el inspector disponible.");
                 var expected = s.Winner == -1 ? "EMPATE" : s.Winner == seat ? "VICTORIA" : "DERROTA";
                 Check(((Label)_resultPanel!.FindChild("DuelResultTitle", true, false)).Text == expected, "El resultado confunde vencedor y asiento.");
                 Check(((Label)_resultPanel.FindChild("DuelResultReason", true, false)).Text == (s.EndReason ?? "Resultado confirmado por el servidor."), "El cierre inventa una causa o pierde la causa persistida.");
