@@ -5,15 +5,16 @@ namespace Relick;
 
 public partial class OnlineArena
 {
+    private readonly record struct MemoryArrival(int Player, CardZone Zone, int Count);
+
     private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45,
         float OriginRotation = 0, bool IsPlacement = false, string? PreviousEquipmentStatus = null,
-        bool? StartsFaceUp = null, bool? EndsFaceUp = null, bool Paired = false)
+        bool? StartsFaceUp = null, bool? EndsFaceUp = null, bool Paired = false, MemoryArrival[]? MemoryArrivals = null)
     {
         public bool IsSteal => Event.Kind == DuelVisualKind.HandSteal;
         public bool IsSkillLesson => IsPlacement && Event.Destination == CardZone.Skill;
         public bool IsExchangePlacement => IsPlacement && Event.Destination == CardZone.Exchange;
         public bool LeavesExchange => Event.Kind == DuelVisualKind.Pile && Event.Source == CardZone.Exchange;
-        public bool IsExchangePileArrival => LeavesExchange && Event.Destination is CardZone.Memory or CardZone.Corrupted;
         public bool TurnsSideways => IsSkillLesson || IsExchangePlacement;
     }
     private readonly Queue<Flight> _flights = new();
@@ -129,7 +130,49 @@ public partial class OnlineArena
             }
             result[cue] = new Flight(cue, origin, id, OriginRotation: rotation);
         }
+        CaptureMemoryArrivals(current, previous, result);
         return result;
+    }
+
+    private static void CaptureMemoryArrivals(DuelSnapshot current, DuelSnapshot previous, Dictionary<DuelVisualEvent, Flight> flights)
+    {
+        var lastPacket = current.Visuals.LastOrDefault(c => c.Kind == DuelVisualKind.HandDiscard);
+        var packetArrivals = new List<MemoryArrival>();
+        for (var player = 0; player < current.Players.Length; player++)
+        {
+            var before = previous.Players[player];
+            var after = current.Players[player];
+            CountArrivals(player, CardZone.Memory, NewMemoryCards(before.Memory, after.Memory));
+            CountArrivals(player, CardZone.Corrupted, after.CorruptedCount - before.CorruptedCount);
+        }
+        if (lastPacket != null && packetArrivals.Count > 0)
+            flights[lastPacket] = flights[lastPacket] with { MemoryArrivals = packetArrivals.ToArray() };
+
+        void CountArrivals(int player, CardZone zone, int count)
+        {
+            if (count <= 0) return;
+            // A cue can animate a card that already sat in memory during a response. Only new cards
+            // in the final pile can be withheld. Appended cards occur last in the pile.
+            var single = new MemoryArrival(player, zone, 1);
+            foreach (var cue in current.Visuals.Where(c =>
+                c.Kind == DuelVisualKind.Pile && c.Destination == zone && PileRecipient(c) == player).Reverse().Take(count))
+            {
+                flights[cue] = flights[cue] with { MemoryArrivals = [single] };
+                count--;
+            }
+            // A full-hand discard is one face-down flight per hand. Settle the remaining changes
+            // together, including borrowed and corrupted cards that may land in other piles.
+            if (lastPacket != null && count > 0) packetArrivals.Add(new(player, zone, count));
+        }
+    }
+
+    private static int NewMemoryCards(string[] before, string[] after)
+    {
+        // Surviving cards retain their relative order at the front, even when some leave this revision.
+        var retained = 0;
+        foreach (var card in before)
+            if (retained < after.Length && after[retained] == card) retained++;
+        return after.Length - retained;
     }
 
     private Flight? CaptureSkillLesson(DuelSnapshot current, DuelSnapshot previous)
@@ -577,7 +620,7 @@ public partial class OnlineArena
         if (cue.Kind is DuelVisualKind.BonusClaim or DuelVisualKind.HandSteal &&
             HandCardOwner(cue.Target, cue.Value)?.RelikarioId is { } original)
             return original;
-        var owner = cue.ToRivalMemory ? 1 - cue.Player : cue.Player;
+        var owner = cue.Destination is CardZone.Memory or CardZone.Corrupted ? PileRecipient(cue) : cue.Player;
         return _snapshot!.Players[owner].RelikarioId;
     }
 
@@ -587,7 +630,6 @@ public partial class OnlineArena
     {
         if (!_flights.TryPeek(out var pair) || !pair.Paired || pair.IsPlacement || pair.Event.Kind != primary.Event.Kind ||
             pair.Event.Player == primary.Event.Player || WaitForDrawAnnouncement(pair.Event)) return;
-        _flights.Dequeue();
         var own = pair.Event.Player == _snapshot!.MySeat;
         var relative = own ? 0 : 1;
         var discard = pair.Event.Kind == DuelVisualKind.HandDiscard;
@@ -600,7 +642,8 @@ public partial class OnlineArena
         bool OnScreen(Rect2 rect) => _handLowered ? bounds.Intersects(rect) : bounds.Encloses(rect);
         if (deck == null || target == null || source == null || destination == null || !OnScreen(source.Value) || !OnScreen(destination.Value) ||
             !discard && !RectVisible(deck, deckRect!.Value) || !RectVisible(target, destination.Value))
-        { SetDestinationPending(pair, target, false); return; }
+            return; // Settle a clipped companion after the visible flight lands.
+        _flights.Dequeue();
         SetDestinationPending(pair, target, true);
         var node = new Control { Name = "NetworkCardFlightPair", Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore, ZIndex = 20 }; AddChild(node);
         var back = FlightBack(SleeveArt.Of(_snapshot, pair.Event.Player)); node.AddChild(back);
@@ -637,7 +680,7 @@ public partial class OnlineArena
         _companion = null;
         if (landed)
             _impacts.Ring(pair.Destination, pair.Flight.Event.Player == _snapshot?.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral);
-        if (GodotObject.IsInstanceValid(pair.Target)) SetDestinationPending(pair.Flight, pair.Target, false);
+        SetDestinationPending(pair.Flight, GodotObject.IsInstanceValid(pair.Target) ? pair.Target : null, false);
         pair.Node.QueueFree();
     }
 
@@ -651,10 +694,11 @@ public partial class OnlineArena
             var color = arrived.IsPlacement ? BoardArt.Gold : own ? ArenaPresentation.Mint : ArenaPresentation.Coral;
             _impacts.Ring(arrived.TurnsSideways ? PortraitFootprint(_flightDestination) : _flightDestination, color);
         }
-        if (_activeFlight != null && GodotObject.IsInstanceValid(_flightTarget))
+        if (_activeFlight != null)
         {
-            SetDestinationPending(_activeFlight, _flightTarget, false);
-            if (_activeFlight.IsExchangePlacement && _flightTarget is ZoneCardButton { Card: null } slot &&
+            var target = GodotObject.IsInstanceValid(_flightTarget) ? _flightTarget : null;
+            SetDestinationPending(_activeFlight, target, false);
+            if (_activeFlight.IsExchangePlacement && target is ZoneCardButton { Card: null } slot &&
                 _flights.Any(f => f.LeavesExchange && f.Event.Player == _activeFlight.Event.Player && f.Event.Value == _activeFlight.Event.Value))
                 slot.SetExchangePreview(_activeFlight.Face);
         }
@@ -662,15 +706,15 @@ public partial class OnlineArena
         _placementPreview = false;
     }
 
-    private static void SetDestinationPending(Flight flight, Control? target, bool pending, bool queued = false)
+    private void SetDestinationPending(Flight flight, Control? target, bool pending, bool queued = false)
     {
-        if (flight.IsExchangePileArrival && target is MemoryZoneButton pile)
-        {
-            // Count each card when queued and reveal it when the flight is resolved or skipped.
-            if (queued || !pending)
-                pile.ChangePendingExchangeArrivals(pending ? 1 : -1);
-        }
-        else if (target is SkillTile skill) skill.SetLessonPending(pending);
+        if ((queued || !pending) && flight.MemoryArrivals is { } arrivals)
+            foreach (var arrival in arrivals)
+                if (ZoneNode(arrival.Player == _snapshot!.MySeat ? 0 : 1, arrival.Zone, -1) is MemoryZoneButton pile)
+                    pile.ChangePendingArrivals(pending ? arrival.Count : -arrival.Count);
+
+        if (target is MemoryZoneButton) return;
+        if (target is SkillTile skill) skill.SetLessonPending(pending);
         else if (flight.IsExchangePlacement && target is ZoneCardButton exchange)
             exchange.SetExchangePending(pending);
         else if (flight.IsPlacement && target is ZoneCardButton equipment)

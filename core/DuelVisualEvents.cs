@@ -69,7 +69,8 @@ public static class DuelVisualEvents
             { Kind = DuelVisualKind.HandSteal, Player = owner, Target = recipient, SourceIndex = sourceIndex, Value = slot, Source = CardZone.Hand, Destination = CardZone.Hand });
         game.CardMovedToPile += movement => events.Add(new() { Kind = DuelVisualKind.Pile, Player = movement.Owner,
             Source = movement.Source, Destination = movement.Destination, Value = movement.Index, ToRivalMemory = movement.ToRivalMemory,
-            DestinationPlayer = movement.DestinationPlayer });
+            DestinationPlayer = movement.DestinationPlayer ?? (movement.Destination == CardZone.Corrupted &&
+                movement.MemoryOwner >= 0 && movement.MemoryOwner != movement.Owner ? movement.MemoryOwner : null) });
         game.ChainResolved += chain => events.Add(new()
             { Kind = DuelVisualKind.Chain, Player = chain[0].Actor, Value = chain.Count, Chain = chain });
         return events;

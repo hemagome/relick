@@ -100,6 +100,7 @@ public partial class CardInspector : PanelContainer
     private readonly List<Label> _attributeValues = [];
     private readonly List<Control> _attributeColumns = [];
     private ScrollContainer _reading = null!;
+    private TextureRect _relikarioArtwork = null!;
     private HBoxContainer _cost = null!;
     private string? _cardId;
     private string _lastHint = "";
@@ -147,7 +148,18 @@ public partial class CardInspector : PanelContainer
             CustomMinimumSize = new(0, ReadingHeight > 0 ? ReadingHeight : ShortScreen ? 40 : 64),
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true, SizeFlagsVertical = SizeFlags.ExpandFill };
         column.AddChild(_reading);
-        DescriptionLabel = Wrapped("InspectorDescription", 16); _reading.AddChild(DescriptionLabel);
+        var readingContent = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        readingContent.AddThemeConstantOverride("separation", 8);
+        _reading.AddChild(readingContent);
+        _relikarioArtwork = new TextureRect
+        {
+            Name = "InspectorRelikarioArtwork", Visible = false, MouseFilter = MouseFilterEnum.Ignore,
+            CustomMinimumSize = ShortScreen ? new(55, 78) : new(76, 108),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            SizeFlagsVertical = SizeFlags.ShrinkBegin
+        };
+        readingContent.AddChild(_relikarioArtwork);
+        DescriptionLabel = Wrapped("InspectorDescription", 16); readingContent.AddChild(DescriptionLabel);
         _cost = new HBoxContainer { Name = "InspectorCost" }; _cost.AddThemeConstantOverride("separation", 12); column.AddChild(_cost);
         _cost.AddChild(ArenaPresentation.Text("Coste", 12, BoardArt.Muted));
         CostLabel = Wrapped("ContextCost", 13, BoardArt.Gold); CostLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -240,13 +252,19 @@ public partial class CardInspector : PanelContainer
     }
 
     /// <summary>A Relikario is not a card in the catalog: its sheet goes to the showcase and its effect is read here.</summary>
-    internal void PresentRelikario(RelikarioDefinition relikario, string ownerName)
+    internal void PresentRelikario(RelikarioDefinition relikario, string ownerName, Texture2D? artwork = null)
     {
         Present(null, $"{relikario.Name} · Lv {relikario.Level}");
         _cardId = "relikario:" + relikario.Id; HasCard = true;
         _reading.Visible = true; SizeFlagsVertical = SizeFlags.ExpandFill;
         ClassificationLabel.Text = $"RELIKARIO DE {ownerName.ToUpperInvariant()} · {relikario.MaxHealth} VIDAS"; ClassificationLabel.Visible = true;
-        DescriptionLabel.Text = relikario.AbilityText; DescriptionLabel.Visible = true;
+        _relikarioArtwork.Texture = artwork; _relikarioArtwork.Visible = artwork != null;
+        var description = relikario.AbilityText;
+        if (relikario.EvolutionHealing > 0)
+            description = $"Al evolucionar, recupera hasta {relikario.EvolutionHealing} vidas.\n\n{description}";
+        if (relikario.AttackDieBonusExceptOne > 0)
+            description += $"\n\nSuma +{relikario.AttackDieBonusExceptOne} al D6 de ataque si el resultado es distinto de 1.";
+        DescriptionLabel.Text = description; DescriptionLabel.Visible = true;
     }
 
     internal void Present(CardDefinition? card, string title, string cost = "", string hint = "", int? counters = null, AttackOutlook? outlook = null,
@@ -257,6 +275,7 @@ public partial class CardInspector : PanelContainer
         if (_cardId != card?.Id) _reading.ScrollVertical = 0;
         _cardId = card?.Id; HasCard = card != null;
         _reading.Visible = HasCard;
+        _relikarioArtwork.Hide(); _relikarioArtwork.Texture = null;
         SizeFlagsVertical = HasCard ? SizeFlags.ExpandFill : SizeFlags.ShrinkBegin;
         TitleLabel.Text = title; TitleLabel.TooltipText = title;
         ClassificationLabel.Text = card == null ? "" : CardInspectorText.Classification(card);

@@ -16,8 +16,8 @@ public partial class MemoryZoneButton : Button
     public Color Accent { get; init; } = new("b5a2fa");
     private Texture2D? _back;
     private HandCard? _preview;
-    private int _pendingExchangeArrivals;
-    internal int DisplayedAmount => Math.Max(0, (Corrupted ? CorruptedCount : Cards.Length) - _pendingExchangeArrivals);
+    private int _pendingArrivals;
+    internal int DisplayedAmount => Math.Max(0, (Corrupted ? CorruptedCount : Cards.Length) - _pendingArrivals);
     /// <summary>On the desktop board the pile fills its zone, like every other card.</summary>
     public bool Board { get; init; }
     // Legacy docks keep the compact counter; board rows show the top card as a real pile.
@@ -55,9 +55,9 @@ public partial class MemoryZoneButton : Button
         FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
     }
 
-    internal void ChangePendingExchangeArrivals(int change)
+    internal void ChangePendingArrivals(int change)
     {
-        _pendingExchangeArrivals = Math.Max(0, _pendingExchangeArrivals + change);
+        _pendingArrivals = Math.Max(0, _pendingArrivals + change);
         UpdatePile();
     }
 

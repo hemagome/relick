@@ -475,7 +475,12 @@ public partial class OnlineArena
             game.State.Phase = Phase.Actions; game.State.Turn = 2;
             foreach (var p in game.State.Players) p.Dexterity = 0;
             game.State.Active.Hand.AddRange([CardCatalog.ReloadCartridge.Id, CardCatalog.Sniper.Id, CardCatalog.Senshuni.Id]);
-            game.State.Players[1 - actor].Hand.AddRange([CardCatalog.Sniper.Id, CardCatalog.Jessica.Id]);
+            var rival = game.State.Players[1 - actor];
+            rival.Hand.AddRange([CardCatalog.Sniper.Id, CardCatalog.Jessica.Id]);
+            rival.Memory.Add(CardCatalog.Bonfire.Id);
+            rival.MarkForeignHandCard(1);
+            game.State.Active.MarkForeignHandCard(2);
+            game.State.Active.MarkForCorruption(CardZone.Hand, 2);
             string? previousSaved = null; var cues = new List<DuelVisualEvent>();
             for (var step = 0; step < 4; step++)
             {
@@ -515,15 +520,31 @@ public partial class OnlineArena
                     {
                         // Both hands empty and refill at the same time: each flight launches with its rival's mirror.
                         Animate(cues, origins);
+                        void CheckPiles(DuelSnapshot expected, bool cartridgeLanded = false)
+                        {
+                            for (var player = 0; player < expected.Players.Length; player++)
+                            {
+                                var relative = player == seat ? 0 : 1;
+                                var view = expected.Players[player];
+                                var cartridge = cartridgeLanded && player == actor;
+                                var top = cartridge ? CardCatalog.ReloadCartridge.Id : view.Memory.LastOrDefault();
+                                AssertPile(relative, CardZone.Memory, view.Memory.Length + (cartridge ? 1 : 0), top);
+                                AssertPile(relative, CardZone.Corrupted, view.CorruptedCount, null);
+                            }
+                        }
+                        if (step == 1) CheckPiles(previous!);
                         var pairs = new HashSet<object>();
                         for (var i = 0; i < 24; i++)
                         {
                             UpdateFlights(0.3);
+                            if (step == 1 && _activeFlight?.Event.Kind == DuelVisualKind.HandDiscard)
+                                CheckPiles(previous!, cartridgeLanded: true);
                             if (_activeFlight != null && _companion is { } pair && pair.Flight.Event.Kind == _activeFlight.Event.Kind &&
                                 pair.Flight.Event.Player != _activeFlight.Event.Player) pairs.Add(pair);
                             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                         }
                         if (IsAnimating) throw new Exception("El descarte o el robo de Cartucho deja vuelos pendientes.");
+                        if (step == 1) CheckPiles(current);
                         if (size == new Vector2I(1440, 1024) && pairs.Count != (step == 1 ? 1 : 4))
                             throw new Exception($"Cartucho anima a los jugadores por turnos en lugar de a la vez ({pairs.Count} pares, paso {step}).");
                     }
@@ -545,6 +566,100 @@ public partial class OnlineArena
         }
         _selected.Clear();
         GD.Print("PVP_RELOAD_CARTRIDGE_LAYOUT_PASS · descarte de ambas manos, animación sin identidades, disparadores, reconexión y cuatro robos privados para ambos asientos y cuatro tamaños.");
+    }
+
+    private void AssertPile(int relative, CardZone zone, int count, string? top)
+    {
+        if (ZoneNode(relative, zone, -1) is not MemoryZoneButton pile) return;
+        if (!pile.IsVisibleInTree() || pile.Modulate.A != 1 || pile.DisplayedAmount != count ||
+            pile.GetNodeOrNull<HandCard>("MemoryTopCard")?.Card.Id != top)
+            throw new Exception($"{zone} del jugador {relative} se oculta o muestra una carta antes de que llegue. Contador: {pile.DisplayedAmount}, esperado: {count}.");
+    }
+
+    internal async Task CheckDiscardAnimation()
+    {
+        async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+        var deck = Enumerable.Repeat(CardCatalog.Attack.Id, 8).ToList();
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(844, 390) })
+        foreach (var seat in new[] { 0, 1 })
+        foreach (var defender in new[] { 0, 1 })
+        foreach (var critical in new[] { false, true })
+        {
+            GetWindow().ContentScaleSize = size;
+            await Layout();
+            var attacker = 1 - defender;
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Ana", "Beto"], StartingSeat = attacker, Hands = [[], []],
+                Decks = [deck, deck], Bonuses = [null, null]
+            }, new SeededRandom(45));
+            var player = game.State.Players[defender];
+            player.Skills.Add(CardCatalog.Destiny.Id);
+            player.Hand.AddRange([CardCatalog.Attack.Id, CardCatalog.Senshuni.Id, CardCatalog.Dodge.Id, CardCatalog.Bonfire.Id]);
+            player.MarkForeignHandCard(1);
+            player.MarkForeignHandCard(2);
+            player.MarkForCorruption(CardZone.Hand, 2);
+            if (critical)
+            {
+                player.Memory.Add(CardCatalog.Pc.Id);
+                game.State.Players[attacker].Memory.Add(CardCatalog.ExtraLife.Id);
+                game.State.Players[attacker].CorruptedMemory.Add(CardCatalog.Sniper.Id);
+            }
+            game.State.Phase = Phase.DefenseChoice;
+            game.State.PendingAttack = new(attacker, CardCatalog.Destiny.Id, 3, critical);
+            var before = DuelSnapshot.For(game, seat, 1850);
+            ResetAnimations(); PresentTestSnapshot(before);
+            await Layout();
+            var cues = DuelVisualEvents.Capture(game);
+            var option = DuelOptions.For(game, defender).Single(o => o.Move.Kind == DuelMoveKind.DestinyDefense);
+            option.Move.Discards = Enumerable.Range(0, option.RequiredDiscards).ToArray();
+            if (!option.Move.Apply(game, defender).Success) throw new Exception("No se resuelve el descarte de Destiny.");
+            var after = DuelSnapshot.For(game, seat, 1851);
+            after.Visuals = cues;
+            var discards = cues.Where(c => c.Kind == DuelVisualKind.Pile).ToArray();
+            if (discards.Length != (critical ? 4 : 3) ||
+                discards.Single(c => c.Destination == CardZone.Corrupted).DestinationPlayer != attacker)
+                throw new Exception("Destiny pierde descartes o envía una carta corrupta ajena a la pila equivocada.");
+            var origins = CaptureOrigins(after, before);
+            PresentTestSnapshot(after); Animate(cues, origins);
+            await Layout();
+
+            void CheckPiles(int landed)
+            {
+                for (var playerSeat = 0; playerSeat < before.Players.Length; playerSeat++)
+                {
+                    var relative = playerSeat == seat ? 0 : 1;
+                    var original = before.Players[playerSeat];
+                    var final = after.Players[playerSeat];
+                    var arrivals = discards.Take(landed).Where(c => PileRecipient(c) == playerSeat).ToArray();
+                    var count = original.Memory.Length + arrivals.Count(c => c.Destination == CardZone.Memory);
+                    AssertPile(relative, CardZone.Memory, count, final.Memory.Take(count).LastOrDefault());
+                    AssertPile(relative, CardZone.Corrupted, original.CorruptedCount + arrivals.Count(c => c.Destination == CardZone.Corrupted), null);
+                }
+            }
+
+            CheckPiles(0);
+            UpdateFlights(0); UpdateFlights(0);
+            for (var i = 0; i < discards.Length; i++)
+            {
+                UpdateFlights(0.04);
+                if (size.X == 1440 && _activeFlight?.Event != discards[i])
+                    throw new Exception("Falta un vuelo de descarte de Destiny en el tablero de escritorio.");
+                if (_activeFlight != null)
+                {
+                    CheckPiles(i);
+                    UpdateFlights(0.5);
+                }
+                CheckPiles(i + 1);
+            }
+            if (IsAnimating) throw new Exception("Destiny deja vuelos de descarte pendientes.");
+
+            Animate(cues, origins);
+            UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
+            ResetAnimations();
+            CheckPiles(discards.Length);
+        }
+        GD.Print("PVP_DISCARD_ANIMATION_PASS · Destiny normal y crítico, Memoria vacía u ocupada, cartas ajenas y corruptas, vuelos omitidos e interrupción.");
     }
 
     internal async Task CheckQuickLoadLayout()
@@ -744,11 +859,8 @@ public partial class OnlineArena
                 var memory = (MemoryZoneButton?)ZoneNode(relative, CardZone.Memory, -1);
                 void CheckMemory(int arrivals)
                 {
-                    if (memory == null) return;
                     var expected = after.Players[actor].Memory.Take(initialMemory.Length + arrivals).ToArray();
-                    Check(memory.IsVisibleInTree() && memory.Modulate.A == 1 && memory.DisplayedAmount == expected.Length &&
-                        (memory.GetNodeOrNull<HandCard>("MemoryTopCard")?.Card.Id) == expected.LastOrDefault(),
-                        $"Memoria cambia antes del aterrizaje o se oculta en {size}, asiento {seat}, tras {arrivals} llegadas.");
+                    AssertPile(relative, CardZone.Memory, expected.Length, expected.LastOrDefault());
                 }
                 Check(tile.AwaitingExchange && _flights.Peek() == placement && (index == 0 || first.HasExchangePreview),
                     "El tablero adelanta el resultado antes de colocar la carta de canje.");
@@ -780,7 +892,7 @@ public partial class OnlineArena
                         for (var arriving = 0; arriving < 2; arriving++)
                         {
                             UpdateFlights(0.04);
-                            Check(_activeFlight?.IsExchangePileArrival == true && _flightTarget == memory,
+                            Check(_activeFlight?.LeavesExchange == true && _flightTarget == memory,
                                 "La carta del canje no vuela hacia memoria.");
                             CheckMemory(arriving);
                             UpdateFlights(0.5);

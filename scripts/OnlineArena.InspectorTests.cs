@@ -183,6 +183,27 @@ public partial class OnlineArena
             Check(_snapshot!.Players[1 - seat].Hand.All(id => id == null) &&
                 _root!.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().All(c => c.IsFaceDown), "El inspector revela cartas privadas del rival.");
             Check(game.SaveSnapshot() == before, "Consultar una carta o habilidad ejecuta una jugada.");
+
+            player.Relikario = seat == 0 ? RelikarioCatalog.Yuno : RelikarioCatalog.Osamu;
+            var lv2 = RelikarioCatalog.EvolutionFor(player.Relikario)!;
+            PresentTestSnapshot(DuelSnapshot.For(game, seat, 402)); await Layout();
+            Check(_evolveButton is { Disabled: true }, "La prueba requiere que el botón de Lv 2 esté desactivado.");
+            var evolve = _evolveButton!;
+            _arenaScroll?.EnsureControlVisible(evolve); await Layout();
+            var movesBeforeHover = _moves.GetChildren().ToArray();
+            GuiInputTestDriver.Hover(evolve); await Layout();
+            var artwork = RelikarioArt.Card(lv2.Id, lv2.Level);
+            var inlineArtwork = _inspector.FindChild("InspectorRelikarioArtwork", true, false) as TextureRect;
+            var effects = _inspector.DescriptionLabel.Text;
+            Check(artwork != null && _contextTitle.Text == $"{lv2.Name} · Lv 2" && effects.Contains(lv2.AbilityText) &&
+                (seat != 0 || effects.Contains("2 vidas") && effects.Contains("+1 al D6 de ataque")) &&
+                (Desktop ? _showcase is { Visible: true } && _showcase.FaceTexture == artwork
+                    : inlineArtwork is { Visible: true } && inlineArtwork.Texture == artwork),
+                $"Pasar el cursor sobre el botón desactivado no muestra la carta y los efectos de {lv2.Name} en {size}.");
+            GuiInputTestDriver.Hover(_inspector.ReadingViewport); await Layout();
+            Check(evolve.Disabled && _contextTitle.Text == $"{lv2.Name} · Lv 2" && _moves.GetChildren().SequenceEqual(movesBeforeHover),
+                "La vista de Lv 2 se cierra al leer o altera las jugadas disponibles.");
+            CheckPendingCodeBounds();
         }
         Check(scrollingCases > 0, "No se ejercitó la lectura de efectos largos.");
         ResetInteraction();

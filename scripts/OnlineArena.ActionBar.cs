@@ -18,8 +18,7 @@ public partial class OnlineArena
     private int? _pointsTarget;
     private (int Owner, FieldZone Zone, int Index)? _fieldSelection;
     private (CardDefinition Card, int? Counters)? _inspectorPreview;
-    /// <summary>Seat whose Relikario portrait is being hovered; read in the inspector like a card.</summary>
-    private int? _relikarioPreview;
+    private (int Seat, RelikarioDefinition Form, bool Evolution)? _relikarioPreview;
     private Vector2? _fieldPress;
 
     private void ResetInteraction()
@@ -311,17 +310,27 @@ public partial class OnlineArena
             var portrait = _portraits[relative]; var index = relative;
             portrait.MouseEntered += () =>
             {
-                if (_snapshot is not { } s || _preparing || IsAnimating || HasContextSelection || InspectorActivationId() != null) return;
-                var seat = index == 0 ? s.MySeat : 1 - s.MySeat;
-                if (_relikarioPreview == seat) return;
-                _relikarioPreview = seat; _inspectorPreview = null;
-                RefreshInspector();
+                if (_snapshot is { } s && !_preparing && !HasContextSelection)
+                    PreviewRelikario(index == 0 ? s.MySeat : 1 - s.MySeat);
             };
         }
     }
 
+    private void PreviewRelikario(int seat, bool evolution = false)
+    {
+        if (IsAnimating || InspectorActivationId() != null ||
+            RelikarioCatalog.Find(_snapshot!.Players[seat].RelikarioId) is not { } current) return;
+        var form = evolution && current.Level == 1 ? RelikarioCatalog.EvolutionFor(current) : current;
+        if (form == null || _relikarioPreview == (seat, form, evolution)) return;
+        _inspectorPreview = null;
+        _relikarioPreview = (seat, form, evolution);
+        RefreshInspector();
+    }
+
     private void BindInspectorPreviews()
     {
+        // A disabled evolution button still receives pointer hover and can be read.
+        if (_evolveButton != null) _evolveButton.MouseEntered += () => PreviewRelikario(_snapshot!.MySeat, evolution: true);
         var buttons = _root!.FindChildren("*", "Button", true, false).OfType<Button>();
         if (_deckChoiceShade != null) buttons = buttons.Concat(_handCards);
         foreach (var control in buttons)
@@ -431,8 +440,7 @@ public partial class OnlineArena
             cost = _preparing ? "" : _choosingAttackSkill ? ArenaActionText.CardCost(CardCatalog.Attack) : ArenaActionText.CardCost(card);
         }
         var relikia = _showcase != null && activation == null ? _relikiaPreview : null;
-        var relikario = activation == null && relikia == null && !fromPreview && _relikarioPreview is int seat &&
-            RelikarioCatalog.Find(s.Players[seat].RelikarioId) is { } definition ? (definition, s.Players[seat].Name) : default((RelikarioDefinition, string)?);
+        var relikario = activation == null && relikia == null && !fromPreview ? _relikarioPreview : null;
         if (relikia is { } effectId)
         {
             // The effect's own sheet explains it, so the menu only has to name it.
@@ -441,10 +449,12 @@ public partial class OnlineArena
             _inspector.Present(null, effect.Name, cost);
             _showcase!.PresentSheet(effectId.ToString(), RelikiaSheet(effectId));
         }
-        else if (relikario is var (form, ownerName))
+        else if (relikario is { } previewForm)
         {
-            _inspector.PresentRelikario(form, ownerName);
-            _showcase?.PresentSheet("relikario:" + form.Id, RelikarioArt.Card(form.Id, form.Level));
+            var form = previewForm.Form;
+            var artwork = previewForm.Evolution || _showcase != null ? RelikarioArt.Card(form.Id, form.Level) : null;
+            _inspector.PresentRelikario(form, s.Players[previewForm.Seat].Name, _showcase == null ? artwork : null);
+            _showcase?.PresentSheet("relikario:" + form.Id, artwork);
         }
         else
         {
