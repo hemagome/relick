@@ -65,6 +65,18 @@ static class CardboardBoxTests
             Check(g.ResolveCodeResponse(1, true).Success && p.Hand.Count == 0 && p.Deck.SequenceEqual(deck) && p.Memory.Single() == TestCards.ObjectCode.Id && rival.Memory.Single() == CardCatalog.CardboardBox.Id);
             Check(g.State.Phase == Phase.Actions && g.State.PendingCode == null && rival.Equipment == null && g.State.ActionsLeft == 2 && Count(g) == count);
         }),
+        ("Cadena visual: Caja anula el código objeto y solo se publica al cancelar", () =>
+        {
+            foreach (var cancel in new[] { false, true })
+            {
+                var (g, _) = ObjectFixture(); var visuals = DuelVisualEvents.Capture(g);
+                Check(g.PlayCode(0, 0).Success && !visuals.Any(v => v.Kind == DuelVisualKind.Chain) && g.ResolveCodeResponse(1, cancel).Success);
+                if (!cancel) { Check(!visuals.Any(v => v.Kind == DuelVisualKind.Chain)); continue; }
+                var chain = visuals.Single(v => v.Kind == DuelVisualKind.Chain);
+                Check(chain.Player == 0 && chain.Value == 2 && chain.Chain!.Select(l => l.CardId).SequenceEqual(new[] { TestCards.ObjectCode.Id, CardCatalog.CardboardBox.Id }));
+                Check(chain.Chain.Select(l => l.Actor).SequenceEqual(new[] { 0, 1 }) && chain.Chain.Select(l => l.Canceled).SequenceEqual(new[] { true, false }) && chain.Chain.All(l => !l.Attack));
+            }
+        }),
         ("Caja: dejar resolver código objeto conserva equipo y activa el efecto una sola vez", () =>
         {
             var (g, _) = ObjectFixture(); var p = g.State.Active; var top = p.Deck.Take(2).ToArray();

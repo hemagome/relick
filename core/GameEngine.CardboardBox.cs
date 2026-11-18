@@ -70,6 +70,9 @@ public sealed partial class GameEngine
     {
         var pending = State.PendingCode!; var card = CardCatalog.Get(pending.CardId);
         State.PendingCode = null;
+        // Shown like a resolved Error de Carga chain: the Object Code canceled, then the Box that answered it.
+        ChainResolved?.Invoke([new() { Actor = pending.Actor, CardId = card.Id, Canceled = true },
+            new() { Actor = actor, CardId = CardCatalog.CardboardBox.Id }]);
         RefundActivation(pending.Actor, pending.FromMemory ? 2 : card.ActionCost, CodePrCost(card) + (pending.FromMemory ? 400 : 0));
         if (_activeActivation is { Kind: ActivationKind.TurnBuff } star)
         {
