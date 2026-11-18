@@ -138,7 +138,7 @@ public partial class OnlineArena
             Check(_initiativeOverlay.Visible && _initiativeDice.All(d => d.IsRolling) && PlayedInitiativeRolls == initiativeCount + 1,
                 "No se lanzan los dos dados de iniciativa a la vez.");
             Check(_initiativeNames[seat].Text.Contains("TÚ") && _initiativeNames[1 - seat].Text.Contains("RIVAL") &&
-                _initiativeValues.All(v => string.IsNullOrWhiteSpace(v.Text)) && !_initiativeWinner.Text.Contains("Empieza"),
+                _initiativeValues.All(v => string.IsNullOrWhiteSpace(v.Text)) && !_initiativeWinner.Text.Contains("EMPIEZA") && _initiativeDice.All(d => d.Highlight == null),
                 "La iniciativa confunde al dueño de un dado o revela el ganador antes de aterrizar.");
             UpdateEnabled(); Check(_handCards.All(c => c.Disabled), "Se puede jugar durante la iniciativa.");
             Check(_openingTurnDraw != null && _flights.Count == 0, "El robo inicial se adelanta a los dados.");
@@ -147,11 +147,17 @@ public partial class OnlineArena
             UpdateFlights(0);
             Check(_initiativeDice[0].DisplayedValue == opening.RollOne && _initiativeDice[1].DisplayedValue == opening.RollTwo &&
                 _initiativeValues[0].Text == opening.RollOne.ToString() && _initiativeValues[1].Text == opening.RollTwo.ToString() &&
-                _initiativeWinner.Text == $"Empieza {combat.Players[starter].Name}" && _initiativeHint.Text.Contains("roba una carta"),
+                _initiativeWinner.Text == (starter == seat ? "¡EMPIEZAS TÚ!" : $"¡EMPIEZA {combat.Players[starter].Name.ToUpperInvariant()}!") &&
+                _initiativeHint.Text.Contains("roba una carta"),
                 "La iniciativa muestra otro ganador o no anuncia su robo de turno.");
+            var starterColor = starter == seat ? ArenaPresentation.Mint : ArenaPresentation.Coral;
+            Check(_initiativeDice[starter].Highlight == starterColor && _initiativeDice[1 - starter].Highlight == null &&
+                _initiativeWinner.GetThemeColor("font_color") == starterColor && _initiativeWinner.GetThemeFontSize("font_size") >= 32,
+                "El dado ganador no brilla o el anuncio no usa el color de quien empieza.");
             await Capture($"initiative-result-seat{seat}-{size.X}x{size.Y}");
             Check(new Rect2(Vector2.Zero, Size).Encloses(_initiativePanel.GetGlobalRect()), $"La iniciativa desborda {size}.");
-            UpdateFlights(2);
+            UpdateFlights(InitiativeResultSeconds);
+            Check(_initiativeDice.All(d => d.Highlight == null && d.Scale == Vector2.One), "El brillo de iniciativa queda en los dados.");
             Check(_flights.Count == 1 && _flights.Peek().Event is { Kind: DuelVisualKind.Draw, Value: 5 } firstDraw && firstDraw.Player == starter,
                 "La iniciativa vuelve a repartir cartas en vez de animar un único robo.");
             await Drain(); UpdateEnabled();

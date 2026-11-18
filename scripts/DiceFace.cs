@@ -40,6 +40,15 @@ public partial class DiceFace : Control
     private Quaternion _landing = Quaternion.Identity;
     private int _renderedValue = -1;
     private bool _renderedRolling;
+    private Color? _highlight;
+    private double _highlightClock;
+
+    /// <summary>A coloured halo around the die (the opening roll's winner); null hides it. It pulses unless reduced motion is on.</summary>
+    internal Color? Highlight
+    {
+        get => _highlight;
+        set { _highlight = value; _highlightClock = 0; QueueRedraw(); }
+    }
 
     public event Action? RollFinished;
     public event Action? RollStarted;
@@ -282,6 +291,7 @@ public partial class DiceFace : Control
 
     internal void AdvancePlayback(double delta)
     {
+        if (_highlight != null) _highlightClock += Math.Max(0, delta);
         if (!IsRolling && !IsTurning && _resultRemaining <= 0 && _queuedRolls.Count > 0)
         {
             var next = _queuedRolls.Dequeue();
@@ -385,7 +395,24 @@ public partial class DiceFace : Control
     {
         if (!Is3DReady) return;
         var extent = (Vector2)_viewport.Size * Math.Min(Size.X / _viewport.Size.X, Size.Y / _viewport.Size.Y);
+        var center = Size / 2; var radius = Math.Min(Size.X, Size.Y) * 0.4f;
+        var pulse = _reducedMotion ? 0.6f : 0.5f + 0.5f * Mathf.Sin((float)_highlightClock * Mathf.Tau * 1.1f);
+        // Soft halo behind the die: stacked translucent discs read as a glow.
+        if (_highlight is { } halo)
+            for (var ring = 6; ring >= 1; ring--)
+                DrawCircle(center, radius * (0.82f + ring * 0.065f + pulse * 0.04f), new Color(halo, 0.045f + 0.03f * pulse));
         DrawTextureRect(_viewport.GetTexture(), new Rect2((Size - extent) / 2, extent), false);
+        if (_highlight is { } color)
+        {
+            DrawArc(center, radius * 1.1f, 0, Mathf.Tau, 72, new Color(color, 0.55f + 0.4f * pulse), 3, true);
+            // Three sparks orbit the winning die.
+            if (!_reducedMotion)
+                for (var spark = 0; spark < 3; spark++)
+                {
+                    var start = (float)_highlightClock * 1.8f + spark * Mathf.Tau / 3;
+                    DrawArc(center, radius * 1.2f, start, start + 0.6f, 16, new Color(color, 0.85f), 2.5f, true);
+                }
+        }
         if (_glow > 0)
             DrawArc(Size / 2, Math.Min(Size.X, Size.Y) * 0.43f, 0, Mathf.Tau, 64,
                 new Color(0.46f, 0.9f, 0.74f, (float)(_glow / 0.35 * 0.5)), 2, true);
