@@ -102,6 +102,14 @@ public partial class OnlineArena
                 Check(!IsAnimating && OpeningSelectionCount == 2 && PreparationConfirmButton!.Disabled, "Recuperar la preparación repite el reparto o pierde la elección.");
             }
             var starter = (byte)(size.X is 1440 or 844 ? 1 - seat : seat);
+            var areaOpening = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Ana", "Beto"], StartingSeat = starter, Hands = [[], []],
+                Decks = [[CardCatalog.Attack.Id, CardCatalog.Attack.Id], [CardCatalog.Attack.Id, CardCatalog.Attack.Id]],
+                Bonuses = [CardCatalog.EquipmentRaid.Id, CardCatalog.EquipmentRaid.Id]
+            }, new SeededRandom(42));
+            Check(IsLiveOpening(DuelSnapshot.For(areaOpening, seat, 0)),
+                "Elegir el lado de un Área inicial interrumpe la transición después del mulligan.");
             var own = _snapshot.Players[seat]; own.Hand = ["senshuni", "extra-life", "attack", "points-increase", "load-error"];
             own.Bonus = "attack"; own.DeckCount = 13;
             _snapshot.Players[1 - seat].Bonus = "attack";

@@ -150,8 +150,11 @@ public partial class OnlineArena
         _lastDisabled = null; UpdateEnabled();
     }
 
-    private bool IsLiveOpening(DuelSnapshot combat) => _preparing && !_needsBaseline && _openingCards.Length == OpeningHandSize &&
-        combat is { Revision: 0, Turn: 1, Phase: Phase.Combat, Winner: null };
+    private bool IsLiveOpening(DuelSnapshot opening) => _preparing && !_needsBaseline && _openingCards.Length == OpeningHandSize &&
+        opening is { Revision: 0, Turn: 1, Winner: null } &&
+        (opening.Phase is Phase.Combat or Phase.Draw || opening.Phase == Phase.Decision &&
+            opening.Decision is { Kind: DecisionKind.Confirm, Decider: 0 or 1 } decision &&
+            opening.Players[decision.Decider] is { Area: not null, AreaSide: null });
 
     private List<Flight> CaptureMulliganOrigins(DuelSnapshot combat)
     {

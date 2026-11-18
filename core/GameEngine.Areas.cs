@@ -20,7 +20,7 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private static bool IsArea(string? id) => id != null && CardCatalog.Get(id).Kind == CardKind.Area;
+    internal static bool IsArea(string? id) => id != null && CardCatalog.Get(id).Kind == CardKind.Area;
 
     private void PromoteInitialAreas()
     {

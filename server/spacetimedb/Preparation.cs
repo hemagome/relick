@@ -136,10 +136,13 @@ public static partial class Module
         byte first, second;
         do { first = (byte)ctx.Rng.Next(1, 7); second = (byte)ctx.Rng.Next(1, 7); } while (first == second);
         var startingSeat = (byte)(first > second ? 0 : 1);
-        // BeginTurn in the practice engine also draws one card for the starting player.
+        // FromOpening activates an initial Area and takes the next card as its replacement Bonus.
+        // Reserve that card before dealing the starter's turn draw.
         var starter = members[startingSeat];
         var bonusId = startingSeat == 0 ? bonusOne : bonusTwo;
-        var draw = ctx.Db.Card.Owner.Filter(starter.Player).Where(c => !c.InHand && c.Id != bonusId).OrderBy(c => c.Position).First();
+        var bonus = ctx.Db.Card.Id.Find(bonusId)!.Value;
+        var draw = ctx.Db.Card.Owner.Filter(starter.Player).Where(c => !c.InHand && c.Id != bonusId).OrderBy(c => c.Position)
+            .Skip(GameEngine.IsArea(bonus.Definition) ? 1 : 0).First();
         draw.InHand = true;
         draw.Position = (uint)ctx.Db.Card.Owner.Filter(starter.Player).Count(c => c.InHand);
         ctx.Db.Card.Id.Update(draw);
