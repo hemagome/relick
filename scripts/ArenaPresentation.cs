@@ -510,9 +510,10 @@ public static class ArenaPresentation
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
         Action<int> pressed, bool preparing, bool shortScreen, string? title = null, int railColumns = 0, bool useFan = true,
         bool desktop = false, IReadOnlyList<HandSection>? sections = null, Func<int, CardOwner?>? ownerOf = null,
-        int viewerSeat = -1, int stackColumns = 0, string? relikario = null, bool wrapTitle = false)
+        int viewerSeat = -1, int stackColumns = 0, string? relikario = null, int fittedColumns = 0)
     {
         var grouped = sections is { Count: > 0 };
+        var fitted = fittedColumns > 0;
         var fanned = useFan && !grouped && railColumns == 0 && hand.Count > 0;
         var raised = desktop && fanned;
         Control? balance = null;
@@ -531,7 +532,7 @@ public static class ArenaPresentation
             // Labelled memory blocks carry their own counts; the total would only repeat their sum.
             var heading = grouped ? Text(title, 10) : HandHeading(title, hand.Count, railColumns);
             heading.TooltipText = title;
-            if (wrapTitle) heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            if (fitted) heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             if (desktop) { heading.AddThemeFontSizeOverride("font_size", 16); heading.AddThemeFontOverride("font", RelickVisuals.Display); heading.AddThemeColorOverride("font_color", BoardArt.Gold); }
             parent.AddChild(heading);
         }
@@ -540,13 +541,15 @@ public static class ArenaPresentation
         Control cards;
         if (grouped)
         {
-            cards = SectionedContents(hand, sections!, selected, pressed, shortScreen, railColumns, viewerSeat, stackColumns);
+            cards = SectionedContents(hand, sections!, selected, pressed, shortScreen, railColumns, viewerSeat,
+                fitted ? fittedColumns : stackColumns, fitted ? DeckChoiceCardScale(desktop, shortScreen) : null);
             // The section heading adds one text line above the cards.
             scroll.CustomMinimumSize = new(scroll.CustomMinimumSize.X, (shortScreen ? 120 : 196) + 16);
         }
         else
         {
-            cards = fanned ? new HandFan { Headroom = raised ? DesktopHandHeadroom : 4, MaximumAngle = raised ? 3 : 8, Spread = raised } : GalleryContents(railColumns, 10);
+            cards = fanned ? new HandFan { Headroom = raised ? DesktopHandHeadroom : 4, MaximumAngle = raised ? 3 : 8, Spread = raised }
+                : GalleryContents(fitted ? fittedColumns : railColumns, DeckChoiceGap);
             for (var i = 0; i < hand.Count; i++)
             {
                 var slot = i;
@@ -555,11 +558,17 @@ public static class ArenaPresentation
                     Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), Mulligan = preparing,
                     InFan = fanned, Lift = raised ? DesktopHandLift : 9, OriginalOwner = ownerOf?.Invoke(i), RelikarioId = relikario,
                     ViewerSeat = viewerSeat >= 0 ? viewerSeat : null,
-                    PresentationScale = fanned ? raised ? DesktopHandScale : HandFan.CardScale : shortScreen ? 0.6f : desktop ? DesktopHandScale : 1
+                    PresentationScale = fanned ? raised ? DesktopHandScale : HandFan.CardScale : DeckChoiceCardScale(desktop, shortScreen)
                 };
                 card.Pressed += () => pressed(slot); cards.AddChild(card);
             }
             if (raised && title == null && cards is HandFan fan) fan.Counter = HandCounter(fan, hand.Count, enemy: false);
+            if (fitted)
+            {
+                var center = new CenterContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+                center.AddChild(cards);
+                cards = center;
+            }
         }
         if (hand.Count == 0 && railColumns == 0)
         {
@@ -577,7 +586,7 @@ public static class ArenaPresentation
     }
 
     private static Control SectionedContents(IReadOnlyList<string> hand, IReadOnlyList<HandSection> sections,
-        Func<int, bool> selected, Action<int> pressed, bool shortScreen, int railColumns, int viewerSeat, int stackColumns = 0)
+        Func<int, bool> selected, Action<int> pressed, bool shortScreen, int railColumns, int viewerSeat, int stackColumns, float? fittedScale)
     {
         // The desktop chooser stacks one memory over the other, each as a grid of full-size cards.
         var columns = railColumns > 0 ? railColumns : stackColumns;
@@ -591,13 +600,14 @@ public static class ArenaPresentation
             var suffix = section.FromDeck ? "Deck" : section.Owner.Seat.ToString();
             var block = new VBoxContainer { Name = $"HandSection{suffix}", SizeFlagsHorizontal = columns > 0 ? Control.SizeFlags.ExpandFill : Control.SizeFlags.ShrinkBegin };
             block.AddThemeConstantOverride("separation", 4);
-            var heading = Heading($"{section.Title}  ·  {section.Indices.Count} CARTAS", stackColumns > 0 && railColumns == 0 ? 13 : 10, section.Accent);
+            var count = section.Indices.Count;
+            var heading = Heading($"{section.Title}  ·  {count} {(count == 1 ? "CARTA" : "CARTAS")}", stackColumns > 0 && railColumns == 0 ? 13 : 10, section.Accent);
             heading.Name = $"HandSectionTitle{suffix}";
             heading.TooltipText = $"{section.Title} · {section.Indices.Count} cartas";
             block.AddChild(heading);
             var rule = new ColorRect { Color = BoardArt.Tint(section.Accent, 0.65f), CustomMinimumSize = new(0, 2), MouseFilter = Control.MouseFilterEnum.Ignore };
             block.AddChild(rule);
-            var cards = GalleryContents(columns, 10);
+            var cards = GalleryContents(columns, DeckChoiceGap);
             foreach (var i in section.Indices)
             {
                 var slot = i;
@@ -605,7 +615,7 @@ public static class ArenaPresentation
                 {
                     Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), InFan = false, Lift = 9,
                     OriginalOwner = section.Owner, ViewerSeat = viewerSeat >= 0 ? viewerSeat : null, ShowOwnerBadge = false,
-                    PresentationScale = shortScreen ? 0.6f : railColumns > 0 ? 0.9f : DesktopHandScale
+                    PresentationScale = fittedScale ?? (shortScreen ? 0.6f : railColumns > 0 ? 0.9f : DesktopHandScale)
                 };
                 card.Pressed += () => pressed(slot); cards.AddChild(card);
             }
@@ -617,6 +627,8 @@ public static class ArenaPresentation
     // Hand cards share the board's card footprint. At rest only the effect box is below the
     // screen edge; under the pointer a card rises until it shows whole.
     internal const float DesktopHandScale = BoardCanvas.CardWidth / 126f;
+    internal const int DeckChoiceGap = 10;
+    internal static float DeckChoiceCardScale(bool desktop, bool shortScreen) => shortScreen ? 0.6f : desktop ? DesktopHandScale : 1;
     internal const float DesktopHandVisible = 138;
     internal const float DesktopHandLift = 58;
     internal const float DesktopHandHeadroom = 88;
@@ -644,7 +656,8 @@ public static class ArenaPresentation
 
     private static Label HandHeading(string title, int count, int railColumns)
     {
-        var caption = railColumns > 0 ? title.Split(" · ")[0] + $"\n{count} CARTAS" : $"{title}  ·  {count} CARTAS";
+        var amount = $"{count} {(count == 1 ? "CARTA" : "CARTAS")}";
+        var caption = railColumns > 0 ? title.Split(" · ")[0] + $"\n{amount}" : $"{title}  ·  {amount}";
         var heading = Text(caption, 10); heading.TooltipText = title;
         heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         return heading;

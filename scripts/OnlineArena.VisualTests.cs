@@ -1417,6 +1417,11 @@ public partial class OnlineArena
 
     internal async Task CheckDeckSearchLayout()
     {
+        async Task Layout()
+        {
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
         foreach (var actor in new[] { 0, 1 })
         {
             var game = new GameEngine(43); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
@@ -1426,11 +1431,12 @@ public partial class OnlineArena
                 CardCatalog.PointsIncrease.Id, CardCatalog.BlueEgg.Id, CardCatalog.TimeBomb.Id, CardCatalog.Reroll.Id, CardCatalog.LoadError.Id,
                 CardCatalog.KonamyCode.Id, CardCatalog.CardboardBox.Id, CardCatalog.Pendant.Id, CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id });
             if (!game.PlayCode(actor, 0).Success) throw new Exception("No comienza la búsqueda en el mazo.");
+            var originalDeck = player.Deck.ToArray();
             foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
             foreach (var seat in new[] { 0, 1 })
             {
                 GetWindow().ContentScaleSize = size;
-                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await Layout();
                 _selected.Clear(); ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 13));
                 if (seat == actor)
                 {
@@ -1445,7 +1451,7 @@ public partial class OnlineArena
                 }
                 else if (_handCards.Count != 1 || _deckSearchOptions.Length != 0 || _handCards[0].Card.Id != CardCatalog.Attack.Id)
                     throw new Exception("La búsqueda expone el mazo al rival o sustituye su mano.");
-                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await Layout();
                 var minimum = _root!.GetCombinedMinimumSize();
                 if (minimum.X > _root.Size.X + 1 || minimum.Y > _root.Size.Y + 1) throw new Exception($"Búsqueda desborda {size}: {minimum}.");
                 if (FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown))
@@ -1456,10 +1462,42 @@ public partial class OnlineArena
                     DirAccess.MakeDirRecursiveAbsolute(directory);
                     GetViewport().GetTexture().GetImage().SavePng($"{directory}/deck-search-{actor}-{size.X}.png");
                 }
+                var chooser = FindChild("ChoicePanel", true, false) as Control;
+                if (seat != actor)
+                {
+                    if (chooser != null) throw new Exception("El rival ve el selector privado del mazo.");
+                    continue;
+                }
+                var normalSize = chooser!.Size;
+                foreach (var count in new[] { 1, 36 })
+                {
+                    player.Deck.Clear();
+                    player.Deck.AddRange(Enumerable.Repeat(CardCatalog.Attack.Id, count));
+                    ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, (ulong)(14 + count)));
+                    await Layout();
+                    chooser = (Control)FindChild("ChoicePanel", true, false);
+                    if (_handCards.Count != count || !GetGlobalRect().Grow(1).Encloses(chooser.GetGlobalRect()))
+                        throw new Exception($"La galería de {count} cartas desborda {size} o pierde opciones.");
+                    if (count == 1 && (chooser.Size.X >= normalSize.X || chooser.Size.Y >= normalSize.Y ||
+                        _hand!.GetVScrollBar().Visible || !RectVisible(_handCards[0], _handCards[0].GetGlobalRect())))
+                        throw new Exception($"El selector de una carta no se compacta en {size}: {chooser.Size} frente a {normalSize}, " +
+                            $"scroll = {_hand!.GetVScrollBar().Visible}, galería = {_hand.GetGlobalRect()}, carta = {_handCards[0].GetGlobalRect()}.");
+                    if (count > 1 && (Short || Desktop) && !_hand!.GetVScrollBar().Visible)
+                        throw new Exception($"La galería de {count} cartas no tiene desplazamiento vertical en {size}.");
+                    var footer = _decisionBar.GetGlobalRect();
+                    var last = _handCards[^1];
+                    _hand!.EnsureControlVisible(last); await Layout();
+                    SelectCard(count - 1); await Layout();
+                    if (!RectVisible(last, last.GetGlobalRect()) || !_decisionBar.GetGlobalRect().IsEqualApprox(footer) ||
+                        !GetGlobalRect().Grow(1).Encloses(footer) || PresentedButton(_deckSearchOptions[^1]) == null)
+                        throw new Exception($"La última carta o su confirmación queda fuera de vista en {size}.");
+                }
+                player.Deck.Clear();
+                player.Deck.AddRange(originalDeck);
             }
         }
         _selected.Clear();
-        GD.Print("PVP_DECK_SEARCH_LAYOUT_PASS · doce objetivos privados ilustrados, filtro de habilidades, cuatro tamaños y ambos jugadores/asientos.");
+        GD.Print("PVP_DECK_SEARCH_LAYOUT_PASS · selectores de 1, 12 y 36 opciones privadas, filtro de habilidades, cuatro tamaños y ambos jugadores/asientos.");
     }
 
     internal async Task CheckRecyclingLayout()

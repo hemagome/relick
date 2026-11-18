@@ -12,7 +12,7 @@ public partial class OnlineArena : Control
     public event Action? ReturnToLobbyRequested;
     internal bool HasFinishedResult => _snapshot?.Winner != null;
     private VBoxContainer? _root;
-    private ColorRect? _osamuChoiceShade;
+    private ColorRect? _deckChoiceShade;
     private HFlowContainer _moves = null!;
     private Label _status = null!;
     private Label _selection = null!;
@@ -94,6 +94,8 @@ public partial class OnlineArena : Control
     private string? DecisionGalleryTitle => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } d ? $"{d.Title} · {d.Instruction}".ToUpperInvariant() : null;
     private bool ChoosingOsamuCards => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } decision &&
         (RelikarioCatalog.Find(decision.Source)?.Family == RelikarioCatalog.Osamu.Id || decision.Source == CardCatalog.TurboOverlap.Id);
+    private bool ChoosingDeckGallery => ChoosingDeckSearch && (ChoosingOsamuCards || _snapshot!.Phase == Phase.DeckSearchChoice ||
+        _snapshot.Decision?.Source == CardCatalog.KonamyCode.Id || _snapshot.Decision?.Source == CardCatalog.EquipmentRaid.Id);
     private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat ||
         Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);
@@ -249,14 +251,13 @@ public partial class OnlineArena : Control
         var boardPosition = _arenaScroll?.ScrollVertical ?? 0;
         foreach (var node in _portraits.Cast<Node>().Concat(_life).Concat(_actionPools)) node.GetParent()?.RemoveChild(node);
         if (_root != null) { RemoveChild(_root); _root.QueueFree(); }
-        if (_osamuChoiceShade != null) { RemoveChild(_osamuChoiceShade); _osamuChoiceShade.QueueFree(); _osamuChoiceShade = null; }
+        if (_deckChoiceShade != null) { RemoveChild(_deckChoiceShade); _deckChoiceShade.QueueFree(); _deckChoiceShade = null; }
         _root = new VBoxContainer { Name = "DuelInterface" }; AddChild(_root);
         var desktop = Desktop;
         _pulsingTargets.Clear(); _showcase = null; _combatCenter = null; _readerRail = null;
         _railReading = null; _historyFeed = null; _resolutionPanel = null; _inlineHistory = false; _relikiaPreview = null;
         foreach (var meter in _life) meter.Stacked = desktop;
         var choiceGallery = false;
-        var osamuChoices = ChoosingOsamuCards;
         VBoxContainer? choicePanel = null;
         _fitArenaScroll = false;
         _handLowered = false;
@@ -266,6 +267,9 @@ public partial class OnlineArena : Control
         var s = _snapshot!;
         GetNodeOrNull<MusicDirector>("/root/MusicDirector")?.PresentDuel(RoomCode, s);
         RefreshEffectCardOptions();
+        var deckChoices = ChoosingDeckGallery;
+        var sections = MemorySections();
+        var deckColumns = 0;
         if (_selectedSkill >= s.Players[s.MySeat].Skills.Length) _selectedSkill = -1;
         var stage = StageAppearance.Current(s);
         var resultCaption = s.Winner == -1 ? "EMPATE" : s.Winner == s.MySeat ? "¡VICTORIA!" : "DERROTA";
@@ -370,7 +374,9 @@ public partial class OnlineArena : Control
                 canvas.Place(shade, new Rect2(-3000, -3000, 7440, 7024), BoardAnchor.Top);
                 var chooser = new PanelContainer { Name = "ChoicePanel" };
                 chooser.AddThemeStyleboxOverride("panel", RelickVisuals.Surface(BoardArt.Gold));
-                canvas.Place(chooser, new Rect2(130, BoardCanvas.Seam - 345, BoardCanvas.DesignWidth - 260, 690));
+                var panelSize = new Vector2(BoardCanvas.DesignWidth - 260, 690);
+                if (deckChoices) (deckColumns, panelSize) = FitDeckChoicePanel(panelSize, sections, desktop: true);
+                canvas.Place(chooser, new Rect2((BoardCanvas.DesignWidth - panelSize.X) / 2, BoardCanvas.Seam - panelSize.Y / 2, panelSize.X, panelSize.Y));
                 handColumn = new VBoxContainer { Name = "HandColumn" };
                 handColumn.AddThemeConstantOverride("separation", 10); chooser.AddChild(handColumn);
             }
@@ -444,31 +450,31 @@ public partial class OnlineArena : Control
             var interaction = new HBoxContainer
             {
                 Name = "CardInteractionArea",
-                SizeFlagsVertical = Short || osamuChoices ? SizeFlags.ExpandFill : SizeFlags.Fill,
+                SizeFlagsVertical = Short || deckChoices ? SizeFlags.ExpandFill : SizeFlags.Fill,
                 SizeFlagsStretchRatio = 0.55f
             };
             interaction.AddThemeConstantOverride("separation", Short ? 4 : 12);
-            if (osamuChoices)
+            if (deckChoices)
             {
                 choiceGallery = true;
-                choicePanel = BuildOsamuChoicePanel();
+                choicePanel = BuildDeckChoicePanel(sections, out deckColumns);
                 choicePanel.AddChild(interaction);
             }
             else body.Controls.AddChild(interaction);
             handColumn = new VBoxContainer { Name = "HandColumn",
-                SizeFlagsHorizontal = Short && !osamuChoices ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill,
+                SizeFlagsHorizontal = Short && !deckChoices ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill,
                 SizeFlagsVertical = SizeFlags.ExpandFill };
             var inspectorColumn = new VBoxContainer
             {
                 Name = "InspectorColumn",
-                CustomMinimumSize = new(osamuChoices ? 0 : Short ? 270 : 480, 0),
-                SizeFlagsHorizontal = Short || osamuChoices ? SizeFlags.ExpandFill : SizeFlags.Fill
+                CustomMinimumSize = new(deckChoices ? 0 : Short ? 270 : 480, 0),
+                SizeFlagsHorizontal = Short || deckChoices ? SizeFlags.ExpandFill : SizeFlags.Fill
             };
-            if (osamuChoices)
+            if (deckChoices)
             {
                 var reading = new ScrollContainer
                 {
-                    Name = "ChoiceInspectorScroll", CustomMinimumSize = new(Compact ? 240 : 270, 0),
+                    Name = "ChoiceInspectorScroll", CustomMinimumSize = new(DeckChoiceInspectorWidth, 0),
                     HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
                 };
                 interaction.AddChild(handColumn); interaction.AddChild(reading);
@@ -481,31 +487,30 @@ public partial class OnlineArena : Control
             if (_fitArenaScroll)
             {
                 // Anything below the board that grows (a card being read, a decision) gives the board less room.
-                if (!osamuChoices) interaction.MinimumSizeChanged += FitArenaScroll;
+                if (!deckChoices) interaction.MinimumSizeChanged += FitArenaScroll;
                 arena.MinimumSizeChanged += FitArenaScroll;
                 _root.Resized += FitArenaScroll;
             }
         }
-        var galleryTitle = osamuChoices ? DecisionGalleryTitle
-            : ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR"
+        var galleryTitle = ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR"
             : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO"
             : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER"
             : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA"
             : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA"
             : DecisionGalleryTitle ?? (ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null);
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
-            SelectInitialSkillCandidate, Short, railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short || osamuChoices && Compact,
-                galleryTitle, osamuChoices ? 0 : railColumns,
+            SelectInitialSkillCandidate, Short, railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short || deckChoices && Compact,
+                galleryTitle, deckChoices ? 0 : railColumns,
                 useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop,
-                sections: MemorySections(), ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : index => HandCardOwner(s.MySeat, index),
-                viewerSeat: s.MySeat, stackColumns: osamuChoices ? 4 : desktop ? 7 : 0,
-                relikario: s.Players[s.MySeat].RelikarioId, wrapTitle: osamuChoices);
+                sections: sections, ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : index => HandCardOwner(s.MySeat, index),
+                viewerSeat: s.MySeat, stackColumns: desktop ? 7 : 0,
+                relikario: s.Players[s.MySeat].RelikarioId, fittedColumns: deckColumns);
         if (choiceGallery)
         {
             // The chooser scrolls on its own and carries the decision that confirms it.
             _hand.SizeFlagsVertical = SizeFlags.ExpandFill;
             _hand.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
-            if (osamuChoices)
+            if (deckChoices)
             {
                 _hand.CustomMinimumSize = Vector2.Zero;
                 _hand.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
@@ -513,7 +518,7 @@ public partial class OnlineArena : Control
             }
             _decisionBar.GetParent().RemoveChild(_decisionBar);
             (choicePanel ?? handColumn).AddChild(_decisionBar);
-            if (ChoosingMemoryRecovery || osamuChoices)
+            if (ChoosingMemoryRecovery || deckChoices)
             {
                 _movesScroll.CustomMinimumSize = new(0, 60);
                 _moves.Alignment = FlowContainer.AlignmentMode.End;
@@ -541,18 +546,46 @@ public partial class OnlineArena : Control
         BoardBuildCount++;
     }
 
-    private VBoxContainer BuildOsamuChoicePanel()
+    private float DeckChoiceInspectorWidth => Compact ? 240 : 270;
+
+    private (int Columns, Vector2 Size) FitDeckChoicePanel(Vector2 available, IReadOnlyList<ArenaPresentation.HandSection>? sections, bool desktop)
+    {
+        var counts = sections?.Select(section => section.Indices.Count).ToArray() ?? [_deckSearchOptions.Length];
+        var scale = ArenaPresentation.DeckChoiceCardScale(desktop, Short || Compact);
+        var card = new Vector2(126, 184) * scale;
+        const float gap = ArenaPresentation.DeckChoiceGap;
+        // Include the surface padding, a vertical scrollbar and room for the side inspector when shown.
+        var horizontalChrome = 24 + 16 + (desktop ? 0 : DeckChoiceInspectorWidth + (Short ? 4 : 12));
+        var maxColumns = Math.Max(1, (int)((available.X - horizontalChrome + gap) / (card.X + gap)));
+        var columns = Math.Clamp(counts.Max(), 1, maxColumns);
+        var width = Math.Clamp(columns * card.X + (columns - 1) * gap + horizontalChrome,
+            Math.Min(available.X, desktop ? 340 : horizontalChrome + 180), available.X);
+
+        // Each source starts on its own row. Reserve room for the wrapped title, source labels and fixed footer.
+        var rows = counts.Select(count => Math.Max(1, (count + columns - 1) / columns)).ToArray();
+        var galleryHeight = rows.Sum(rowCount => rowCount * card.Y + (rowCount - 1) * gap);
+        if (sections != null) galleryHeight += sections.Count * 31 + (sections.Count - 1) * 16;
+        var height = Math.Min(available.Y, galleryHeight + (desktop ? 188 : 156));
+        return (columns, new(width, height));
+    }
+
+    private VBoxContainer BuildDeckChoicePanel(IReadOnlyList<ArenaPresentation.HandSection>? sections, out int columns)
     {
         // A sibling of the board keeps the chooser independent of its minimum size.
         var shade = new ColorRect { Name = "ChoiceShade", Color = new Color(0.01f, 0.02f, 0.05f, 0.74f) };
-        _osamuChoiceShade = shade;
+        _deckChoiceShade = shade;
         AddChild(shade);
         shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var panel = new PanelContainer { Name = "ChoicePanel" };
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        shade.AddChild(center);
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        ArenaViewport.ApplyInsets(center, Compact ? 10 : 24, 12);
+        var available = Size + new Vector2(center.OffsetRight - center.OffsetLeft, center.OffsetBottom - center.OffsetTop);
+        var layout = FitDeckChoicePanel(available, sections, desktop: false);
+        columns = layout.Columns;
+        var panel = new PanelContainer { Name = "ChoicePanel", CustomMinimumSize = layout.Size };
         panel.AddThemeStyleboxOverride("panel", RelickVisuals.Surface(BoardArt.Gold));
-        shade.AddChild(panel);
-        panel.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        ArenaViewport.ApplyInsets(panel, Compact ? 10 : 24, 12);
+        center.AddChild(panel);
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 8);
         panel.AddChild(content);

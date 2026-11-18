@@ -49,7 +49,7 @@ public partial class OnlineArena
     // hiding behind the scrollbar; longer lists still scroll once they pass the cap.
     private void FitMovesScroll()
     {
-        var floor = ChoosingMemoryRecovery || ChoosingOsamuCards ? 60 : 50;
+        var floor = ChoosingMemoryRecovery || ChoosingDeckGallery ? 60 : 50;
         var cap = Short ? 104 : 168;
         var height = Mathf.Clamp(_moves.GetCombinedMinimumSize().Y, floor, Math.Max(floor, cap));
         if (!Mathf.IsEqualApprox(_movesScroll.CustomMinimumSize.Y, height)) _movesScroll.CustomMinimumSize = new(0, height);
@@ -205,15 +205,17 @@ public partial class OnlineArena
             s.Options[i].Move.Kind is DuelMoveKind.TrapCraft or DuelMoveKind.BlueEggDraw && s.Options[i].Move.Flag ||
             s.Options[i].Move.Kind == DuelMoveKind.Choose && (s.Options[i].Primary || Deciding == DecisionKind.ChooseCard && s.Options[i].CardId != null), -1);
         if (main < 0 && die.Length > 0) main = die[0];
-        if (ChoosingOsamuCards || _showcase != null && ChoosingMemoryRecovery)
+        if (ChoosingDeckGallery || _showcase != null && ChoosingMemoryRecovery)
         {
-            if (ChoosingOsamuCards)
+            if (ChoosingDeckGallery)
                 foreach (var index in indices.Where(i => s.Options[i].CardId == null))
                     AddOption(_moves, index);
             var includesDeck = _deckSearchOptions.Any(o => EffectCardOwner(o) == null);
             var confirm = main >= 0 ? AddOption(_moves, main, primary: true) : new Button
             {
-                Text = includesDeck ? "Añadir a la mano" : "Recuperar", Disabled = true,
+                Text = ChoosingDeckGallery && _deckSearchOptions.FirstOrDefault() is { } choice
+                    ? ArenaActionText.Label(choice, s) : includesDeck ? "Añadir a la mano" : "Recuperar",
+                Disabled = true,
                 TooltipText = includesDeck ? "Selecciona una carta." : "Selecciona una carta de la memoria."
             };
             if (main < 0)
@@ -321,7 +323,7 @@ public partial class OnlineArena
     private void BindInspectorPreviews()
     {
         var buttons = _root!.FindChildren("*", "Button", true, false).OfType<Button>();
-        if (_osamuChoiceShade != null) buttons = buttons.Concat(_handCards);
+        if (_deckChoiceShade != null) buttons = buttons.Concat(_handCards);
         foreach (var control in buttons)
         {
             var card = control switch
@@ -462,7 +464,7 @@ public partial class OnlineArena
             if (_historyFeed != null) _historyFeed.Visible = !reading && !_preparing;
             if (_railReading != null) _railReading.SizeFlagsVertical = reading || _historyFeed is not { Visible: true } ? SizeFlags.ExpandFill : SizeFlags.Fill;
         }
-        if (_showcase == null && _osamuChoiceShade == null)
+        if (_showcase == null && _deckChoiceShade == null)
         {
             var interaction = (Control)_actionDock.GetParent().GetParent();
             // The scrollable board and inspector share a column at medium sizes.

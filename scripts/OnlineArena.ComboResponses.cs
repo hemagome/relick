@@ -39,7 +39,7 @@ public partial class OnlineArena
             var indices = Enumerable.Range(0, _deckSearchOptions.Length).Where(i => owners[i] == seat).ToArray();
             if (indices.Length == 0) continue;
             var name = s.Players[seat].Name;
-            var title = seat != s.MySeat ? $"MEMORIA DE {name}" : ChoosingOsamuCards ? "TU MEMORIA" : $"TU MEMORIA · {name}";
+            var title = seat != s.MySeat ? $"MEMORIA DE {name}" : ChoosingDeckGallery ? "TU MEMORIA" : $"TU MEMORIA · {name}";
             sections.Add(new(title,
                 seat == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral, new CardOwner(seat, name, s.Players[seat].RelikarioId), indices));
         }
