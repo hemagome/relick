@@ -211,7 +211,16 @@ Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque. `--board-reading-only` comprueba los contadores (sin solapes con ninguna zona, en cinco tamaños y ambos asientos), el golpe final, la segunda caída y la ranura por enseñar.
 
-## Personalización de mazos: micas y dados
+## Editor de mazos
+
+El editor muestra el mazo en el centro, el inspector a la izquierda y la colección a la derecha. Las pestañas Principal, Trampas y Banquillo tienen sus propias cuadrículas. «Agrupar copias» alterna entre una ficha con contador por carta y una ficha por copia. Los requisitos del mazo se actualizan al editar y se pueden consultar antes de guardar un borrador.
+
+- Pulsa una carta para ver su arte y su efecto. Pulsa el arte del inspector para ampliarlo.
+- Con clic derecho quitas una copia del mazo o añades una desde la colección. También puedes arrastrar desde la colección a la cuadrícula o a la pestaña de destino.
+- Los botones `+` y `−` del inspector editan la carta seleccionada en la pestaña activa. El botón de intercambio mueve una copia entre el banquillo y el mazo que le corresponde.
+- «Deshacer» o `Ctrl+Z` revierte el último cambio de cartas.
+
+### Personalización de mazos: micas y dados
 
 Cada mazo guardado tiene una mica y un dado. Son solo cosméticos y no cambian ninguna regla. El catálogo está en `core/CosmeticCatalog.cs`:
 
@@ -220,7 +229,7 @@ Cada mazo guardado tiene una mica y un dado. Son solo cosméticos y no cambian n
 
 Funcionamiento:
 
-- **Editor.** La pestaña «Estilo», junto a Mazo y Banquillo, muestra una ficha por opción, con la elegida enmarcada en dorado. Mientras está abierta, pulsar el catálogo solo consulta la carta. Cambiar la mica o el dado marca el mazo como modificado, y guardar los envía con él. Duplicar un mazo copia su estilo. El mazo de entrenamiento usa la mica Transparente y el dado Clásico.
+- **Editor.** La pestaña «Estilo» muestra una ficha por opción, con la elegida enmarcada en dorado. Mientras está abierta puedes consultar las cartas de la colección. Cambiar la mica o el dado marca el mazo como modificado. Duplicar un mazo copia su estilo. El mazo de entrenamiento usa la mica Transparente y el dado Clásico.
 - **Micas.** `SleeveArt` recolorea en bitono el reverso impreso: los negros toman el tono oscuro de la mica y los blancos el claro, y se añade un borde con su color de canto. Cada reverso se genera una vez, a 512 px de alto, y se conserva durante la sesión. La mica Transparente deja ver el reverso impreso original.
   - Se ve en el mazo y en las cartas corruptas de cada jugador, en la mano oculta del rival y en las cartas que vuelan.
 - **Dados.** `DiceFace.ApplyStyle` recolorea el cuerpo y los puntos del dado 3D. Cada tirada muestra el dado de quien tira, también cuando lanza el defensor (por ejemplo, con Esquivar), porque el evento visual del dado ahora indica quién tiró. Los dados de iniciativa conservan el estilo clásico, porque la preparación aún no conoce los estilos.
@@ -229,7 +238,7 @@ Funcionamiento:
 Pruebas:
 
 - `--cosmetics-only`: la mica del dueño en el mazo, las corruptas y la mano rival, y el dado de quien tira.
-- `--decks-only`: la pestaña Estilo y el guardado.
+- `--decks-only`: el editor en cuatro tamaños, gestos de cartas, pestaña Estilo y guardado.
 - Ambas forman parte de la matriz completa.
 
 ## Toques de animación

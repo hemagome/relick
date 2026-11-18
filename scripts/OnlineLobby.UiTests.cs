@@ -21,7 +21,9 @@ public partial class OnlineLobby
             }
             if (OS.GetCmdlineUserArgs().Contains("--decks-only"))
             {
-                await CheckDeckScreens(); await Layout(); GD.Print("PVP_DECKS_ONLY_PASS"); QuitWithAudio(); return;
+                await CheckDeckScreens();
+                GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
+                GD.Print("PVP_DECKS_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--account-only"))
             {

@@ -36,6 +36,34 @@ public partial class OnlineLobby
                 var rect = control.GetGlobalRect();
                 Expect(rect.Position.X >= -1 && rect.End.X <= size.X + 1, $"{what} se sale del ancho en {size.X}x{size.Y}.");
             }
+            void Pointer(Vector2 point, MouseButton button, bool pressed) => GetViewport().PushInput(new InputEventMouseButton
+            {
+                Position = point, GlobalPosition = point, ButtonIndex = button, Pressed = pressed,
+                ButtonMask = !pressed ? 0 : button == MouseButton.Right ? MouseButtonMask.Right : MouseButtonMask.Left
+            }, true);
+            void Motion(Vector2 point, Vector2 relative = default, MouseButtonMask buttons = 0) => GetViewport().PushInput(new InputEventMouseMotion
+            {
+                Position = point, GlobalPosition = point, Relative = relative, ButtonMask = buttons
+            }, true);
+            void RightClick(Control control)
+            {
+                var point = control.GetGlobalRect().GetCenter();
+                Motion(point);
+                Pointer(point, MouseButton.Right, true);
+                Pointer(point, MouseButton.Right, false);
+            }
+            void Drag(Control source, Control target)
+            {
+                var from = source.GetGlobalRect().GetCenter();
+                var to = target.GetGlobalRect().GetCenter();
+                var start = new Vector2(-16, 0);
+                Motion(from);
+                Pointer(from, MouseButton.Left, true);
+                Motion(from + start, start, MouseButtonMask.Left);
+                Motion(to, to - from - start, MouseButtonMask.Left);
+                Expect(GetViewport().GuiIsDragging(), "la colección no inicia un arrastre de carta.");
+                Pointer(to, MouseButton.Left, false);
+            }
             var screen = new DeckScreen { Connection = _lobby, PreviewDecks = samples };
             AddChild(screen); await Frames();
             var rows = screen.FindChild("DeckRows", true, false)!.GetChild(0);
@@ -134,25 +162,81 @@ public partial class OnlineLobby
             Expect(editor.AddBlocked(CardCatalog.SuperAttack)!.Contains("hasta 3") && editor.Traps.Count == 3, "se permite una cuarta Trampa.");
             await Frames();
             Expect(editor.Dirty && editor.Problems.Count == 0 && ((Button)editor.FindChild("SaveDeck", true, false)).Text == "Guardar" &&
-                ((Button)editor.FindChild("DeckTab", true, false)).Text.Contains("42/42") &&
-                ((Label)editor.FindChild("DeckProblems", true, false)).Text.Contains("listo"), "un mazo legal no se presenta como listo.");
+                editor.FindChild("DeckTotals", true, false)!.FindChildren("*", "Label", true, false).OfType<Label>().Any(label => label.Text == "42/42") &&
+                ((Button)editor.FindChild("DeckProblems", true, false)).Text.Contains("listo"), "un mazo legal no se presenta como listo.");
             Expect(((Label)editor.FindChild("Catalog_" + playable[0].Id, true, false)!.GetNode("Copies")).Text == "×2", "el catálogo no muestra las copias incluidas.");
-            foreach (var name in new[] { "SaveDeck", "EditorBack", "DeckName", "DeckPanel", "ListTabs", "CatalogGallery" })
+            foreach (var name in new[] { "SaveDeck", "EditorBack", "DeckName", "DeckPanel", "ListTabs", "CatalogGallery", "InspectorPanel", "DeckProblems" })
                 Inside((Control)editor.FindChild(name, true, false), name);
+            var artwork = (TextureRect)editor.FindChild("InspectorArtwork", true, false)!;
+            var inspector = (Control)editor.FindChild("InspectorPanel", true, false)!;
+            var inspectorCopies = (Label)editor.FindChild("InspectorCopies", true, false)!;
+            Expect(inspector.GetGlobalRect().Encloses(artwork.GetGlobalRect()) && inspector.GetGlobalRect().Encloses(inspectorCopies.GetGlobalRect()) &&
+                ((Control)editor.FindChild("DeckProblems", true, false)!).GetGlobalRect().End.Y <= size.Y + 1,
+                $"la carta del inspector, los controles o los requisitos se cortan en {size.X}x{size.Y}.");
+            var mainGrid = (GridContainer)editor.FindChild("DeckCards", true, false)!;
+            var attackInDeck = (HandCard)mainGrid.GetNode("Deck_attack");
+            var attackInCatalog = (HandCard)editor.FindChild("Catalog_attack", true, false)!;
+            GuiInputTestDriver.Click(attackInDeck);
+            Expect(artwork.Texture == attackInDeck.FaceTexture && inspectorCopies.Text == "12 copias" && editor.Main.Count == 42,
+                "el clic izquierdo no inspecciona la carta completa o cambia el mazo.");
+            RightClick(attackInDeck);
+            Expect(editor.Main.Count == 41 && inspectorCopies.Text == "11 copias" && editor.Problems.Count > 0,
+                "el clic derecho sobre una pila no quita exactamente una copia.");
+            GetViewport().PushInput(new InputEventKey { Keycode = Key.Z, CtrlPressed = true, Pressed = true }, true);
+            GetViewport().PushInput(new InputEventKey { Keycode = Key.Z, CtrlPressed = true }, true);
+            Expect(editor.Main.Count == 42 && inspectorCopies.Text == "12 copias", "Ctrl+Z no restaura la copia retirada.");
+            RightClick(attackInDeck);
+            RightClick(attackInCatalog);
+            Expect(editor.Main.Count == 42 && editor.Problems.Count == 0, "el clic derecho de la colección no añade una sola copia.");
+            RightClick(attackInDeck);
+            Drag(attackInCatalog, attackInDeck);
+            Expect(editor.Main.Count == 42, "soltar una carta sobre el mazo no añade una copia.");
+
+            var grouping = (CheckButton)editor.FindChild("GroupCopies", true, false)!;
+            grouping.ButtonPressed = false;
+            Expect(mainGrid.GetChildCount() == 42 && mainGrid.HasNode("Deck_attack_12"), "la cuadrícula no muestra copias individuales.");
+            grouping.ButtonPressed = true;
+            Expect(mainGrid.GetChildCount() == 16, "agrupar no devuelve una ficha por carta.");
+            GuiInputTestDriver.Click((Button)editor.FindChild("InspectArtwork", true, false)!);
+            Expect(editor.FindChild("DeckCardZoom", true, false) is AcceptDialog { Visible: true } &&
+                editor.FindChild("EnlargedCard", true, false) is TextureRect enlarged && enlarged.Texture == artwork.Texture,
+                "la ampliación no muestra el arte seleccionado.");
+            ((AcceptDialog)editor.FindChild("DeckCardZoom", true, false)!).Hide();
+            await Frames();
+            ((Button)editor.FindChild("TrapTab", true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames();
+            Expect(mainGrid.GetChildCount() == 2 && mainGrid.HasNode("Deck_super-magnet") && !attackInCatalog.Visible &&
+                editor.FindChild("Catalog_zahira-flair", true, false) is HandCard { Visible: true }, "Trampas no separa su mazo y su catálogo.");
 
             // Side deck: up to ten non-Attack cards, sharing copy limits with the deck.
             var benchable = playable.Skip(15).Where(card => DeckRules.Compatible(card, "yuno")).ToList();
             Expect(editor.AddBlocked(CardCatalog.Attack, toSide: true)!.Contains("Ataque"), "el banquillo admite Ataques.");
             Expect(editor.AddBlocked(playable[0], toSide: true)!.Contains("2 copias"), "el banquillo ignora las copias del mazo.");
-            ((Button)editor.FindChild("SideTab", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-            Expect(editor.EditingSide && editor.FindChild("SideHelp", true, false) != null, "la pestaña Banquillo no muestra el banquillo.");
-            ((HandCard)editor.FindChild("Catalog_" + benchable[0].Id, true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
-            Expect(editor.Side.SequenceEqual([benchable[0].Id]) && editor.Main.Count == 42, "pulsar el catálogo en la pestaña Banquillo no lo añade al banquillo.");
+            Drag((Control)editor.FindChild("Catalog_zahira-flair", true, false)!, (Control)editor.FindChild("SideTab", true, false)!);
+            Expect(editor.EditingSide && editor.Side.SequenceEqual([CardCatalog.ZahiraFlair.Id]) && editor.Traps.Count == 3,
+                "soltar en la pestaña Banquillo no añade una copia a esa sección.");
+            GuiInputTestDriver.Click((Button)editor.FindChild("UndoDeck", true, false)!);
+            await Frames();
+            Expect(editor.EditingSide && mainGrid.GetChildCount() == 0 && !attackInCatalog.Visible, "la pestaña Banquillo no muestra su cuadrícula sin Ataques.");
+            var search = (LineEdit)editor.FindChild("CatalogSearch", true, false)!;
+            GuiInputTestDriver.ReplaceText(search, benchable[0].Name);
+            await Frames();
+            var catalogTile = (HandCard)editor.FindChild("Catalog_" + benchable[0].Id, true, false)!;
+            GuiInputTestDriver.Click(catalogTile);
+            Expect(editor.Side.Count == 0 && artwork.Texture == catalogTile.FaceTexture, "el clic en la colección debe servir para inspeccionar.");
+            Drag(catalogTile, (Control)editor.FindChild("DeckList", true, false)!);
+            Expect(editor.Side.SequenceEqual([benchable[0].Id]), "no se puede arrastrar a una cuadrícula vacía.");
+            GuiInputTestDriver.Click((Button)editor.FindChild("UndoDeck", true, false)!);
+            Expect(editor.Side.Count == 0, "Deshacer no revierte el arrastre al banquillo.");
+            GuiInputTestDriver.Click((Button)editor.FindChild("More", true, false)!);
+            Expect(editor.Side.SequenceEqual([benchable[0].Id]) && editor.Main.Count == 42, "el botón + no añade al banquillo.");
+            search.Clear();
             Expect(editor.FindChild("Catalog_" + benchable[0].Id, true, false)! is var benched && !((Label)benched.GetNode("Copies")).Visible &&
                 ((Control)benched.GetNode("Bench")).Visible && ((Label)benched.FindChild("BenchCount", true, false)!).Text == "1", "el catálogo no distingue las copias del banquillo.");
             foreach (var card in benchable.Skip(1).Take(9)) editor.Add(card, toSide: true);
             Expect(editor.Side.Count == 10 && editor.AddBlocked(benchable[0], toSide: true)!.Contains("hasta 10"), "el banquillo pasa de diez cartas.");
-            Expect(editor.FindChild("Row_" + benchable[0].Id, true, false)?.FindChild("Move", true, false) != null, "las filas del banquillo no ofrecen pasar al mazo.");
+            Expect(editor.FindChild("Move", true, false) is Button move && move.AccessibilityName.Contains("Principal"),
+                "el inspector del banquillo no ofrece pasar al mazo.");
             // Swapping one for one keeps both totals, as the swap between duels will.
             editor.Move(playable[1], toSide: true);
             Expect(editor.AddBlocked(playable[1], toSide: true) != null, "se permite pasar una carta al banquillo lleno.");
@@ -181,7 +265,7 @@ public partial class OnlineLobby
             ((Button)editor.FindChild("Sleeve_oro", true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             ((Button)editor.FindChild("Dice_obsidiana", true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Expect(editor.Sleeve == "oro" && editor.Dice == "obsidiana" && editor.Dirty, "elegir mica y dado no cambia el mazo editado.");
-            foreach (var button in editor.FindChild("DeckList", true, false)!.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
+            foreach (var button in editor.FindChild("DeckStyle", true, false)!.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
                 Inside(button, "Una opción de estilo");
             await Capture("deck-style");
             ((Button)editor.FindChild("DeckTab", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
@@ -195,7 +279,7 @@ public partial class OnlineLobby
             Expect(editor.Problems.Count > 0 && editor.Main.Count == 41, "quitar una carta no actualiza el mazo.");
             editor.Add(playable[0]);
             await Capture("deck-editor");
-            editor.EditingSide = true; await Frames();
+            ((Button)editor.FindChild("SideTab", true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             foreach (var button in editor.FindChild("DeckList", true, false)!.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
                 Inside(button, "Un botón del banquillo");
             await Capture("deck-side");

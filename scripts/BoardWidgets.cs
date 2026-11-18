@@ -990,7 +990,8 @@ public partial class HandCard : Button
         TooltipText = OriginalOwner is { } owner
             ? $"{Card.Name}\n{Card.Text}\nDueño original: {owner.Name}" + (OwnerIsForeign ? " · carta prestada" : "")
             : $"{Card.Name}\n{Card.Text}";
-        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        var emptyStyle = new StyleBoxEmpty();
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, emptyStyle);
         SetProcess(false);
         if (Lifts && _chosen) { _hover = 1; ZIndex = 1; }
         FocusEntered += UpdatePreview; FocusExited += UpdatePreview;
