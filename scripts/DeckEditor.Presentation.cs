@@ -474,7 +474,8 @@ public partial class DeckEditor
                 position++;
                 tile.Badge.Text = $"×{copies}";
                 tile.Badge.Visible = _grouped && copies > 1;
-                tile.Face.AccessibilityName = _grouped ? $"{card.Name}, {copies} copias" : $"{card.Name}, copia {index + 1} de {copies}";
+                var label = CardWithArtwork(card);
+                tile.Face.AccessibilityName = _grouped ? $"{label}, {copies} copias" : $"{label}, copia {index + 1} de {copies}";
                 PositionBadges(tile);
             }
         }
@@ -497,18 +498,20 @@ public partial class DeckEditor
         _deckEmpty.Visible = cards.Length == 0;
         _deckEmpty.Text = EditingSide ? $"Banquillo vacío · Admite hasta {DeckRules.MaxSide} cartas sin Ataques."
             : "Arrastra una carta de la colección para añadirla.";
-        _deckTotal.Text = _grouped ? $"{cards.Length} {(cards.Length == 1 ? "carta distinta" : "cartas distintas")}" : "Copias individuales";
+        var distinct = cards.Select(card => card.Name).Distinct().Count();
+        _deckTotal.Text = _grouped ? $"{distinct} {(distinct == 1 ? "carta distinta" : "cartas distintas")}" : "Copias individuales";
         PresentSelection();
     }
 
     private Tile CreateTile(CardDefinition card, string name, float scale, bool fromCatalog)
     {
+        var label = CardWithArtwork(card);
         var face = new HandCard
         {
             Card = card, RelikarioId = Relikario, PresentationScale = scale, Name = name,
-            SizeFlagsHorizontal = SizeFlags.ShrinkBegin, AccessibilityName = card.Name
+            SizeFlagsHorizontal = SizeFlags.ShrinkBegin, AccessibilityName = label
         };
-        face.Ready += () => face.TooltipText = card.Name;
+        face.Ready += () => face.TooltipText = label;
         var badge = ArenaPresentation.Text("", ShortScreen ? 10 : 12, BoardArt.Gold);
         badge.Name = "Copies";
         badge.MouseFilter = MouseFilterEnum.Ignore;
@@ -550,6 +553,12 @@ public partial class DeckEditor
         return tile;
     }
 
+    private static string CardWithArtwork(CardDefinition card)
+    {
+        var artwork = card.ArtworkLabel ?? (card.Id == CardCatalog.Attack.Id ? "Arte clásico" : null);
+        return artwork == null ? card.Name : $"{card.Name} · {artwork}";
+    }
+
     private static StyleBoxFlat BadgeStyle(Color color)
     {
         var plate = RelickVisuals.Frame(new Color("171022"), color.Darkened(0.38f), 3);
@@ -581,7 +590,7 @@ public partial class DeckEditor
             tile.BenchCount!.Text = benched.ToString();
             tile.Bench!.Visible = benched > 0;
             PositionBadges(tile);
-            tile.Face.TooltipText = $"{card.Name}\n{copies} en {SectionName(Home(card))} · {benched} en el banquillo";
+            tile.Face.TooltipText = $"{CardWithArtwork(card)}\n{copies} en {SectionName(Home(card))} · {benched} en el banquillo";
         }
     }
 
@@ -608,9 +617,10 @@ public partial class DeckEditor
             _reading.ScrollVertical = 0;
             _art.Texture = BoardArt.LoadCardArtwork(card, Relikario);
             _zoom.Disabled = _art.Texture == null;
-            _zoom.TooltipText = _zoom.AccessibilityName = $"Ampliar {card.Name}";
+            var label = CardWithArtwork(card);
+            _zoom.TooltipText = _zoom.AccessibilityName = $"Ampliar {label}";
             _classification.Text = CardInspectorText.Classification(card);
-            _cardName.Text = card.Name;
+            _cardName.Text = label;
             var cost = ArenaActionText.CardCost(card);
             var stats = card.Kind == CardKind.Skill
                 ? $"Daño {card.NormalDamageText()} · Crítico {card.CriticalDamageText()} · {card.Reward} PR\n\n" : "";
@@ -639,7 +649,7 @@ public partial class DeckEditor
         if (_selected is not { } card || _art.Texture is not { } texture) return;
         var available = GetViewportRect().Size;
         var extent = BoardArt.FitArtwork(texture, new Rect2(Vector2.Zero, new(available.X * 0.83f, available.Y - 128))).Size;
-        ShowDetails("DeckCardZoom", card.Name, Artwork(texture, extent, "EnlargedCard"));
+        ShowDetails("DeckCardZoom", CardWithArtwork(card), Artwork(texture, extent, "EnlargedCard"));
     }
 
     private void ShowRequirements()
@@ -708,7 +718,7 @@ public partial class DeckEditor
         {
             var card = tile.Face.Card;
             tile.Face.Visible = InCatalogSection(card) && (filterId == AllTypes || Groups[filterId].Match(card)) &&
-                compare.IndexOf(card.Name, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
+                compare.IndexOf(CardWithArtwork(card), query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
             if (tile.Face.Visible) visible++;
         }
         _catalogTotal.Text = visible == 1 ? "1 carta" : $"{visible} cartas";

@@ -203,6 +203,24 @@ public partial class OnlineLobby
                 "la ampliación no muestra el arte seleccionado.");
             ((AcceptDialog)editor.FindChild("DeckCardZoom", true, false)!).Hide();
             await Frames();
+            CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt];
+            var alternates = variants.Select(card => (HandCard)editor.FindChild("Catalog_" + card.Id, true, false)!).ToArray();
+            Expect(alternates.All(tile => tile.FaceTexture?.ResourcePath == $"res://assets/cards/{tile.Card.Id}-clean.png") &&
+                alternates.Append(attackInCatalog).Select(tile => tile.FaceTexture).Distinct().Count() == variants.Length + 1,
+                "la colección no distingue los cinco artes de Ataque.");
+            Expect(variants.All(card => editor.AddBlocked(card) != null),
+                "un arte alternativo permite superar los doce Ataques.");
+            var catalogScroll = (ScrollContainer)editor.FindChild("CatalogGallery", true, false)!;
+            foreach (var alternate in alternates)
+            {
+                RightClick(attackInDeck);
+                catalogScroll.EnsureControlVisible(alternate); await Frames();
+                RightClick(alternate); await Frames();
+                Expect(artwork.Texture == alternate.FaceTexture && inspectorCopies.Text == "1 copia" && mainGrid.HasNode("Deck_" + alternate.Card.Id),
+                    "el editor no cuenta ni muestra el arte elegido en su propia ficha.");
+            }
+            Expect(editor.Main.Count == 42 && editor.Problems.Count == 0 && editor.AddBlocked(CardCatalog.Attack) != null,
+                "mezclar artes cambia el total autorizado de Ataques.");
             ((Button)editor.FindChild("TrapTab", true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
             await Frames();
             Expect(mainGrid.GetChildCount() == 2 && mainGrid.HasNode("Deck_super-magnet") && !attackInCatalog.Visible &&
@@ -272,9 +290,16 @@ public partial class OnlineLobby
             Expect(!editor.EditingStyle && !editor.EditingSide, "volver al mazo deja abierta la pestaña Estilo.");
 
             var saved = (name: "", main: 0, traps: 0, side: 0, sleeve: "", dice: "");
-            editor.SaveRequested += (name, main, traps, side, sleeve, die) => saved = (name, main.Count, traps.Count, side.Count, sleeve, die);
+            string[] savedAttacks = [];
+            editor.SaveRequested += (name, main, traps, side, sleeve, die) =>
+            {
+                saved = (name, main.Count, traps.Count, side.Count, sleeve, die);
+                savedAttacks = main.Where(id => DeckRules.IsAttack(CardCatalog.Get(id))).ToArray();
+            };
             ((Button)editor.FindChild("SaveDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed);
             Expect(saved == ("Mazo nuevo", 42, 3, 10, "oro", "obsidiana"), "guardar no entrega el nombre, las cartas, las Trampas, el banquillo y el estilo.");
+            Expect(savedAttacks.Count(id => id == CardCatalog.Attack.Id) == DeckRules.AttackCount - variants.Length &&
+                variants.All(card => savedAttacks.Count(id => id == card.Id) == 1), "guardar pierde la mezcla de artes de Ataque.");
             editor.Remove(playable[0]);
             Expect(editor.Problems.Count > 0 && editor.Main.Count == 41, "quitar una carta no actualiza el mazo.");
             editor.Add(playable[0]);

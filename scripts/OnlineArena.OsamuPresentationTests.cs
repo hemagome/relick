@@ -16,10 +16,11 @@ public partial class OnlineArena
         Check(super != null && super != blue && super == BoardArt.LoadCardArtwork(CardCatalog.SuperAttack, "yuno"),
             "Súper Ataque debe conservar su propia ilustración.");
 
+        CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt];
         var game = GameEngine.FromOpening(new DuelOpening
         {
             Names = ["Osamu", "Yuno"], Relikarios = ["osamu", "yuno"],
-            Hands = [[CardCatalog.Attack.Id, CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
+            Hands = [[CardCatalog.Attack.Id, CardCatalog.Attack.Id, .. variants.Select(card => card.Id)], [CardCatalog.Attack.Id]],
             Decks = [[], []], Bonuses = [null, null]
         }, new SeededRandom(73));
         game.State.Players[0].MarkForeignHandCard(1);
@@ -36,6 +37,15 @@ public partial class OnlineArena
             "El rival revelado y la memoria deben usar el arte de sus dueños.");
         SelectCard(0);
         Check(_showcase?.FaceTexture == blue, "El inspector no amplía el Ataque azul que se seleccionó.");
+        for (var i = 0; i < variants.Length; i++)
+        {
+            var index = i + 2;
+            SelectCard(index);
+            var path = $"res://assets/cards/{variants[i].Id}-clean.png";
+            Check(_handCards.Single(card => card.Name == $"HandCard{index}").FaceTexture?.ResourcePath == path &&
+                _showcase?.FaceTexture?.ResourcePath == path,
+                $"La mano o el inspector pierde el arte de {variants[i].ArtworkLabel} al jugar con otro Relikario.");
+        }
 
         RelikarioPortrait Probe()
         {

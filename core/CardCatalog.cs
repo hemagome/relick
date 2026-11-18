@@ -22,6 +22,8 @@ public sealed record CardDefinition(
     // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
     string? Relikario = null, bool Special = false, bool LightEquipment = false)
 {
+    public string? ArtworkLabel { get; init; }
+
     public int NormalDamageAt(int counters) => MaxNormalDamage > 0 ? Math.Min(MaxNormalDamage, NormalDamage + counters * DamagePerReroll) : NormalDamage + counters * DamagePerReroll;
     public int CriticalDamageAt(int counters) => CriticalDamage + counters * DamagePerReroll;
     public string NormalDamageText(int counters = 0) => Id switch
@@ -114,6 +116,10 @@ public static class CardCatalog
         LightEquipment: true);
     public static readonly CardDefinition Attack = new("attack", "Ataque", CardKind.Attack,
         "Consume esta carta para atacar con una habilidad enseñada.");
+    public static readonly CardDefinition AttackYuno = Attack with { Id = "attack-yuno-ns41", ArtworkLabel = "Yuno (NS-41/150)" };
+    public static readonly CardDefinition AttackOsamu = Attack with { Id = "attack-osamu-ns42", ArtworkLabel = "Osamu (NS-42/150)" };
+    public static readonly CardDefinition AttackYunoDt = Attack with { Id = "attack-yuno-dt72", ArtworkLabel = "Yuno (DT-72/100)" };
+    public static readonly CardDefinition AttackOsamuDt = Attack with { Id = "attack-osamu-dt73", ArtworkLabel = "Osamu (DT-73/100)" };
     public static readonly CardDefinition Magnet = new("magnet-shuffle", "Relick Magnet Shuffle", CardKind.Skill,
         "Daño normal: 1D6 · Crítico: 5 · Premio: 500 PR. Al realizar un crítico puedes mirar la mano del adversario y tomar una carta de ella o de su Bonus.", 0, 5, 500, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition Destiny = new("destiny-shuffle", "Relick Destiny Shuffle", CardKind.Skill,
@@ -150,7 +156,7 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 

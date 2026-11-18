@@ -91,7 +91,9 @@ static class DeckChecks
             // Twelve Attacks plus two copies of fifteen cards: legal, and unlike the training deck it has no Equipment.
             var pairs = CardCatalog.TrainingDeck().Select(CardCatalog.Get)
                 .Where(card => card.Kind is CardKind.Skill or CardKind.Code).Select(card => card.Id).Distinct().Take(15).ToList();
-            var custom = Enumerable.Repeat("attack", 12).Concat(pairs).Concat(pairs).ToList();
+            string[] attackArts = [CardCatalog.Attack.Id, CardCatalog.Attack.Id, CardCatalog.AttackYuno.Id,
+                CardCatalog.AttackOsamu.Id, CardCatalog.AttackYunoDt.Id, CardCatalog.AttackOsamuDt.Id];
+            var custom = attackArts.Concat(attackArts).Concat(pairs).Concat(pairs).ToList();
             List<string> traps = ["super-attack", "super-attack", "super-magnet"];
             Check(DeckRules.Validate("yuno", custom, traps).Count == 0, "El mazo de prueba cumple las reglas");
 
@@ -101,7 +103,7 @@ static class DeckChecks
             await Until(() => ana.Decks.Count == 1);
             var deck = ana.Decks.Single();
             Check(deck is { Name: "Dobles", Valid: true, Active: false } && deck.Cards.SequenceEqual(custom) && deck.Traps.SequenceEqual(traps),
-                "Guardar crea un solo mazo aunque se reintente y recorta el nombre");
+                "Guardar conserva la mezcla de artes, crea un solo mazo aunque se reintente y recorta el nombre");
             Check(beto.Decks.Count == 0, "Los mazos de otro jugador no son visibles");
 
             await Call(ana, r => r.SaveDeck(0, "Borrador", "yuno", custom.Skip(1).ToList(), [], [], Id()));

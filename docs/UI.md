@@ -220,6 +220,7 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. T
 El editor muestra el mazo en el centro, el inspector a la izquierda y la colección a la derecha. Las pestañas Principal, Trampas y Banquillo tienen sus propias cuadrículas. «Agrupar copias» alterna entre una ficha con contador por carta y una ficha por copia. Los requisitos del mazo se actualizan al editar y se pueden consultar antes de guardar un borrador.
 
 - Pulsa una carta para ver su arte y su efecto. Pulsa el arte del inspector para ampliarlo.
+- La colección ofrece Ataque clásico y cuatro artes alternativos de Yuno y Osamu, dos de la serie NS y dos de la serie DT. Puedes mezclar los cinco artes en el mismo mazo. Cada copia cuenta como Ataque para el total de 12 y conserva su ilustración durante el duelo.
 - Con clic derecho quitas una copia del mazo o añades una desde la colección. También puedes arrastrar desde la colección a la cuadrícula o a la pestaña de destino.
 - Los botones `+` y `−` del inspector editan la carta seleccionada en la pestaña activa. El botón de intercambio mueve una copia entre el banquillo y el mazo que le corresponde.
 - «Deshacer» o `Ctrl+Z` revierte el último cambio de cartas.
