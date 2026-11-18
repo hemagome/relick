@@ -48,6 +48,7 @@ Piloto del 16 de noviembre de 2026, ampliado el mismo día con cuatro cartas má
 | Resetear la Mente | Mano a mirar, dos memorias (agrupadas por dueño) y una no-habilidad de esa mano, como pasos de la misma decisión. | `MindResetChoice`, `PendingMindReset` |
 | Esquivar | Tirada: 1–3 roba, 4–6 niega el ataque. | `DodgeAttack` en el motor |
 | Tótem de Oro | Cuántos Tótems de Salvación mostrar (cero, uno o dos), después la colocación del motor. | `GoldenTotemChoice` |
+| ¡Dame ese equipo! | Equipo rival en el campo, después la transferencia del motor y un Ataque del mazo debajo del Relikario. | Nada: es una carta nueva, escrita directamente como módulo. |
 
 Cada una es un archivo de 12 a 100 líneas en `core/Effects/`, más `FieldDestruction.cs`, que comparten las dos que destruyen. Se quitaron doce indicadores de `CardDefinition`: `DestroyNonSkill`, `DestroyChosenZone`, `SearchNonSkill`, `ChangePointsFromDie`, `DrawThenDie`, `RecoverMemory`, `SwapHands`, `ReloadBothHands`, `SearchAttacks`, `ResetMind`, `DodgeAttack` y `DeployTotems`. Ni el cliente ni el bot de pruebas leían `SwapHands`, `ReloadBothHands`, `SearchAttacks`, `ResetMind` ni `DeployTotems`. `DodgeAttack` lo leían dos sitios que ahora reconocen la carta por su identificador: la pista del cliente («Requiere un ataque rival pendiente de defensa») y el motor al decidir si el defensor tiene una respuesta que esperar antes del daño, que es un disparador y no una activación. `HealFromDie` sigue solo como pista para el icono de la carta y el bot de pruebas; el motor ya no lo lee. `Draw` se queda como dato que leen los módulos (cuántas cartas roban Senshuni, Carga Rápida y Cartucho), y `EarliestTurn`, `IsCombo` y `ActionCost` siguen siendo costes comunes de activación. El robo y la curación genéricos del motor (`Draw`, `Heal`) solo los usan ya las cartas de prueba.
 
@@ -64,6 +65,18 @@ Cambios de comportamiento, todos menores:
 - Resetear la Mente muestra la elección de mano como botones («Mi mano», «Mano rival», esta como acción principal) y las memorias y la carta de la mano en la galería, con el título del servidor. La etiqueta de fase dice «RESETEAR LA MENTE» como antes. Si una interrupción deja la decisión sin opciones, termina sin efecto en lugar de quedarse esperando; las opciones de «finalizar» de siempre se conservan.
 - El bot de pruebas elige ahora la mano rival en Resetear la Mente, porque es la opción principal.
 - Tótem de Oro pregunta cuántas copias mostrar con botones («Colocar sin Tótems», «Mostrar 1 Tótem», «Mostrar 2 Tótems») en lugar de seleccionar las cartas en la mano. Muestra las primeras copias de la mano, como hacía el bot de pruebas; las copias son idénticas, así que solo importa en el caso raro de tener a la vez una copia propia y una prestada por Cambio de Mentes. La jugada anterior, que nombra las copias exactas, se sigue aceptando. Durante la elección, intentar otra carta dice «Decide primero: Tótem de Oro.».
+
+## Primera carta nueva como módulo
+
+¡Dame ese equipo! es la primera carta que nunca tuvo código en el motor: se escribió directamente como módulo. El costo real fue:
+
+- **El módulo** (`TakeEquipmentEffect.cs`, 55 líneas): disponibilidad (el rival tiene un equipo y tu mazo tiene un Ataque), la decisión `ChooseTarget` con las opciones del rival y dos pasos de continuación, equipar y anexar.
+- **Cuatro operaciones nuevas en `EffectContext`**: `RivalEquipment`, `TakeEquipment` (que pasa antes por la sustitución de Súper Imán), `FinishEquipmentTransfer` y `AttachAttackFromDeck`. Las tres últimas envuelven la transferencia de equipo de `GameEngine.Equipment.cs` y el anexado de `GameEngine.Piles.cs`, que reutilizan el reemplazo del equipo propio (con Reverse Shuffle y Tótem de Oro) y las cartas anexadas.
+- **Su entrada en el catálogo, el arte y siete pruebas** (`tests/TakeEquipmentTests.cs`): solo el rival como objetivo, anulación y requisitos, recuperar la partida durante Reverse, Súper Imán, el último Tótem con cartas anexadas, PC con el último Ataque del mazo y la activación con Relikia.
+
+No tocó el protocolo, las fases ni la interfaz para su decisión: el cliente la dibuja con el tablero iluminado genérico. Los cambios del cliente en el mismo commit son de las zonas nuevas (Área y equipo ligero) que trajeron las otras cartas.
+
+Misión: Robo de Equipos y Anillo Morado, del mismo commit, usan decisiones genéricas (`PendingDecision`) pero no son módulos: `Decisions.cs` las despacha por identificador, igual que las decisiones de Osamu. Son disparadores (al llegar a ser el Área, al equiparse), no activaciones, así que esperan a que los módulos cubran disparadores.
 
 ## Compatibilidad
 
@@ -82,7 +95,7 @@ Cambios de comportamiento, todos menores:
 
 ## Siguientes pasos
 
-1. Escribir la primera carta nueva directamente como módulo, para medir el costo real.
+1. ~~Escribir la primera carta nueva directamente como módulo, para medir el costo real.~~ Hecho con ¡Dame ese equipo! (ver «Primera carta nueva como módulo»).
 2. Decidir la secuencia de RAM ([RAM](RAM.md)) antes de migrar respuestas: Error de Carga, Caja de Cartón y los COMBO de dado.
-3. Ya no quedan Códigos sin respuestas por migrar. Lo siguiente depende de decisiones de diseño: Error de Carga, Caja de Cartón, Estrella del Fontanero, Doblador de Tiempo, Re-lanza y Agilidad necesitan la secuencia de RAM, y Jessica Lee, Mira de Sniper y los demás equipos necesitan que los módulos cubran disparadores, no solo activaciones.
+3. Ya no quedan Códigos sin respuestas por migrar. Lo siguiente depende de decisiones de diseño: Error de Carga, Caja de Cartón, Estrella del Fontanero, Doblador de Tiempo, Re-lanza y Agilidad necesitan la secuencia de RAM, y Jessica Lee, Mira de Sniper, Misión: Robo de Equipos, Anillo Morado y los demás equipos necesitan que los módulos cubran disparadores, no solo activaciones.
 4. Retirar el código de las fases anteriores cuando ya no queden duelos guardados en ellas.
