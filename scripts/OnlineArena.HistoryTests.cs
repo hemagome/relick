@@ -57,7 +57,10 @@ public partial class OnlineArena
                     // The desktop rail lists the plays itself and yields to the card being read.
                     var feedRows = _historyFeed!.FindChildren("HistoryFeedEntry*", "PanelContainer", true, false).OfType<PanelContainer>().ToArray();
                     var feedText = string.Join("\n", _historyFeed.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text));
-                    Check(feedRows.Length == 4 && feedRows[0].Name == "HistoryFeedEntry4" && feedText.Contains("anula Error de Carga") && feedText.Contains("roba 2") &&
+                    // The activation, both Error de Carga and the pass are one resolution: one card, responses hanging from it.
+                    Check(feedRows.Length == 1 && feedRows[0].Name == "HistoryFeedEntry4" && feedText.Contains("Ana activa Senshuni.") &&
+                        feedText.Contains("↳ Beto activa Error de Carga.") && !feedText.Contains("deja resolver") &&
+                        feedText.Contains("TURNO 02 · ACCIONES") && feedText.Contains("anula Error de Carga") && feedText.Contains("roba 2") &&
                         !feedText.Contains(CardCatalog.DiamondHelmet.Name) && !feedText.Contains(CardCatalog.Agility.Name),
                         "El historial del inspector duplica filas, pierde resultados o revela robos privados.");
                     Check(!_historyButton!.Visible && !_historyFeed.Visible && _showcase!.Visible, "El historial no cede el inspector a la carta seleccionada.");
@@ -77,9 +80,9 @@ public partial class OnlineArena
                 var dialog = _historyDialog;
                 Check(dialog is { Visible: true }, "El botón no abre el historial.");
                 var rows = dialog!.FindChildren("HistoryEntry*", "PanelContainer", true, false).OfType<PanelContainer>().ToArray();
-                Check(rows.Length == 4 && rows[0].Name == "HistoryEntry4", "El historial duplica filas o no presenta primero la última jugada.");
+                Check(rows.Length == 1 && rows[0].Name == "HistoryEntry4", "El historial no agrupa la cadena en una jugada o duplica filas.");
                 var allText = string.Join("\n", dialog.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text));
-                Check(allText.Contains("anula Error de Carga") && allText.Contains("roba 2") && !allText.Contains(CardCatalog.DiamondHelmet.Name) && !allText.Contains(CardCatalog.Agility.Name), "El historial pierde resultados o revela robos/manos privadas.");
+                Check(allText.Contains("↳ Ana activa Error de Carga.") && allText.Contains("anula Error de Carga") && allText.Contains("roba 2") && !allText.Contains(CardCatalog.DiamondHelmet.Name) && !allText.Contains(CardCatalog.Agility.Name), "El historial pierde resultados o revela robos/manos privadas.");
                 if (seat == 0 && size.X is 1440 or 700) await Capture($"history-{size.X}x{size.Y}");
                 GuiInputTestDriver.Click(dialog.GetOkButton()); await Layout();
                 Check(!GodotObject.IsInstanceValid(dialog) && _selected.SetEquals(selected) && g.SaveSnapshot() == before, "Consultar o cerrar el historial ejecuta una jugada o pierde la selección.");

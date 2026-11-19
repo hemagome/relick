@@ -112,7 +112,7 @@ static class SuperMagnetTests
             Check(takeBonus.Move.Apply(game, 1).Success && owner.Bonus == bonus && owner.Deck.Count == deckCount && rival.Hand.Count == 0);
             Check(owner.Equipment == null && owner.EquipmentCounters == 0 && !owner.Memory.Contains(CardCatalog.SuperMagnet.Id));
             Check(game.State.Phase == Phase.Combat && rival.Relikia == 200 + CardCatalog.Magnet.Reward);
-            var details = game.PublicHistory!.Entries.Last().Details;
+            var details = DuelHistoryText.Lines(game.PublicHistory!.Entries.Last(), seat => game.State.Players[seat].Name);
             Check(details.Any(line => line.Contains("3/3")) && details.Any(line => line.Contains("fuera del juego")));
             game.State.CurrentPlayer = 0; game.State.Phase = Phase.Actions;
             Trade(game, 0, CardCatalog.Bonfire, CardCatalog.Attack);

@@ -70,8 +70,9 @@ public partial class OnlineArena
             _resolutionResponses.TooltipText = live == null ? "" : string.Join("\n", live.Responses.Select(r => HistoryPlayer(r.Actor) + " · " + HistoryCard(r.CardId)));
             if (latest != null)
             {
-                _resolutionMessage.Text = (live == null ? latest.Text + "\n" : "") + string.Join("\n", latest.Details.Take(2));
-                _resolutionMessage.TooltipText = latest.Text + "\n" + string.Join("\n", latest.Details);
+                var lines = DuelHistoryText.Lines(latest, HistoryPlayer);
+                _resolutionMessage.Text = (live == null ? latest.Text + "\n" : "") + string.Join("\n", lines.Take(2));
+                _resolutionMessage.TooltipText = latest.Text + "\n" + string.Join("\n", lines);
                 _resolutionMessage.MaxLinesVisible = 3;
                 _resolutionMessage.CustomMinimumSize = Vector2.Zero;
             }
@@ -114,7 +115,6 @@ public partial class OnlineArena
     /// <summary>The public plays, newest first. The rail shows them whenever no card is being read.</summary>
     private void BuildHistoryFeed(VBoxContainer parent)
     {
-        var s = _snapshot!;
         var feed = new VBoxContainer { Name = "HistoryFeed", SizeFlagsVertical = SizeFlags.ExpandFill, Visible = !_preparing };
         feed.AddThemeConstantOverride("separation", 4); parent.AddChild(feed); _historyFeed = feed;
         var heading = ArenaPresentation.Text("HISTORIAL", 12, BoardArt.Gold);
@@ -124,68 +124,103 @@ public partial class OnlineArena
         feed.AddChild(scroll);
         var list = new VBoxContainer { Name = "HistoryFeedEntries", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         list.AddThemeConstantOverride("separation", 6); scroll.AddChild(list);
-        var entries = _preparing ? [] : s.History?.OrderByDescending(e => e.Id).Take(DuelHistory.Capacity).ToArray() ?? [];
-        if (entries.Length == 0)
-        {
-            var empty = ArenaPresentation.Text("Aún no hay jugadas.", 13, BoardArt.Muted);
-            empty.AutowrapMode = TextServer.AutowrapMode.WordSmart; list.AddChild(empty);
-        }
-        var turn = -1;
-        foreach (var entry in entries)
-        {
-            if (entry.Turn != turn)
-            {
-                turn = entry.Turn;
-                var mark = ArenaPresentation.Text($"TURNO {entry.Turn:00}", 10, BoardArt.Muted);
-                mark.Name = "HistoryFeedTurn" + entry.Turn; list.AddChild(mark);
-            }
-            // The edge takes the colour of whoever played, as the fields do.
-            var mine = entry.SourceActor == s.MySeat;
-            var accent = entry.SourceActor is 0 or 1 ? mine ? ArenaPresentation.Mint : ArenaPresentation.Coral : BoardArt.Muted;
-            var panel = new PanelContainer { Name = "HistoryFeedEntry" + entry.Id, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            var style = new StyleBoxFlat { BgColor = new Color(1, 1, 1, 0.035f), BorderColor = accent, BorderWidthLeft = 3,
-                ContentMarginLeft = 9, ContentMarginRight = 6, ContentMarginTop = 5, ContentMarginBottom = 5 };
-            panel.AddThemeStyleboxOverride("panel", style); list.AddChild(panel);
-            var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 1); panel.AddChild(column);
-            var action = ArenaPresentation.Text(entry.Text, 13); action.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(action);
-            if (entry.Details.Length > 0)
-            {
-                var detail = ArenaPresentation.Text(string.Join("\n", entry.Details), 12, BoardArt.Muted);
-                detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(detail);
-            }
-        }
+        FillHistory(list, "HistoryFeed", false, "Aún no hay jugadas.");
     }
 
     private void ShowDuelHistory()
     {
         if (_snapshot == null || _preparing || IsAnimating || GetChildren().OfType<Window>().Any(w => w.Visible)) return;
-        var entries = _snapshot.History?.OrderByDescending(e => e.Id).Take(DuelHistory.Capacity).ToArray() ?? [];
         var dialog = new AcceptDialog { Name = "DuelHistoryDialog", Title = "Historial de jugadas", OkButtonText = "Volver al duelo" };
         var scroll = new ScrollContainer { Name = "HistoryReading", CustomMinimumSize = new(Math.Min(660, Size.X - 64), Math.Min(420, Size.Y - 130)),
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var list = new VBoxContainer { Name = "HistoryEntries", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        list.AddThemeConstantOverride("separation", 10); scroll.AddChild(list); dialog.AddChild(scroll); AddChild(dialog);
-        if (entries.Length == 0)
-        {
-            var empty = ArenaPresentation.Text("Las nuevas jugadas públicas aparecerán aquí.", 15, BoardArt.Muted);
-            empty.AutowrapMode = TextServer.AutowrapMode.WordSmart; list.AddChild(empty);
-        }
-        foreach (var entry in entries)
-        {
-            var panel = new PanelContainer { Name = "HistoryEntry" + entry.Id, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            panel.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame)); list.AddChild(panel);
-            var row = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; panel.AddChild(row);
-            row.AddChild(ArenaPresentation.Text($"TURNO {entry.Turn:00} · {ResolutionStatus(entry.Status)}", 11, BoardArt.Gold));
-            var action = ArenaPresentation.Text(entry.Text, 15); action.AutowrapMode = TextServer.AutowrapMode.WordSmart; row.AddChild(action);
-            if (entry.Details.Length > 0)
-            {
-                var detail = ArenaPresentation.Text(string.Join("\n", entry.Details), 14, BoardArt.Muted);
-                detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; row.AddChild(detail);
-            }
-        }
+        list.AddThemeConstantOverride("separation", 8); scroll.AddChild(list); dialog.AddChild(scroll); AddChild(dialog);
+        FillHistory(list, "History", true, "Las nuevas jugadas públicas aparecerán aquí.");
         _historyDialog = dialog;
         void Close() { _historyDialog = null; dialog.QueueFree(); }
         dialog.Confirmed += Close; dialog.Canceled += Close;
         ArenaViewport.FitDialog(dialog, Size);
+    }
+
+    private static string StageName(Phase stage) => stage switch
+    {
+        Phase.Draw => "ROBO", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Final => "FINAL", _ => ""
+    };
+
+    /// <summary>Consecutive entries of one resolution read as one play, newest play first; inside it, in order.</summary>
+    internal static List<DuelHistoryEntry[]> HistoryGroups(IEnumerable<DuelHistoryEntry> entries)
+    {
+        var groups = new List<DuelHistoryEntry[]>(); var current = new List<DuelHistoryEntry>();
+        foreach (var entry in entries.OrderBy(e => e.Id))
+        {
+            if (current.Count > 0 && current[0].Group != entry.Group) { groups.Add([.. current]); current.Clear(); }
+            current.Add(entry);
+        }
+        if (current.Count > 0) groups.Add([.. current]);
+        groups.Reverse();
+        return groups;
+    }
+
+    /// <summary>One list for the rail and the dialog: turn and stage marks, one card per resolution, and formalities
+    /// that settled nothing as a quiet line.</summary>
+    private void FillHistory(VBoxContainer list, string prefix, bool large, string emptyText)
+    {
+        var s = _snapshot!;
+        var entries = _preparing ? [] : s.History?.OrderByDescending(e => e.Id).Take(DuelHistory.Capacity).ToArray() ?? [];
+        if (entries.Length == 0)
+        {
+            var empty = ArenaPresentation.Text(emptyText, large ? 15 : 13, BoardArt.Muted);
+            empty.AutowrapMode = TextServer.AutowrapMode.WordSmart; list.AddChild(empty);
+            return;
+        }
+        int body = large ? 15 : 13, small = large ? 14 : 12;
+        (int Turn, Phase Stage)? mark = null;
+        foreach (var group in HistoryGroups(entries))
+        {
+            var head = group.FirstOrDefault(e => !e.Routine) ?? group[0]; var last = group[^1];
+            if (mark != (head.Turn, head.Stage))
+            {
+                mark = (head.Turn, head.Stage);
+                var stage = StageName(head.Stage);
+                var label = ArenaPresentation.Text($"TURNO {head.Turn:00}" + (stage.Length > 0 ? " · " + stage : ""), large ? 11 : 10, BoardArt.Muted);
+                label.Name = $"{prefix}Turn{head.Turn}{head.Stage}"; list.AddChild(label);
+            }
+            var outcomes = DuelHistoryText.Lines(group, HistoryPlayer);
+            if (group.All(e => e.Routine) && outcomes.Count == 0)
+            {
+                // "Ana avanza de fase." marks the flow without competing with the plays.
+                var quiet = ArenaPresentation.Text(string.Join(" ", group.Select(e => e.Text)), small - 1, BoardArt.Muted);
+                quiet.Name = $"{prefix}Routine{last.Id}"; quiet.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                list.AddChild(quiet);
+                continue;
+            }
+            // The edge takes the colour of whoever played, as the fields do.
+            var accent = head.SourceActor is 0 or 1 ? head.SourceActor == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral : BoardArt.Muted;
+            var panel = new PanelContainer { Name = $"{prefix}Entry{last.Id}", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var style = new StyleBoxFlat { BgColor = new Color(1, 1, 1, 0.035f), BorderColor = accent, BorderWidthLeft = 3,
+                ContentMarginLeft = 9, ContentMarginRight = 6, ContentMarginTop = 5, ContentMarginBottom = 5 };
+            panel.AddThemeStyleboxOverride("panel", style); list.AddChild(panel);
+            var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 1); panel.AddChild(column);
+            var status = last.Status switch
+            {
+                DuelResolutionStatus.Canceled => "ANULADA", DuelResolutionStatus.Response or DuelResolutionStatus.Resolving => "EN CURSO", _ => ""
+            };
+            if (status.Length > 0)
+                column.AddChild(ArenaPresentation.Text(status, large ? 11 : 10, last.Status == DuelResolutionStatus.Canceled ? ArenaPresentation.Coral : BoardArt.Gold));
+            var action = ArenaPresentation.Text(head.Text, body, head.Routine ? BoardArt.Muted : null);
+            action.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(action);
+            // Responses and decisions inside the resolution hang from the play they answer.
+            var follow = group.Where(e => e != head && !e.Routine).Select(e => "↳ " + e.Text).ToArray();
+            if (follow.Length > 0)
+            {
+                var responses = ArenaPresentation.Text(string.Join("\n", follow), small, RelickVisuals.State.Target);
+                responses.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(responses);
+            }
+            if (outcomes.Count > 0)
+            {
+                var detail = ArenaPresentation.Text(string.Join("\n", outcomes), small, BoardArt.Muted);
+                detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(detail);
+            }
+        }
     }
 }

@@ -28,6 +28,33 @@ public sealed class DuelResolutionView
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public PublicActivation? Attack { get; set; }
 }
+/// <summary>What a public outcome is; the client decides how each one reads.</summary>
+public enum DuelHistoryEventKind
+{
+    Die, DieAdjusted, Damage, Heal, Draw, Discard, Transfer, BonusClaimed, MemoryClaimed, TrapCharged,
+    ToMemory, OutOfGame, AttackPlaced, LightEquipped, Equipped, Health, Actions, Pr, ChainCancel, CostsReturned,
+    BoxCancel, ZahiraCover, Winner
+}
+/// <summary>One public outcome of a play. <see cref="Player"/> is who it happens to; <see cref="Other"/>, the second
+/// player involved (the recipient, the canceled card's actor, the memory's owner…). Values: the amount, die face or
+/// the new figure; <see cref="From"/> is the previous figure of a change.</summary>
+public sealed class DuelHistoryEvent
+{
+    public DuelHistoryEventKind Kind { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int Player { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int Other { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int Value { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int From { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? CardId { get; set; }
+    /// <summary>The second card: the one a chain link cancels, or the field card Zahira Flair covers.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? OtherCardId { get; set; }
+}
 public sealed class DuelHistoryEntry
 {
     public ulong Id { get; set; }
@@ -36,14 +63,99 @@ public sealed class DuelHistoryEntry
     public string CardId { get; set; } = "";
     public int SourceActor { get; set; }
     public string Text { get; set; } = "";
-    public string[] Details { get; set; } = [];
+    /// <summary>The public outcomes, in the order they happened.</summary>
+    public List<DuelHistoryEvent> Events { get; set; } = [];
+    /// <summary>Pre-written outcomes of entries saved before <see cref="Events"/>; read only, never written again.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? Details { get; set; }
     public DuelResolutionStatus Status { get; set; }
+    /// <summary>The id of the entry that opened this resolution: an activation, its responses and the plays that
+    /// settle it share it. Zero (older entries) means the entry stands alone.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public ulong Resolution { get; set; }
+    /// <summary>The main stage the play was made in (Robo, Combate, Acciones, Final).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public Phase Stage { get; set; }
+    /// <summary>A formality (advance, pass, confirm a die or damage): its line adds nothing, only its outcomes do.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Routine { get; set; }
+
+    public ulong Group => Resolution != 0 ? Resolution : Id;
 }
 public sealed class DuelHistory
 {
     public const int Capacity = 20;
     public ulong Sequence { get; set; }
+    /// <summary>The resolution still open after the last entry; zero when none.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public ulong OpenResolution { get; set; }
     public List<DuelHistoryEntry> Entries { get; set; } = [];
+}
+
+/// <summary>Reads the public outcomes in Spanish. Shared by the board and the tests so both say the same.</summary>
+public static class DuelHistoryText
+{
+    public static string Card(string? id) => id != null && CardCatalog.All.TryGetValue(id, out var c) ? c.Name :
+        RelikarioCatalog.Find(id)?.Name ?? "Carta";
+
+    public static string Line(DuelHistoryEvent e, Func<int, string> player)
+    {
+        string P(int seat) => player(seat);
+        return e.Kind switch
+        {
+            DuelHistoryEventKind.Die => $"D6: {e.Value}.",
+            DuelHistoryEventKind.DieAdjusted => $"Dado modificado: {e.Value}.",
+            DuelHistoryEventKind.Damage => $"{P(e.Player)} recibe {e.Value} de daño.",
+            DuelHistoryEventKind.Heal => $"{P(e.Player)} recupera {e.Value} vida(s).",
+            DuelHistoryEventKind.Draw => $"{P(e.Player)} roba {e.Value} carta(s).",
+            DuelHistoryEventKind.Discard => $"{P(e.Player)} descarta {e.Value} carta(s).",
+            DuelHistoryEventKind.Transfer => $"{P(e.Player)} entrega {e.Value} carta(s) a {P(e.Other)}.",
+            DuelHistoryEventKind.BonusClaimed => $"{P(e.Player)} obtiene {Card(e.CardId)} del Bonus de {P(e.Other)}.",
+            DuelHistoryEventKind.MemoryClaimed => $"{P(e.Player)} recibe una carta de la memoria de {P(e.Other)}.",
+            DuelHistoryEventKind.TrapCharged => $"Súper Imán de {P(e.Player)} sustituye el efecto rival y recibe un contador ({e.Value}/{CardCatalog.SuperMagnetCounterLimit}).",
+            DuelHistoryEventKind.ToMemory => e.Other != e.Player
+                ? $"{Card(e.CardId)} de {P(e.Player)} va a la memoria de {P(e.Other)}, su dueño." : $"{Card(e.CardId)} de {P(e.Player)} va a memoria.",
+            DuelHistoryEventKind.OutOfGame => $"{Card(e.CardId)} de {P(e.Player)} queda fuera del juego.",
+            DuelHistoryEventKind.AttackPlaced => $"{P(e.Player)} coloca un Ataque debajo de su Relikario y baraja el mazo.",
+            DuelHistoryEventKind.LightEquipped => $"{P(e.Player)} equipa {Card(e.CardId)} como equipo ligero.",
+            DuelHistoryEventKind.Equipped => $"{P(e.Player)} equipa {Card(e.CardId)}.",
+            DuelHistoryEventKind.Health => $"{P(e.Player)}: vidas {e.From} → {e.Value}.",
+            DuelHistoryEventKind.Actions => $"{P(e.Player)}: acciones {e.From} → {e.Value}.",
+            DuelHistoryEventKind.Pr => $"{P(e.Player)}: {(e.Value > 0 ? "+" : "")}{e.Value} PR.",
+            DuelHistoryEventKind.ChainCancel => $"{Card(e.CardId)} de {P(e.Player)} anula {Card(e.OtherCardId)} de {P(e.Other)}.",
+            DuelHistoryEventKind.CostsReturned => "Activación anulada: se devuelven sus costes.",
+            DuelHistoryEventKind.BoxCancel => "Caja de Cartón anula el código y devuelve sus costes.",
+            DuelHistoryEventKind.ZahiraCover => $"Zahira Flair de {P(e.Player)} cubre {Card(e.OtherCardId)} de {P(e.Other)}.",
+            DuelHistoryEventKind.Winner => e.Player == -1 ? "El duelo termina en empate." : $"{P(e.Player)} gana el duelo.",
+            _ => ""
+        };
+    }
+
+    /// <summary>The outcome lines of several entries read together. A damage and the life change it caused read as
+    /// one line ("Beto recibe 2 de daño (vidas 5 → 3).").</summary>
+    public static List<string> Lines(IEnumerable<DuelHistoryEntry> entries, Func<int, string> player)
+    {
+        var lines = new List<string>();
+        foreach (var entry in entries)
+        {
+            if (entry.Events.Count == 0) { lines.AddRange(entry.Details ?? []); continue; }
+            var merged = new HashSet<DuelHistoryEvent>();
+            foreach (var e in entry.Events)
+            {
+                if (merged.Contains(e)) continue;
+                if (e.Kind == DuelHistoryEventKind.Damage &&
+                    entry.Events.FirstOrDefault(h => h.Kind == DuelHistoryEventKind.Health && h.Player == e.Player && h.Value < h.From && !merged.Contains(h)) is { } health)
+                {
+                    merged.Add(health);
+                    lines.Add($"{player(e.Player)} recibe {e.Value} de daño (vidas {health.From} → {health.Value}).");
+                    continue;
+                }
+                lines.Add(Line(e, player));
+            }
+        }
+        return lines;
+    }
+    public static List<string> Lines(DuelHistoryEntry entry, Func<int, string> player) => Lines([entry], player);
 }
 
 public sealed partial class GameEngine
@@ -89,14 +201,15 @@ internal sealed class PublicDuelObservation : IDisposable
     private readonly int _actor, _turn;
     private readonly DuelResolutionView? _beforeResolution;
     private readonly (int Health, int Pr, int Actions, string? Equipment, int Copies, FieldTarget? ZahiraHost, FieldTarget? ZahiraHost2)[] _before;
-    private readonly List<string> _outcomes = [];
+    private readonly List<DuelHistoryEvent> _outcomes = [];
+    private readonly Phase _stage;
     private string _card = "";
     private int _sourceActor;
     private readonly string _text;
 
     public PublicDuelObservation(GameEngine game, int actor, DuelMove move)
     {
-        _game = game; _actor = actor; _move = move; _turn = game.State.Turn;
+        _game = game; _actor = actor; _move = move; _turn = game.State.Turn; _stage = DuelSnapshot.StageOf(game);
         _beforeResolution = game.PublicResolution();
         _before = game.State.Players.Select((p, i) => (p.Health, p.Relikia, game.AvailableActions(i), p.Equipment, p.EquipmentStackedCopies, p.ZahiraHost, p.ZahiraHost2)).ToArray();
         var source = PublicSource(game, actor, move);
@@ -109,31 +222,30 @@ internal sealed class PublicDuelObservation : IDisposable
         game.BonusClaimed += Bonus; game.MemoryCardClaimed += Memory;
         game.SuperMagnetCharged += TrapCharged;
     }
-    private string Player(int player) => player is 0 or 1 ? _game.State.Players[player].Name : "Jugador";
-    private static string Card(string id) => CardCatalog.All.TryGetValue(id, out var c) ? c.Name : "Carta";
-    private void Die(int value) => _outcomes.Add($"D6: {value}.");
-    private void Adjusted(int value) => _outcomes.Add($"Dado modificado: {value}.");
-    private void Damage(int player, int value, int die) => _outcomes.Add($"{Player(player)} recibe {value} de daño.");
-    private void Heal(int player, int value) => _outcomes.Add($"{Player(player)} recupera {value} vida(s).");
+    private void Add(DuelHistoryEventKind kind, int player = 0, int value = 0, int other = 0, string? card = null, int from = 0, string? otherCard = null)
+        => _outcomes.Add(new DuelHistoryEvent { Kind = kind, Player = player, Value = value, Other = other, CardId = card, From = from, OtherCardId = otherCard });
+    private void Die(int value) => Add(DuelHistoryEventKind.Die, value: value);
+    private void Adjusted(int value) => Add(DuelHistoryEventKind.DieAdjusted, value: value);
+    private void Damage(int player, int value, int die) => Add(DuelHistoryEventKind.Damage, player, value);
+    private void Heal(int player, int value) => Add(DuelHistoryEventKind.Heal, player, value);
     private readonly int[] _draws = [0, 0];
     private void Draw(int player, int slot) { if (player is 0 or 1) _draws[player]++; }
-    private void Discard(int player, int count) => _outcomes.Add($"{Player(player)} descarta {count} carta(s).");
-    private void Transfer(int owner, int recipient, int count) => _outcomes.Add($"{Player(owner)} entrega {count} carta(s) a {Player(recipient)}.");
-    private void Bonus(int owner, int recipient, int slot, string id) => _outcomes.Add($"{Player(recipient)} obtiene {Card(id)} del Bonus de {Player(owner)}.");
-    private void Memory(int owner, int recipient, int index, int slot) => _outcomes.Add($"{Player(recipient)} recibe una carta de la memoria de {Player(owner)}.");
-    private void TrapCharged(int owner, int count) => _outcomes.Add($"Súper Imán de {Player(owner)} sustituye el efecto rival y recibe un contador ({count}/{CardCatalog.SuperMagnetCounterLimit}).");
+    private void Discard(int player, int count) => Add(DuelHistoryEventKind.Discard, player, count);
+    private void Transfer(int owner, int recipient, int count) => Add(DuelHistoryEventKind.Transfer, owner, count, recipient);
+    private void Bonus(int owner, int recipient, int slot, string id) => Add(DuelHistoryEventKind.BonusClaimed, recipient, other: owner, card: id);
+    private void Memory(int owner, int recipient, int index, int slot) => Add(DuelHistoryEventKind.MemoryClaimed, recipient, other: owner);
+    private void TrapCharged(int owner, int count) => Add(DuelHistoryEventKind.TrapCharged, owner, count);
     private void Pile(PileMovement move)
     {
         // Hidden hand/deck moves and face-down corruption never contribute identities.
         if (move.Destination == CardZone.Memory && move.Source is CardZone.Equipment or CardZone.EquipmentCover or CardZone.LightEquipment or CardZone.Skill or CardZone.Bonus or CardZone.Area or CardZone.Exchange or CardZone.Attached or CardZone.Activation or CardZone.GalacticShield)
-            _outcomes.Add(move.ToRivalMemory ? $"{Card(move.CardId)} de {Player(move.Owner)} va a la memoria de {Player(move.MemoryOwner)}, su dueño."
-                : $"{Card(move.CardId)} de {Player(move.Owner)} va a memoria.");
+            Add(DuelHistoryEventKind.ToMemory, move.Owner, other: move.ToRivalMemory ? move.MemoryOwner : move.Owner, card: move.CardId);
         if (move.Destination == CardZone.OutOfGame && move.Source != CardZone.Hand)
-            _outcomes.Add($"{Card(move.CardId)} de {Player(move.Owner)} queda fuera del juego.");
+            Add(DuelHistoryEventKind.OutOfGame, move.Owner, card: move.CardId);
         if (move.Source == CardZone.Deck && move.Destination == CardZone.Attached)
-            _outcomes.Add($"{Player(move.Owner)} coloca un Ataque debajo de su Relikario y baraja el mazo.");
+            Add(DuelHistoryEventKind.AttackPlaced, move.Owner);
         if (move.Destination == CardZone.LightEquipment)
-            _outcomes.Add($"{Player(move.DestinationPlayer ?? move.Owner)} equipa {Card(move.CardId)} como equipo ligero.");
+            Add(DuelHistoryEventKind.LightEquipped, move.DestinationPlayer ?? move.Owner, card: move.CardId);
     }
     public void Complete()
     {
@@ -148,35 +260,42 @@ internal sealed class PublicDuelObservation : IDisposable
             if (_move.Kind == DuelMoveKind.PlayCode && _card == CardCatalog.LoadError.Id) chain.Add(new() { Actor = _actor, CardId = _card });
             if (chain.Count > 1)
             {
-                var cancellations = new List<string>();
+                var cancellations = new List<DuelHistoryEvent>();
                 for (var i = chain.Count - 1; i > 0; i -= 2)
-                    cancellations.Add($"{Card(chain[i].CardId)} de {Player(chain[i].Actor)} anula {Card(chain[i - 1].CardId)} de {Player(chain[i - 1].Actor)}.");
+                    cancellations.Add(new DuelHistoryEvent { Kind = DuelHistoryEventKind.ChainCancel, Player = chain[i].Actor, CardId = chain[i].CardId,
+                        Other = chain[i - 1].Actor, OtherCardId = chain[i - 1].CardId });
                 _outcomes.InsertRange(0, cancellations);
                 if (chain.Count % 2 == 0)
-                { status = DuelResolutionStatus.Canceled; _outcomes.Insert(cancellations.Count, "Activación anulada: se devuelven sus costes."); }
+                { status = DuelResolutionStatus.Canceled; _outcomes.Insert(cancellations.Count, new DuelHistoryEvent { Kind = DuelHistoryEventKind.CostsReturned }); }
                 _card = before.CardId; _sourceActor = before.Actor;
             }
         }
         if (_move.Kind == DuelMoveKind.CodeResponse && _move.Flag)
-        { status = live?.Status ?? DuelResolutionStatus.Canceled; _card = before?.CardId ?? _card; _sourceActor = before?.Actor ?? _actor; _outcomes.Insert(0, "Caja de Cartón anula el código y devuelve sus costes."); }
+        { status = live?.Status ?? DuelResolutionStatus.Canceled; _card = before?.CardId ?? _card; _sourceActor = before?.Actor ?? _actor; _outcomes.Insert(0, new DuelHistoryEvent { Kind = DuelHistoryEventKind.BoxCancel }); }
         for (var i = 0; i < state.Players.Length; i++)
         {
             var p = state.Players[i]; var old = _before[i];
-            if (p.Health != old.Health) _outcomes.Add($"{Player(i)}: vidas {old.Health} → {p.Health}.");
+            if (p.Health != old.Health) Add(DuelHistoryEventKind.Health, i, p.Health, from: old.Health);
             var actions = _game.AvailableActions(i);
-            if (actions > old.Actions) _outcomes.Add($"{Player(i)}: acciones {old.Actions} → {actions}.");
-            if (p.Relikia != old.Pr) _outcomes.Add($"{Player(i)}: {(p.Relikia > old.Pr ? "+" : "")}{p.Relikia - old.Pr} PR.");
-            if (_draws[i] > 0) _outcomes.Add($"{Player(i)} roba {_draws[i]} carta(s).");
+            if (actions > old.Actions) Add(DuelHistoryEventKind.Actions, i, actions, from: old.Actions);
+            if (p.Relikia != old.Pr) Add(DuelHistoryEventKind.Pr, i, p.Relikia - old.Pr);
+            if (_draws[i] > 0) Add(DuelHistoryEventKind.Draw, i, _draws[i]);
             if (p.Equipment != null && (p.Equipment != old.Equipment || p.EquipmentStackedCopies > old.Copies))
-                _outcomes.Add($"{Player(i)} equipa {Card(p.Equipment)}.");
+                Add(DuelHistoryEventKind.Equipped, i, card: p.Equipment);
             if (_move.Kind == DuelMoveKind.ZahiraTarget &&
                 (p.ZahiraHost != old.ZahiraHost ? p.ZahiraHost : p.ZahiraHost2 != old.ZahiraHost2 ? p.ZahiraHost2 : null) is { } host)
-                _outcomes.Add($"Zahira Flair de {Player(i)} cubre {_game.FieldCardName(host)} de {Player(host.Owner)}.");
+                Add(DuelHistoryEventKind.ZahiraCover, i, other: host.Owner,
+                    otherCard: host.Zone == FieldZone.Relikario ? state.Players[host.Owner].Relikario.Id : host.CardId);
         }
-        if (state.Winner != null) _outcomes.Add(state.Winner == -1 ? "El duelo termina en empate." : $"{Player(state.Winner.Value)} gana el duelo.");
+        if (state.Winner != null) Add(DuelHistoryEventKind.Winner, state.Winner.Value);
         var history = _game.PublicHistory ??= new();
-        history.Entries.Add(new DuelHistoryEntry { Id = ++history.Sequence, Turn = _turn, Actor = _actor, CardId = _card,
-            SourceActor = _sourceActor, Text = _text, Details = _outcomes.Take(10).ToArray(), Status = status });
+        var id = ++history.Sequence;
+        // Plays made while a resolution is open (responses, dice, confirmations) belong to it.
+        var resolution = _beforeResolution != null && history.OpenResolution != 0 ? history.OpenResolution : id;
+        history.OpenResolution = live != null ? resolution : 0;
+        history.Entries.Add(new DuelHistoryEntry { Id = id, Turn = _turn, Actor = _actor, CardId = _card,
+            SourceActor = _sourceActor, Text = _text, Events = _outcomes.Take(16).ToList(), Status = status,
+            Resolution = resolution, Stage = _stage, Routine = IsRoutine(_move) });
         if (history.Entries.Count > DuelHistory.Capacity) history.Entries.RemoveRange(0, history.Entries.Count - DuelHistory.Capacity);
     }
     public void Dispose()
@@ -186,6 +305,16 @@ internal sealed class PublicDuelObservation : IDisposable
         _game.HandTransferred -= Transfer; _game.BonusClaimed -= Bonus; _game.MemoryCardClaimed -= Memory;
         _game.SuperMagnetCharged -= TrapCharged;
     }
+    /// <summary>Plays that only move the duel along; what they settle is told by their outcomes.</summary>
+    private static bool IsRoutine(DuelMove m) => m.Kind switch
+    {
+        DuelMoveKind.Advance or DuelMoveKind.PassError or DuelMoveKind.PassDefense or DuelMoveKind.EffectDamage or DuelMoveKind.ComboResponses
+            or DuelMoveKind.SkipMagnet => true,
+        DuelMoveKind.CodeResponse or DuelMoveKind.AttackDie or DuelMoveKind.EffectDie or DuelMoveKind.Totem or DuelMoveKind.TrapCraft
+            or DuelMoveKind.BlueEggDraw => !m.Flag,
+        DuelMoveKind.ProtectDestruction => m.Index < 0,
+        _ => false
+    };
     private static string? PublicSource(GameEngine g, int actor, DuelMove m)
     {
         if (actor is not (0 or 1)) return null;
@@ -212,7 +341,7 @@ internal sealed class PublicDuelObservation : IDisposable
     private static string ActionText(GameEngine g, int actor, DuelMove m, string source)
     {
         var name = actor is 0 or 1 ? g.State.Players[actor].Name : "Jugador";
-        var card = Card(source);
+        var card = DuelHistoryText.Card(source);
         string Target() => m.Target is 0 or 1 ? g.State.Players[m.Target].Name : "el objetivo";
         return m.Kind switch
         {

@@ -134,7 +134,8 @@ public sealed class DuelSnapshot
         return visible ? owners : null;
     }
 
-    public static DuelSnapshot For(GameEngine game, int seat, ulong revision)
+    /// <summary>The main stage (Robo, Combate, Acciones, Final…) the board presents, seen through any pending sub-decision.</summary>
+    internal static Phase StageOf(GameEngine game)
     {
         var s = game.State;
         var stagePhase = s.Phase == Phase.DestructionResponse ? s.PendingDestruction!.ResumePhase : s.Phase;
@@ -151,6 +152,16 @@ public sealed class DuelSnapshot
             stagePhase = stageDecision.ResumePhase;
             stageDecision = stageDecision.Suspended;
         }
+        return stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
+            stagePhase == Phase.Decision ? stageDecision!.ResumePhase :
+            stagePhase == Phase.MemoryRecoveryChoice ? Phase.Actions :
+            stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
+            stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase;
+    }
+
+    public static DuelSnapshot For(GameEngine game, int seat, ulong revision)
+    {
+        var s = game.State;
         return new DuelSnapshot
         {
             LegacyBlueEgg = game.LegacyBlueEgg,
@@ -164,11 +175,7 @@ public sealed class DuelSnapshot
             DiscardActivationCard = s.PendingTurnBuff?.CardId,
             ActivationDiscardsRemaining = s.PendingTurnBuff is { Completed: false } cost ? cost.RequiredDiscards - cost.DiscardsPaid : 0,
             Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.PendingTurnBuff?.AttackRoll?.Die ?? s.PendingTurnBuff?.DieRoll?.Die ?? s.LastDie,
-            Stage = stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
-                stagePhase == Phase.Decision ? stageDecision!.ResumePhase :
-                stagePhase == Phase.MemoryRecoveryChoice ? Phase.Actions :
-                stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
-                stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase,
+            Stage = StageOf(game),
             DieCaption = game.CurrentDieCaption,
             LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(),
             ErrorAfterDie = s.ErrorAfterDie && s.Phase == Phase.ErrorResponse,
