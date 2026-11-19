@@ -330,6 +330,7 @@ public partial class OnlineLobby
                 GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
                 online.PresentTestSnapshot(DuelSnapshot.For(game, 0, 7)); await Layout();
                 await online.CheckZeroHealthPortraits(game); await online.CheckHealingPortraits(game);
+                online.CheckIronwingPortraits();
                 online.QueueFree(); await Layout();
                 GD.Print("PVP_PORTRAITS_ONLY_PASS"); QuitWithAudio(); return;
             }
@@ -378,6 +379,7 @@ public partial class OnlineLobby
             await online.CheckGuardAnimation();
             await online.CheckZeroHealthPortraits(game);
             await online.CheckHealingPortraits(game);
+            online.CheckIronwingPortraits();
             await online.CheckTimeBombLayout();
             await online.CheckTakeEquipmentLayout();
             await online.CheckEquipmentRaidLayout();

@@ -10,8 +10,11 @@ namespace Relick;
 /// </summary>
 public static class RelikarioArt
 {
+    internal const string Ironwing = "ironwing";
+
     public static string Family(string? relikario) =>
-        RelikarioCatalog.Find(relikario)?.Family ?? relikario ?? RelikarioCatalog.Yuno.Id;
+        RelikarioCatalog.Find(relikario)?.Family ??
+        (relikario == "ironwing-lv2" ? Ironwing : relikario ?? RelikarioCatalog.Yuno.Id);
 
     public static string PathOf(string? relikario, string file) => $"res://assets/characters/{Family(relikario)}/{file}.png";
 

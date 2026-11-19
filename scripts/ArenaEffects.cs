@@ -82,11 +82,13 @@ public partial class ImpactLayer : Control
     private readonly List<(Vector2 At, string Text, Color Color, bool Heavy, double Age)> _numbers = [];
     private readonly List<(Rect2 Rect, Color Color, double Age)> _rings = [];
     private const double FlashSeconds = 0.22;
-    private sealed record Projectile(RelikarioPortrait Attacker, RelikarioPortrait Defender, Texture2D RightArt, Texture2D? LeftArt, bool Lob)
+    private sealed record Projectile(RelikarioPortrait Attacker, RelikarioPortrait Defender, Texture2D? RightArt, Texture2D? LeftArt, bool Lob)
     {
         public double Age { get; set; }
-        public double Release => Lob ? 0.42 : 0.48;
-        public double Travel => Lob ? 0.44 : 0.34;
+        public bool Laser => RightArt == null;
+        public double Release => Laser ? IronwingPortraitRig.FireAt : Lob ? 0.42 : 0.48;
+        public double Travel => Laser ? 0.24 : Lob ? 0.44 : 0.34;
+        public (Vector2 Far, Vector2 Near)? Emission { get; set; }
     }
     private readonly List<Projectile> _projectiles = [];
     private double _flash = FlashSeconds;
@@ -141,11 +143,13 @@ public partial class ImpactLayer : Control
 
     internal void LaunchAttack(RelikarioPortrait attacker, RelikarioPortrait defender)
     {
-        if (ReducedMotion || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree() ||
-            RelikarioArt.Load(attacker.RelikarioId, "attack-projectile") is not { } art) return;
+        if (ReducedMotion || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
+        var laser = attacker.UsesIronwingRig;
+        var art = laser ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile");
+        if (!laser && art == null) return;
         var lob = RelikarioArt.Family(attacker.RelikarioId) == RelikarioCatalog.Osamu.Id;
         // A directional sprite can preserve lettering that would be reversed by a horizontal flip.
-        var leftArt = lob ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile-left");
+        var leftArt = lob || laser ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile-left");
         _projectiles.Add(new(attacker, defender, art, leftArt, lob));
         SetProcess(true); QueueRedraw();
     }
@@ -213,12 +217,21 @@ public partial class ImpactLayer : Control
     {
         var (attacker, defender, rightArt, leftArt, lob) = projectile;
         if (projectile.Age < projectile.Release || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
-        var (from, portraitWidth) = attacker.AttackLaunch(lob);
+        var t = (float)((projectile.Age - projectile.Release) / projectile.Travel);
         var to = defender.AttackTarget;
+        if (rightArt == null)
+        {
+            if (!attacker.UsesIronwingRig) return;
+            var (far, near) = projectile.Emission ??= attacker.IronwingGuns();
+            var spread = (to - (far + near) / 2).Normalized().Orthogonal() * 4;
+            DrawLaser(far - origin, to - origin - spread, t);
+            DrawLaser(near - origin, to - origin + spread, t);
+            return;
+        }
+        var (from, portraitWidth) = attacker.AttackLaunch(lob);
         var path = to - from;
         var direction = path.X < 0 ? -1 : 1;
         var art = direction < 0 ? leftArt ?? rightArt : rightArt;
-        var t = (float)((projectile.Age - projectile.Release) / projectile.Travel);
         var flight = lob ? t : t * (0.65f + 0.35f * t);
         var at = from.Lerp(to, flight) - origin;
         var size = art.GetSize() * (portraitWidth * (lob ? .46f : .39f) / Math.Max(art.GetWidth(), art.GetHeight()));
@@ -233,6 +246,17 @@ public partial class ImpactLayer : Control
         DrawSetTransform(at, rotation, new(flip ? -1 : 1, 1));
         DrawTextureRect(art, new Rect2(-size * pivot, size), false, new Color(1, 1, 1, Math.Min(1, (1 - t) * 9)));
         DrawSetTransform(Vector2.Zero);
+    }
+
+    private void DrawLaser(Vector2 from, Vector2 to, float t)
+    {
+        var head = from.Lerp(to, t);
+        var tail = from.Lerp(to, Math.Max(0, t - .22f));
+        if (head.DistanceSquaredTo(tail) < .01f) return;
+        var opacity = 1 - Mathf.SmoothStep(.83f, 1, t) * .75f;
+        DrawLine(tail, head, new Color(.20f, .78f, 1, opacity * .23f), 11, true);
+        DrawLine(tail, head, new Color(.40f, .90f, 1, opacity * .74f), 5, true);
+        DrawLine(tail, head, new Color(.90f, 1, 1, opacity), 2, true);
     }
 
     private void DrawSummon(Summon s, Vector2 origin)

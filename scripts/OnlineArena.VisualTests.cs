@@ -1869,6 +1869,79 @@ public partial class OnlineArena
         GD.Print("SHARED_ARENA_VISUALS_PASS · dados repetidos, robo, devolución oculta, barajado, Bonus, memoria, ataque, daño y números sobre el relikario.");
     }
 
+    internal void CheckIronwingPortraits()
+    {
+        void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+
+        RelikarioPortrait MakePortrait(bool enemy = false)
+        {
+            var portrait = new RelikarioPortrait { Size = new(600, 420), FlipHorizontal = enemy };
+            portrait.SetRelikario("ironwing");
+            AddChild(portrait);
+            portrait.SetProcess(false);
+            return portrait;
+        }
+
+        var slow = MakePortrait();
+        var fast = MakePortrait();
+        var rival = MakePortrait(enemy: true);
+        var effects = new ImpactLayer();
+        AddChild(effects);
+        effects.ReducedMotion = false;
+        try
+        {
+            const double tick = 1.0 / 120;
+            foreach (var motion in Enum.GetValues<PortraitMotion>())
+            {
+                slow.Play(motion);
+                fast.Play(motion);
+                var poses = new HashSet<(Vector2 Far, Vector2 Near)>();
+                for (var i = 0; i < 48; i++)
+                {
+                    fast.AdvancePlayback(tick);
+                    poses.Add(fast.IronwingGuns());
+                    if (i % 2 == 1) slow.AdvancePlayback(2 * tick);
+                }
+                Check(fast.AssetsReady && fast.IsContinuous && fast.Motion == motion && poses.Count == 48 &&
+                    fast.AttackTarget.DistanceTo(slow.AttackTarget) < .01f,
+                    $"Ironwing debe actualizar {motion} en cada fotograma y conservar el tiempo a 60 y 120 Hz.");
+            }
+            Check(fast.AttackTarget.X > fast.Size.X / 2 && rival.AttackTarget.X < rival.Size.X / 2,
+                "Los dos Ironwing deben apuntar hacia el centro.");
+
+            fast.Play(PortraitMotion.HitCritical);
+            fast.SetHealth(0);
+            Check(fast.Motion == PortraitMotion.HitCritical, "El crítico debe terminar antes de bajar a cero vidas.");
+            fast.AdvancePlayback(fast.DurationSeconds + .18);
+            var damaged = fast.IronwingGuns();
+            fast.SetRelikario("ironwing-lv2");
+            Check(fast.Motion == PortraitMotion.ExhaustedIdle && fast.IronwingGuns() == damaged &&
+                RelikarioArt.Card(fast.RelikarioId, 2) != null, "Ironwing debe conservar su pose al evolucionar.");
+            fast.Play(PortraitMotion.Heal);
+            fast.SetHealth(3);
+            fast.AdvancePlayback(fast.DurationSeconds + .18);
+            Check(fast.Motion == PortraitMotion.Idle, "Ironwing debe recuperar su vuelo después de curarse.");
+
+            effects.LaunchAttack(fast, rival);
+            effects.SetProcess(false);
+            effects._Process(IronwingPortraitRig.FireAt + .23);
+            Check(effects.AttackInFlightTo(rival), "El impacto debe esperar al final de la trayectoria de los láseres.");
+            effects._Process(.02);
+            Check(!effects.AttackInFlightTo(rival), "La trayectoria debe liberar la reacción de impacto al llegar.");
+            effects.ReducedMotion = true;
+            effects.LaunchAttack(fast, rival);
+            Check(!effects.AttackInFlightTo(rival), "Movimiento reducido debe omitir los láseres.");
+        }
+        finally
+        {
+            effects.QueueFree();
+            fast.QueueFree();
+            slow.QueueFree();
+            rival.QueueFree();
+        }
+        GD.Print("PVP_IRONWING_PORTRAITS_PASS · siete estados, 120 Hz, espejado, evolución y láseres.");
+    }
+
     internal async Task CheckHealingPortraits(GameEngine game)
     {
         void Check(bool condition, string message) { if (!condition) throw new Exception(message); }

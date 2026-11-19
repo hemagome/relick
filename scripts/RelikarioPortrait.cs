@@ -33,11 +33,13 @@ public partial class RelikarioPortrait : Control
     private ShaderMaterial? _restMaterial;
     internal bool ReducedMotion { get; private set; }
     /// <summary>This pose is sampled continuously from time instead of stepping through a sheet.</summary>
-    public bool IsContinuous => _osamu != null || Clips[Motion].Still;
+    public bool IsContinuous => _osamu != null || _ironwing != null || Clips[Motion].Still;
     private readonly Dictionary<PortraitMotion, Texture2D> _sheets = new();
     private Texture2D? _staticPortrait;
     private OsamuPortraitRig? _osamu;
+    private IronwingPortraitRig? _ironwing;
     internal OsamuPortraitRig.Pose? OsamuPose => _osamu?.Current;
+    internal bool UsesIronwingRig => _ironwing != null;
     private double _elapsed;
     private PortraitMotion _restMotion;
 
@@ -55,11 +57,11 @@ public partial class RelikarioPortrait : Control
 
     public PortraitMotion Motion { get; private set; }
     public bool IsActionPlaying => !Clips[Motion].Loops;
-    public int FrameCount => _osamu != null ? 1 : Clips[Motion].Frames;
+    public int FrameCount => _osamu != null || UsesIronwingRig ? 1 : Clips[Motion].Frames;
     public double DurationSeconds => DurationFor(Motion);
     // Stabilize exact frame boundaries reached through repeated 60/120 Hz delta additions.
     public int CurrentFrame => Math.Min(FrameCount - 1, (int)(_elapsed / DurationSeconds * FrameCount + 1e-9));
-    public bool AssetsReady => _osamu != null || _sheets.Count == Clips.Count;
+    public bool AssetsReady => _osamu != null || UsesIronwingRig || _sheets.Count == Clips.Count;
     /// <summary>Any form's Id; forms of one Relikario share their clips.</summary>
     public string RelikarioId { get; private set; } = RelikarioCatalog.Yuno.Id;
 
@@ -71,8 +73,22 @@ public partial class RelikarioPortrait : Control
         return (FigurePoint(target, lob ? new(.67f, .54f) : new(.79f, .69f)), target.Size.X * transform.Scale.X);
     }
 
-    internal Vector2 AttackTarget => FigurePoint(Placement().Target,
-        _osamu != null ? new(.32f, .50f) : new(.44f, .62f));
+    internal (Vector2 Far, Vector2 Near) IronwingGuns()
+    {
+        var (far, near) = _ironwing!.Guns(Placement().Target, FlipHorizontal);
+        var transform = GetGlobalTransform();
+        return (transform * far, transform * near);
+    }
+
+    internal Vector2 AttackTarget
+    {
+        get
+        {
+            var target = Placement().Target;
+            return _ironwing != null ? GetGlobalTransform() * _ironwing.Target(target, FlipHorizontal) :
+                FigurePoint(target, _osamu != null ? new(.32f, .50f) : new(.44f, .62f));
+        }
+    }
 
     private Vector2 FigurePoint(Rect2 target, Vector2 uv)
     {
@@ -114,12 +130,21 @@ public partial class RelikarioPortrait : Control
     {
         _sheets.Clear();
         _osamu = null;
-        if (RelikarioArt.Family(RelikarioId) == RelikarioCatalog.Osamu.Id &&
+        _ironwing = null;
+        var family = RelikarioArt.Family(RelikarioId);
+        if (family == RelikarioCatalog.Osamu.Id &&
             RelikarioArt.Load(RelikarioId, "sprite") is { } body && RelikarioArt.Load(RelikarioId, "turbo-sword") is { } sword)
         {
             _staticPortrait = null;
             _osamu = new OsamuPortraitRig(body, sword);
             _osamu.Advance(Motion, _elapsed, 0, ReducedMotion, FlipHorizontal);
+            return;
+        }
+        if (family == RelikarioArt.Ironwing && RelikarioArt.Load(RelikarioId, "sprite") is { } hull)
+        {
+            _staticPortrait = null;
+            _ironwing = new IronwingPortraitRig(hull);
+            _ironwing.Advance(Motion, _elapsed, 0, ReducedMotion, FlipHorizontal);
             return;
         }
         var name = RelikarioCatalog.NameOf(RelikarioId);
@@ -165,6 +190,7 @@ public partial class RelikarioPortrait : Control
     public void Play(PortraitMotion motion)
     {
         _osamu?.BeginMotion();
+        _ironwing?.BeginMotion();
         Motion = motion;
         _elapsed = 0;
         Refresh();
@@ -185,19 +211,25 @@ public partial class RelikarioPortrait : Control
             if (!IsActionPlaying) _elapsed %= DurationSeconds;
             else
             {
-                if (_osamu != null)
-                {
-                    var remaining = _elapsed - DurationSeconds;
-                    _osamu.Advance(Motion, DurationSeconds, Math.Max(0, delta - remaining), ReducedMotion, FlipHorizontal);
-                    _osamu.BeginMotion();
-                    delta = remaining;
-                }
-                Motion = _restMotion; _elapsed = 0;
+                var remaining = _elapsed - DurationSeconds;
+                var actionDelta = Math.Max(0, delta - remaining);
+                _osamu?.Advance(Motion, DurationSeconds, actionDelta, ReducedMotion, FlipHorizontal);
+                _osamu?.BeginMotion();
+                _ironwing?.Advance(Motion, DurationSeconds, actionDelta, ReducedMotion, FlipHorizontal);
+                _ironwing?.BeginMotion();
+                delta = remaining;
+                Motion = _restMotion;
+                _elapsed = UsesIronwingRig ? remaining % DurationSeconds : 0;
             }
         }
         if (_osamu != null)
         {
             _osamu.Advance(Motion, _elapsed, delta, ReducedMotion, FlipHorizontal);
+            _sprite.QueueRedraw();
+        }
+        if (_ironwing != null)
+        {
+            _ironwing.Advance(Motion, _elapsed, delta, ReducedMotion, FlipHorizontal);
             _sprite.QueueRedraw();
         }
         if (CurrentFrame != previousFrame || Motion != previousMotion) Refresh();
@@ -223,7 +255,7 @@ public partial class RelikarioPortrait : Control
 
     public override void _Draw()
     {
-        if (_osamu == null && !_sheets.ContainsKey(Motion) && _staticPortrait == null) return;
+        if (_osamu == null && _ironwing == null && !_sheets.ContainsKey(Motion) && _staticPortrait == null) return;
         var (halo, radius, _) = Placement();
         if (StandingOnTable)
         {
@@ -259,6 +291,11 @@ public partial class RelikarioPortrait : Control
         if (_osamu != null)
         {
             _osamu.Draw(_sprite, target, Motion, _elapsed, FlipHorizontal);
+            return;
+        }
+        if (_ironwing != null)
+        {
+            _ironwing.Draw(_sprite, target, Motion, _elapsed, FlipHorizontal, ReducedMotion);
             return;
         }
         _sprite.DrawSetTransform(Vector2.Zero);
