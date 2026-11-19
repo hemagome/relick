@@ -8,6 +8,11 @@ public partial class OnlineArena
     private Button? _historyButton;
     private Label? _resolutionStage, _resolutionSource, _resolutionResponses, _resolutionMessage;
     private AcceptDialog? _historyDialog;
+    /// <summary>The newest play the rail has shown; a newer one lights up once. Zero until the first board.</summary>
+    private ulong _historySeen;
+    /// <summary>The play glowing now and when it started, so a rebuilt rail carries the glow on instead of losing it.</summary>
+    private (ulong Id, ulong StartMs) _historyGlow;
+    private const double HistoryGlowSeconds = 1.4;
 
     private static string ResolutionStatus(DuelResolutionStatus status) => status switch
     {
@@ -174,6 +179,9 @@ public partial class OnlineArena
             return;
         }
         int body = large ? 15 : 13, small = large ? 14 : 12;
+        var feed = prefix == "HistoryFeed"; var newest = entries.Max(e => e.Id);
+        // A history that goes back is another duel: it starts a new baseline instead of glowing.
+        if (feed && newest < _historySeen) { _historySeen = 0; _historyGlow = default; }
         (int Turn, Phase Stage)? mark = null;
         foreach (var group in HistoryGroups(entries))
         {
@@ -185,8 +193,8 @@ public partial class OnlineArena
                 var label = ArenaPresentation.Text($"TURNO {head.Turn:00}" + (stage.Length > 0 ? " · " + stage : ""), large ? 11 : 10, BoardArt.Muted);
                 label.Name = $"{prefix}Turn{head.Turn}{head.Stage}"; list.AddChild(label);
             }
-            var outcomes = DuelHistoryText.Lines(group, HistoryPlayer);
-            if (group.All(e => e.Routine) && outcomes.Count == 0)
+            var (chips, outcomes) = DuelHistoryText.Summary(group, HistoryPlayer);
+            if (group.All(e => e.Routine) && outcomes.Count == 0 && chips.Count == 0)
             {
                 // "Ana avanza de fase." marks the flow without competing with the plays.
                 var quiet = ArenaPresentation.Text(string.Join(" ", group.Select(e => e.Text)), small - 1, BoardArt.Muted);
@@ -200,7 +208,28 @@ public partial class OnlineArena
             var style = new StyleBoxFlat { BgColor = new Color(1, 1, 1, 0.035f), BorderColor = accent, BorderWidthLeft = 3,
                 ContentMarginLeft = 9, ContentMarginRight = 6, ContentMarginTop = 5, ContentMarginBottom = 5 };
             panel.AddThemeStyleboxOverride("panel", style); list.AddChild(panel);
-            var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 1); panel.AddChild(column);
+            if (feed && _historySeen != 0 && last.Id > _historySeen && !_impacts.ReducedMotion) _historyGlow = (last.Id, Time.GetTicksMsec());
+            var glowing = (Time.GetTicksMsec() - _historyGlow.StartMs) / 1000.0;
+            if (feed && _historyGlow.Id == last.Id && glowing < HistoryGlowSeconds && !_impacts.ReducedMotion)
+            {
+                // The play that just arrived glows once in the colour of whoever made it, then settles.
+                var settled = style.BgColor;
+                var tween = panel.CreateTween();
+                tween.TweenMethod(Callable.From<Color>(c => style.BgColor = c), BoardArt.Tint(accent, 0.30f), settled, HistoryGlowSeconds)
+                    .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+                tween.CustomStep(glowing);
+            }
+            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; row.AddThemeConstantOverride("separation", 8); panel.AddChild(row);
+            var source = group.Select(e => e.CardId).FirstOrDefault(id => CardCatalog.All.ContainsKey(id));
+            if (source != null)
+            {
+                var seat = head.SourceActor is 0 or 1 ? head.SourceActor : -1;
+                var thumb = new HistoryCardThumb(CardCatalog.Get(source), seat >= 0 ? s.Players[seat].RelikarioId : null, large)
+                    { Name = $"{prefix}Card{last.Id}" };
+                thumb.Pressed += () => ReadHistoryCard(thumb.Card, thumb.Relikario);
+                row.AddChild(thumb);
+            }
+            var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 1); row.AddChild(column);
             var status = last.Status switch
             {
                 DuelResolutionStatus.Canceled => "ANULADA", DuelResolutionStatus.Response or DuelResolutionStatus.Resolving => "EN CURSO", _ => ""
@@ -221,6 +250,82 @@ public partial class OnlineArena
                 var detail = ArenaPresentation.Text(string.Join("\n", outcomes), small, BoardArt.Muted);
                 detail.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(detail);
             }
+            if (chips.Count > 0)
+            {
+                var flow = new HFlowContainer { Name = $"{prefix}Chips{last.Id}", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+                flow.AddThemeConstantOverride("h_separation", 4); flow.AddThemeConstantOverride("v_separation", 3);
+                foreach (var chip in chips) flow.AddChild(HistoryChip(chip, s.MySeat, large));
+                column.AddChild(flow);
+            }
         }
+        if (feed) _historySeen = Math.Max(_historySeen, newest);
+    }
+
+    /// <summary>A figure in the colour of whose it is (the die belongs to nobody); the tooltip says it in full.</summary>
+    private static Control HistoryChip(DuelHistoryChip chip, int mySeat, bool large)
+    {
+        var color = chip.Player < 0 ? BoardArt.Gold : chip.Player == mySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral;
+        var panel = new PanelContainer { TooltipText = chip.Description, MouseFilter = MouseFilterEnum.Pass };
+        var style = new StyleBoxFlat { BgColor = BoardArt.Tint(color, 0.13f), BorderColor = BoardArt.Tint(color, 0.55f),
+            ContentMarginLeft = 5, ContentMarginRight = 6, ContentMarginTop = 1, ContentMarginBottom = 1 };
+        style.SetBorderWidthAll(1); style.SetCornerRadiusAll(8);
+        panel.AddThemeStyleboxOverride("panel", style);
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; row.AddThemeConstantOverride("separation", 3); panel.AddChild(row);
+        GameIcon? icon = chip.Kind switch
+        {
+            DuelHistoryChipKind.Health => GameIcon.Heart, DuelHistoryChipKind.Actions => GameIcon.Bolt,
+            DuelHistoryChipKind.Pr => GameIcon.Gem, DuelHistoryChipKind.Draw => GameIcon.Cards, _ => null
+        };
+        var size = large ? 13 : 11;
+        if (icon is { } symbol)
+            row.AddChild(new IconView { Icon = symbol, Color = color, CustomMinimumSize = Vector2.One * size, SizeFlagsVertical = SizeFlags.ShrinkCenter });
+        var label = ArenaPresentation.Text(chip.Label, size, color); label.MouseFilter = MouseFilterEnum.Ignore; row.AddChild(label);
+        return panel;
+    }
+
+    /// <summary>Reading a play's card: the inspector shows it as when hovering it on the board; the dialog yields.</summary>
+    private void ReadHistoryCard(CardDefinition card, string? relikario)
+    {
+        if (_snapshot == null || IsAnimating) return;
+        if (_historyDialog is { } dialog && IsInstanceValid(dialog)) { _historyDialog = null; dialog.QueueFree(); }
+        _inspectorPreview = (card, null); _inspectorPreviewOwner = null; _inspectorPreviewRelikario = relikario; _relikarioPreview = null;
+        RefreshInspector();
+    }
+}
+
+/// <summary>The card of a play in miniature. Hovering shows it large; pressing reads it in the inspector.</summary>
+public partial class HistoryCardThumb : TextureRect
+{
+    public CardDefinition Card { get; }
+    public string? Relikario { get; }
+    public event Action? Pressed;
+
+    public HistoryCardThumb() : this(CardCatalog.Attack, null, false) { }
+    public HistoryCardThumb(CardDefinition card, string? relikario, bool large)
+    {
+        Card = card; Relikario = relikario;
+        Texture = CardShowcase.Artwork(card, relikario);
+        ExpandMode = ExpandModeEnum.IgnoreSize; StretchMode = StretchModeEnum.KeepAspectCentered;
+        CustomMinimumSize = large ? new(46, 64) : new(34, 48);
+        SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        MouseFilter = MouseFilterEnum.Stop; MouseDefaultCursorShape = CursorShape.PointingHand;
+        TooltipText = card.Name;
+    }
+
+    public override void _GuiInput(InputEvent input)
+    {
+        if (input is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } || input is InputEventScreenTouch { Pressed: false })
+        { AcceptEvent(); Pressed?.Invoke(); }
+    }
+
+    public override GodotObject? _MakeCustomTooltip(string forText)
+    {
+        if (Texture == null) return null;
+        var column = new VBoxContainer();
+        column.AddChild(new TextureRect { Texture = Texture, ExpandMode = ExpandModeEnum.IgnoreSize,
+            StretchMode = StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new(200, 280) });
+        var name = ArenaPresentation.Text(Card.Name, 14); name.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(name);
+        return column;
     }
 }

@@ -9,6 +9,7 @@ public partial class OnlineArena
     internal async Task CheckPublicHistory()
     {
         void Check(bool value, string message) { if (!value) throw new Exception(message); }
+        string Tips(Node node) => string.Join("\n", node.FindChildren("*", "PanelContainer", true, false).OfType<Control>().Select(c => c.TooltipText));
         async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
         async Task Capture(string name)
         {
@@ -44,6 +45,12 @@ public partial class OnlineArena
                     Check(i < 3 ? _resolutionStage!.Text.StartsWith("RESPUESTA") : _resolutionStage!.Text == "RESULTADO", "La resolución confunde respuesta y resultado.");
                     if (i == 2) Check(_resolutionResponses!.Text.Contains("Beto · Error de Carga") && _resolutionResponses.Text.Contains("Ana · Error de Carga"), "Se pierde el contraerror de la cadena.");
                     CheckPendingCodeBounds();
+                    if (_inlineHistory && i > 0 && !_impacts.ReducedMotion)
+                    {
+                        // Each new step of the chain glows once on the rail.
+                        var fresh = _historyFeed!.FindChild($"HistoryFeedEntry{i + 1}", true, false) as PanelContainer;
+                        Check(fresh?.GetThemeStylebox("panel") is StyleBoxFlat { BgColor.A: > 0.1f }, "La jugada nueva no se resalta en el historial.");
+                    }
                     if (seat == 0 && i is 2 or 3)
                     {
                         _arenaScroll?.EnsureControlVisible(i == 2 ? _resolutionResponses! : _resolutionMessage!); await Layout();
@@ -60,7 +67,8 @@ public partial class OnlineArena
                     // The activation, both Error de Carga and the pass are one resolution: one card, responses hanging from it.
                     Check(feedRows.Length == 1 && feedRows[0].Name == "HistoryFeedEntry4" && feedText.Contains("Ana activa Senshuni.") &&
                         feedText.Contains("↳ Beto activa Error de Carga.") && !feedText.Contains("deja resolver") &&
-                        feedText.Contains("TURNO 02 · ACCIONES") && feedText.Contains("anula Error de Carga") && feedText.Contains("roba 2") &&
+                        feedText.Contains("TURNO 02 · ACCIONES") && feedText.Contains("anula Error de Carga") && feedText.Contains("+2") && Tips(_historyFeed).Contains("Ana roba 2 carta(s).") &&
+                        _historyFeed.FindChild("HistoryFeedCard4", true, false) is HistoryCardThumb { Card.Id: var feedCard } && feedCard == CardCatalog.Senshuni.Id &&
                         !feedText.Contains(CardCatalog.DiamondHelmet.Name) && !feedText.Contains(CardCatalog.Agility.Name),
                         "El historial del inspector duplica filas, pierde resultados o revela robos privados.");
                     Check(!_historyButton!.Visible && !_historyFeed.Visible && _showcase!.Visible, "El historial no cede el inspector a la carta seleccionada.");
@@ -82,10 +90,18 @@ public partial class OnlineArena
                 var rows = dialog!.FindChildren("HistoryEntry*", "PanelContainer", true, false).OfType<PanelContainer>().ToArray();
                 Check(rows.Length == 1 && rows[0].Name == "HistoryEntry4", "El historial no agrupa la cadena en una jugada o duplica filas.");
                 var allText = string.Join("\n", dialog.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text));
-                Check(allText.Contains("↳ Ana activa Error de Carga.") && allText.Contains("anula Error de Carga") && allText.Contains("roba 2") && !allText.Contains(CardCatalog.DiamondHelmet.Name) && !allText.Contains(CardCatalog.Agility.Name), "El historial pierde resultados o revela robos/manos privadas.");
+                Check(allText.Contains("↳ Ana activa Error de Carga.") && allText.Contains("anula Error de Carga") && Tips(dialog).Contains("Ana roba 2 carta(s).") && Tips(dialog).Contains("Beto: acciones 1 → 2.") && !allText.Contains(CardCatalog.DiamondHelmet.Name) && !allText.Contains(CardCatalog.Agility.Name), "El historial pierde resultados o revela robos/manos privadas.");
                 if (seat == 0 && size.X is 1440 or 700) await Capture($"history-{size.X}x{size.Y}");
                 GuiInputTestDriver.Click(dialog.GetOkButton()); await Layout();
                 Check(!GodotObject.IsInstanceValid(dialog) && _selected.SetEquals(selected) && g.SaveSnapshot() == before, "Consultar o cerrar el historial ejecuta una jugada o pierde la selección.");
+                // Pressing a play's card closes the dialog and reads that card in the inspector, without playing anything.
+                ClearContext(); await Layout(); ShowDuelHistory(); await Layout();
+                var thumb = _historyDialog!.FindChild("HistoryCard4", true, false) as HistoryCardThumb;
+                Check(thumb is { Texture: not null } && thumb.Card.Id == CardCatalog.Senshuni.Id, "La jugada no muestra la carta que la originó.");
+                var reading = _historyDialog; GuiInputTestDriver.Click(thumb!); await Layout();
+                Check(!GodotObject.IsInstanceValid(reading) && _historyDialog == null && _inspectorPreview?.Card.Id == CardCatalog.Senshuni.Id &&
+                    (_showcase == null || _showcase.Visible) && g.SaveSnapshot() == before, "Pulsar la carta del historial no la lee en el inspector.");
+                ClearContext(); await Layout();
                 var recovered = GameEngine.FromSnapshot(before, new SeededRandom(61));
                 PresentTestSnapshot(DuelSnapshot.For(recovered, seat, 703)); await Layout(); Render(); await Layout();
                 Check(_snapshot!.History!.Select(e => e.Id).SequenceEqual(ids), "Reconectar o reconstruir duplica las jugadas públicas.");

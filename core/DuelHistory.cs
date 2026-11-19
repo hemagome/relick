@@ -156,7 +156,57 @@ public static class DuelHistoryText
         return lines;
     }
     public static List<string> Lines(DuelHistoryEntry entry, Func<int, string> player) => Lines([entry], player);
+
+    /// <summary>The figures of a play as compact chips (dice, then each player's life, actions, PR and draws, added
+    /// up across the play), and what remains to tell as lines. A damage or healing the life chip already shows is
+    /// not told again.</summary>
+    public static (List<DuelHistoryChip> Chips, List<string> Lines) Summary(IEnumerable<DuelHistoryEntry> entries, Func<int, string> player)
+    {
+        var dice = new List<DuelHistoryChip>(); var lines = new List<string>();
+        var health = new Dictionary<int, (int From, int To)>(); var actions = new Dictionary<int, (int From, int To)>();
+        var pr = new Dictionary<int, int>(); var draws = new Dictionary<int, int>();
+        var list = entries.ToList();
+        foreach (var e in list.SelectMany(entry => entry.Events))
+            switch (e.Kind)
+            {
+                case DuelHistoryEventKind.Health: health[e.Player] = (health.TryGetValue(e.Player, out var h) ? h.From : e.From, e.Value); break;
+                case DuelHistoryEventKind.Actions: actions[e.Player] = (actions.TryGetValue(e.Player, out var a) ? a.From : e.From, e.Value); break;
+                case DuelHistoryEventKind.Pr: pr[e.Player] = pr.GetValueOrDefault(e.Player) + e.Value; break;
+                case DuelHistoryEventKind.Draw: draws[e.Player] = draws.GetValueOrDefault(e.Player) + e.Value; break;
+            }
+        foreach (var entry in list)
+        {
+            if (entry.Events.Count == 0) { lines.AddRange(entry.Details ?? []); continue; }
+            foreach (var e in entry.Events)
+                switch (e.Kind)
+                {
+                    case DuelHistoryEventKind.Die: dice.Add(new(DuelHistoryChipKind.Die, -1, $"D6 {e.Value}", Line(e, player))); break;
+                    case DuelHistoryEventKind.DieAdjusted: dice.Add(new(DuelHistoryChipKind.Die, -1, $"D6 → {e.Value}", Line(e, player))); break;
+                    case DuelHistoryEventKind.Health or DuelHistoryEventKind.Actions or DuelHistoryEventKind.Pr or DuelHistoryEventKind.Draw: break;
+                    case DuelHistoryEventKind.Damage when health.TryGetValue(e.Player, out var hit) && hit.To < hit.From: break;
+                    case DuelHistoryEventKind.Heal when health.TryGetValue(e.Player, out var cure) && cure.To > cure.From: break;
+                    default: lines.Add(Line(e, player)); break;
+                }
+        }
+        var chips = dice;
+        foreach (var seat in health.Keys.Concat(actions.Keys).Concat(pr.Keys).Concat(draws.Keys).Distinct().Order())
+        {
+            if (health.TryGetValue(seat, out var life) && life.From != life.To)
+                chips.Add(new(DuelHistoryChipKind.Health, seat, $"{life.From} → {life.To}", $"{player(seat)}: vidas {life.From} → {life.To}."));
+            if (actions.TryGetValue(seat, out var act) && act.From != act.To)
+                chips.Add(new(DuelHistoryChipKind.Actions, seat, $"{act.From} → {act.To}", $"{player(seat)}: acciones {act.From} → {act.To}."));
+            if (pr.GetValueOrDefault(seat) is var points && points != 0)
+                chips.Add(new(DuelHistoryChipKind.Pr, seat, $"{(points > 0 ? "+" : "")}{points} PR", $"{player(seat)}: {(points > 0 ? "+" : "")}{points} PR."));
+            if (draws.GetValueOrDefault(seat) is var drawn && drawn > 0)
+                chips.Add(new(DuelHistoryChipKind.Draw, seat, $"+{drawn}", $"{player(seat)} roba {drawn} carta(s)."));
+        }
+        return (chips, lines);
+    }
 }
+
+public enum DuelHistoryChipKind { Die, Health, Actions, Pr, Draw }
+/// <summary>A figure of a play. <see cref="Player"/> is -1 for the shared die; <see cref="Description"/> reads it in full.</summary>
+public sealed record DuelHistoryChip(DuelHistoryChipKind Kind, int Player, string Label, string Description);
 
 public sealed partial class GameEngine
 {

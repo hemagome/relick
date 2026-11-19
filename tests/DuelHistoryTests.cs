@@ -12,7 +12,8 @@ static class DuelHistoryTests
         ("Historial público: fondo de mazo, búsqueda, corrupción y Magnet ocultan las identidades privadas", HiddenMoves),
         ("Historial público: la preferencia COMBO permanece privada y solo registra una resolución efectiva", Preference),
         ("Historial público: una activación, sus respuestas y su cierre comparten resolución; los trámites se marcan", Grouping),
-        ("Historial público: el daño y el cambio de vidas se leen en una línea; las entradas antiguas conservan su texto", ReadingAndLegacy)
+        ("Historial público: el daño y el cambio de vidas se leen en una línea; las entradas antiguas conservan su texto", ReadingAndLegacy),
+        ("Historial público: las cifras de una jugada se suman en chips por jugador y no se repiten como líneas", Chips)
     };
     private static GameEngine Fixture(List<string>? first = null, List<string>? second = null, params int[] rolls)
     {
@@ -136,5 +137,22 @@ static class DuelHistoryTests
         Check(DuelHistoryText.Lines(hit, Name).SequenceEqual(["D6: 5.", "Beto recibe 2 de daño (vidas 5 → 3).", "Ana: +200 PR."]));
         var legacy = JsonSerializer.Deserialize<DuelHistoryEntry>("{\"Id\":7,\"Text\":\"Ana activa Senshuni.\",\"Details\":[\"Ana roba 2 carta(s).\"]}")!;
         Check(legacy.Group == 7 && legacy.Stage == Phase.Preparation && DuelHistoryText.Lines(legacy, Name).Single() == "Ana roba 2 carta(s).");
+    }
+    private static void Chips()
+    {
+        string Name(int seat) => seat == 0 ? "Ana" : "Beto";
+        DuelHistoryEvent E(DuelHistoryEventKind kind, int player = 0, int value = 0, int from = 0, string? card = null)
+            => new() { Kind = kind, Player = player, Value = value, From = from, CardId = card };
+        var attack = new DuelHistoryEntry { Id = 1, Events = [E(DuelHistoryEventKind.Die, value: 4), E(DuelHistoryEventKind.Pr, 0, 200)] };
+        var settle = new DuelHistoryEntry { Id = 2, Resolution = 1, Events = [E(DuelHistoryEventKind.DieAdjusted, value: 5),
+            E(DuelHistoryEventKind.Damage, 1, 2), E(DuelHistoryEventKind.Health, 1, 6, 8), E(DuelHistoryEventKind.Health, 1, 5, 6),
+            E(DuelHistoryEventKind.Pr, 0, 300), E(DuelHistoryEventKind.Draw, 1, 1), E(DuelHistoryEventKind.OutOfGame, 1, card: CardCatalog.Agility.Id)] };
+        var (chips, lines) = DuelHistoryText.Summary([attack, settle], Name);
+        Check(chips.Select(c => (c.Kind, c.Player, c.Label)).SequenceEqual([(DuelHistoryChipKind.Die, -1, "D6 4"), (DuelHistoryChipKind.Die, -1, "D6 → 5"),
+            (DuelHistoryChipKind.Pr, 0, "+500 PR"), (DuelHistoryChipKind.Health, 1, "8 → 5"), (DuelHistoryChipKind.Draw, 1, "+1")]));
+        Check(chips.Single(c => c.Kind == DuelHistoryChipKind.Health).Description == "Beto: vidas 8 → 5.");
+        Check(lines.SequenceEqual([$"{CardCatalog.Agility.Name} de Beto queda fuera del juego."]));
+        var cure = new DuelHistoryEntry { Id = 3, Events = [E(DuelHistoryEventKind.Damage, 0, 1)] };
+        Check(DuelHistoryText.Summary([cure], Name).Lines.Single() == "Ana recibe 1 de daño.");
     }
 }
