@@ -85,10 +85,11 @@ public partial class BoardCanvas : Control
         : new Rect2(x, Seam + fromSeam, width, height);
     private static float PerspectiveScale(float y) => 1 / (1 - (y - NearEdge) * PerspectiveSlope);
 
-    internal static Vector2 Project(Vector2 point)
+    internal static Vector2 Project(Vector2 point, float elevation = 0)
     {
         var scale = PerspectiveScale(point.Y);
-        return new(DesignWidth / 2 + (point.X - DesignWidth / 2) * scale, NearY + (point.Y - NearEdge) * PerspectiveRise * scale);
+        return new(DesignWidth / 2 + (point.X - DesignWidth / 2) * scale,
+            NearY + ((point.Y - NearEdge) * PerspectiveRise - elevation) * scale);
     }
 
     internal static Vector2 Unproject(Vector2 point)

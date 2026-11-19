@@ -89,6 +89,11 @@ public partial class OnlineLobby
                 await online.CheckOpeningReveal(); online.QueueFree(); await Layout();
                 QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--opening-playmats-only"))
+            {
+                await online.CheckOpeningPlaymats(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--combo-responses-only"))
             {
                 await online.CheckComboResponseToggle(); online.QueueFree(); await Layout();
@@ -411,6 +416,7 @@ public partial class OnlineLobby
             await online.CheckHandStealAnimation();
             await online.CheckDuelResults();
             await online.CheckOpeningReveal();
+            await online.CheckOpeningPlaymats();
             await online.CheckPreparationLayout();
             await online.CheckChoiceBounds();
             await CheckArenaConnectionNotice(online);

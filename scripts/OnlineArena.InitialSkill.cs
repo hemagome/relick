@@ -13,7 +13,7 @@ public partial class OnlineArena
     private string? _initialSkillViewKey;
     internal Button? InitialSkillConfirmButton { get; private set; }
     internal bool IsChoosingInitialSkill => _choosingOpeningSkill;
-    private bool CanChooseInitialSkill => _initialSkillConnected && !_initialSkillPending && !_openingRelikarios.Visible;
+    private bool CanChooseInitialSkill => _initialSkillConnected && !_initialSkillPending && !_openingRelikarios.Visible && !_openingPlaymats.Visible;
 
     internal void PresentInitialSkillChoice(RoomInfo room, InitialSkillInfo info, bool connected, bool pending,
         PreparationInfo? preparation = null, bool animateEntrance = false, RoomRelikarioInfo? relikarios = null)

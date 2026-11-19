@@ -565,6 +565,7 @@ public partial class OnlineArena
 
     private void UpdateFlights(double delta)
     {
+        if (_openingPlaymats.Visible) return;
         if (_flightLayoutFrames > 0) { _flightLayoutFrames--; return; }
         if (FinishHandDeparture()) return;
         if (_flight == null && _flights.Count == 0 && _openingInitiative != null)

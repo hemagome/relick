@@ -51,7 +51,7 @@ public partial class OnlineArena : Control
     internal int PlayedVisualRevisions { get; private set; }
     private bool DiceBusy => _die.IsBusy || _secondDie.IsBusy;
     public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null ||
-        _handDeparture != null || _evolution.Visible || _openingRelikarios.Visible;
+        _handDeparture != null || _evolution.Visible || _openingRelikarios.Visible || _openingPlaymats.Visible;
     private bool Compact => ArenaViewport.Compact(this);
     private bool Short => ArenaViewport.Short(this);
     // The full board needs the desktop canvas; smaller windows keep the stacked layouts.
@@ -59,6 +59,7 @@ public partial class OnlineArena : Control
     private ArenaBackground _background = null!;
     private readonly ImpactLayer _impacts = new() { Name = "ImpactLayer" };
     private readonly EvolutionReveal _evolution = new() { Name = "EvolutionReveal", Visible = false };
+    private readonly OpeningPlaymats _openingPlaymats = new() { Name = "OpeningPlaymats", Visible = false };
     private readonly OpeningRelikarioReveal _openingRelikarios = new() { Name = "OpeningRelikarioReveal", Visible = false };
     private CardShowcase? _showcase;
     private Control? _combatCenter, _readerRail, _railReading, _historyFeed, _resolutionPanel;
@@ -143,6 +144,7 @@ public partial class OnlineArena : Control
         AddChild(_responseChain);
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_evolution); _evolution.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(_openingPlaymats); _openingPlaymats.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_openingRelikarios); _openingRelikarios.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _openingRelikarios.LifeTick += pitch => PlaySound(SoundCue.OpeningLife, pitch);
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
@@ -164,11 +166,13 @@ public partial class OnlineArena : Control
     {
         if (_connectionEpoch != Connection.Epoch)
         {
+            EndOpeningPlaymats();
             _connectionEpoch = Connection.Epoch; _needsBaseline = true; ResetAnimations();
         }
         PresentQueuedPlay();
         if (!Connection.Ready)
         {
+            EndOpeningPlaymats();
             if (!_needsBaseline || _openingRelikarios.Visible) { _needsBaseline = true; ResetAnimations(); }
         }
         var snapshot = Connection.Room?.Code == RoomCode ? Connection.Duel : null;
@@ -188,7 +192,7 @@ public partial class OnlineArena : Control
         PresentQueuedStageAnnouncement();
         UpdateFlights(delta);
         if (_evolution.Visible) _evolution.AdvancePlayback(delta, EvolutionAnchor(_evolution.RelativePlayer));
-        if (_openingRelikarios.Visible) _openingRelikarios.AdvancePlayback(delta);
+        UpdateOpeningPresentation(delta);
         UpdateDiceOverlay();
         UpdateResolutionPresentation();
         UpdateRelikiaPreview();
@@ -204,6 +208,7 @@ public partial class OnlineArena : Control
 
     private void PresentDuelSnapshot(DuelSnapshot snapshot)
     {
+        EndOpeningPlaymats();
         var previous = _snapshot;
         var openingFlights = IsLiveOpening(snapshot) ? CaptureMulliganOrigins(snapshot) : null;
         var animate = !_preparing && !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
@@ -333,12 +338,14 @@ public partial class OnlineArena : Control
         var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? resultCaption : s.LastCombat;
         var railColumns = Short ? Size.X >= 820 ? 2 : 1 : 0;
         VBoxContainer handColumn;
+        BoardCanvas? desktopBoard = null;
         if (desktop)
         {
             var columns = new HBoxContainer { Name = "ArenaColumns", SizeFlagsVertical = SizeFlags.ExpandFill };
             columns.AddThemeConstantOverride("separation", 0); _root.AddChild(columns);
             // One playmat: every zone has the same card size and the hands hang over its edges.
             var canvas = new BoardCanvas { Name = "DuelArena", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipContents = true, TableView = TableView };
+            desktopBoard = canvas;
             columns.AddChild(canvas);
             _arenaScroll = null;
             canvas.GuiInput += ClearContextOnFieldClick;
@@ -562,6 +569,11 @@ public partial class OnlineArena : Control
         MoveChild(_cardActions, GetChildCount() - 1);
         MoveChild(_diceOverlay, GetChildCount() - 1);
         if (_evolution.Visible) MoveChild(_evolution, GetChildCount() - 1);
+        if (_openingPlaymats.Visible)
+        {
+            _openingPlaymats.Follow(desktopBoard);
+            MoveChild(_openingPlaymats, GetChildCount() - 1);
+        }
         if (_openingRelikarios.Visible) MoveChild(_openingRelikarios, GetChildCount() - 1);
         BuildMoves(); BindInspectorPreviews();
         FitArenaScroll();

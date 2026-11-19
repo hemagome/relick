@@ -10,6 +10,7 @@ public partial class OnlineArena
     private const int OpeningHandSize = 5;
     private bool _preparing;
     private bool _choosingOpeningSkill;
+    private bool _openingPlaymatsPresented;
     private readonly bool[] _openingHandsPresented = new bool[2];
     private bool _openingConnected, _openingPending;
     private PreparationInfo? _openingInfo;
@@ -32,17 +33,19 @@ public partial class OnlineArena
         var version = (Connection.PreparationRevision, Connection.Epoch, Connection.Ready, Connection.ConfirmationPending, Connection.InitialSkillPending);
         if (_preparing && _preparationVersion == version) return;
         _preparationVersion = version;
-        if (!Connection.Ready || Connection.Room is not { Dealt: true } room)
+        if (!Connection.Ready || Connection.Room is not { Dealt: true } room || room.Code != RoomCode)
         {
             _openingConnected = false; _initialSkillConnected = false; _lastDisabled = null; return;
         }
+        var info = Connection.Preparation;
+        var recovered = room.Code == Connection.RecoveredDealtRoomCode;
+        BeginOpeningPlaymats(recovered, info);
         if (Connection.InitialSkills is { Selected: false } skills)
         {
             PresentInitialSkillChoice(room, skills, Connection.Ready, Connection.InitialSkillPending,
-                animateEntrance: room.Code != Connection.RecoveredDealtRoomCode);
+                preparation: info, animateEntrance: !recovered);
             return;
         }
-        var info = Connection.Preparation;
         var cards = Connection.Hand;
         if (info == null || (!info.Started && cards.Length != OpeningHandSize))
         {
@@ -59,6 +62,33 @@ public partial class OnlineArena
             return;
         }
         PresentPreparation(room, info, cards, Connection.Ready, Connection.ConfirmationPending);
+    }
+
+    private void BeginOpeningPlaymats(bool recovered, PreparationInfo? preparation)
+    {
+        if (_openingPlaymatsPresented) return;
+        _openingPlaymatsPresented = true;
+        if (recovered || _impacts.ReducedMotion || preparation is { Started: true } or { MyConfirmed: true }) return;
+        _openingPlaymats.Play();
+        FocusBehaviorRecursive = FocusBehaviorRecursiveEnum.Disabled;
+    }
+
+    private void UpdateOpeningPresentation(double delta)
+    {
+        // The Relikario cards reveal first. The prepared board appears as the mats finish unrolling.
+        if (_openingRelikarios.Visible) _openingRelikarios.AdvancePlayback(delta);
+        else if (_openingPlaymats.Visible)
+        {
+            _openingPlaymats.AdvancePlayback(delta);
+            if (_openingPlaymats.Finished) EndOpeningPlaymats();
+        }
+    }
+
+    private void EndOpeningPlaymats()
+    {
+        if (!_openingPlaymats.Visible) return;
+        _openingPlaymats.Stop();
+        FocusBehaviorRecursive = FocusBehaviorRecursiveEnum.Inherited;
     }
 
     // This is a presentation of server-authorized views, never a local rules engine.

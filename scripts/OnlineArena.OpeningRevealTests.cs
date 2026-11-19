@@ -6,6 +6,103 @@ namespace Relick;
 
 public partial class OnlineArena
 {
+    internal async Task CheckOpeningPlaymats()
+    {
+        void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+        async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+        var directory = OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+        async Task Capture(string stage, Vector2I size)
+        {
+            if (directory == null || DisplayServer.GetName() == "headless") return;
+            System.IO.Directory.CreateDirectory(directory);
+            await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+            GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(directory, $"tapetes-{stage}-{size.X}x{size.Y}.png"));
+        }
+
+        var window = GetWindow();
+        var previous = (_snapshot, _tableView, _requestedTableView, _impacts.ReducedMotion, _openingPlaymatsPresented,
+            _openingRevealPresented, window.Size, window.ContentScaleSize);
+        var prep = new PreparationInfo { DeckCountOne = 15, DeckCountTwo = 15 };
+        var skills = new InitialSkillInfo(false, "", [CardCatalog.Destiny.Id, CardCatalog.Magnet.Id]);
+        var relikarios = new RoomRelikarioInfo(RoomCode, RelikarioCatalog.Yuno.Id, RelikarioCatalog.Osamu.Id);
+        try
+        {
+            _impacts.ReducedMotion = false;
+            foreach (var (size, tableView, seat) in new (Vector2I, bool, byte)[]
+                { (new(1820, 1024), true, 0), (new(1440, 1024), false, 1), (new(844, 390), false, 0) })
+            {
+                window.Size = window.ContentScaleSize = size;
+                _tableView = _requestedTableView = tableView;
+                await Layout();
+                _openingPlaymatsPresented = _openingRevealPresented = false;
+                _initialSkillViewKey = _initialSkillCandidate = null;
+                BeginOpeningPlaymats(false, prep);
+                PresentInitialSkillChoice(new RoomInfo(RoomCode, seat, "Ana", "Beto", true), skills, true, false, prep,
+                    animateEntrance: true, relikarios: relikarios);
+                await Layout();
+                UpdateOpeningPresentation(.5);
+                Check(_openingRelikarios.Visible && _openingPlaymats.Visible && _openingPlaymats.Unrolled == Vector2.Zero,
+                    "El tapete se despliega durante la revelación de los Relikarios.");
+                UpdateOpeningPresentation(OpeningRelikarioReveal.Duration);
+                Check(!_openingRelikarios.Visible && _openingPlaymats.Visible && _openingPlaymats.Unrolled == Vector2.Zero,
+                    "Los tapetes no quedan enrollados tras la revelación.");
+                await Capture("enrollados", size);
+
+                UpdateOpeningPresentation(.56);
+                var deployed = _openingPlaymats.Unrolled;
+                Check(deployed.X > deployed.Y && deployed.X < 1 && deployed.Y > 0,
+                    "Los dos tapetes no están parcialmente desenrollados.");
+                SelectInitialSkillCandidate(skills.Options[0]);
+                Check(IsAnimating && _initialSkillCandidate == null && _initialSkillCards.All(card => card.Disabled) &&
+                    _initialSkillCards.All(card => card.GetFocusModeWithOverride() == FocusModeEnum.None),
+                    "La elección inicial recibe interacción durante el despliegue.");
+                await Capture("desplegando", size);
+
+                ApplyLayout(); await Layout();
+                Check(_openingPlaymats.Visible && _openingPlaymats.Unrolled == deployed,
+                    "Reacomodar el tablero vuelve a enrollar los tapetes.");
+                UpdateOpeningPresentation(.55);
+                Check(_openingPlaymats.Unrolled == Vector2.One && _openingPlaymats.Visible,
+                    "El tablero aparece antes de extender ambos tapetes.");
+                await Capture("union", size);
+                UpdateOpeningPresentation(.4); UpdateEnabled();
+                SelectInitialSkillCandidate(skills.Options[0]);
+                Check(!IsAnimating && InitialSkillConfirmButton?.Disabled == false &&
+                    FocusBehaviorRecursive == FocusBehaviorRecursiveEnum.Inherited,
+                    "Terminar el despliegue no habilita la elección inicial.");
+                BeginOpeningPlaymats(false, prep);
+                Check(!_openingPlaymats.Visible, "La preparación vuelve a reproducir el despliegue.");
+                await Capture("listo", size);
+            }
+
+            _openingPlaymatsPresented = false;
+            BeginOpeningPlaymats(true, prep);
+            Check(!_openingPlaymats.Visible, "Una sala recuperada reproduce el despliegue.");
+            _openingPlaymatsPresented = false;
+            _impacts.ReducedMotion = true;
+            BeginOpeningPlaymats(false, prep);
+            Check(!_openingPlaymats.Visible && !IsAnimating, "Movimiento reducido retrasa la preparación.");
+            _openingPlaymatsPresented = false;
+            _impacts.ReducedMotion = false;
+            BeginOpeningPlaymats(false, prep);
+            _Process(0); // The smoke-test connection is offline.
+            Check(!_openingPlaymats.Visible && FocusBehaviorRecursive == FocusBehaviorRecursiveEnum.Inherited,
+                "El corte de conexión deja la animación o su bloqueo activos.");
+            BeginOpeningPlaymats(false, prep);
+            Check(!_openingPlaymats.Visible, "El despliegue reaparece después de perder la conexión.");
+        }
+        finally
+        {
+            EndOpeningPlaymats(); ResetAnimations();
+            (_snapshot, _tableView, _requestedTableView, _impacts.ReducedMotion, _openingPlaymatsPresented,
+                _openingRevealPresented, window.Size, window.ContentScaleSize) = previous;
+            _initialSkillViewKey = _initialSkillCandidate = null;
+            if (_snapshot != null) PresentTestSnapshot(_snapshot);
+            await Layout();
+        }
+        GD.Print("PVP_OPENING_PLAYMATS_PASS · vista de mesa, clásica y compacta; preparación, redimensionado y reconexión.");
+    }
+
     internal async Task CheckOpeningReveal()
     {
         void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
