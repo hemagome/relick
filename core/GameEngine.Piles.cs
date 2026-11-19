@@ -2,7 +2,9 @@ namespace Relick.Core;
 
 public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck, Area, LightEquipment, GalacticShield, ShieldCharge }
 /// <summary>Owner is the player the card leaves; MemoryOwner is the memory that receives it.</summary>
-public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1, int? DestinationPlayer = null)
+/// <summary>SourceIndex locates the source when Index names the destination slot, such as the shield a charge leaves.</summary>
+public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1, int? DestinationPlayer = null,
+    int SourceIndex = 0)
 {
     public bool ToRivalMemory => Destination == CardZone.Memory && MemoryOwner >= 0 && MemoryOwner != Owner;
 }
@@ -14,8 +16,8 @@ public sealed partial class GameEngine
     private int Seat(PlayerState p) => Array.IndexOf(State.Players, p);
 
     private void NotifyPileMove(PlayerState p, string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory,
-        int memoryOwner = -1, int? destinationPlayer = null)
-        => CardMovedToPile?.Invoke(new(Seat(p), id, source, index, destination, memoryOwner, destinationPlayer));
+        int memoryOwner = -1, int? destinationPlayer = null, int sourceIndex = 0)
+        => CardMovedToPile?.Invoke(new(Seat(p), id, source, index, destination, memoryOwner, destinationPlayer, sourceIndex));
 
     private void AttachAttackFromDeck(PlayerState p, int index)
     {

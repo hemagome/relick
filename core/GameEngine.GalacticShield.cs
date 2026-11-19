@@ -161,6 +161,8 @@ public sealed partial class GameEngine
         }
         if (card.CorruptOnMemory) player.MarkForCorruption(CardZone.Hand, player.Hand.Count);
         player.Hand.Add(card.CardId);
+        NotifyPileMove(player, card.CardId, CardZone.ShieldCharge, player.Hand.Count - 1, CardZone.Hand,
+            destinationPlayer: pending.Actor, sourceIndex: slot);
         var reduced = Math.Max(0, pending.Count - GalacticShieldReduction);
         NotifyGuard(pending.Actor, pending.Value > 0 ? 1 - pending.Actor : null,
             CardCatalog.GalacticShield.Id, pending.Count, reduced, blocked: false);

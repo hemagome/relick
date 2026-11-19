@@ -80,7 +80,7 @@ public static class DuelVisualEvents
         game.HandCardTaken += (owner, recipient, sourceIndex, slot) => events.Add(new()
             { Kind = DuelVisualKind.HandSteal, Player = owner, Target = recipient, SourceIndex = sourceIndex, Value = slot, Source = CardZone.Hand, Destination = CardZone.Hand });
         game.CardMovedToPile += movement => events.Add(new() { Kind = DuelVisualKind.Pile, Player = movement.Owner,
-            Source = movement.Source, Destination = movement.Destination, Value = movement.Index, ToRivalMemory = movement.ToRivalMemory,
+            Source = movement.Source, Destination = movement.Destination, Value = movement.Index, SourceIndex = movement.SourceIndex, ToRivalMemory = movement.ToRivalMemory,
             DestinationPlayer = movement.DestinationPlayer ?? (movement.Destination == CardZone.Corrupted &&
                 movement.MemoryOwner >= 0 && movement.MemoryOwner != movement.Owner ? movement.MemoryOwner : null) });
         game.DamageGuarded += guard => events.Add(new()

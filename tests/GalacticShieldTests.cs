@@ -40,6 +40,9 @@ static class GalacticShieldTests
             Check(defender.Hand.SequenceEqual([Charges[0], CardCatalog.Attack.Id]) &&
                 defender.GalacticShields!.Select(shield => shield.Cards.Count).SequenceEqual([2, 2]),
                 "Cada copia entrega exactamente una carta.");
+            Check(visual.Where(cue => cue is { Kind: DuelVisualKind.Pile, Source: CardZone.ShieldCharge, Destination: CardZone.Hand })
+                    .Select(cue => (cue.SourceIndex, cue.Value, cue.DestinationPlayer)).SequenceEqual([(0, 0, 0), (1, 1, 0)]),
+                "Cada carta viaja desde su Escudo hasta su lugar en la mano.");
             Check(defender.Health == 7 && game.State.Active.Relikia == CardCatalog.Destiny.Reward &&
                 visual.Single(cue => cue.Kind == DuelVisualKind.Hit) is { Value: 1, AttackDie: 6 },
                 "Un crítico de 5 baja a 1 y conserva su premio.");

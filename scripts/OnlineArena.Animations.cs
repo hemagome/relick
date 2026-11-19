@@ -91,7 +91,8 @@ public partial class OnlineArena
         {
             var relative = cue.Player == current.MySeat ? 0 : 1;
             var source = cue.Kind is DuelVisualKind.Return or DuelVisualKind.HandTransfer ? CardZone.Hand : cue.Kind == DuelVisualKind.BonusClaim ? CardZone.Bonus : cue.Source;
-            var slot = cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard ? 0 : cue.Kind is DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal ? cue.SourceIndex : cue.Value;
+            var slot = cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard ? 0 :
+                cue.Kind is DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal || source == CardZone.ShieldCharge ? cue.SourceIndex : cue.Value;
             var node = ZoneNode(relative, source, slot);
             var player = previous.Players[cue.Player];
             string? id = source switch
@@ -152,6 +153,13 @@ public partial class OnlineArena
                 var destination = current.Players[cue.Player];
                 var face = cue.Destination == CardZone.LightEquipment ? destination.LightEquipment?.LastOrDefault() : destination.Equipment;
                 result[cue] = new Flight(cue, origin, face, OriginRotation: rotation, StartsFaceUp: false);
+                continue;
+            }
+            if (source == CardZone.ShieldCharge && cue.Destination == CardZone.Hand)
+            {
+                // A face-down charge leaves its shield and turns over only on the side of its owner, who may see it.
+                var face = cue.Player == current.MySeat ? current.Players[cue.Player].Hand.ElementAtOrDefault(cue.Value) : null;
+                result[cue] = new Flight(cue, origin, face, OriginRotation: rotation, StartsFaceUp: false, EndsFaceUp: face != null);
                 continue;
             }
             if (source == CardZone.Hand && cue.Destination == CardZone.Area)

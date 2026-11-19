@@ -46,12 +46,25 @@ public partial class OnlineArena
             game.State.Active.Hand.Add(attack);
             game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
             random.Replay([5]);
+            var before = DuelSnapshot.For(game, seat, 42);
+            PresentTestSnapshot(before);
+            for (var i = 0; i < 2; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var origin = ZoneRect(ZoneNode(0, CardZone.GalacticShield, 0)!);
+            var cues = DuelVisualEvents.Capture(game);
             if (!game.Attack(1 - seat, 0, 0).Success || game.State.PendingDecision?.Source == shield.Id)
                 throw new Exception("El Escudo debe entregar su carta boca abajo sin abrir una elección.");
             random.Finish();
-            PresentTestSnapshot(DuelSnapshot.For(game, seat, 42));
-            if (_snapshot!.Options.Any(option => option.Move.Kind == DuelMoveKind.Choose))
-                throw new Exception("La arena no debe ofrecer elegir entre cartas boca abajo.");
+            var after = DuelSnapshot.For(game, seat, 43);
+            after.Visuals = cues;
+            var origins = CaptureOrigins(after, before);
+            var charge = cues.SingleOrDefault(cue => cue is { Kind: DuelVisualKind.Pile, Source: CardZone.ShieldCharge, Destination: CardZone.Hand });
+            if (charge == null || !origins.TryGetValue(charge, out var flight) || size.X == 1820 && flight.Origin != origin ||
+                flight.Face != after.Players[seat].Hand.ElementAtOrDefault(charge.Value) || flight.StartsFaceUp != false)
+                throw new Exception("La carta debe salir boca abajo del Escudo y mostrar su cara solo a su dueño.");
+            PresentTestSnapshot(after);
+            // The compact board may scroll the hand out of view, which settles the card without a flight.
+            if (size.X == 1820) await CheckShieldChargeFlight(cues, origins, charge);
+            ResetAnimations();
 
             game.State.Phase = Phase.Actions;
             game.State.Active.Hand.Add(CardCatalog.BlueEgg.Id);
@@ -64,5 +77,19 @@ public partial class OnlineArena
                 throw new Exception("El Escudo rival debe poder seleccionarse como objetivo.");
         }
         GD.Print("PVP_GALACTIC_SHIELD_PASS");
+    }
+
+    private async Task CheckShieldChargeFlight(List<DuelVisualEvent> cues, Dictionary<DuelVisualEvent, Flight> origins, DuelVisualEvent charge)
+    {
+        Animate(cues, origins);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        for (var frame = 0; _activeFlight?.Event != charge && frame < 12; frame++)
+            UpdateFlights(_activeFlight == null ? 0 : 1.2);
+        var hand = ZoneNode(0, CardZone.Hand, charge.Value);
+        if (_activeFlight?.Event != charge || _flightTarget != hand || _flightFront == null || _flightFront.Visible)
+            throw new Exception("El vuelo del Escudo debe dirigirse a la mano y empezar boca abajo.");
+        UpdateFlights(1.2);
+        if (_activeFlight?.Event == charge || hand!.Modulate.A < 1)
+            throw new Exception("La carta del Escudo debe aterrizar en la mano.");
     }
 }
