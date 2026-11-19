@@ -46,15 +46,13 @@ public partial class OnlineArena
             game.State.Active.Hand.Add(attack);
             game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
             random.Replay([5]);
-            if (!game.Attack(1 - seat, 0, 0).Success || game.State.PendingDecision?.Source != shield.Id)
-                throw new Exception("El Escudo debe abrir una elección antes del daño.");
+            if (!game.Attack(1 - seat, 0, 0).Success || game.State.PendingDecision?.Source == shield.Id)
+                throw new Exception("El Escudo debe entregar su carta boca abajo sin abrir una elección.");
             random.Finish();
             PresentTestSnapshot(DuelSnapshot.For(game, seat, 42));
-            var choices = _snapshot!.Options.Where(option => option.Move.Kind == DuelMoveKind.Choose).ToArray();
-            if (choices.Length != 3 || choices.Any(option => option.CardId != null || !PresentsOption(option)))
-                throw new Exception("La arena debe mostrar tres elecciones sin revelar sus cartas.");
+            if (_snapshot!.Options.Any(option => option.Move.Kind == DuelMoveKind.Choose))
+                throw new Exception("La arena no debe ofrecer elegir entre cartas boca abajo.");
 
-            if (!game.ResolveDecision(seat, 0).Success) throw new Exception("No se resuelve la elección del Escudo.");
             game.State.Phase = Phase.Actions;
             game.State.Active.Hand.Add(CardCatalog.BlueEgg.Id);
             if (!game.PlayCode(1 - seat, 0).Success) throw new Exception("No se activa el Huevo de prueba.");

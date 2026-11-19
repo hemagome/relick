@@ -82,7 +82,7 @@ public sealed partial class GameEngine
         AskDecision(new PendingDecision
         {
             Source = CardCatalog.GalacticShield.Id, Step = "damage", Decider = actor, Kind = DecisionKind.Confirm,
-            Instruction = $"Vas a recibir {amount} de daño. Elige una carta boca abajo para añadir a tu mano y reducirlo en 2.",
+            Instruction = $"Vas a recibir {amount} de daño. Escudo Galáctico añade una carta boca abajo a tu mano y lo reduce en 2.",
             Continuation = new EngineContinuation { Actor = actor, Target = shield, Count = amount, Value = attackDie, Next = completed }
         });
     }
@@ -116,10 +116,13 @@ public sealed partial class GameEngine
         var choices = new List<DecisionChoice>();
         foreach (var shield in shields)
         {
-            var cards = State.Players[decision.Decider].GalacticShields![shield.Index].Cards;
-            for (var i = 0; i < cards.Count; i++)
+            // The charges are face down, so the player picks a shield and takes its top card. Version 1 duels cached
+            // one option per charge, so they keep that list for their recorded indices to stay valid.
+            var charges = LegacyBlueEgg ? State.Players[decision.Decider].GalacticShields![shield.Index].Cards.Count : 1;
+            for (var i = 0; i < charges; i++)
             {
-                var label = $"Carta boca abajo {i + 1}";
+                var label = LegacyBlueEgg ? $"Carta boca abajo {i + 1}"
+                    : takingDamage ? "Añadir una carta boca abajo a tu mano" : "Enviar una carta boca abajo a memoria";
                 if (shields.Length > 1) label += $" · Escudo {shield.Index + 1}";
                 choices.Add(new DecisionChoice
                 {

@@ -26,23 +26,18 @@ static class GalacticShieldTests
                     "La vista pública y las privadas contienen solo el conteo.");
             }
         }),
-        ("Escudo: cada copia reduce un golpe una vez y el premio espera a las elecciones", () =>
+        ("Escudo: cada copia reduce un golpe una vez sin elegir entre cartas boca abajo", () =>
         {
             var (game, random) = Fixture();
             var defender = game.State.Active;
             defender.Hand.AddRange([Shield, Shield]);
             Check(game.PlayCode(0, 0).Success && game.PlayCode(0, 0).Success, "Ambas copias entran en campo.");
             defender.AutoPassCombos = true;
-            Attack(game, random, 6);
-            Check(defender.Health == 8 && game.State.Active.Relikia == 0 && game.State.PendingDecision?.Source == Shield,
-                "La elección es obligatoria aun con COMBO en pasar y precede al daño y al premio.");
-            Check(!game.ResolveDecision(1, 0).Success && game.DecisionChoices(0).All(choice => choice.CardId == null),
-                "Solo el defensor puede elegir y las opciones no muestran identidades.");
-            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
             var visual = DuelVisualEvents.Capture(game);
-            Check(game.ResolveDecision(0, 1).Success && game.ResolveDecision(0, 0).Success, "Cada copia ofrece su propia elección.");
-            defender = game.State.Players[0];
-            Check(defender.Hand.SequenceEqual([Charges[1], CardCatalog.Attack.Id]) &&
+            Attack(game, random, 6);
+            Check(game.State.PendingDecision?.Source != Shield,
+                "Las cartas están boca abajo, así que cada copia entrega su carta del tope sin abrir un menú.");
+            Check(defender.Hand.SequenceEqual([Charges[0], CardCatalog.Attack.Id]) &&
                 defender.GalacticShields!.Select(shield => shield.Cards.Count).SequenceEqual([2, 2]),
                 "Cada copia entrega exactamente una carta.");
             Check(defender.Health == 7 && game.State.Active.Relikia == CardCatalog.Destiny.Reward &&
@@ -74,7 +69,8 @@ static class GalacticShieldTests
             game.State.Active.Hand.AddRange([CardCatalog.BlueEgg.Id, CardCatalog.BlueEgg.Id]);
             Check(game.PlayCode(1, 0).Success && game.ResolveDestruction(1, 0, FieldZone.GalacticShield, 0).Success,
                 "El Huevo elige una copia sobre el Relikario.");
-            Check(game.DecisionChoices(0).Count == 4, "Solo la otra copia y la opción de pasar están disponibles.");
+            Check(game.DecisionChoices(0) is [{ CardId: null }, { Value: -1 }],
+                "Solo la otra copia y la opción de pasar están disponibles, sin elegir carta boca abajo.");
             game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
             Check(game.ResolveDecision(0, 0).Success, "La protección se puede recuperar.");
             player = game.State.Players[0];
@@ -103,8 +99,8 @@ static class GalacticShieldTests
             rival.ZahiraHost = new(0, FieldZone.Relikario, -1, player.Relikario.Id);
             rival.Hand.Add(CardCatalog.BlueEgg.Id);
             Check(game.PlayCode(1, 0).Success && game.ResolveDestruction(1, 1, FieldZone.Zahira).Success &&
-                game.State.DecisionPlayer == 0 && game.ResolveDecision(0, 2).Success, "Decide el dueño del Relikario que aloja la carta.");
-            Check(rival.ZahiraHost != null && player.Memory.Single() == Charges[2], "El Escudo conserva la carta sobre el Relikario.");
+                game.State.DecisionPlayer == 0 && game.ResolveDecision(0, 0).Success, "Decide el dueño del Relikario que aloja la carta.");
+            Check(rival.ZahiraHost != null && player.Memory.Single() == Charges[0], "El Escudo conserva la carta sobre el Relikario.");
         }),
         ("Escudo: los dos anuladores normales conservan el mazo y devuelven la acción", () =>
         {
