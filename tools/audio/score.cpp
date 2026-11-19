@@ -784,134 +784,141 @@ void osamu(Mix &m, bool climax) {
     }
 }
 
-// A bright two-operator FM voice for Ironwing's electronics. The filter-like
-// drop in modulation after the attack keeps long notes out of the drums' way.
-void arcadeTone(Bus &bus, double start, double duration, int pitch, double velocity, double pan, double brightness) {
-    const double frequency = hz(pitch);
-    const double release = .13;
-    const int samples = int((duration + release) * SR);
-    const long offset = std::lround(start * SR);
-    const Pan position(pan);
-    double phase = 0;
-    for (int i = 0; i < samples; ++i) {
-        const double t = double(i) / SR;
-        const double bend = 1 - .019 * std::exp(-t / .018) + .0028 * smooth(t / .18) * std::sin(TAU * 5.7 * t);
-        phase += TAU * frequency * bend / SR;
-        const double index = brightness * (.51 + .73 * std::exp(-t * 12));
-        const double tone = std::sin(phase + index * std::sin(2 * phase)) + .24 * std::sin(2 * phase + .3);
-        const double envelope = smooth(t / .009) * (1 - .19 * smooth(t / .22)) *
-            (t > duration ? std::exp(-(t - duration) / .041) : 1) * smooth((samples - i) / 300.0);
-        bus.add(offset + i, tone * envelope * velocity * .78, position.l, position.r);
+// Ironwing, after 90s space-shooter scores: a heroic orchestral march with a trumpet
+// fanfare, string ostinato and march snare. Combat is a major-key fanfare with bVI–bVII–I
+// cadences; zero lives is a D minor theme over a flat-second riff.
+const Chord D{2, 6, 9}, G{7, 11, 2}, Bm{11, 2, 6}, E{4, 8, 11}, Fsm{6, 9, 1}, Eb{3, 7, 10};
+
+// Combat, 156 bpm, 40 bars: A, A', B (Lydian bridge), A' with counterline, fanfare tag.
+const Chord heroA[] = {D, D, C, G, Bb, C, D, A};
+const Chord heroA2[] = {D, D, C, G, Bb, C, D, D};
+const Chord heroB[] = {Bm, G, A, Fsm, G, E, Bb, A};
+const Chord heroTag[] = {G, A, Bb, C, D, D, Bb, C};
+const char *heroHead =
+    "d5:1 a5:1.5 g5:.25 f#5:.25 e5:1 | f#5:1.5 d5:.5 a4:2 | g5:1 e5:.5 c5:.5 g5:1.5 a5:.5 | b5:2 a5:.5 g5:.5 d5:1 | ";
+const std::string heroThemeA = std::string(heroHead) +
+    "f5:1 d5:.5 f5:.5 bb5:1.5 a5:.5 | g5:1 e5:.5 g5:.5 c6:1.5 b5:.25 c6:.25 | d6:2 a5:1 f#5:1 | e5:1 a5:.5 c#6:.5 e6:2";
+const std::string heroThemeA2 = std::string(heroHead) +
+    "d6:1 c6:.5 bb5:.5 f5:1 bb5:1 | c6:1.5 e6:.5 g6:2 | f#6:1 e6:.5 d6:.5 a5:1 f#5:1 | d6:3 r:1";
+const std::string heroThemeB =
+    "f#5:2 d5:1 b4:1 | g5:1.5 a5:.5 b5:1 c#6:1 | e6:2 c#6:1 a5:1 | c#6:1.5 a5:.5 f#5:2 | "
+    "b5:1 d6:.5 b5:.5 g5:1 b5:1 | g#5:1.5 b5:.5 e6:2 | f6:1 d6:.5 bb5:.5 f5:1 d6:1 | c#6:1 e6:1 a6:1.5 r:.5";
+const std::string heroThemeTag =
+    "d6:1 b5:.5 g5:.5 d5:2 | e5:1 a5:.5 c#6:.5 e6:2 | f6:1.5 d6:.5 bb5:2 | g6:1.5 e6:.5 c6:2 | "
+    "a6:4 | r:4 | bb5:.5 bb5:.5 r:.5 bb5:.5 c6:1 d6:1 | c6:.5 c6:.5 r:.5 c6:.5 e6:1 g6:1";
+// The counterline under the final A': long horn notes moving against the theme.
+const std::string heroCounter =
+    "f#4:4 | a4:4 | g4:4 | d4:2 g4:2 | bb4:4 | c5:2 e5:2 | d5:2 a4:2 | f#4:4";
+
+// Zero lives, 180 bpm, 36 bars: low theme over the riff, high theme, bridge, tutti, alarm tag.
+const Chord darkM[] = {Dm, Bb, C, Dm, Dm, Bb, Gm, A};
+const Chord darkN[] = {Gm, Eb, Bb, F, Gm, Eb, C, A};
+const Chord darkTag[] = {Bb, C, A, A};
+const std::string darkTheme =
+    "d5:.5 d5:.5 a5:1 g5:.5 f5:.5 e5:1 | f5:1.5 d5:.5 bb4:2 | c5:.5 e5:.5 g5:1 c6:1 bb5:.5 g5:.5 | a5:3 r:1 | "
+    "d6:.5 c6:.5 a5:1 f5:.5 g5:.5 a5:1 | bb5:1 d6:1 f6:1.5 e6:.5 | d6:1 bb5:.5 g5:.5 d6:1 bb5:1 | c#6:1 e6:1 a6:1 g6:.5 e6:.5";
+const std::string darkBridge =
+    "g5:2 bb5:1 d6:1 | eb6:2 d6:1 bb5:1 | f5:1 bb5:1 d6:2 | c6:1.5 a5:.5 f5:2 | "
+    "g5:1 d6:1 g6:2 | g6:1 f6:.5 eb6:.5 bb5:2 | e6:1 c6:.5 g5:.5 e6:1 g6:1 | a6:1 g6:.5 f6:.5 e6:1 c#6:1";
+const std::string darkAlarm =
+    "bb5:.5 bb5:.5 r:.5 bb5:.5 c6:.5 d6:.5 f6:1 | g6:.5 g6:.5 r:.5 g6:.5 e6:.5 c6:.5 g5:1 | "
+    "a5:.5 c#6:.5 e6:.5 a6:.5 g6:.5 e6:.5 c#6:.5 a5:.5 | a6:2 r:2";
+
+struct Section { const Chord *chords; int size; std::string melody; };
+Section section(bool climax, int phrase) {
+    if (climax) {
+        if (phrase == 4) return {darkTag, 4, darkAlarm};
+        if (phrase == 2) return {darkN, 8, darkBridge};
+        return {darkM, 8, darkTheme};
+    }
+    switch (phrase) {
+        case 0: return {heroA, 8, heroThemeA};
+        case 2: return {heroB, 8, heroThemeB};
+        case 4: return {heroTag, 8, heroThemeTag};
+        default: return {heroA2, 8, heroThemeA2};
     }
 }
 
-// "Órbita de combate" and "Última maniobra": an electronic lead, octave bass
-// and a D–F–E–A motif that returns with shorter notes and heavier drums at zero.
-void ironwing(Mix &m, bool climax) {
+void orchestralArrangement(Mix &m, bool climax) {
     Orchestra o(m);
-    Bus &lead = m.bus("synth-lead", .37, .36);
-    Bus &arp = m.bus("synth-arpeggio", .20, .31);
-    const Chord G{7, 11, 2}, Eb{3, 7, 10};
-    const Chord flight[] = {Dm, G, Bb, C, Dm, Gm, Bb, A};
-    const Chord danger[] = {Dm, Gm, Bb, C, Dm, Eb, Gm, A};
-    const Chord bridge[] = {F, C, Gm, Dm, Bb, G, Asus, A};
-    const Chord coda[] = {Dm, Bb, Gm, A};
-    const std::string theme =
-        "d5:.75 f5:.25 e5:.5 a5:1 r:.5 c6:1 | b5:.5 g5:.5 d5:1.5 e5:.5 a5:1 | "
-        "f5:1 a5:.5 bb5:.5 d6:1.5 c6:.5 | g5:.75 e5:.25 g5:.5 c6:.5 e6:1 r:1 | "
-        "d5:.75 f5:.25 e5:.5 a5:.5 d6:1 f6:.75 e6:.25 | d6:.75 bb5:.25 g5:1 a5:.5 bb5:.5 f5:1 | "
-        "f5:.75 d5:.25 f5:1 bb5:1 a5:.5 f5:.5 | e5:.75 a5:.25 c#6:1 b5:.5 g5:.5 a5:.5 r:.5";
-    const std::string horizon =
-        "a5:1 g5:.5 f5:.5 c6:1.5 a5:.5 | g5:1 e5:1 g5:.5 c6:1.5 | "
-        "bb5:1.5 a5:.5 g5:1 d5:1 | f5:1 e5:.5 f5:.5 a5:1 d6:1 | "
-        "bb5:1 a5:.5 f5:.5 d5:1.5 f5:.5 | g5:1 a5:.5 b5:.5 d6:1 b5:1 | "
-        "a5:1.5 d6:.5 e6:1.5 d6:.5 | c#6:1 e6:.75 c#6:.25 a5:1 r:1";
-    const std::string urgent =
-        "d5:.5 f5:.25 e5:.25 a5:.75 d6:.25 c6:.75 a5:.75 r:.5 | bb5:.5 a5:.25 g5:.25 d5:1 g5:.75 a5:.25 bb5:1 | "
-        "f5:.5 bb5:.5 d6:.75 c6:.25 bb5:1 f5:.5 d5:.5 | e5:.5 g5:.5 c6:.5 e6:.5 d6:.75 c6:.25 g5:1 | "
-        "d5:.5 f5:.25 e5:.25 a5:.75 d6:.25 f6:1.5 e6:.5 | eb6:1 d6:.5 bb5:.5 g5:1 bb5:1 | "
-        "g5:.75 bb5:.25 d6:1 f6:.5 d6:.5 bb5:1 | a5:.5 bb5:.5 c#6:1 e6:.5 c#6:.5 a5:.5 r:.5";
-    const std::string climb =
-        "d5:1 d5:.5 f5:.5 a5:1 c6:.5 d6:.5 | bb5:1 g5:.5 bb5:.5 d6:1 r:1 | "
-        "d6:.5 f6:.5 d6:1 bb5:.5 f5:.5 d5:1 | e5:.5 g5:.5 e5:1 c6:1 g5:1 | "
-        "a5:1 f5:.5 a5:.5 d6:1.5 e6:.5 | eb6:.75 bb5:.25 eb6:1 g6:1.5 f6:.5 | "
-        "d6:.75 bb5:.25 d6:1 f6:1 d6:.5 g5:.5 | a5:.75 c#6:.25 e6:1 c#6:.5 bb5:.5 a5:1";
-    const std::string finale =
-        "d6:1 a5:.5 f5:.5 e5:.5 d5:.5 a5:1 | f5:1 bb5:.5 d6:.5 f6:1.5 d6:.5 | "
-        "g5:1 bb5:.5 d6:.5 g6:1 f6:.5 d6:.5 | e6:.5 c#6:.5 a5:.5 bb5:.5 a5:1 r:1";
-    const std::string reprise =
-        "d5:.75 f5:.25 e5:.5 a5:1 d6:.5 c6:1 | b5:1 d6:.5 b5:.5 g5:1 d5:1 | "
-        "f5:1 a5:.5 bb5:.5 d6:2 | c6:.75 g5:.25 e5:1 g5:1 c6:1 | "
-        "a5:1 f5:.5 e5:.5 d5:1 a5:1 | bb5:1 d6:.5 g6:.5 f6:1 d6:1 | "
-        "f6:.75 d6:.25 bb5:1 a5:.5 f5:.5 bb5:1 | a5:1 e5:1 c#5:.5 e5:.5 a4:.5 r:.5";
-
     const int bars = m.beats / 4;
     for (int bar = 0; bar < bars; ++bar) {
         const double beat = bar * 4.0;
         const int phrase = bar / 8, position = bar % 8;
-        const bool bridgePhrase = phrase == 2;
-        const bool light = bridgePhrase && (!climax || position < 4);
-        const auto &chord = climax ? (phrase == 4 ? coda[position] : danger[position]) :
-            (bridgePhrase ? bridge[position] : flight[position]);
-        const int root = up(chord.root, 33);
-        const int fifth = up(chord.fifth, root + 1);
-        const int third = up(chord.third, root + 7);
-        const int bass[] = {root, root, fifth, root + 12, root, third, fifth, root + 12};
-        const int tones[] = {root + 24, third + 12, fifth + 24, third + 24, root + 36, fifth + 24, third + 24, fifth + 24};
+        const Section s = section(climax, phrase);
+        const Chord &chord = s.chords[position];
+        const bool bridge = phrase == 2, tag = phrase == 4, light = !climax && bridge && position < 4;
+        const int root = up(chord.root, 33), fifth = up(chord.fifth, root + 1);
+        const bool lastBar = position == s.size - 1 || bar == bars - 1;
+
+        // Low strings drive in eighths; at zero lives they carry the flat-second riff.
         for (int step = 0; step < 8; ++step) {
-            const double time = beat + step * .5;
-            const bool accent = step == 0 || step == 3 || step == 5;
-            if (!light || step % 2 == 0) {
-                arcadeTone(o.bass, m.exact(time), m.span(light ? .73 : .36), bass[step], accent ? .83 : .49, .03, .73);
-                sub(o.low, m.exact(time), m.span(.32), root, step == 0 ? .82 : .35);
+            const bool accent = step == 0 || step == 3 || step == 6;
+            if (light && step % 2) continue;
+            int pitch;
+            if (climax) { const int riff[8] = {0, 0, 12, 0, 0, 10, 0, 1}; pitch = root + riff[step]; }
+            else { const int march[8] = {root, root, root + 12, root, root, root, fifth, root + 12}; pitch = march[step]; }
+            bassNote(m, o, beat + step * 0.5, light ? 0.9 : 0.4, pitch, accent ? 0.78 : 0.5, !light);
+        }
+        if (climax && phrase != 2)
+            for (double at : {0.0, 1.5, 3.0}) brass(o.horns, m.g, m.at(beat + at), m.span(0.5), up(chord.root, 41), 0.75, -0.3, true);
+
+        figure(m, o, beat, chord, light ? 0.42 : 0.58, climax || phrase == 1 || phrase == 3, light ? 12 : 0);
+        chordPad(m, o, beat, 3.9, chord, light ? 0.6 : 0.45, 55);
+        if (bridge || light) hornPad(m, o, beat, 3.9, chord, 0.5);
+        if (tag || (!climax && (position == 3 || position == 7) && !bridge) || (climax && phrase == 3 && position % 2 == 0))
+            stabs(m, o, beat, chord, 0.72);
+
+        // Percussion: concert bass drum and a march snare with ruffs; full kit at zero lives.
+        if (climax) {
+            kit(m, o, beat, bridge ? 1 : 3, 0.72, lastBar);
+            timpani(o.timpani, m.g, m.exact(beat), up(chord.root, 41), 0.72);
+            timpani(o.timpani, m.g, m.exact(beat + 2), up(chord.root, 41), 0.5);
+            if (!bridge) { tom(o.kick, m.g, m.exact(beat + 2.5), 45, 0.45, -0.3); tom(o.kick, m.g, m.exact(beat + 3.5), 41, 0.5, 0.3); }
+        } else {
+            kick(o.kick, m.g, m.exact(beat), light ? 0.55 : 0.8, true);
+            if (!light) kick(o.kick, m.g, m.exact(beat + 2), 0.6, true);
+            timpani(o.timpani, m.g, m.exact(beat), up(chord.root, 41), position % 4 == 0 ? 0.7 : 0.45);
+            if (lastBar && bar + 1 < bars) snareRoll(m, o, beat + 2, beat + 4, 0.125, 0.3, 0.85);
+            else if (!light) {
+                const double march[7] = {1, 1.75, 2.5, 3, 3.5, 3.75, 0.5}, level[7] = {0.8, 0.35, 0.4, 0.8, 0.35, 0.45, 0.3};
+                for (int k = 0; k < 7; k++) snare(o.snare, m.g, m.exact(beat + march[k]), level[k]);
             }
-            const double pan = step % 2 == 0 ? -.42 : .41;
-            arcadeTone(arp, m.at(time + .02), m.span(.16), tones[step],
-                (light ? .57 : .43) * (accent ? 1 : .75), pan, .82);
-            if (climax && !light)
-                arcadeTone(arp, m.at(time + .25), m.span(.14), tones[(step + 2) % 8], .31, -pan, 1.08);
+            for (int q = 0; q < (light ? 4 : 8); q++) hat(o.hats, m.g, m.exact(beat + q * (light ? 1 : 0.5)), 0.32, false);
         }
-        chordPad(m, o, beat, 3.9, chord, light ? .67 : .48, 55);
-        kit(m, o, beat, light ? 1 : (climax ? 3 : 0), light ? .57 : (climax ? .90 : .74),
-            position == 7 || bar == bars - 1);
-        if (climax && !light) {
-            figure(m, o, beat, chord, .57, false);
-            timpani(o.timpani, m.g, m.exact(beat), up(chord.root, 41), position % 4 == 0 ? .72 : .45);
-        }
-        if (position == 0 && (!bridgePhrase || !climax))
-            cymbal(o.cymbals, m.g, m.exact(beat), climax ? .56 : .42);
-        if (position == 7 && bar + 1 < bars)
-            cymbal(o.cymbals, m.g, m.exact(beat + 4), .38, m.span(1.5));
+        if (position == 0) cymbal(o.cymbals, m.g, m.exact(beat), climax ? 0.55 : 0.48);
+        if (lastBar && bar + 1 < bars) cymbal(o.cymbals, m.g, m.exact(beat + 4), 0.42, m.span(1.5));
     }
 
     for (int phrase = 0; phrase * 32 < m.beats; ++phrase) {
-        const auto &melody = climax ? (phrase == 4 ? finale : (phrase == 1 || phrase == 2 ? climb : urgent)) :
-            (phrase == 2 ? horizon : (phrase == 1 || phrase == 4 ? reprise : theme));
-        const auto notes = parse(melody, phrase * 32);
-        const bool airy = phrase == 2 && !climax;
-        for (const auto &note : notes) {
-            const double time = m.at(note.beat), duration = m.span(note.len);
-            const double velocity = (climax ? .87 : (airy ? .61 : .80)) * (.93 + .07 * std::min(1.0, note.len));
-            arcadeTone(lead, time, duration * .91, note.pitch, velocity, .04, climax ? 1.42 : 1.04);
-            if (!climax && (note.len >= 1 || airy))
-                arcadeTone(lead, time + m.span(.75), duration * .65, note.pitch, velocity * .25, -.53, .56);
-            if (airy && note.len >= 1)
-                bell(o.harp, time, note.pitch + 12, .36, .40);
+        const Section s = section(climax, phrase);
+        const auto notes = parse(s.melody, phrase * 32);
+        if (climax) {
+            if (phrase == 0) { line(m, o, Horns, notes, 0.92, -12); line(m, o, Violins, notes, 0.5, -12, -0.1); }
+            else if (phrase == 2) { line(m, o, Violins, notes, 0.78, 0); line(m, o, Horns, notes, 0.62, -12); }
+            else { line(m, o, Trumpets, notes, 0.85, 0); line(m, o, Violins, notes, 0.72, 0, -0.1); line(m, o, Horns, notes, 0.66, -12); }
+            continue;
         }
-        if (climax || phrase == 3) line(m, o, Horns, notes, climax ? .71 : .56, -12);
-        if (climax && phrase != 2) line(m, o, Violins, notes, .63, 0);
-        if (airy) line(m, o, Flute, notes, .67, 0);
+        if (phrase == 2) {
+            line(m, o, Violins, notes, 0.74, 0);
+            line(m, o, Flute, notes, 0.6, 12);
+        } else {
+            line(m, o, Trumpets, notes, 0.86, 0);
+            line(m, o, Horns, notes, phrase == 0 ? 0.62 : 0.55, -12);
+            if (phrase >= 1) line(m, o, Violins, notes, 0.66, phrase == 4 ? 12 : 0, -0.1);
+        }
+        if (phrase == 3) line(m, o, Horns, parse(heroCounter, phrase * 32), 0.6, 0);
     }
 }
 
 void renderIronwing(const std::filesystem::path &output, bool stems) {
     for (bool climax : {false, true}) {
         const char *base = climax ? "ironwing-climax" : "ironwing-combat";
-        Mix m(climax ? 180 : 156, climax ? 144 : 160, 6, true, climax ? 0x49305a52 : 0x49524f4e);
-        ironwing(m, climax);
+        Mix m(climax ? 180 : 156, climax ? 144 : 160, 6, true, climax ? 0x4f524343 : 0x4f524351);
+        orchestralArrangement(m, climax);
         double gain = 0;
         const auto path = (output / base).string();
-        writeWav(path + ".wav", master(m, .67, 1.9, climax ? .161 : .149, gain, stems ? path : ""));
+        writeWav(path + ".wav", master(m, .75, 2.1, climax ? .161 : .149, gain, stems ? path : ""));
     }
 }
 
