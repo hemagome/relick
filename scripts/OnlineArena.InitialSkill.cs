@@ -9,15 +9,17 @@ public partial class OnlineArena
     private string[] _availableInitialSkills = [];
     private string? _initialSkillCandidate;
     private bool _initialSkillConnected, _initialSkillPending;
+    private bool _openingRevealPresented;
     private string? _initialSkillViewKey;
     internal Button? InitialSkillConfirmButton { get; private set; }
     internal bool IsChoosingInitialSkill => _choosingOpeningSkill;
-    private bool CanChooseInitialSkill => _initialSkillConnected && !_initialSkillPending;
+    private bool CanChooseInitialSkill => _initialSkillConnected && !_initialSkillPending && !_openingRelikarios.Visible;
 
-    internal void PresentInitialSkillChoice(RoomInfo room, InitialSkillInfo info, bool connected, bool pending, PreparationInfo? preparation = null)
+    internal void PresentInitialSkillChoice(RoomInfo room, InitialSkillInfo info, bool connected, bool pending,
+        PreparationInfo? preparation = null, bool animateEntrance = false, RoomRelikarioInfo? relikarios = null)
     {
         preparation ??= Connection.Preparation;
-        var relikarios = RelikariosForRoom(room);
+        relikarios ??= RelikariosForRoom(room);
         var key = $"{room.Code}:{room.MySeat}:{room.PlayerOne}:{room.PlayerTwo}:{preparation?.HandCountOne}:{preparation?.HandCountTwo}:{preparation?.DeckCountOne}:{preparation?.DeckCountTwo}:{relikarios?.RelikarioOne}:{relikarios?.RelikarioTwo}:" + string.Join(',', info.Options);
         if (_choosingOpeningSkill && _initialSkillViewKey == key &&
             _initialSkillConnected == connected && _initialSkillPending == pending) return;
@@ -30,7 +32,15 @@ public partial class OnlineArena
             Players = [PreparationPlayer(room, preparation, relikarios, 0), PreparationPlayer(room, preparation, relikarios, 1)] };
         var opponent = 1 - room.MySeat;
         if (_snapshot.Players[opponent].Hand.Length == OpeningHandSize) _openingHandsPresented[opponent] = true;
-        ResetAnimations(); Render();
+        ResetAnimations();
+        if (animateEntrance && !_openingRevealPresented && _initialSkillCandidate == null &&
+            connected && !pending && !info.Selected && relikarios != null)
+        {
+            _openingRevealPresented = true;
+            if (!_impacts.ReducedMotion)
+                _openingRelikarios.Play(_snapshot.Players[room.MySeat], _snapshot.Players[opponent]);
+        }
+        Render();
     }
 
     private void SelectInitialSkillCandidate(string id)

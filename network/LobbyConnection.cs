@@ -60,6 +60,7 @@ public sealed partial class LobbyConnection : IDisposable
     private string? _sessionToken;
     private string _sessionServer = "", _sessionDatabase = "";
     public ulong Epoch { get; private set; }
+    internal string? RecoveredDealtRoomCode { get; private set; }
     public string Message { get; private set; } = "Sin conexión";
     public RoomInfo? Room => _connection?.Db.MyRoom.Iter().SingleOrDefault();
     public PreparationInfo? Preparation => _connection?.Db.MyPreparation.Iter().SingleOrDefault();
@@ -108,6 +109,7 @@ public sealed partial class LobbyConnection : IDisposable
         _sessionServer = server; _sessionDatabase = database;
         Dispose();
         Epoch++;
+        RecoveredDealtRoomCode = null;
         _connectionStarted = Stopwatch.GetTimestamp();
         Connecting = true; RoomError = "";
         Message = "Conectando…";
@@ -120,6 +122,7 @@ public sealed partial class LobbyConnection : IDisposable
                 connection.SubscriptionBuilder().OnApplied(_ =>
                 {
                     if (!Connecting) return;
+                    RecoveredDealtRoomCode = Room is { Dealt: true } room ? room.Code : null;
                     Ready = true;
                     _lastHealthCheck = Stopwatch.GetTimestamp();
                     Connecting = false; PendingRoomRequest = RoomRequest.None;

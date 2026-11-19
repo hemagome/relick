@@ -8,6 +8,7 @@ public partial class OnlineArena
     internal async Task CheckTableView()
     {
         void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+        static bool Facing(Control control, float rotation) => Math.Abs(Mathf.AngleDifference(control.Rotation, rotation)) < .001f;
         async Task Layout() { for (var i = 0; i < 5; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
         T Board<T>(string name) where T : Control => (T)_root!.FindChild(name, true, false);
         var capture = OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
@@ -46,13 +47,15 @@ public partial class OnlineArena
                     player.AttachedCards.AddRange([CardCatalog.Attack.Id, CardCatalog.Attack.Id]);
                     player.Equipment = CardCatalog.Totem.Id;
                     player.EquipmentStackedCopies = 2;
+                    player.Skills.Add(CardCatalog.Destiny.Id);
+                    player.Exchange.Add(CardCatalog.PlumberStar.Id);
                 }
                 ResetAnimations();
                 _tableView = _requestedTableView = false;
                 var before = DuelSnapshot.For(game, seat, 800);
                 PresentTestSnapshot(before); await Layout();
                 var classicDeck = ZoneRect(Board<DeckStack>("DeckStack0"));
-                Check(!Board<BoardCanvas>("DuelArena").TableView, "La vista inicial no es clásica.");
+                Check(!Board<BoardCanvas>("DuelArena").TableView && Facing(Board<DeckStack>("DeckStack1"), 0), "La vista inicial no es clásica.");
                 await Capture($"clasica-{size.X}-asiento-{seat}");
 
                 var menu = _arenaMenu!.GetPopup();
@@ -66,6 +69,10 @@ public partial class OnlineArena
                 Check(canvas.TableView && ReferenceEquals(before, _snapshot), "Cambiar el modo reemplaza el estado del duelo.");
                 Check(_portraits.All(p => p.StandingOnTable && Mathf.IsEqualApprox(p.Scale.X, p.Scale.Y)) && _portraits[0].Scale.X > _portraits[1].Scale.X,
                     "Los dos Relikarios deben erguirse con una escala uniforme y el propio debe verse más cercano.");
+                Check(new Control[] { Board<Control>("PlayerName1"), _life[1], _actionPools[1],
+                    Board<Control>("Dexterity1"), Board<Control>("ResourceBadge1") }.All(marker =>
+                    Mathf.IsZeroApprox(marker.GetGlobalTransform().Rotation) && ProjectedTable.Of(marker) == null),
+                    "Los marcadores de vidas, acciones, Destreza y PR del rival deben quedar de frente.");
                 GuiInputTestDriver.Hover(_evolveButton!); await Layout();
                 Check(_relikarioPreview is { Evolution: true }, "El Relikario propio tapa la lectura del botón de evolución.");
                 ClearContext(); await Layout();
@@ -75,6 +82,11 @@ public partial class OnlineArena
                     var deck = Board<DeckStack>($"DeckStack{side}");
                     var memory = Board<MemoryZoneButton>($"MemoryButton{side}");
                     var corrupted = Board<MemoryZoneButton>($"CorruptedMemoryButton{side}");
+                    var orientation = side == 0 ? 0 : Mathf.Pi;
+                    Check(new Control?[] { deck, memory, corrupted, ZoneNode(side, CardZone.Equipment, -1), ZoneNode(side, CardZone.Bonus, -1),
+                        ZoneNode(side, CardZone.Area, -1), ZoneNode(side, CardZone.Attached, -1), ZoneNode(side, CardZone.Skill, 0),
+                        ZoneNode(side, CardZone.Exchange, 0) }.All(piece => piece != null && Facing(piece, orientation)),
+                        "Las zonas del campo deben orientarse hacia su dueño.");
                     Check(deck.RaisedPile && memory.RaisedPile && corrupted.RaisedPile &&
                         Board<AttachmentStack>($"AttachmentStack{side}").RaisedPile && Board<ZoneCardButton>($"EquipmentZone{side}").StackCopies == 3,
                         "Falta profundidad en una de las pilas.");
@@ -87,7 +99,10 @@ public partial class OnlineArena
                     var tr = table.ScreenPoint(memory, new Vector2(memory.Size.X, 0));
                     var bl = table.ScreenPoint(memory, new Vector2(0, memory.Size.Y));
                     var br = table.ScreenPoint(memory, memory.Size);
-                    Check(br.X - bl.X > tr.X - tl.X + 3 && Mathf.IsEqualApprox(tl.Y, tr.Y) && Mathf.IsEqualApprox(bl.Y, br.Y),
+                    var outer = Math.Abs(tr.X - tl.X);
+                    var inner = Math.Abs(br.X - bl.X);
+                    var widening = tl.Y < bl.Y ? inner - outer : outer - inner;
+                    Check(widening > 3 && Mathf.IsEqualApprox(tl.Y, tr.Y) && Mathf.IsEqualApprox(bl.Y, br.Y),
                         "Los bordes de la zona no convergen con la perspectiva de la mesa.");
                 }
                 var fan = Board<HandFan>("OpponentHandFan");
@@ -96,9 +111,15 @@ public partial class OnlineArena
                 var farRail = canvas.GlobalPosition.Y + ((canvas.Size.Y - BoardCanvas.DesignHeight * canvas.Unit) / 2 +
                     BoardCanvas.RearRailY * canvas.Unit);
                 Check(fan.HeldOffTable && fan.IsVisibleInTree() && _opponentCards.All(card => card.IsFaceDown &&
-                    Global(card, card.VisibleFaceRect).End.Y < farRail), "Las cartas rivales deben verse boca abajo, detrás del borde de la mesa.");
+                    Math.Abs(card.Rotation) < Mathf.Pi / 4 && Global(card, card.VisibleFaceRect).End.Y < farRail),
+                    "El abanico rival debe verse erguido, con los dorsos detrás del borde de la mesa.");
                 Check(ZoneRect(rivalCard).Size.X <= ZoneRect(rivalDeck).Size.X + 2, "El abanico rival es más grande que sus cartas en el campo.");
+                GuiInputTestDriver.Click(Board<ZoneCardButton>("EquipmentZone1")); await Layout();
+                Check(_fieldSelection is { Zone: FieldZone.Equipment } field && field.Owner == 1 - seat &&
+                    _showcase is { FaceTexture: not null } && _showcase.Card?.Id == CardCatalog.Totem.Id && Facing(_showcase, 0),
+                    "Seleccionar la carta invertida debe mostrar su arte de frente en el inspector.");
                 await Capture($"mesa-{size.X}-asiento-{seat}");
+                ClearContext(); await Layout();
 
                 var memoryButton = Board<MemoryZoneButton>("MemoryButton0");
                 var plane = ProjectedTable.Of(memoryButton)!;
@@ -123,11 +144,12 @@ public partial class OnlineArena
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 801)); Animate([draw, ownDraw], []); await Layout();
                 UpdateFlights(0); UpdateFlights(0); UpdateFlights(0);
                 var landing = ZoneRect(Board<OpponentHandCard>($"OpponentHandCard{draw.Value}"));
-                Check(_flightBack is { Visible: true } && _flightSource.IsEqualApprox(ZoneRect(Board<DeckStack>("DeckStack1"))) &&
+                Check(_flight != null && Facing(_flight, Mathf.Pi) && _flightBack is { Visible: true } && _flightSource.IsEqualApprox(ZoneRect(Board<DeckStack>("DeckStack1"))) &&
                     _flightDestination.IsEqualApprox(landing) && Upright(_flightBack).IsEqualApprox(_flightSource),
                     "La carta rival cambia de tamaño al iniciar el robo o toma una ruta incorrecta.");
                 UpdateFlights(.449);
-                Check(_flightBack != null && Upright(_flightBack).Size.DistanceTo(landing.Size) < 1,
+                Check(_flight != null && Math.Abs(Mathf.AngleDifference(_flight.Rotation, Board<OpponentHandCard>($"OpponentHandCard{draw.Value}").Rotation)) < .01f &&
+                    _flightBack != null && Upright(_flightBack).Size.DistanceTo(landing.Size) < 1,
                     "La carta rival cambia de tamaño de golpe al incorporarse al abanico.");
                 var ownLanding = ZoneRect(Board<HandCard>($"HandCard{ownDraw.Value}"));
                 Check(_companion is { Front: { Visible: true } front } &&
@@ -136,6 +158,25 @@ public partial class OnlineArena
                 UpdateFlights(.01);
                 Check(!IsAnimating, "El robo no termina en la mesa.");
                 ResetAnimations();
+
+                var beforeCanje = _snapshot!;
+                var exchange = ZoneNode(1, CardZone.Exchange, 0)!;
+                var expectedOrigin = PortraitFootprint(ZoneRect(exchange));
+                var departed = new DuelVisualEvent { Kind = DuelVisualKind.Pile, Player = rival, Source = CardZone.Exchange, Destination = CardZone.Memory };
+                var rivalPlayer = game.State.Players[rival];
+                rivalPlayer.Memory.Add(rivalPlayer.Exchange[0]); rivalPlayer.Exchange.RemoveAt(0);
+                var afterCanje = DuelSnapshot.For(game, seat, 802);
+                afterCanje.Visuals = [departed];
+                var origins = CaptureOrigins(afterCanje, beforeCanje);
+                PresentTestSnapshot(afterCanje); Animate(afterCanje.Visuals, origins); await Layout();
+                UpdateFlights(0); UpdateFlights(0); UpdateFlights(0);
+                Check(_flight != null && Facing(_flight, Mathf.Pi * 1.5f) && _flightSource.IsEqualApprox(expectedOrigin),
+                    "La carta de canje rival debe salir con su orientación apaisada e invertida.");
+                UpdateFlights(.449);
+                Check(_flight != null && Math.Abs(Mathf.AngleDifference(_flight.Rotation, Mathf.Pi)) < .01f &&
+                    _flightDestination.IsEqualApprox(ZoneRect(Board<MemoryZoneButton>("MemoryButton1"))),
+                    "La carta debe quedar orientada hacia el rival al llegar a su memoria.");
+                UpdateFlights(.01); ResetAnimations();
 
                 _arenaMenu!.GetPopup().EmitSignal(PopupMenu.SignalName.IdPressed, TableViewMenuId);
                 ApplyRequestedTableView(); await Layout();
@@ -156,6 +197,6 @@ public partial class OnlineArena
             GetViewport().GuiEmbedSubwindows = oldEmbedded;
             ResetAnimations();
         }
-        GD.Print("PVP_TABLE_VIEW_PASS · interruptor y persistencia, proyección, figuras, pilas, clic en memoria, robo, ambos asientos y vista compacta.");
+        GD.Print("PVP_TABLE_VIEW_PASS · orientación del rival, marcadores legibles, inspector, geometría de clics, robo, ambos asientos y vista compacta.");
     }
 }

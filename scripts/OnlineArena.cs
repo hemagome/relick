@@ -50,7 +50,8 @@ public partial class OnlineArena : Control
     internal int BoardBuildCount { get; private set; }
     internal int PlayedVisualRevisions { get; private set; }
     private bool DiceBusy => _die.IsBusy || _secondDie.IsBusy;
-    public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null || _handDeparture != null || _evolution.Visible;
+    public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null ||
+        _handDeparture != null || _evolution.Visible || _openingRelikarios.Visible;
     private bool Compact => ArenaViewport.Compact(this);
     private bool Short => ArenaViewport.Short(this);
     // The full board needs the desktop canvas; smaller windows keep the stacked layouts.
@@ -58,6 +59,7 @@ public partial class OnlineArena : Control
     private ArenaBackground _background = null!;
     private readonly ImpactLayer _impacts = new() { Name = "ImpactLayer" };
     private readonly EvolutionReveal _evolution = new() { Name = "EvolutionReveal", Visible = false };
+    private readonly OpeningRelikarioReveal _openingRelikarios = new() { Name = "OpeningRelikarioReveal", Visible = false };
     private CardShowcase? _showcase;
     private Control? _combatCenter, _readerRail, _railReading, _historyFeed, _resolutionPanel;
     private bool _inlineHistory;
@@ -140,20 +142,22 @@ public partial class OnlineArena : Control
         AddChild(_responseChain);
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_evolution); _evolution.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(_openingRelikarios); _openingRelikarios.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _openingRelikarios.LifeTick += pitch => PlaySound(SoundCue.OpeningLife, pitch);
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
         // Refusals from before this arena existed belong to another screen.
         _seenRejectionSerial = Connection?.PlayRejectionSerial ?? 0;
     }
 
-    private void PlaySound(SoundCue cue) => GetNodeOrNull<SoundDirector>("/root/SoundDirector")?.Play(cue);
+    private void PlaySound(SoundCue cue, float pitch = 1) => GetNodeOrNull<SoundDirector>("/root/SoundDirector")?.Play(cue, pitch);
 
     private void QueueLayout()
     {
         if (_layoutQueued) return;
         _layoutQueued = true; CallDeferred(nameof(ApplyLayout));
     }
-    private void ApplyLayout() { _layoutQueued = false; if (_snapshot != null) { ResetAnimations(); Render(); } }
+    private void ApplyLayout() { _layoutQueued = false; if (_snapshot != null) { ResetAnimations(preserveOpeningReveal: true); Render(); } }
 
     public override void _Process(double delta)
     {
@@ -164,7 +168,7 @@ public partial class OnlineArena : Control
         PresentQueuedPlay();
         if (!Connection.Ready)
         {
-            if (!_needsBaseline) { _needsBaseline = true; ResetAnimations(); }
+            if (!_needsBaseline || _openingRelikarios.Visible) { _needsBaseline = true; ResetAnimations(); }
         }
         var snapshot = Connection.Room?.Code == RoomCode ? Connection.Duel : null;
         snapshot ??= Connection.LastResultRoom == RoomCode ? Connection.LastResult : null;
@@ -183,6 +187,7 @@ public partial class OnlineArena : Control
         PresentQueuedStageAnnouncement();
         UpdateFlights(delta);
         if (_evolution.Visible) _evolution.AdvancePlayback(delta, EvolutionAnchor(_evolution.RelativePlayer));
+        if (_openingRelikarios.Visible) _openingRelikarios.AdvancePlayback(delta);
         UpdateDiceOverlay();
         UpdateResolutionPresentation();
         UpdateRelikiaPreview();
@@ -555,6 +560,7 @@ public partial class OnlineArena : Control
         MoveChild(_cardActions, GetChildCount() - 1);
         MoveChild(_diceOverlay, GetChildCount() - 1);
         if (_evolution.Visible) MoveChild(_evolution, GetChildCount() - 1);
+        if (_openingRelikarios.Visible) MoveChild(_openingRelikarios, GetChildCount() - 1);
         BuildMoves(); BindInspectorPreviews();
         FitArenaScroll();
         UpdateResultPresentation();

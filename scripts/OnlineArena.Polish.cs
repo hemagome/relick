@@ -152,10 +152,12 @@ public partial class OnlineArena
         if (memory == null || exchange == null) return false;
         var ingredients = recipe.Ingredients.Where(CardCatalog.All.ContainsKey)
             .Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), current.Players[entry.Actor].RelikarioId)).OfType<Texture2D>().ToArray();
+        var equipment = entry.CardId == CardCatalog.SuperMagnet.Id &&
+            ZoneNode(relative, CardZone.Equipment, -1) is ZoneCardButton { } slot && slot.IsVisibleInTree() ? slot : null;
         Rect2? destination = entry.CardId == CardCatalog.SuperMagnet.Id
-            ? ZoneNode(relative, CardZone.Equipment, -1) is ZoneCardButton equipment && equipment.IsVisibleInTree() ? ZoneRect(equipment) : null
+            ? equipment != null ? ZoneRect(equipment) : null
             : entry.CardId == CardCatalog.SuperAttack.Id ? relative == 0 ? HandLanding() : Find("OpponentHandFan") ?? Find("OpponentHandScroll") : null;
-        _impacts.TrapSummon(ingredients, memory.Value.GetCenter(), exchange.Value.GetCenter(), art, destination, BoardArt.Gold);
+        _impacts.TrapSummon(ingredients, memory.Value.GetCenter(), exchange.Value.GetCenter(), art, destination, BoardArt.Gold, equipment?.Rotation ?? 0);
         if (entry.CardId == CardCatalog.SuperAttack.Id && destination != null)
             HideUntilSummonLands(current, entry.Actor, relative);
         return destination != null;

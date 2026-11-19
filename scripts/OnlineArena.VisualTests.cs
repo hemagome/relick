@@ -842,13 +842,17 @@ public partial class OnlineArena
             return game;
         }
 
-        foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+        var originalTableView = _tableView;
+        (Vector2I Size, bool TableView)[] layouts = [(new(1440, 1024), false), (new(1024, 768), false),
+            (new(844, 390), false), (new(700, 390), false), (new(1440, 1024), true)];
+        foreach (var (size, tableView) in layouts)
         foreach (var seat in new[] { 0, 1 })
         foreach (var actor in new[] { 0, 1 })
         foreach (var initialMemory in new[] { Array.Empty<string>(), new[] { CardCatalog.Bonfire.Id } })
         {
             var game = Fixture(actor);
             game.State.Active.Memory.AddRange(initialMemory);
+            _tableView = tableView;
             GetWindow().ContentScaleSize = size;
             await Layout();
             var relative = actor == seat ? 0 : 1;
@@ -877,15 +881,20 @@ public partial class OnlineArena
                 var tile = (ZoneCardButton)ZoneNode(relative, CardZone.Exchange, index)!;
                 var first = (ZoneCardButton)ZoneNode(relative, CardZone.Exchange, 0)!;
                 var bonus = index == 1 ? ZoneNode(relative, CardZone.Hand, 0) : null;
+                var bonusSlot = (ZoneCardButton)ZoneNode(relative, CardZone.Bonus, -1)!;
                 var memory = (MemoryZoneButton?)ZoneNode(relative, CardZone.Memory, -1);
                 void CheckMemory(int arrivals)
                 {
                     var expected = after.Players[actor].Memory.Take(initialMemory.Length + arrivals).ToArray();
                     AssertPile(relative, CardZone.Memory, expected.Length, expected.LastOrDefault());
                 }
-                Check(tile.AwaitingExchange && _flights.Peek() == placement && (index == 0 || first.HasExchangePreview),
+                Check(tile.AwaitingArrival && _flights.Peek() == placement && (index == 0 || first.HasDeparturePreview),
                     "El tablero adelanta el resultado antes de colocar la carta de canje.");
                 Check(bonus == null || bonus.Modulate.A == 0, "El Bonus aparece en la mano antes de completar el canje.");
+                void CheckBonusWaiting() => Check(bonusSlot.Modulate.A == 1 && bonusSlot.PresentedCard?.Id == before.Players[actor].Bonus &&
+                    bonusSlot.TooltipText.Contains(CardCatalog.Jessica.Name),
+                    "La carta de Bonus desaparece antes de volar a la mano.");
+                CheckBonusWaiting();
                 CheckMemory(0);
                 await Layout();
                 UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
@@ -896,16 +905,17 @@ public partial class OnlineArena
                         "El vuelo de escritorio no llega al espacio horizontal de canje.");
                 var scroll = _arenaScroll?.ScrollVertical;
                 UpdateFlights(0.49);
-                Check(_flightFront!.Visible && Math.Abs(_flight!.Rotation - Mathf.Pi / 2) < 0.12f && tile.AwaitingExchange,
+                Check(_flightFront!.Visible && Math.Abs(Mathf.AngleDifference(_flight!.Rotation, _flightDestinationRotation)) < 0.12f && tile.AwaitingArrival,
                     "La carta no gira a horizontal antes de aterrizar.");
                 UpdateFlights(0.9);
-                Check(_activeFlight == null && !tile.AwaitingExchange && _arenaScroll?.ScrollVertical == scroll,
+                Check(_activeFlight == null && !tile.AwaitingArrival && _arenaScroll?.ScrollVertical == scroll,
                     "La carta no aterriza o desplaza el tablero.");
                 if (index == 0) Check(tile.Card?.Id == face && !IsAnimating, "No aparece la primera carta en el canje.");
                 else
                 {
-                    Check(tile.HasExchangePreview && _flights.Peek().LeavesExchange,
+                    Check(tile.HasDeparturePreview && _flights.Peek().LeavesExchange,
                         "La segunda carta desaparece antes de la salida hacia memoria.");
+                    CheckBonusWaiting();
                     CheckMemory(0);
                     if (size.X == 1440)
                     {
@@ -915,25 +925,45 @@ public partial class OnlineArena
                             UpdateFlights(0.04);
                             Check(_activeFlight?.LeavesExchange == true && _flightTarget == memory,
                                 "La carta del canje no vuela hacia memoria.");
+                            CheckBonusWaiting();
                             CheckMemory(arriving);
                             UpdateFlights(0.5);
                             CheckMemory(arriving + 1);
                         }
                     }
-                    for (var frame = 0; IsAnimating && frame < 16; frame++) UpdateFlights(0.5);
+                    for (var frame = 0; frame < 16 && (_activeFlight != null || !_flights.TryPeek(out var queued) || queued.Event.Kind != DuelVisualKind.BonusClaim); frame++)
+                        UpdateFlights(0.5);
                     CheckMemory(2);
-                    Check(!first.HasExchangePreview && !tile.HasExchangePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1),
+                    CheckBonusWaiting();
+                    var oldBonusRect = ZoneRect(bonusSlot);
+                    UpdateFlights(0);
+                    Check(bonusSlot.PresentedCard == null && bonusSlot.TooltipText.Length == 0 && bonusSlot.Modulate.A == 1 && bonusSlot.AwaitingArrival,
+                        "La zona no queda disponible para el nuevo Bonus cuando despega la carta anterior.");
+                    if (_activeFlight != null)
+                    {
+                        Check(_activeFlight.Event.Kind == DuelVisualKind.BonusClaim && _flightSource == oldBonusRect &&
+                            _flightFront?.Card.Id == before.Players[actor].Bonus && bonus?.Modulate.A == 0,
+                            "El Bonus no despega de su posición o se duplica en la mano durante el vuelo.");
+                        UpdateFlights(0.5);
+                    }
+                    Check(bonus == null || bonus.Modulate.A == 1, "La carta no aparece en la mano al recibir el Bonus.");
+                    Check(bonusSlot.PresentedCard == null, "El reemplazo aparece antes de salir del mazo.");
+                    for (var frame = 0; IsAnimating && frame < 16; frame++) UpdateFlights(0.5);
+                    Check(!first.HasDeparturePreview && !tile.HasDeparturePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1),
                         "El canje no retira ambas cartas o no entrega el Bonus.");
+                    Check(bonusSlot.PresentedCard?.Id == after.Players[actor].Bonus, "El reemplazo del Bonus no aparece al aterrizar.");
                     Animate(cues, origins, placement);
                     UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
                     CheckMemory(0);
                     ResetAnimations();
                     CheckMemory(2);
-                    Check(!tile.AwaitingExchange && !first.HasExchangePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1),
+                    Check(!tile.AwaitingArrival && !first.HasDeparturePreview && !IsAnimating && (bonus == null || bonus.Modulate.A == 1) &&
+                        bonusSlot.PresentedCard?.Id == after.Players[actor].Bonus && !bonusSlot.HasDeparturePreview,
                         "Interrumpir el canje deja una carta oculta o una animación pendiente.");
                 }
             }
         }
+        _tableView = originalTableView;
 
         var bonusGame = Fixture(0);
         bonusGame.State.Active.Relikia = 400;
@@ -964,7 +994,7 @@ public partial class OnlineArena
         var sniperFlight = CaptureExchangePlacement(DuelSnapshot.For(sniper, 1, 883), sniperBefore, []);
         Check(sniperFlight?.Event.Source == CardZone.Memory && sniperFlight.Face == CardCatalog.Sniper.Id,
             "Mira de Sniper no sale de memoria al canje.");
-        GD.Print("PVP_EXCHANGE_ANIMATION_PASS · mano, giro, privacidad, segundo canje, Bonus, memoria y cuatro tamaños desde ambos asientos.");
+        GD.Print("PVP_EXCHANGE_ANIMATION_PASS · mano, giro, privacidad, continuidad del Bonus, memoria, cuatro tamaños, ambos asientos y vista de mesa.");
     }
 
     internal async Task CheckPlumberStarLayout()

@@ -37,11 +37,16 @@ internal sealed partial class ProjectedTable : TextureRect
         FocusExited += _viewport.GuiReleaseFocus;
     }
 
-    internal void Place(Control node, Rect2 area)
+    internal void Place(Control node, Rect2 area, bool facingRival)
     {
         _zones.AddChild(node);
         node.Position = area.Position;
         node.Size = area.Size;
+        if (facingRival)
+        {
+            node.PivotOffset = node.Size / 2;
+            node.Rotation = Mathf.Pi;
+        }
     }
 
     internal static ProjectedTable? Of(Control node) => node.GetViewport()?.GetParent() as ProjectedTable;
@@ -67,7 +72,7 @@ internal sealed partial class ProjectedTable : TextureRect
         var center = area.GetCenter();
         var width = ScreenPoint(zone, new(area.End.X, center.Y)).X - ScreenPoint(zone, new(area.Position.X, center.Y)).X;
         var height = ScreenPoint(zone, new(center.X, area.End.Y)).Y - ScreenPoint(zone, new(center.X, area.Position.Y)).Y;
-        var size = new Vector2(width, height);
+        var size = new Vector2(Mathf.Abs(width), Mathf.Abs(height));
         return new Rect2(ScreenPoint(zone, center) - size / 2, size);
     }
 

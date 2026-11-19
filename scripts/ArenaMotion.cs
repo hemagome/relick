@@ -13,7 +13,7 @@ public static class ArenaMotion
         card.PivotOffset = card.Size / 2;
         card.Scale = source.Size.Lerp(destination.Size, eased) / card.Size * new Vector2(flip, 1);
         card.Position = center - card.Size / 2;
-        card.Rotation = Mathf.Lerp(sourceRotation, destinationRotation, eased) + Mathf.Sin(t * Mathf.Pi) * (player == 0 ? -0.12f : 0.12f);
+        card.Rotation = Mathf.LerpAngle(sourceRotation, destinationRotation, eased) + Mathf.Sin(t * Mathf.Pi) * (player == 0 ? -0.12f : 0.12f);
     }
 
     /// <summary>A card taken from one hand into the other: plucked out with a tug, then swept across the table on a curve.</summary>
@@ -44,7 +44,7 @@ public static class ArenaMotion
             var bow = from.X <= to.X ? -1 : 1;
             var control = (tug + to) / 2 + new Vector2(bow * Math.Max(140, Math.Abs(to.Y - tug.Y) * 0.35f), 0);
             center = tug.Lerp(control, eased).Lerp(control.Lerp(to, eased), eased);
-            rotation = Mathf.Lerp(sourceRotation, destinationRotation, eased) + Mathf.Sin(v * Mathf.Pi) * 0.32f * -bow;
+            rotation = Mathf.LerpAngle(sourceRotation, destinationRotation, eased) + Mathf.Sin(v * Mathf.Pi) * 0.32f * -bow;
             grow = 1.08f + 0.1f * Mathf.Sin(v * Mathf.Pi) - 0.08f * eased;
         }
         var size = source.Size.Lerp(destination.Size, Math.Clamp((t - pluck) / (1 - pluck), 0, 1)) * (emphasize ? grow : 1);
@@ -54,11 +54,11 @@ public static class ArenaMotion
         card.Rotation = rotation;
     }
 
-    public static void ShuffleCard(Control card, Rect2 deck, float t, int layer)
+    public static void ShuffleCard(Control card, Rect2 deck, float t, int layer, float rotation = 0)
     {
         var wave = Mathf.Sin(t * Mathf.Pi * 4 + layer * 0.7f) * Mathf.Sin(t * Mathf.Pi);
         card.Size = deck.Size; card.PivotOffset = card.Size / 2;
         card.Position = deck.Position + new Vector2(wave * 26, -Math.Abs(wave) * 12 - Mathf.Sin(t * Mathf.Pi) * layer * 3);
-        card.Rotation = wave * 0.17f;
+        card.Rotation = rotation + wave * 0.17f;
     }
 }

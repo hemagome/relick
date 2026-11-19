@@ -38,7 +38,8 @@ public partial class OnlineArena
         }
         if (Connection.InitialSkills is { Selected: false } skills)
         {
-            PresentInitialSkillChoice(room, skills, Connection.Ready, Connection.InitialSkillPending);
+            PresentInitialSkillChoice(room, skills, Connection.Ready, Connection.InitialSkillPending,
+                animateEntrance: room.Code != Connection.RecoveredDealtRoomCode);
             return;
         }
         var info = Connection.Preparation;
@@ -63,6 +64,7 @@ public partial class OnlineArena
     // This is a presentation of server-authorized views, never a local rules engine.
     internal void PresentPreparation(RoomInfo room, PreparationInfo? info, NetworkCard[] cards, bool connected, bool pending)
     {
+        if (info != null) _openingRevealPresented = true;
         var relikarios = RelikariosForRoom(room);
         var key = $"{room.Code}:{room.MySeat}:{room.PlayerOne}:{room.PlayerTwo}:{connected}:{pending}:{info?.MyConfirmed}:{info?.OpponentConfirmed}:{info?.Started}:" +
             $"{info?.HandCountOne}:{info?.HandCountTwo}:{info?.DeckCountOne}:{info?.DeckCountTwo}:{relikarios?.RelikarioOne}:{relikarios?.RelikarioTwo}:" +
@@ -199,8 +201,11 @@ public partial class OnlineArena
         foreach (var flight in _openingTurnDraw is { } draw ? _flights.Append(draw) : _flights)
         {
             var relative = flight.Event.Player == _snapshot!.MySeat ? 0 : 1;
+            if (flight.Event.Kind == DuelVisualKind.BonusClaim)
+                (ZoneNode(relative, CardZone.Bonus, -1) as ZoneCardButton)?.SetDeparturePreview(
+                    pending ? flight.Face : null, pending && flight.PreviousBonusEffectUsed);
             if (!pending && flight.LeavesExchange)
-                (ZoneNode(relative, CardZone.Exchange, flight.Event.Value) as ZoneCardButton)?.SetExchangePreview(null);
+                (ZoneNode(relative, CardZone.Exchange, flight.Event.Value) as ZoneCardButton)?.SetDeparturePreview(null);
             var target = flight.Event.Kind switch
             {
                 DuelVisualKind.Draw => ZoneNode(relative, CardZone.Hand, flight.Event.Value),

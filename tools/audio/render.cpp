@@ -141,6 +141,19 @@ Audio deckSaved() {
     return audio;
 }
 
+Audio openingLife() {
+    Audio audio(int(0.105 * SR));
+    const double pitch = hz(78);
+    for (int i = 0; i < int(audio.size()); i++) {
+        const double t = double(i) / SR;
+        const double phase = pitch * t + 24 * t * t;
+        const double pulse = sine(phase) + 0.36 * sine(phase * 3) + 0.14 * sine(phase * 5);
+        const double envelope = std::min(1.0, t / .004) * std::exp(-t * 54);
+        add(audio, i, pulse * envelope, 0, false);
+    }
+    return audio;
+}
+
 int main(int argc, char **argv) {
     std::filesystem::path output = argc > 1 ? argv[1] : "/tmp/relick-audio-wav";
     std::filesystem::create_directories(output);
@@ -149,4 +162,5 @@ int main(int argc, char **argv) {
     std::array<std::string,3> sounds = {"card-draw", "heal", "attack"};
     for (int i = 0; i < 3; i++) writeWav((output/(sounds[i]+".wav")).string(), effect(i), false, 0.18);
     writeWav((output / "deck-saved.wav").string(), deckSaved(), false, 0.14);
+    writeWav((output / "opening-life.wav").string(), openingLife(), false, 0.095);
 }

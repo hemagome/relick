@@ -22,7 +22,7 @@ public partial class BoardCanvas : Control
     internal const float PerspectiveSlope = Depth / (NearEdge - FarEdge);
     internal const float PerspectiveRise = (NearY - RearRailY) * (1 + Depth) / (NearEdge - FarEdge);
     internal static Vector4 ProjectionParameters => new(DesignWidth / 2, NearEdge, NearY, PerspectiveSlope);
-    private enum Layer { Screen, Surface, Hud, Figure }
+    private enum Layer { Screen, Hud, Figure }
 
     private readonly Control _stage = new() { Name = "BoardStage", MouseFilter = MouseFilterEnum.Ignore };
     private readonly List<(Control Node, Rect2 Rect, BoardAnchor Anchor, Layer Layer)> _items = [];
@@ -61,11 +61,6 @@ public partial class BoardCanvas : Control
 
     private T Add<T>(T node, Rect2 rect, BoardAnchor anchor, Layer layer) where T : Control
     {
-        if (layer == Layer.Surface && _table != null)
-        {
-            _table.Place(node, rect);
-            return node;
-        }
         _stage.AddChild(node);
         _items.Add((node, rect, anchor, layer));
         if (IsInsideTree()) Arrange();
@@ -77,7 +72,13 @@ public partial class BoardCanvas : Control
     /// around, so its canje and Bonus end up on the opposite side.
     /// </summary>
     public T PlaceField<T>(T node, bool enemy, float x, float fromSeam, float width, float height) where T : Control
-        => Add(node, FieldRect(enemy, x, fromSeam, width, height), BoardAnchor.Middle, Layer.Surface);
+    {
+        var rect = FieldRect(enemy, x, fromSeam, width, height);
+        if (_table == null) return Place(node, rect);
+        // Only the pieces on the tabletop face their owner. The scoreboard is placed separately.
+        _table.Place(node, rect, facingRival: enemy);
+        return node;
+    }
 
     internal static Rect2 FieldRect(bool enemy, float x, float fromSeam, float width, float height) => enemy
         ? new Rect2(DesignWidth - x - width, Seam - fromSeam - height, width, height)

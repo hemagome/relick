@@ -9,7 +9,8 @@ public partial class OnlineArena
 
     private sealed record Flight(DuelVisualEvent Event, Rect2? Origin = null, string? Face = null, double Duration = 0.45,
         float OriginRotation = 0, bool IsPlacement = false, string? PreviousEquipmentStatus = null,
-        bool? StartsFaceUp = null, bool? EndsFaceUp = null, bool Paired = false, MemoryArrival[]? MemoryArrivals = null)
+        bool? StartsFaceUp = null, bool? EndsFaceUp = null, bool Paired = false, MemoryArrival[]? MemoryArrivals = null,
+        bool PreviousBonusEffectUsed = false)
     {
         public bool IsSteal => Event.Kind == DuelVisualKind.HandSteal;
         public bool IsSkillLesson => IsPlacement && Event.Destination == CardZone.Skill;
@@ -25,7 +26,7 @@ public partial class OnlineArena
     private readonly List<DuelVisualEvent> _pendingGuards = [];
     private Control? _flight;
     // Mirrored flight for the other player (Cartucho de Re-carga): it starts and lands with the primary one.
-    private sealed record Companion(Flight Flight, Control Node, HandCard? Front, TextureRect Back, Control? Target, Rect2 Source, Rect2 Destination);
+    private sealed record Companion(Flight Flight, Control Node, HandCard? Front, TextureRect Back, Control? Target, Rect2 Source, Rect2 Destination, float OriginRotation);
     private Companion? _companion;
     private HandCard? _flightFront;
     private TextureRect? _flightBack;
@@ -34,6 +35,7 @@ public partial class OnlineArena
     private readonly Queue<DuelVisualEvent> _placementDice = new();
     private bool _placementPreview;
     private Rect2 _flightSource, _flightDestination;
+    private float _flightOriginRotation, _flightDestinationRotation;
     private double _flightTime;
     private int _flightLayoutFrames;
     private readonly List<TextureRect> _shuffleBacks = [];
@@ -105,7 +107,7 @@ public partial class OnlineArena
                 var activation = new Rect2(center.GetGlobalRect().GetCenter() - new Vector2(27, 38.5f), new(54, 77));
                 origin = RectVisible(center, activation) ? activation : null;
             }
-            var rotation = source == CardZone.Exchange ? Mathf.Pi / 2 : node?.Rotation ?? 0;
+            var rotation = (node?.Rotation ?? 0) + (source == CardZone.Exchange ? Mathf.Pi / 2 : 0);
             if (cue.Kind == DuelVisualKind.HandSteal)
             {
                 // The card shows its face only on the side of the board that may see it: a hidden card
@@ -121,22 +123,23 @@ public partial class OnlineArena
             }
             if (source == CardZone.Deck && cue.Destination == CardZone.Attached)
             {
-                result[cue] = new Flight(cue, origin, current.Players[cue.Player].Attached.LastOrDefault(), StartsFaceUp: false);
+                result[cue] = new Flight(cue, origin, current.Players[cue.Player].Attached.LastOrDefault(), OriginRotation: rotation, StartsFaceUp: false);
                 continue;
             }
             if (source == CardZone.Deck && cue.Destination is CardZone.Equipment or CardZone.LightEquipment)
             {
                 var destination = current.Players[cue.Player];
                 var face = cue.Destination == CardZone.LightEquipment ? destination.LightEquipment?.LastOrDefault() : destination.Equipment;
-                result[cue] = new Flight(cue, origin, face, StartsFaceUp: false);
+                result[cue] = new Flight(cue, origin, face, OriginRotation: rotation, StartsFaceUp: false);
                 continue;
             }
             if (source == CardZone.Hand && cue.Destination == CardZone.Area)
             {
-                result[cue] = new Flight(cue, origin, current.Players[cue.Player].Area, StartsFaceUp: id != null);
+                result[cue] = new Flight(cue, origin, current.Players[cue.Player].Area, OriginRotation: rotation, StartsFaceUp: id != null);
                 continue;
             }
-            result[cue] = new Flight(cue, origin, id, OriginRotation: rotation);
+            result[cue] = new Flight(cue, origin, id, OriginRotation: rotation,
+                PreviousBonusEffectUsed: cue.Kind == DuelVisualKind.BonusClaim && player.BonusEffectUsed);
         }
         CaptureMemoryArrivals(current, previous, result);
         return result;
@@ -222,7 +225,7 @@ public partial class OnlineArena
                 var node = ZoneNode(relative, source, -1);
                 var origin = node != null && RectVisible(node, ZoneRect(node)) ? ZoneRect(node) : (Rect2?)null;
                 var cue = new DuelVisualEvent { Kind = DuelVisualKind.Pile, Player = actor, Value = slot, Source = source, Destination = CardZone.Exchange };
-                placement = new Flight(cue, origin, face ?? CardCatalog.Sniper.Id, Duration: 0.55, IsPlacement: true);
+                placement = new Flight(cue, origin, face ?? CardCatalog.Sniper.Id, Duration: 0.55, OriginRotation: node?.Rotation ?? 0, IsPlacement: true);
             }
             if (departure != null && origins.TryGetValue(departure, out var exit))
                 origins[departure] = exit with { Face = placement.Face };
@@ -278,7 +281,7 @@ public partial class OnlineArena
             Rect2? origin = source == null ? null : fromMemory ? ZoneRect(source) : PreviewRect(source.GetGlobalRect().GetCenter());
             var cue = new DuelVisualEvent { Kind = DuelVisualKind.Pile, Player = actor,
                 Source = fromMemory ? CardZone.Memory : CardZone.Activation, Destination = destination };
-            return new Flight(cue, origin, id, Duration: 0.60, IsPlacement: true, PreviousEquipmentStatus: previousStatus);
+            return new Flight(cue, origin, id, Duration: 0.60, OriginRotation: source?.Rotation ?? 0, IsPlacement: true, PreviousEquipmentStatus: previousStatus);
         }
         return null;
     }
@@ -365,7 +368,8 @@ public partial class OnlineArena
             _flights.Enqueue(placement);
             var relative = placement.Event.Player == _snapshot!.MySeat ? 0 : 1;
             foreach (var flight in origins.Values.Where(f => f.LeavesExchange && f.Event.Player == placement.Event.Player && f.Event.Value < placement.Event.Value))
-                (ZoneNode(relative, CardZone.Exchange, flight.Event.Value) as ZoneCardButton)?.SetExchangePreview(flight.Face);
+                if (ZoneNode(relative, CardZone.Exchange, flight.Event.Value) is ZoneCardButton { Card: null } slot)
+                    slot.SetDeparturePreview(flight.Face);
         }
         var (ordered, paired) = PairDrawBlocks(events);
         foreach (var cue in ordered)
@@ -562,22 +566,30 @@ public partial class OnlineArena
                 DuelVisualKind.HandDiscard => ZoneNode(relative, CardZone.Memory, -1),
                 _ => ZoneNode(relative, CardZone.Hand, next.Event.Value)
             };
+            _flightOriginRotation = next.OriginRotation;
+            _flightDestinationRotation = (target?.Rotation ?? 0) + (next.TurnsSideways ? Mathf.Pi / 2 : 0);
             if (next.IsPlacement) (_flightSource, _flightDestination) = PlacementPath(next, target);
             else
             {
+                var sourceSlot = kind == DuelVisualKind.BonusClaim ? ZoneNode(relative, CardZone.Bonus, -1) :
+                    next.LeavesExchange ? ZoneNode(relative, CardZone.Exchange, next.Event.Value) : null;
+                var origin = next.Origin;
+                if (sourceSlot is ZoneCardButton { HasDeparturePreview: true } slot)
+                {
+                    var rect = ZoneRect(slot);
+                    origin = RectVisible(slot, rect) ? rect : null;
+                    _flightOriginRotation = slot.Rotation + (next.LeavesExchange ? Mathf.Pi / 2 : 0);
+                    slot.SetDeparturePreview(null);
+                }
                 var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
                 if (deck == null) { SetDestinationPending(next, target, false); FinishHandDeparture(); return; }
                 var deckRect = ZoneRect(deck);
                 if (kind is DuelVisualKind.Draw or DuelVisualKind.HandSteal) PlaySound(SoundCue.CardDraw);
                 if (kind == DuelVisualKind.Shuffle) PlaySound(SoundCue.CardShuffle);
                 var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer or DuelVisualKind.MemoryClaim or DuelVisualKind.HandDiscard or DuelVisualKind.HandSteal;
-                var source = fromPrevious ? next.Origin : deckRect;
-                if (next.LeavesExchange && ZoneNode(relative, CardZone.Exchange, next.Event.Value) is ZoneCardButton { HasExchangePreview: true } slot)
-                {
-                    var rect = ZoneRect(slot);
-                    source = RectVisible(slot, rect) ? rect : null;
-                    slot.SetExchangePreview(null);
-                }
+                var source = fromPrevious ? origin : deckRect;
+                if (!fromPrevious) _flightOriginRotation = deck.Rotation;
+                if (returning) _flightDestinationRotation = deck.Rotation;
                 Rect2? destination = returning || kind == DuelVisualKind.Shuffle ? deckRect : target == null ? null : ZoneRect(target);
                 var bounds = new Rect2(Vector2.Zero, Size);
                 // Never draw through clipped panels/docks when a small-screen zone is offscreen.
@@ -618,7 +630,7 @@ public partial class OnlineArena
             if (_activeFlight!.Event.Kind == DuelVisualKind.Shuffle)
             {
                 var progress = Math.Clamp((float)(_flightTime / 0.72), 0, 1);
-                for (var i = 0; i < _shuffleBacks.Count; i++) ArenaMotion.ShuffleCard(_shuffleBacks[i], _flightSource, progress, i);
+                for (var i = 0; i < _shuffleBacks.Count; i++) ArenaMotion.ShuffleCard(_shuffleBacks[i], _flightSource, progress, i, _flightOriginRotation);
                 if (progress >= 1) FinishFlight(landed: true);
                 return;
             }
@@ -638,10 +650,10 @@ public partial class OnlineArena
                 _flightBack!.Visible = !_flightFront.Visible;
             }
             if (_activeFlight.IsSteal)
-                ArenaMotion.StealCard(_flight, _flightSource, _flightDestination, t, flip, _activeFlight.OriginRotation, _flightTarget?.Rotation ?? 0, emphasize: !TableView);
+                ArenaMotion.StealCard(_flight, _flightSource, _flightDestination, t, flip, _flightOriginRotation, _flightDestinationRotation, emphasize: !TableView);
             else
                 ArenaMotion.PositionCard(_flight, _flightSource, _flightDestination, t, relative, flip,
-                    _activeFlight.OriginRotation, _activeFlight.TurnsSideways ? Mathf.Pi / 2 : _flightTarget?.Rotation ?? 0);
+                    _flightOriginRotation, _flightDestinationRotation);
             if (_companion != null) PoseCompanion(_companion, t);
             var fade = _placementPreview ? Math.Clamp((float)(_flightTime - _activeFlight.Duration - 0.24) / 0.2f, 0, 1) : t;
             if (_placementPreview) _flight.Modulate = new Color(1, 1, 1, 1 - fade);
@@ -711,7 +723,7 @@ public partial class OnlineArena
                 Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore };
             AddFlightFront(node, front);
         }
-        _companion = new(pair, node, front, back, target, source.Value, destination.Value);
+        _companion = new(pair, node, front, back, target, source.Value, destination.Value, discard ? pair.OriginRotation : deck.Rotation);
     }
 
     private void PoseCompanion(Companion pair, float t)
@@ -727,7 +739,7 @@ public partial class OnlineArena
             pair.Back.Visible = !pair.Front.Visible;
         }
         ArenaMotion.PositionCard(pair.Node, pair.Source, pair.Destination, t, relative, flip,
-            pair.Flight.OriginRotation, pair.Target?.Rotation ?? 0);
+            pair.OriginRotation, pair.Target?.Rotation ?? 0);
     }
 
     private void FinishCompanion(bool landed)
@@ -755,7 +767,7 @@ public partial class OnlineArena
             SetDestinationPending(_activeFlight, target, false);
             if (_activeFlight.IsExchangePlacement && target is ZoneCardButton { Card: null } slot &&
                 _flights.Any(f => f.LeavesExchange && f.Event.Player == _activeFlight.Event.Player && f.Event.Value == _activeFlight.Event.Value))
-                slot.SetExchangePreview(_activeFlight.Face);
+                slot.SetDeparturePreview(_activeFlight.Face);
         }
         _shuffleBacks.Clear(); _flight?.QueueFree(); _flight = null; _flightFront = null; _flightBack = null; _flightTarget = null; _activeFlight = null;
         _placementPreview = false;
@@ -770,8 +782,8 @@ public partial class OnlineArena
 
         if (target is MemoryZoneButton) return;
         if (target is SkillTile skill) skill.SetLessonPending(pending);
-        else if (flight.IsExchangePlacement && target is ZoneCardButton exchange)
-            exchange.SetExchangePending(pending);
+        else if ((flight.IsExchangePlacement || flight.Event.Kind == DuelVisualKind.BonusPlace) && target is ZoneCardButton slot)
+            slot.SetArrivalPending(pending);
         else if (flight.IsPlacement && target is ZoneCardButton equipment)
             equipment.SetEquipmentPending(pending, flight.PreviousEquipmentStatus);
         else if (target != null) target.Modulate = new(1, 1, 1, pending ? 0 : 1);
@@ -793,10 +805,11 @@ public partial class OnlineArena
             }
         return true;
     }
-    private void ResetAnimations(bool preserveStageAnnouncements = false)
+    private void ResetAnimations(bool preserveStageAnnouncements = false, bool preserveOpeningReveal = false)
     {
         foreach (var pool in _actionPools) pool.Settle();
         _evolution.Stop();
+        if (!preserveOpeningReveal) _openingRelikarios.Stop();
         if (!preserveStageAnnouncements) ResetStageBanner();
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();

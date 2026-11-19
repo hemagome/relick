@@ -101,7 +101,7 @@ public partial class ImpactLayer : Control
     internal const double SummonLanding = SummonGather + SummonPop + SummonFly;
     /// <summary>How long the landed Trap takes to fade into the real card underneath.</summary>
     internal const double SummonLandingFade = SummonFade;
-    private sealed record Summon(Texture2D[] Ingredients, Vector2 From, Vector2 Meet, Texture2D Trap, Rect2? To, Color Accent)
+    private sealed record Summon(Texture2D[] Ingredients, Vector2 From, Vector2 Meet, Texture2D Trap, Rect2? To, Color Accent, float DestinationRotation)
     {
         public double Age { get; set; }
         public double Duration => SummonGather + SummonPop + (To != null ? SummonFly : 0.35) + SummonFade;
@@ -170,10 +170,10 @@ public partial class ImpactLayer : Control
     /// call the Trap from its own deck; the Trap then flies to <paramref name="to"/>, or stays and fades
     /// when its place is chosen next (Zahira Flair). The real cards never move: they are only echoes.
     /// </summary>
-    internal void TrapSummon(Texture2D[] ingredients, Vector2 from, Vector2 meet, Texture2D trap, Rect2? to, Color accent)
+    internal void TrapSummon(Texture2D[] ingredients, Vector2 from, Vector2 meet, Texture2D trap, Rect2? to, Color accent, float destinationRotation)
     {
         if (ReducedMotion) return;
-        _summon = new Summon(ingredients, from, meet, trap, to, accent);
+        _summon = new Summon(ingredients, from, meet, trap, to, accent, destinationRotation);
         SetProcess(true); QueueRedraw();
     }
 
@@ -263,6 +263,7 @@ public partial class ImpactLayer : Control
         var scale = pop < 0.6f ? Mathf.Lerp(0.55f, 1.06f, pop / 0.6f) : Mathf.Lerp(1.06f, 1, (pop - 0.6f) / 0.4f);
         var height = 210f * scale;
         var center = meet;
+        var rotation = 0f;
         var hold = s.To != null ? SummonFly : 0.35;
         var fly = Math.Clamp((age - (float)(SummonGather + SummonPop)) / (float)hold, 0, 1);
         if (s.To is { } to && fly > 0)
@@ -270,15 +271,18 @@ public partial class ImpactLayer : Control
             var eased = Mathf.SmoothStep(0, 1, fly);
             center = meet.Lerp(to.GetCenter() - origin, eased);
             height = Mathf.Lerp(210, Math.Max(80, to.Size.Y), eased);
+            rotation = Mathf.LerpAngle(0, s.DestinationRotation, eased);
         }
         var fade = Math.Clamp((age - (float)(SummonGather + SummonPop + hold)) / (float)SummonFade, 0, 1);
         var alphaCard = Math.Min(1, pop * 3) * (1 - fade);
         var size = new Vector2(height * s.Trap.GetWidth() / s.Trap.GetHeight(), height);
-        var trapRect = new Rect2(center - size / 2, size);
+        DrawSetTransform(center, rotation);
+        var trapRect = new Rect2(-size / 2, size);
         if (pop < 1) RelickVisuals.Shadow(this, trapRect.Grow(10 * (1 - pop)), BoardArt.Tint(Colors.White, 0.5f * (1 - pop)), 24, 12);
         RelickVisuals.Shadow(this, trapRect.Grow(-4), BoardArt.Tint(s.Accent, 0.6f * alphaCard), 20, 10);
         DrawTextureRect(s.Trap, trapRect, false, new Color(1, 1, 1, alphaCard));
         BoardArt.Outline(this, trapRect, BoardArt.Tint(s.Accent, alphaCard), 8, 2);
+        DrawSetTransform(Vector2.Zero);
     }
 
     public override void _Draw()

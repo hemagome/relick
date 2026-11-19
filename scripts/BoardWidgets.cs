@@ -438,7 +438,17 @@ public partial class LifeMeter : Control
     public int Maximum { get; private set; } = 1;
     public float DisplayedRatio { get; private set; }
     public bool IsAnimating => _elapsed < _duration;
-    public Color FillColor => ColorForRatio(DisplayedRatio);
+    public Color FillColor => ColorForRatio(_openingHealth.HasValue ? 1 : DisplayedRatio);
+    internal int VisibleHealth => _openingHealth ?? Health;
+    internal float VisibleRatio => _openingHealth is int health ? (float)health / Maximum : DisplayedRatio;
+    private int? _openingHealth;
+
+    internal void SetOpeningHealth(int? value)
+    {
+        if (_openingHealth == value) return;
+        _openingHealth = value;
+        QueueRedraw();
+    }
     /// <summary>Board heroes stack the count over the bar to fit beside the portrait.</summary>
     public bool Stacked
     {
@@ -530,7 +540,7 @@ public partial class LifeMeter : Control
         }
         else RelickVisuals.Shadow(this, new Rect2(8, 14, 18, 18), BoardArt.Tint(color, danger ? 0.55f : 0.32f), 9, 9);
         BoardArt.Icon(this, GameIcon.Heart, new(17, 23), 23, color);
-        var value = Health.ToString();
+        var value = VisibleHealth.ToString();
         var max = $"/ {Maximum}";
         var fontSize = 32;
         var strong = RelickVisuals.Strong;
@@ -564,7 +574,7 @@ public partial class LifeMeter : Control
         if (IsAnimating && _fromRatio > DisplayedRatio)
             DrawRect(new Rect2(inner.Position.X + inner.Size.X * DisplayedRatio, inner.Position.Y, inner.Size.X * (_fromRatio - DisplayedRatio), inner.Size.Y),
                 BoardArt.Tint(BoardArt.Ink, 0.85f));
-        var fill = new Rect2(inner.Position, new Vector2(inner.Size.X * DisplayedRatio, inner.Size.Y));
+        var fill = new Rect2(inner.Position, new Vector2(inner.Size.X * VisibleRatio, inner.Size.Y));
         if (fill.Size.X > 0)
         {
             RelickVisuals.Shadow(this, fill, BoardArt.Tint(color, 0.35f), 5, 3);
@@ -799,13 +809,19 @@ public partial class ZoneCardButton : Button
     public string StatusText { get; init; } = "";
     public Color Accent { get; set; }
     private Texture2D? _artwork;
-    private Texture2D? _exchangePreview;
-    private Texture2D? Artwork => _exchangePreview ?? _artwork;
+    private CardDefinition? _departingCard;
+    private Texture2D? _departingArtwork;
+    private bool _departingEffectUsed;
+    private Texture2D? Artwork => HasDeparturePreview ? _departingArtwork : _artwork;
     private string CardStatus => EffectUsed ? "USADA" : StatusText;
+    private string? PresentedStatus => AwaitingEquipment ? _previousEquipmentStatus : HasDeparturePreview ?
+        (_departingEffectUsed ? "USADA" : "") : CardStatus;
     private string? _previousEquipmentStatus;
     internal bool AwaitingEquipment { get; private set; }
-    internal bool AwaitingExchange { get; private set; }
-    internal bool HasExchangePreview => _exchangePreview != null;
+    internal bool AwaitingArrival { get; private set; }
+    internal bool HasDeparturePreview => _departingCard != null;
+    internal CardDefinition? PresentedCard => AwaitingEquipment && _previousEquipmentStatus == null
+        ? null : _departingCard ?? (AwaitingArrival ? null : Card);
 
     internal void SetEquipmentPending(bool pending, string? previousStatus)
     {
@@ -814,16 +830,19 @@ public partial class ZoneCardButton : Button
         QueueRedraw();
     }
 
-    internal void SetExchangePending(bool pending)
+    internal void SetArrivalPending(bool pending)
     {
-        AwaitingExchange = pending;
+        AwaitingArrival = pending;
+        DescribeCard();
         QueueRedraw();
     }
 
-    internal void SetExchangePreview(string? id)
+    internal void SetDeparturePreview(string? id, bool effectUsed = false)
     {
-        if (Card != null) return;
-        _exchangePreview = id == null ? null : BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId);
+        _departingCard = id == null ? null : CardCatalog.Get(id);
+        _departingArtwork = _departingCard == null ? null : BoardArt.LoadCardArtwork(_departingCard, RelikarioId);
+        _departingEffectUsed = effectUsed;
+        DescribeCard();
         QueueRedraw();
     }
 
@@ -854,22 +873,27 @@ public partial class ZoneCardButton : Button
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         if (Card != null) _artwork = BoardArt.LoadCardArtwork(Card, RelikarioId);
-        if (Card != null)
-        {
-            var description = $"{Caption} · {Card.Name}" + (CardStatus.Length > 0 ? $" · {CardStatus}" : "");
-            AccessibilityName = description;
-            TooltipText = $"{description}\n{Card.Text}\nPulsa para ampliar y consultar el efecto.";
-        }
+        DescribeCard();
         Resized += QueueRedraw;
         MouseEntered += QueueRedraw;
         MouseExited += QueueRedraw;
         FocusEntered += QueueRedraw;
         FocusExited += QueueRedraw;
     }
+
+    private void DescribeCard()
+    {
+        var card = PresentedCard;
+        var status = PresentedStatus;
+        AccessibilityName = card == null ? Caption : $"{Caption} · {card.Name}" + (status is { Length: > 0 } ? $" · {status}" : "");
+        TooltipText = card == null ? "" : $"{AccessibilityName}\n{card.Text}\nPulsa para ampliar y consultar el efecto.";
+    }
+
     public override void _Draw()
     {
         var bounds = new Rect2(0, 0, Size.X, Size.Y);
-        var showCard = !AwaitingExchange && (!AwaitingEquipment || _previousEquipmentStatus != null) && (Card != null || HasExchangePreview);
+        var card = PresentedCard;
+        var showCard = card != null;
         BoardArt.Socket(this, bounds, Accent, AwaitingEquipment ? 1.6f : showCard ? 0.55f : 1);
         if (!showCard)
         {
@@ -894,11 +918,10 @@ public partial class ZoneCardButton : Button
             }
             else DrawTextureRect(artwork, rect, false);
         }
-        else if (Card != null)
-            BoardArt.Icon(this, BoardArt.CardIcon(Card), Size / 2, 32, Accent);
+        else if (card != null)
+            BoardArt.Icon(this, BoardArt.CardIcon(card), Size / 2, 32, Accent);
         if (Playable && showCard) RelickVisuals.Playable(this, CardRect);
-        var status = AwaitingEquipment ? _previousEquipmentStatus : CardStatus;
-        if (showCard && status is { Length: > 0 }) BoardArt.CardBadge(this, Size, status);
+        if (showCard && PresentedStatus is { Length: > 0 } status) BoardArt.CardBadge(this, Size, status);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
     }
 }

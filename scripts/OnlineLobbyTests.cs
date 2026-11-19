@@ -29,7 +29,20 @@ public partial class OnlineLobby
             rival.Connect(_server, _database, null);
             await Until(() => rival.Ready);
             rival.Join(_lobby.Room!.Code, "Beto");
-            await Until(() => _arena?.IsChoosingInitialSkill == true && rival.InitialSkills?.Selected == false);
+            var sawReveal = false;
+            await Until(() =>
+            {
+                if (_arena?.FindChild("OpeningRelikarioReveal", false, false) is OpeningRelikarioReveal { Visible: true })
+                {
+                    sawReveal = true;
+                    if (_arena.InitialSkillConfirmButton?.Disabled != true)
+                        throw new Exception("La elección inicial está habilitada durante la entrada de los Relikarios.");
+                }
+                return _arena?.IsChoosingInitialSkill == true && !_arena.IsAnimating && rival.InitialSkills?.Selected == false;
+            });
+            if (!sawReveal && DisplayServer.AccessibilityShouldReduceAnimation() != 1 &&
+                !ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool())
+                throw new Exception("La sala nueva omitió la entrada de los Relikarios.");
             var selectedSkill = _arena!.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>().Single(c => c.Card.Id == "destiny-shuffle");
             GuiInputTestDriver.Click(selectedSkill);
             for (var frame = 0; frame < 4; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -70,7 +83,7 @@ public partial class OnlineLobby
             _lobby.Leave();
             await Until(() => _lobby.Room == null && rival.Room == null);
             GD.Print("PVP_PREPARATION_PASS · selección, confirmación, espera, Bonus, iniciativa y mano del primer turno.");
-            GetTree().Quit();
+            QuitWithAudio();
         }
         catch (Exception error)
         {

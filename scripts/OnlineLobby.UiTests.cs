@@ -84,6 +84,11 @@ public partial class OnlineLobby
                 GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
                 GD.Print("PVP_PREPARATION_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--opening-reveal-only"))
+            {
+                await online.CheckOpeningReveal(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--combo-responses-only"))
             {
                 await online.CheckComboResponseToggle(); online.QueueFree(); await Layout();
@@ -363,6 +368,7 @@ public partial class OnlineLobby
             await online.CheckReverseLayout();
             await online.CheckHandStealAnimation();
             await online.CheckDuelResults();
+            await online.CheckOpeningReveal();
             await online.CheckPreparationLayout();
             await online.CheckChoiceBounds();
             await CheckArenaConnectionNotice(online);
