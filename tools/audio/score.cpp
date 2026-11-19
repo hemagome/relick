@@ -784,6 +784,137 @@ void osamu(Mix &m, bool climax) {
     }
 }
 
+// A bright two-operator FM voice for Ironwing's electronics. The filter-like
+// drop in modulation after the attack keeps long notes out of the drums' way.
+void arcadeTone(Bus &bus, double start, double duration, int pitch, double velocity, double pan, double brightness) {
+    const double frequency = hz(pitch);
+    const double release = .13;
+    const int samples = int((duration + release) * SR);
+    const long offset = std::lround(start * SR);
+    const Pan position(pan);
+    double phase = 0;
+    for (int i = 0; i < samples; ++i) {
+        const double t = double(i) / SR;
+        const double bend = 1 - .019 * std::exp(-t / .018) + .0028 * smooth(t / .18) * std::sin(TAU * 5.7 * t);
+        phase += TAU * frequency * bend / SR;
+        const double index = brightness * (.51 + .73 * std::exp(-t * 12));
+        const double tone = std::sin(phase + index * std::sin(2 * phase)) + .24 * std::sin(2 * phase + .3);
+        const double envelope = smooth(t / .009) * (1 - .19 * smooth(t / .22)) *
+            (t > duration ? std::exp(-(t - duration) / .041) : 1) * smooth((samples - i) / 300.0);
+        bus.add(offset + i, tone * envelope * velocity * .78, position.l, position.r);
+    }
+}
+
+// "Órbita de combate" and "Última maniobra": an electronic lead, octave bass
+// and a D–F–E–A motif that returns with shorter notes and heavier drums at zero.
+void ironwing(Mix &m, bool climax) {
+    Orchestra o(m);
+    Bus &lead = m.bus("synth-lead", .37, .36);
+    Bus &arp = m.bus("synth-arpeggio", .20, .31);
+    const Chord G{7, 11, 2}, Eb{3, 7, 10};
+    const Chord flight[] = {Dm, G, Bb, C, Dm, Gm, Bb, A};
+    const Chord danger[] = {Dm, Gm, Bb, C, Dm, Eb, Gm, A};
+    const Chord bridge[] = {F, C, Gm, Dm, Bb, G, Asus, A};
+    const Chord coda[] = {Dm, Bb, Gm, A};
+    const std::string theme =
+        "d5:.75 f5:.25 e5:.5 a5:1 r:.5 c6:1 | b5:.5 g5:.5 d5:1.5 e5:.5 a5:1 | "
+        "f5:1 a5:.5 bb5:.5 d6:1.5 c6:.5 | g5:.75 e5:.25 g5:.5 c6:.5 e6:1 r:1 | "
+        "d5:.75 f5:.25 e5:.5 a5:.5 d6:1 f6:.75 e6:.25 | d6:.75 bb5:.25 g5:1 a5:.5 bb5:.5 f5:1 | "
+        "f5:.75 d5:.25 f5:1 bb5:1 a5:.5 f5:.5 | e5:.75 a5:.25 c#6:1 b5:.5 g5:.5 a5:.5 r:.5";
+    const std::string horizon =
+        "a5:1 g5:.5 f5:.5 c6:1.5 a5:.5 | g5:1 e5:1 g5:.5 c6:1.5 | "
+        "bb5:1.5 a5:.5 g5:1 d5:1 | f5:1 e5:.5 f5:.5 a5:1 d6:1 | "
+        "bb5:1 a5:.5 f5:.5 d5:1.5 f5:.5 | g5:1 a5:.5 b5:.5 d6:1 b5:1 | "
+        "a5:1.5 d6:.5 e6:1.5 d6:.5 | c#6:1 e6:.75 c#6:.25 a5:1 r:1";
+    const std::string urgent =
+        "d5:.5 f5:.25 e5:.25 a5:.75 d6:.25 c6:.75 a5:.75 r:.5 | bb5:.5 a5:.25 g5:.25 d5:1 g5:.75 a5:.25 bb5:1 | "
+        "f5:.5 bb5:.5 d6:.75 c6:.25 bb5:1 f5:.5 d5:.5 | e5:.5 g5:.5 c6:.5 e6:.5 d6:.75 c6:.25 g5:1 | "
+        "d5:.5 f5:.25 e5:.25 a5:.75 d6:.25 f6:1.5 e6:.5 | eb6:1 d6:.5 bb5:.5 g5:1 bb5:1 | "
+        "g5:.75 bb5:.25 d6:1 f6:.5 d6:.5 bb5:1 | a5:.5 bb5:.5 c#6:1 e6:.5 c#6:.5 a5:.5 r:.5";
+    const std::string climb =
+        "d5:1 d5:.5 f5:.5 a5:1 c6:.5 d6:.5 | bb5:1 g5:.5 bb5:.5 d6:1 r:1 | "
+        "d6:.5 f6:.5 d6:1 bb5:.5 f5:.5 d5:1 | e5:.5 g5:.5 e5:1 c6:1 g5:1 | "
+        "a5:1 f5:.5 a5:.5 d6:1.5 e6:.5 | eb6:.75 bb5:.25 eb6:1 g6:1.5 f6:.5 | "
+        "d6:.75 bb5:.25 d6:1 f6:1 d6:.5 g5:.5 | a5:.75 c#6:.25 e6:1 c#6:.5 bb5:.5 a5:1";
+    const std::string finale =
+        "d6:1 a5:.5 f5:.5 e5:.5 d5:.5 a5:1 | f5:1 bb5:.5 d6:.5 f6:1.5 d6:.5 | "
+        "g5:1 bb5:.5 d6:.5 g6:1 f6:.5 d6:.5 | e6:.5 c#6:.5 a5:.5 bb5:.5 a5:1 r:1";
+    const std::string reprise =
+        "d5:.75 f5:.25 e5:.5 a5:1 d6:.5 c6:1 | b5:1 d6:.5 b5:.5 g5:1 d5:1 | "
+        "f5:1 a5:.5 bb5:.5 d6:2 | c6:.75 g5:.25 e5:1 g5:1 c6:1 | "
+        "a5:1 f5:.5 e5:.5 d5:1 a5:1 | bb5:1 d6:.5 g6:.5 f6:1 d6:1 | "
+        "f6:.75 d6:.25 bb5:1 a5:.5 f5:.5 bb5:1 | a5:1 e5:1 c#5:.5 e5:.5 a4:.5 r:.5";
+
+    const int bars = m.beats / 4;
+    for (int bar = 0; bar < bars; ++bar) {
+        const double beat = bar * 4.0;
+        const int phrase = bar / 8, position = bar % 8;
+        const bool bridgePhrase = phrase == 2;
+        const bool light = bridgePhrase && (!climax || position < 4);
+        const auto &chord = climax ? (phrase == 4 ? coda[position] : danger[position]) :
+            (bridgePhrase ? bridge[position] : flight[position]);
+        const int root = up(chord.root, 33);
+        const int fifth = up(chord.fifth, root + 1);
+        const int third = up(chord.third, root + 7);
+        const int bass[] = {root, root, fifth, root + 12, root, third, fifth, root + 12};
+        const int tones[] = {root + 24, third + 12, fifth + 24, third + 24, root + 36, fifth + 24, third + 24, fifth + 24};
+        for (int step = 0; step < 8; ++step) {
+            const double time = beat + step * .5;
+            const bool accent = step == 0 || step == 3 || step == 5;
+            if (!light || step % 2 == 0) {
+                arcadeTone(o.bass, m.exact(time), m.span(light ? .73 : .36), bass[step], accent ? .83 : .49, .03, .73);
+                sub(o.low, m.exact(time), m.span(.32), root, step == 0 ? .82 : .35);
+            }
+            const double pan = step % 2 == 0 ? -.42 : .41;
+            arcadeTone(arp, m.at(time + .02), m.span(.16), tones[step],
+                (light ? .57 : .43) * (accent ? 1 : .75), pan, .82);
+            if (climax && !light)
+                arcadeTone(arp, m.at(time + .25), m.span(.14), tones[(step + 2) % 8], .31, -pan, 1.08);
+        }
+        chordPad(m, o, beat, 3.9, chord, light ? .67 : .48, 55);
+        kit(m, o, beat, light ? 1 : (climax ? 3 : 0), light ? .57 : (climax ? .90 : .74),
+            position == 7 || bar == bars - 1);
+        if (climax && !light) {
+            figure(m, o, beat, chord, .57, false);
+            timpani(o.timpani, m.g, m.exact(beat), up(chord.root, 41), position % 4 == 0 ? .72 : .45);
+        }
+        if (position == 0 && (!bridgePhrase || !climax))
+            cymbal(o.cymbals, m.g, m.exact(beat), climax ? .56 : .42);
+        if (position == 7 && bar + 1 < bars)
+            cymbal(o.cymbals, m.g, m.exact(beat + 4), .38, m.span(1.5));
+    }
+
+    for (int phrase = 0; phrase * 32 < m.beats; ++phrase) {
+        const auto &melody = climax ? (phrase == 4 ? finale : (phrase == 1 || phrase == 2 ? climb : urgent)) :
+            (phrase == 2 ? horizon : (phrase == 1 || phrase == 4 ? reprise : theme));
+        const auto notes = parse(melody, phrase * 32);
+        const bool airy = phrase == 2 && !climax;
+        for (const auto &note : notes) {
+            const double time = m.at(note.beat), duration = m.span(note.len);
+            const double velocity = (climax ? .87 : (airy ? .61 : .80)) * (.93 + .07 * std::min(1.0, note.len));
+            arcadeTone(lead, time, duration * .91, note.pitch, velocity, .04, climax ? 1.42 : 1.04);
+            if (!climax && (note.len >= 1 || airy))
+                arcadeTone(lead, time + m.span(.75), duration * .65, note.pitch, velocity * .25, -.53, .56);
+            if (airy && note.len >= 1)
+                bell(o.harp, time, note.pitch + 12, .36, .40);
+        }
+        if (climax || phrase == 3) line(m, o, Horns, notes, climax ? .71 : .56, -12);
+        if (climax && phrase != 2) line(m, o, Violins, notes, .63, 0);
+        if (airy) line(m, o, Flute, notes, .67, 0);
+    }
+}
+
+void renderIronwing(const std::filesystem::path &output, bool stems) {
+    for (bool climax : {false, true}) {
+        const char *base = climax ? "ironwing-climax" : "ironwing-combat";
+        Mix m(climax ? 180 : 156, climax ? 144 : 160, 6, true, climax ? 0x49305a52 : 0x49524f4e);
+        ironwing(m, climax);
+        double gain = 0;
+        const auto path = (output / base).string();
+        writeWav(path + ".wav", master(m, .67, 1.9, climax ? .161 : .149, gain, stems ? path : ""));
+    }
+}
+
 int main(int argc, char **argv) {
     std::filesystem::path output = argc > 1 ? argv[1] : "/tmp/relick-audio-wav";
     bool stems = argc > 2 && std::string(argv[2]) == "--stems";
@@ -815,5 +946,7 @@ int main(int argc, char **argv) {
         Mix m(174, 128, 6, true, 0x3030564c); osamu(m, true); double gain = 0;
         writeWav(name("osamu-climax.wav"), master(m, 0.73, 2.1, 0.165, gain, stem("osamu-climax")));
     }
+    renderIronwing(output, stems);
     std::cout << "Relick score written to " << output.string() << "\n";
+    return 0;
 }
