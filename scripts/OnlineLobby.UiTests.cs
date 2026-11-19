@@ -262,7 +262,7 @@ public partial class OnlineLobby
             }
             if (OS.GetCmdlineUserArgs().Contains("--evolution-only"))
             {
-                await online.CheckYunoEvolutionLayout(); online.QueueFree(); await Layout();
+                await online.CheckEvolutionReveal(); await online.CheckYunoEvolutionLayout(); online.QueueFree(); await Layout();
                 GD.Print("PVP_YUNO_EVOLUTION_ONLY_PASS"); QuitWithAudio(); return;
             }
             if (OS.GetCmdlineUserArgs().Contains("--mind-reset-only"))
@@ -352,6 +352,7 @@ public partial class OnlineLobby
             await online.CheckRecyclingLayout();
             await online.CheckHandLimitLayout();
             await online.CheckDexterityLayout();
+            await online.CheckEvolutionReveal();
             await online.CheckYunoEvolutionLayout();
             await online.CheckReverseLayout();
             await online.CheckHandStealAnimation();

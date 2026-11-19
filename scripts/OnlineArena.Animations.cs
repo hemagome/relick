@@ -325,9 +325,35 @@ public partial class OnlineArena
             OriginRotation: rotation, IsPlacement: true, PreviousEquipmentStatus: previousEquipmentStatus);
     }
 
+    private void PresentEvolution(DuelSnapshot previous, DuelSnapshot current)
+    {
+        if (_impacts.ReducedMotion) return;
+        var actor = previous.CurrentPlayer;
+        var before = previous.Players[actor];
+        var after = current.Players[actor];
+        if (before.RelikarioId == after.RelikarioId || RelikarioCatalog.Find(before.RelikarioId) is not { } form ||
+            RelikarioCatalog.EvolutionFor(form) is not { } evolved || evolved.Id != after.RelikarioId) return;
+
+        var relative = actor == current.MySeat ? 0 : 1;
+        _evolution.Play(relative, form, evolved, EvolutionAnchor(relative));
+    }
+
+    private Rect2? EvolutionAnchor(int relative)
+    {
+        var portrait = _portraits[relative];
+        if (ChoosingEffectCards || !portrait.IsVisibleInTree()) return null;
+        var frame = portrait.GetGlobalRect();
+        var height = Math.Min(92, Math.Min(frame.Size.Y, frame.Size.X / EvolutionReveal.CardAspect) * .66f);
+        if (height <= 0) return null;
+        var size = new Vector2(height * EvolutionReveal.CardAspect, height);
+        var rect = new Rect2(frame.GetCenter() - size / 2, size);
+        var local = GetGlobalTransform().AffineInverse() * rect;
+        return new Rect2(Vector2.Zero, Size).Encloses(local) && RectVisible(portrait, rect) ? local : null;
+    }
+
     private void Animate(List<DuelVisualEvent> events, Dictionary<DuelVisualEvent, Flight> origins, Flight? placement = null)
     {
-        if (events.Count > 0 || placement != null) PlayedVisualRevisions++;
+        if (events.Count > 0 || placement != null || _evolution.Visible) PlayedVisualRevisions++;
         if (placement?.IsExchangePlacement == true)
         {
             _flights.Enqueue(placement);
@@ -749,6 +775,7 @@ public partial class OnlineArena
     private void ResetAnimations(bool preserveStageAnnouncements = false)
     {
         foreach (var pool in _actionPools) pool.Settle();
+        _evolution.Stop();
         if (!preserveStageAnnouncements) ResetStageBanner();
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();

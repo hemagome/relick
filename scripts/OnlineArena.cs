@@ -50,13 +50,14 @@ public partial class OnlineArena : Control
     internal int BoardBuildCount { get; private set; }
     internal int PlayedVisualRevisions { get; private set; }
     private bool DiceBusy => _die.IsBusy || _secondDie.IsBusy;
-    public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null || _handDeparture != null;
+    public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null || _handDeparture != null || _evolution.Visible;
     private bool Compact => ArenaViewport.Compact(this);
     private bool Short => ArenaViewport.Short(this);
     // The full board needs the desktop canvas; smaller windows keep the stacked layouts.
     private bool Desktop => ArenaViewport.Desktop(this);
     private ArenaBackground _background = null!;
     private readonly ImpactLayer _impacts = new() { Name = "ImpactLayer" };
+    private readonly EvolutionReveal _evolution = new() { Name = "EvolutionReveal", Visible = false };
     private CardShowcase? _showcase;
     private Control? _combatCenter, _readerRail, _railReading, _historyFeed, _resolutionPanel;
     private bool _inlineHistory;
@@ -137,6 +138,7 @@ public partial class OnlineArena : Control
         AddChild(_cardActions);
         AddChild(_responseChain);
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(_evolution); _evolution.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         foreach (var die in _initiativeDice.Append(_die)) die.RollStarted += () => PlaySound(SoundCue.DiceRoll);
         Resized += QueueLayout;
         // Refusals from before this arena existed belong to another screen.
@@ -173,47 +175,13 @@ public partial class OnlineArena : Control
         }
         if (snapshot == null) UpdatePreparation();
         if (Connection.Ready && snapshot != null && _openingInitiative == null && (_needsBaseline || _preparing || _snapshot?.Revision != snapshot.Revision))
-        {
-            var previous = _snapshot;
-            var openingFlights = IsLiveOpening(snapshot) ? CaptureMulliganOrigins(snapshot) : null;
-            var animate = !_preparing && !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
-            var origins = CaptureOrigins(snapshot, previous);
-            var recipe = animate ? CaptureTrapRecipe(previous!, snapshot) : null;
-            var placement = animate ? CaptureExchangePlacement(snapshot, previous!, origins) ??
-                CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!, recipe) : null;
-            if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.Value = snapshot.Die; }
-            if (animate && snapshot.Visuals.FirstOrDefault(cue => cue.Kind is DuelVisualKind.Die or DuelVisualKind.DieAdjustment) is { } nextDie)
-            {
-                // A modifier turns from the value of the pending die, which may be the second die of a pair.
-                if (nextDie.Kind == DuelVisualKind.DieAdjustment) _die.Value = previous!.Die;
-                _secondDie.Value = 0;
-            }
-            _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
-            _handDeparture = animate && placement == null ? CaptureHandDeparture(previous!, snapshot) : null;
-            if (!animate)
-            {
-                _pendingTrapRecipe = null;
-                ResetAnimations(); _die.Value = snapshot.Die;
-                for (var relative = 0; relative < 2; relative++)
-                {
-                    var p = snapshot.Players[relative == 0 ? snapshot.MySeat : 1 - snapshot.MySeat];
-                    _life[relative].SetHealth(p.Health, p.MaxHealth, false);
-                }
-            }
-            _needsBaseline = false; Render(animate || openingFlights != null, previous);
-            if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
-            else if (animate) Animate(snapshot.Visuals, origins, placement);
-            // Render just rebuilt the board; its controls get their places at the end of this frame, so the
-            // played-code flash and the Trap summon read them on the next one (see PresentQueuedPlay).
-            if (animate) QueuePlayedCard(previous!, snapshot, recipe);
-            SyncResponseChain(snapshot, animate);
-            QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
-        }
+            PresentDuelSnapshot(snapshot);
         if (_root == null) return;
         if (_snapshot != null) UpdateComboResponseToggle(_snapshot);
         if (_status.Text != Connection.Message) _status.Text = Connection.Message;
         PresentQueuedStageAnnouncement();
         UpdateFlights(delta);
+        if (_evolution.Visible) _evolution.AdvancePlayback(delta, EvolutionAnchor(_evolution.RelativePlayer));
         UpdateDiceOverlay();
         UpdateResolutionPresentation();
         UpdateRelikiaPreview();
@@ -224,6 +192,45 @@ public partial class OnlineArena : Control
         PresentPlaymat();
         foreach (var target in _pulsingTargets)
             if (IsInstanceValid(target)) target.QueueRedraw();
+    }
+
+    private void PresentDuelSnapshot(DuelSnapshot snapshot)
+    {
+        var previous = _snapshot;
+        var openingFlights = IsLiveOpening(snapshot) ? CaptureMulliganOrigins(snapshot) : null;
+        var animate = !_preparing && !_needsBaseline && previous != null && previous.Revision + 1 == snapshot.Revision;
+        var origins = CaptureOrigins(snapshot, previous);
+        var recipe = animate ? CaptureTrapRecipe(previous!, snapshot) : null;
+        var placement = animate ? CaptureExchangePlacement(snapshot, previous!, origins) ??
+            CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!, recipe) : null;
+        if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.Value = snapshot.Die; }
+        if (animate && snapshot.Visuals.FirstOrDefault(cue => cue.Kind is DuelVisualKind.Die or DuelVisualKind.DieAdjustment) is { } nextDie)
+        {
+            // A modifier turns from the value of the pending die, which may be the second die of a pair.
+            if (nextDie.Kind == DuelVisualKind.DieAdjustment) _die.Value = previous!.Die;
+            _secondDie.Value = 0;
+        }
+        if (animate) PresentEvolution(previous!, snapshot);
+        _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
+        _handDeparture = animate && placement == null ? CaptureHandDeparture(previous!, snapshot) : null;
+        if (!animate)
+        {
+            _pendingTrapRecipe = null;
+            ResetAnimations(); _die.Value = snapshot.Die;
+            for (var relative = 0; relative < 2; relative++)
+            {
+                var p = snapshot.Players[relative == 0 ? snapshot.MySeat : 1 - snapshot.MySeat];
+                _life[relative].SetHealth(p.Health, p.MaxHealth, false);
+            }
+        }
+        _needsBaseline = false; Render(animate || openingFlights != null, previous);
+        if (openingFlights != null) AnimateOpening(snapshot, openingFlights, Connection.OpeningResult);
+        else if (animate) Animate(snapshot.Visuals, origins, placement);
+        // Render just rebuilt the board; its controls get their places at the end of this frame, so the
+        // played-code flash and the Trap summon read them on the next one (see PresentQueuedPlay).
+        if (animate) QueuePlayedCard(previous!, snapshot, recipe);
+        SyncResponseChain(snapshot, animate);
+        QueueStageAnnouncement(previous, snapshot, animate || openingFlights != null);
     }
 
     private void PresentPlaymat()
@@ -539,6 +546,7 @@ public partial class OnlineArena : Control
         PlaceZahiras(s);
         MoveChild(_cardActions, GetChildCount() - 1);
         MoveChild(_diceOverlay, GetChildCount() - 1);
+        if (_evolution.Visible) MoveChild(_evolution, GetChildCount() - 1);
         BuildMoves(); BindInspectorPreviews();
         FitArenaScroll();
         UpdateResultPresentation();
