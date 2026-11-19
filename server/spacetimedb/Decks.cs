@@ -100,10 +100,11 @@ public static partial class Module
         return ctx.Db.Deck.Owner.Filter(ctx.Sender).Select(deck =>
         {
             var side = ctx.Db.DeckSide.Deck.Find(deck.Id)?.Cards ?? [];
+            var cards = DeckRules.NormalizeAttackArt(deck.Relikario, deck.Cards);
             return new DeckInfo
             {
-                Id = deck.Id, Name = deck.Name, Relikario = deck.Relikario, Cards = deck.Cards, Traps = deck.Traps, Side = side,
-                Valid = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, side).Count == 0, Active = deck.Id == active
+                Id = deck.Id, Name = deck.Name, Relikario = deck.Relikario, Cards = cards, Traps = deck.Traps, Side = side,
+                Valid = DeckRules.Validate(deck.Relikario, cards, deck.Traps, side).Count == 0, Active = deck.Id == active
             };
         }).ToList();
     }
@@ -153,6 +154,7 @@ public static partial class Module
         if (cards.Count > DeckRules.MainDeckSize * 2 || traps.Count > DeckRules.MaxTraps * 2 || side.Count > DeckRules.MaxSide * 2 ||
             RelikarioCatalog.Playable.All(r => r.Id != relikario) || cards.Concat(traps).Concat(side).Any(card => !CardCatalog.All.ContainsKey(card)))
             throw new Exception("El mazo contiene cartas o un Relikario que no existen.");
+        cards = DeckRules.NormalizeAttackArt(relikario, cards);
 
         var mine = ctx.Db.Deck.Owner.Filter(ctx.Sender).ToList();
         var now = ctx.Timestamp.MicrosecondsSinceUnixEpoch;
@@ -195,7 +197,8 @@ public static partial class Module
         {
             if (RequireAccount(ctx).Guest) throw new Exception(GuestsKeepNoDecks);
             if (ctx.Db.Deck.Id.Find(id) is not Deck deck || deck.Owner != ctx.Sender) throw new Exception("No se encontró el mazo.");
-            var errors = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, SideOf(ctx, id));
+            var cards = DeckRules.NormalizeAttackArt(deck.Relikario, deck.Cards);
+            var errors = DeckRules.Validate(deck.Relikario, cards, deck.Traps, SideOf(ctx, id));
             if (errors.Count > 0) throw new Exception("Este mazo no cumple las reglas: " + errors[0]);
         }
         SetActive(ctx, RequireAccount(ctx), id);
@@ -211,11 +214,15 @@ public static partial class Module
     /// with the classic sleeve and die.</summary>
     private static (List<string> Cards, List<string> Traps, string Sleeve, string Dice, string Relikario) DeckFor(ReducerContext ctx, Identity player)
     {
-        if (ctx.Db.Account.Player.Find(player) is Account { ActiveDeck: > 0, Guest: false } account && ctx.Db.Deck.Id.Find(account.ActiveDeck) is Deck deck &&
-            deck.Owner == player && DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, SideOf(ctx, deck.Id)).Count == 0)
+        if (ctx.Db.Account.Player.Find(player) is Account { ActiveDeck: > 0, Guest: false } account &&
+            ctx.Db.Deck.Id.Find(account.ActiveDeck) is Deck deck && deck.Owner == player)
         {
-            var (sleeve, dice) = StyleOf(ctx, deck.Id);
-            return (deck.Cards, deck.Traps, sleeve, dice, deck.Relikario);
+            var cards = DeckRules.NormalizeAttackArt(deck.Relikario, deck.Cards);
+            if (DeckRules.Validate(deck.Relikario, cards, deck.Traps, SideOf(ctx, deck.Id)).Count == 0)
+            {
+                var (sleeve, dice) = StyleOf(ctx, deck.Id);
+                return (cards, deck.Traps, sleeve, dice, deck.Relikario);
+            }
         }
         return (CardCatalog.TrainingDeck(), CardCatalog.TrainingTraps(), CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, RelikarioCatalog.Yuno.Id);
     }

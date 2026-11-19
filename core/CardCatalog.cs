@@ -139,13 +139,13 @@ public static class CardCatalog
         LightEquipment: true);
     public static readonly CardDefinition Attack = new("attack", "Ataque", CardKind.Attack,
         "Consume esta carta para atacar con una habilidad enseñada.");
-    public static readonly CardDefinition AttackYuno = Attack with { Id = "attack-yuno-ns41", ArtworkLabel = "Yuno (NS-41/150)" };
-    public static readonly CardDefinition AttackOsamu = Attack with { Id = "attack-osamu-ns42", ArtworkLabel = "Osamu (NS-42/150)" };
-    public static readonly CardDefinition AttackYunoDt = Attack with { Id = "attack-yuno-dt72", ArtworkLabel = "Yuno (DT-72/100)" };
-    public static readonly CardDefinition AttackOsamuDt = Attack with { Id = "attack-osamu-dt73", ArtworkLabel = "Osamu (DT-73/100)" };
-    public static readonly CardDefinition AttackIronwingUt = Attack with { Id = "attack-ironwing-ut22", ArtworkLabel = "Ironwing (UT-22/50)" };
-    public static readonly CardDefinition AttackIronwingDt = Attack with { Id = "attack-ironwing-dt80", ArtworkLabel = "Ironwing (DT-80/100)" };
-    public static readonly CardDefinition AttackIronwingNs = Attack with { Id = "attack-ironwing-ns49", ArtworkLabel = "Ironwing (NS-49/150)" };
+    public static readonly CardDefinition AttackYuno = Attack with { Id = "attack-yuno-ns41", ArtworkLabel = "Yuno (NS-41/150)", Relikario = RelikarioCatalog.Yuno.Id };
+    public static readonly CardDefinition AttackOsamu = Attack with { Id = "attack-osamu-ns42", ArtworkLabel = "Osamu (NS-42/150)", Relikario = RelikarioCatalog.Osamu.Id };
+    public static readonly CardDefinition AttackYunoDt = Attack with { Id = "attack-yuno-dt72", ArtworkLabel = "Yuno (DT-72/100)", Relikario = RelikarioCatalog.Yuno.Id };
+    public static readonly CardDefinition AttackOsamuDt = Attack with { Id = "attack-osamu-dt73", ArtworkLabel = "Osamu (DT-73/100)", Relikario = RelikarioCatalog.Osamu.Id };
+    public static readonly CardDefinition AttackIronwingUt = Attack with { Id = "attack-ironwing-ut22", ArtworkLabel = "Ironwing (UT-22/50)", Relikario = RelikarioCatalog.Ironwing.Id };
+    public static readonly CardDefinition AttackIronwingDt = Attack with { Id = "attack-ironwing-dt80", ArtworkLabel = "Ironwing (DT-80/100)", Relikario = RelikarioCatalog.Ironwing.Id };
+    public static readonly CardDefinition AttackIronwingNs = Attack with { Id = "attack-ironwing-ns49", ArtworkLabel = "Ironwing (NS-49/150)", Relikario = RelikarioCatalog.Ironwing.Id };
     public static readonly CardDefinition IronwingRoll = new("ironwing-roll", "Relick Ironwing Roll", CardKind.Skill,
         "Destruye 2 Ataques de tu mazo (4 si es crítico) y coloca 1 contador sobre esta copia para cancelar el daño de un ataque. Con 3 contadores, destruye esta carta.",
         1, 2, 300, Relikario: RelikarioCatalog.Ironwing.Id);

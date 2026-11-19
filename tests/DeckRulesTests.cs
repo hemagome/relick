@@ -28,31 +28,47 @@ static class DeckRulesTests
         ("Mazo: los artes de Ataque comparten el cupo y conservan su copia al jugar", () =>
         {
             var yuno = CardCatalog.AttackYuno.Id;
-            var osamu = CardCatalog.AttackOsamu.Id;
             var yunoDt = CardCatalog.AttackYunoDt.Id;
-            var osamuDt = CardCatalog.AttackOsamuDt.Id;
             var classic = CardCatalog.Attack.Id;
             var deck = CardCatalog.TrainingDeck().Skip(DeckRules.AttackCount).ToArray();
-            foreach (var (variant, quantity) in new[] { (yuno, 6), (osamu, 10), (yunoDt, 10), (osamuDt, 6) })
+            foreach (var (variant, quantity) in new[] { (yuno, 6), (yunoDt, 10) })
                 Legal(deck.Concat(Enumerable.Repeat(variant, quantity)).Concat(Enumerable.Repeat(classic, 12 - quantity)).ToList(), []);
-            var mixed = deck.Concat(Enumerable.Repeat(classic, 4)).Concat(new[] { yuno, osamu, yunoDt, osamuDt })
-                .Concat(new[] { yuno, osamu, yunoDt, osamuDt }).ToList();
+            var mixed = deck.Concat(Enumerable.Repeat(classic, 4)).Concat(Enumerable.Repeat(yuno, 4)).Concat(Enumerable.Repeat(yunoDt, 4)).ToList();
             Legal(mixed, []);
-            Broken(Swap(mixed, CardCatalog.Pc.Id, osamu), [], "exactamente 12");
-            Broken(mixed, [], [yuno, osamu], "no admite cartas de Ataque");
+            Broken(Swap(mixed, CardCatalog.Pc.Id, yuno), [], "exactamente 12");
+            Broken(mixed, [], [yuno, yunoDt], "no admite cartas de Ataque");
 
             var game = GameEngine.FromOpening(new DuelOpening
             {
-                Names = ["Yuno", "Osamu"], StartingSeat = 0, Hands = [[yuno, osamuDt], []], Decks = [mixed, []], Bonuses = [null, null]
+                Names = ["Yuno", "Osamu"], StartingSeat = 0, Hands = [[yuno, yunoDt], []], Decks = [mixed, []], Bonuses = [null, null]
             }, new SeededRandom(3));
             game.State.Turn = 2;
             game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
             var restored = GameEngine.FromSnapshot(game.SaveSnapshot(), new SeededRandom(3));
-            Check(DuelSnapshot.For(restored, 0, 1).Players[0].Hand.SequenceEqual([yuno, osamuDt]));
+            Check(DuelSnapshot.For(restored, 0, 1).Players[0].Hand.SequenceEqual([yuno, yunoDt]));
             Check(DuelSnapshot.For(restored, 1, 1).Players[0].Hand.All(id => id == null));
             var attack = DuelOptions.For(restored, 0).Single(option => option.Move.Kind == DuelMoveKind.Attack && option.Move.Index == 1);
             Check(attack.Move.Apply(restored, 0).Success);
-            Check(restored.State.Players[0].Hand.SequenceEqual([yuno]) && restored.State.Players[0].Memory.Contains(osamuDt));
+            Check(restored.State.Players[0].Hand.SequenceEqual([yuno]) && restored.State.Players[0].Memory.Contains(yunoDt));
+        }),
+        ("Mazo: las variantes pertenecen a su Relikario y los mazos antiguos conservan sus 12 Ataques", () =>
+        {
+            foreach (var (relikario, initial, ownArt, foreignArt) in new[]
+            {
+                (RelikarioCatalog.Yuno.Id, CardCatalog.Attack, CardCatalog.AttackYuno, CardCatalog.AttackIronwingDt),
+                (RelikarioCatalog.Osamu.Id, CardCatalog.Attack, CardCatalog.AttackOsamuDt, CardCatalog.AttackYunoDt),
+                (RelikarioCatalog.Ironwing.Id, CardCatalog.AttackIronwingUt, CardCatalog.AttackIronwingNs, CardCatalog.AttackOsamu)
+            })
+            {
+                var rest = CardCatalog.All.Values.Where(card => !DeckRules.IsAttack(card) && !DeckRules.IsTrap(card) && DeckRules.Compatible(card, relikario))
+                    .OrderBy(card => card.Kind == CardKind.Skill ? 0 : 1).Take(15).SelectMany(card => new[] { card.Id, card.Id });
+                var legacy = Enumerable.Repeat(CardCatalog.Attack.Id, 10).Concat([ownArt.Id, foreignArt.Id]).Concat(rest).ToList();
+                Check(DeckRules.Validate(relikario, legacy, []).Single().Contains("No son compatibles"));
+                var repaired = DeckRules.NormalizeAttackArt(relikario, legacy);
+                Check(repaired.Take(12).SequenceEqual(Enumerable.Repeat(initial.Id, 10).Concat([ownArt.Id, initial.Id])));
+                Check(repaired.Skip(12).SequenceEqual(legacy.Skip(12)) && DeckRules.Validate(relikario, repaired, []).Count == 0);
+                Check(DeckRules.NormalizeAttackArt(relikario, repaired).SequenceEqual(repaired));
+            }
         }),
         ("Mazo: mínimo tres habilidades compatibles", () =>
         {

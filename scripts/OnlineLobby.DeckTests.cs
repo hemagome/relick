@@ -208,8 +208,11 @@ public partial class OnlineLobby
                 "la ampliación no muestra el arte seleccionado.");
             ((AcceptDialog)editor.FindChild("DeckCardZoom", true, false)!).Hide();
             await Frames();
-            CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt,
-                CardCatalog.AttackIronwingUt, CardCatalog.AttackIronwingDt, CardCatalog.AttackIronwingNs];
+            CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackYunoDt];
+            HandCard[] AttackTiles(DeckEditor view) => view.FindChild("CatalogCards", true, false)!.GetChildren()
+                .OfType<HandCard>().Where(tile => DeckRules.IsAttack(tile.Card)).ToArray();
+            Expect(AttackTiles(editor).Select(tile => tile.Card).ToHashSet().SetEquals(variants.Append(CardCatalog.Attack)),
+                "la colección de Yuno debe mostrar solo sus tres artes.");
             var alternates = variants.Select(card => (HandCard)editor.FindChild("Catalog_" + card.Id, true, false)!).ToArray();
             Expect(alternates.All(tile => tile.FaceTexture?.ResourcePath == $"res://assets/cards/{tile.Card.Id}-clean.png") &&
                 alternates.Append(attackInCatalog).Select(tile => tile.FaceTexture).Distinct().Count() == variants.Length + 1,
@@ -314,6 +317,23 @@ public partial class OnlineLobby
             foreach (var button in editor.FindChild("DeckList", true, false)!.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
                 Inside(button, "Un botón del banquillo");
             await Capture("deck-side");
+
+            foreach (var (relikario, initial, ns, dt) in new[]
+            {
+                (RelikarioCatalog.Osamu.Id, CardCatalog.Attack, CardCatalog.AttackOsamu, CardCatalog.AttackOsamuDt),
+                (RelikarioCatalog.Ironwing.Id, CardCatalog.AttackIronwingUt, CardCatalog.AttackIronwingNs, CardCatalog.AttackIronwingDt)
+            })
+            {
+                screen.Edit(0, "Mazo anterior", [CardCatalog.Attack.Id, CardCatalog.AttackYuno.Id, ns.Id], [], relikario: relikario);
+                await Frames();
+                var ownerEditor = screen.Editor!;
+                var tiles = AttackTiles(ownerEditor);
+                Expect(tiles.Select(tile => tile.Card).ToHashSet().SetEquals([initial, ns, dt]) &&
+                    tiles.All(tile => tile.FaceTexture != null) && tiles.Select(tile => tile.FaceTexture).Distinct().Count() == 3,
+                    $"la colección de {relikario} debe mostrar sus tres artes sin duplicados.");
+                Expect(ownerEditor.Main.SequenceEqual([initial.Id, initial.Id, ns.Id]) && ownerEditor.AddBlocked(CardCatalog.AttackYuno) != null,
+                    $"un mazo anterior de {relikario} debe sustituir los artes ajenos por el inicial.");
+            }
             RemoveChild(screen); screen.QueueFree(); await Frames();
 
             var guest = new DeckScreen { Connection = _lobby, PreviewDecks = [], Guest = true };

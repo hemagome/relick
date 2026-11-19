@@ -62,7 +62,7 @@ public partial class DeckEditor : VBoxContainer
         Name = "DeckEditor";
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         SizeFlagsVertical = SizeFlags.ExpandFill;
-        foreach (var id in InitialCards.Concat(InitialTraps))
+        foreach (var id in DeckRules.NormalizeAttackArt(Relikario, InitialCards).Concat(InitialTraps))
             if (CardCatalog.All.ContainsKey(id)) _counts[id] = _counts.GetValueOrDefault(id) + 1;
         foreach (var id in InitialSide)
             if (CardCatalog.All.ContainsKey(id)) _side[id] = _side.GetValueOrDefault(id) + 1;

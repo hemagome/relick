@@ -18,6 +18,18 @@ public static class DeckRules
 
     public static bool Compatible(CardDefinition card, string relikario) => card.Relikario == null || card.Relikario == relikario;
 
+    public static string DefaultAttackArt(string relikario) => relikario == RelikarioCatalog.Ironwing.Id
+        ? CardCatalog.AttackIronwingUt.Id : CardCatalog.Attack.Id;
+
+    /// <summary>Repairs older main decks that mixed Attack art or used the classic ID for Ironwing's UT art.</summary>
+    public static List<string> NormalizeAttackArt(string relikario, IEnumerable<string> cards)
+    {
+        var defaultAttack = DefaultAttackArt(relikario);
+        return cards.Select(id => id == CardCatalog.Attack.Id ||
+            (CardCatalog.All.TryGetValue(id, out var card) && IsAttack(card) && !Compatible(card, relikario))
+            ? defaultAttack : id).ToList();
+    }
+
     /// <summary>Whether a card may wait in the side deck: anything but an Attack.</summary>
     public static bool AllowedInSide(CardDefinition card) => !IsAttack(card);
 

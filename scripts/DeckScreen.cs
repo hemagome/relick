@@ -107,7 +107,8 @@ public partial class DeckScreen : Control
             delete: null);
         foreach (var deck in decks)
         {
-            var problems = DeckRules.Validate(deck.Relikario, deck.Cards, deck.Traps, deck.Side);
+            var cards = DeckRules.NormalizeAttackArt(deck.Relikario, deck.Cards);
+            var problems = DeckRules.Validate(deck.Relikario, cards, deck.Traps, deck.Side);
             var saved = deck;
             AddRow("Deck" + deck.Id, deck.Relikario, deck.Name, problems.FirstOrDefault(), deck.Active, busy,
                 use: () => Connection.SetActiveDeck(saved.Id),
@@ -214,7 +215,7 @@ public partial class DeckScreen : Control
         Clear();
         Picker = new RelikarioPicker { ShortScreen = ShortScreen };
         Picker.Closed += ShowList;
-        Picker.Chosen += relikario => Edit(0, "Mazo nuevo", Enumerable.Repeat(CardCatalog.Attack.Id, DeckRules.AttackCount).ToList(), [], relikario: relikario);
+        Picker.Chosen += relikario => Edit(0, "Mazo nuevo", Enumerable.Repeat(DeckRules.DefaultAttackArt(relikario), DeckRules.AttackCount).ToList(), [], relikario: relikario);
         _margin.AddChild(Picker);
     }
 

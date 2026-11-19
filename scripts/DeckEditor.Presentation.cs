@@ -340,7 +340,9 @@ public partial class DeckEditor
         _catalogGrid = Grid(gallery, "CatalogCards", 3);
         _catalogEmpty = Wrapped(gallery, "CatalogEmpty", ShortScreen ? 12 : 14, BoardArt.Muted);
         _catalogEmpty.Text = "No hay cartas que coincidan.";
-        foreach (var card in OrderedCards.Where(card => DeckRules.Compatible(card, Relikario)))
+        var defaultAttack = DeckRules.DefaultAttackArt(Relikario);
+        foreach (var card in OrderedCards.Where(card => DeckRules.Compatible(card, Relikario) &&
+            (card.Id != CardCatalog.Attack.Id || card.Id == defaultAttack)))
         {
             var tile = CreateTile(card, "Catalog_" + card.Id, _catalogScale, fromCatalog: true);
             _catalog.Add(card.Id, tile);
