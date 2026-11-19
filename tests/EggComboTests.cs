@@ -94,6 +94,16 @@ static class EggComboTests
             Check(g.ResolveRecycling(1, [0]).Success && (g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm));
             Check(g.ResolveBlueEggDraw(0, true).Success && p.Relikia == 0 && p.Hand.Count == 1 && g.State.Phase == Phase.Actions);
         }),
+        ("Huevo: un Área que repone el Bonus a mitad de partida queda como Bonus, sin activarse", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Active; var rival = g.State.Players[1];
+            g.State.Phase = Phase.Actions; p.Hand[0] = CardCatalog.BlueEgg.Id; p.Relikia = 0;
+            rival.Bonus = CardCatalog.Senshuni.Id;
+            rival.Deck.Insert(0, CardCatalog.EquipmentRaid.Id);
+            Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 1, FieldZone.Bonus).Success);
+            Check(rival.Bonus == CardCatalog.EquipmentRaid.Id && rival.Area == null && !rival.InitialAreaWaitingInBonus &&
+                g.State.Phase == Phase.Actions && rival.AreaSideA == null);
+        }),
         ("Huevo: robar la última carta abre el reciclaje y cobra una sola vez", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active;
