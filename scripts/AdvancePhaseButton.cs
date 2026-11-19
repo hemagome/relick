@@ -8,13 +8,11 @@ public partial class AdvancePhaseButton : Button
 {
     private StageAppearance _destination = StageAppearance.For(Phase.Final);
 
+    /// <summary>Lit with the same steady yellow as an activatable card when advancing is the only move left.</summary>
     public bool Inviting { get; private set; }
-    internal double PulseTime { get; private set; }
-    internal float PulseOpacity => 0.35f + 0.55f * (0.5f + 0.5f * Mathf.Sin((float)PulseTime * Mathf.Tau / 1.8f));
 
     public override void _Ready()
     {
-        SetProcess(false);
         VisibilityChanged += () => { if (!IsVisibleInTree()) SetInvitation(false); };
     }
 
@@ -55,28 +53,17 @@ public partial class AdvancePhaseButton : Button
     {
         inviting &= !Disabled && IsVisibleInTree();
         if (Inviting == inviting) return;
-        Inviting = inviting; PulseTime = 0;
-        SetProcess(inviting); QueueRedraw();
-    }
-
-    public override void _Process(double delta)
-    {
-        if (Disabled || !IsVisibleInTree()) { SetInvitation(false); return; }
-        PulseTime = (PulseTime + Math.Max(0, delta)) % 1.8;
-        QueueRedraw();
+        Inviting = inviting; QueueRedraw();
     }
 
     public override void _Draw()
     {
         var accent = Disabled ? BoardArt.Muted : _destination.Accent;
         var centerY = Size.Y / 2;
-        // The invitation breathes around the whole control; its hit area never moves.
-        if (Inviting) RelickVisuals.Shadow(this, new Rect2(Vector2.Zero, Size).Grow(-2), BoardArt.Tint(accent, 0.15f + 0.45f * PulseOpacity), 12, 6);
+        // The invitation reuses the activatable-card light around the whole control; its hit area never moves.
+        if (Inviting && !Disabled) RelickVisuals.Playable(this, new Rect2(Vector2.Zero, Size));
         BoardArt.Icon(this, _destination.Icon, new(20, centerY), 19, accent);
         var right = Size.X - 15;
         DrawPolyline([new(right - 3, centerY - 5), new(right + 2, centerY), new(right - 3, centerY + 5)], accent, 2, true);
-        if (!Inviting) return;
-        var start = new Vector2(10, Size.Y - 5);
-        DrawLine(start, new(Size.X - 10, start.Y), BoardArt.Tint(accent.Lightened(0.45f), PulseOpacity), 2, true);
     }
 }

@@ -190,7 +190,7 @@ El aviso central da la instrucción de descartes, objetivos, respuestas y dados.
 
 `ArenaGuidance.SuggestAdvance` consulta todas las opciones del snapshot, independientemente de la carta seleccionada. Solo sugiere avanzar al jugador de turno que debe decidir, en robo, combate, acciones o final, si existe `Advance` y las únicas otras opciones son abandonar. Un COMBO legal, evolución, aprendizaje, Bonus/canje o Relikia impiden la sugerencia. Un COMBO sin sus condiciones cumplidas no la impide.
 
-`AdvancePhaseButton` invita con un pulso dorado de 1,8 segundos, sin mover ni escalar el objetivo táctil. Se detiene al enviar, desconectar, ocultar el control, entrar en una resolución o recuperar una jugada disponible; fuera de la invitación no procesa fotogramas. El botón conserva el destino y el índice del servidor, incluyendo fases repetidas. Avanzar siempre requiere pulsarlo.
+`AdvancePhaseButton` invita con el mismo brillo amarillo fijo de las cartas activables (`RelickVisuals.Playable`) cuando avanzar es la única jugada autorizada en tu turno, sin mover ni escalar el objetivo táctil. Se apaga al enviar, desconectar, ocultar el control, entrar en una resolución o recuperar una jugada disponible. El botón conserva el destino y el índice del servidor, incluyendo fases repetidas. Avanzar siempre requiere pulsarlo.
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. Con `--ui-screenshot-dir=/tmp/relick-guidance` y renderizado habilitado genera capturas de la invitación en cuatro resoluciones.
 

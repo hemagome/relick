@@ -86,12 +86,10 @@ public partial class OnlineArena
                     var button = _advanceButton!; var rect = button.GetGlobalRect();
                     Check(PresentedOption(button)?.Move.Kind == DuelMoveKind.Advance && button.Text == "Ir a acciones", "La invitación cambia el destino o el índice autorizado.");
                     button.Disabled = false; RefreshAdvanceInvitation(false);
-                    Check(button.Inviting && button.IsProcessing(), "No comienza el pulso al agotarse las jugadas.");
-                    var alpha = button.PulseOpacity; button._Process(0.3);
-                    Check(button.PulseOpacity != alpha && button.GetGlobalRect() == rect, "El pulso no avanza o desplaza el objetivo táctil.");
+                    Check(button.Inviting && button.GetGlobalRect() == rect, "No se ilumina el avance al agotarse las jugadas o se desplaza el objetivo táctil.");
                     if (actor == 0 && seat == 0) await Capture($"advance-invitation-{size.X}x{size.Y}");
                     RefreshAdvanceInvitation(true);
-                    Check(!button.Inviting && !button.IsProcessing(), "El pulso continúa durante un bloqueo.");
+                    Check(!button.Inviting, "El brillo del avance continúa durante un bloqueo.");
                     button.Disabled = false; RefreshAdvanceInvitation(false); _lastDisabled = null; UpdateEnabled();
                     Check(!button.Inviting && button.Disabled, "La desconexión mantiene la invitación o permite avanzar.");
                     SelectCard(0);
@@ -129,9 +127,24 @@ public partial class OnlineArena
                             textWidth + frame.ContentMarginLeft + frame.ContentMarginRight <= nextButton.Size.X,
                             $"El avance pierde su posición o el color de destino para {phase} en {size}.");
                     }
+                    // The yellow light of an activatable card marks the advance only while it is the sole move left.
+                    async Task<bool> Lit(GameEngine state, ulong version)
+                    {
+                        PresentTestSnapshot(DuelSnapshot.For(state, seat, version)); await Layout();
+                        _advanceButton!.Disabled = false; RefreshAdvanceInvitation(false);
+                        return _advanceButton.Inviting;
+                    }
+                    var exhausted = Fixture(actor); exhausted.State.Phase = Phase.Actions; exhausted.State.Active.ActionsLeft = 0;
+                    Check(await Lit(exhausted, 603), $"No brilla el avance al gastar las acciones en {size}.");
+                    var combo = Fixture(actor); combo.State.Active.Hand.Add(CardCatalog.PlumberStar.Id);
+                    Check(!await Lit(combo, 604), $"El avance sigue brillando con un COMBO disponible en {size}.");
+                    var learn = Fixture(actor); learn.State.LearnedThisTurn = false; learn.State.Active.Relikia = 500;
+                    Check(!await Lit(learn, 605), $"El avance sigue brillando con una habilidad por enseñar en {size}.");
+                    Check(await Lit(Fixture(actor), 606), $"No brilla el avance tras atacar sin más jugadas en {size}.");
+                    _lastDisabled = null; UpdateEnabled();
                 }
                 else await CheckSilentInspection();
-                Check(game.SaveSnapshot() == before, "El pulso o la consulta ejecutan una jugada automáticamente.");
+                Check(game.SaveSnapshot() == before, "El brillo o la consulta ejecutan una jugada automáticamente.");
                 var minimum = _root!.GetCombinedMinimumSize();
                 Check(minimum.X <= Size.X + 1 && minimum.Y <= Size.Y + 1, $"Las instrucciones desbordan {size}: {minimum}.");
             }
@@ -144,6 +157,6 @@ public partial class OnlineArena
                 Check(ArenaGuidance.NextStep(DuelSnapshot.For(game, actor, 602)).StartsWith("Repite"), "Se promete otra fase cuando toca repetirla.");
             }
         }
-        GD.Print("PVP_DECISION_GUIDANCE_PASS · jugadas legales completas, combos condicionales, respuestas, descartes, bloqueo, pulso sin desplazamiento ni autoavance, cuatro tamaños y ambos asientos.");
+        GD.Print("PVP_DECISION_GUIDANCE_PASS · jugadas legales completas, combos condicionales, respuestas, descartes, bloqueo, brillo amarillo que se apaga con otra jugada, sin desplazamiento ni autoavance, cuatro tamaños y ambos asientos.");
     }
 }
