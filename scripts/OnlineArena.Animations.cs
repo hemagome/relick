@@ -21,6 +21,8 @@ public partial class OnlineArena
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
     // Cosmetic only: the amounts come from the same authorized cues that move the portraits.
     private readonly List<(int Player, int Amount, bool Critical)> _pendingImpacts = [];
+    /// <summary>Guards wait, like hits, for an attack already in flight to land on the defender.</summary>
+    private readonly List<DuelVisualEvent> _pendingGuards = [];
     private Control? _flight;
     // Mirrored flight for the other player (Cartucho de Re-carga): it starts and lands with the primary one.
     private sealed record Companion(Flight Flight, Control Node, HandCard? Front, TextureRect Back, Control? Target, Rect2 Source, Rect2 Destination);
@@ -346,11 +348,14 @@ public partial class OnlineArena
                 case DuelVisualKind.Attack: _pendingPortraits.Add((cue.Player, PortraitMotion.Attack)); break;
                 case DuelVisualKind.Hit:
                     if (cue.Value > 0) _pendingImpacts.Add((cue.Player, -cue.Value, cue.AttackDie == 6 && !cue.NormalFromMiss));
-                    _pendingPortraits.Add((cue.Player, cue.NormalFromMiss ? PortraitMotion.HitNormal : cue.AttackDie switch
+                    // A blow a card has just lowered lands softly.
+                    var softened = events.Any(e => e.Kind == DuelVisualKind.Guard && e.Player == cue.Player && !e.Blocked);
+                    _pendingPortraits.Add((cue.Player, softened ? PortraitMotion.Hit : cue.NormalFromMiss ? PortraitMotion.HitNormal : cue.AttackDie switch
                     {
                         5 => PortraitMotion.HitNormal, 6 => PortraitMotion.HitCritical, _ => PortraitMotion.Hit
                     }));
                     break;
+                case DuelVisualKind.Guard: _pendingGuards.Add(cue); break;
                 case DuelVisualKind.Heal when cue.Value > 0:
                     _pendingImpacts.Add((cue.Player, cue.Value, false));
                     _pendingPortraits.Add((cue.Player, PortraitMotion.Heal)); break;
@@ -453,6 +458,7 @@ public partial class OnlineArena
         }
         // Numbers read the portrait rectangle after the rebuilt board has been laid out.
         if (_flightLayoutFrames > 0) return;
+        PlayPendingGuards();
         for (var i = 0; i < _pendingImpacts.Count;)
         {
             var (player, amount, critical) = _pendingImpacts[i];
@@ -748,7 +754,7 @@ public partial class OnlineArena
         ResetOpeningInitiative();
         _placementDice.Clear(); _queuedPlay = null; FinishSummonedEquipment();
         _handDeparture = null;
-        _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); FinishFlight(); _die.Value = 0;
+        _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); _pendingGuards.Clear(); FinishFlight(); _die.Value = 0;
         _secondDie.Value = 0;
         _secondDie.Hide();
         _impacts.Clear();

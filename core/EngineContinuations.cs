@@ -97,7 +97,7 @@ public sealed partial class GameEngine
             case ContinuationKind.UsePc: FinishPc(next.Actor, next.Value); break;
             case ContinuationKind.BoxDefense:
                 Log($"{p.Name} usa Caja de Cartón y cancela el daño del ataque.");
-                ResolveAttackDamage(true, "Caja de Cartón"); break;
+                ResolveAttackDamage(true, "Caja de Cartón", cardId: CardCatalog.CardboardBox.Id); break;
             case ContinuationKind.BoxCode: FinishBoxCode(next.Actor); break;
             case ContinuationKind.EquipInstall: FinishEquipmentInstall(); break;
             case ContinuationKind.ReplaceEquipment: ReplaceEquipment(next); break;

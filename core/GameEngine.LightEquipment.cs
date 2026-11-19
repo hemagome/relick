@@ -114,6 +114,7 @@ public sealed partial class GameEngine
         else
         {
             amount /= 2;
+            NotifyGuard(hit.Actor, hit.Value > 0 ? 1 - hit.Actor : null, CardCatalog.PurpleRing.Id, hit.Count, amount, blocked: false);
             State.LastCombat += $" · Anillo Morado: {amount} de daño";
             Log($"{State.Players[hit.Actor].Name} reduce el daño de {hit.Count} a {amount} con Anillo Morado.");
         }

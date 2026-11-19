@@ -44,16 +44,20 @@ public sealed partial class GameEngine
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
         Log($"{p.Name} activa Relick Destiny Shuffle (espacio {p.SkillPosition(skillSlot) + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");
-        ResolveAttackDamage(true, deferCompletion: sniperIndices.Count > 0);
+        ResolveAttackDamage(true, deferCompletion: sniperIndices.Count > 0, cardId: p.Skills[skillSlot]);
         BeginSniperChoices(actor, sniperIndices);
         return CommandResult.Ok();
     }
 
-    private void ResolveAttackDamage(bool canceled, string source = "Destiny", bool deferCompletion = false)
+    private void ResolveAttackDamage(bool canceled, string source = "Destiny", bool deferCompletion = false, string? cardId = null)
     {
         var attack = State.PendingAttack!;
         State.Phase = Phase.Combat;
-        if (canceled) State.LastCombat += $" · Daño cancelado por {source}";
+        if (canceled)
+        {
+            State.LastCombat += $" · Daño cancelado por {source}";
+            NotifyGuard(1 - attack.Attacker, attack.Attacker, cardId ?? CardCatalog.Destiny.Id, attack.Damage, 0, blocked: true);
+        }
         // The final attack die survives secondary damage dice and the defense decision.
         else
         {

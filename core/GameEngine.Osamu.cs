@@ -182,13 +182,15 @@ public sealed partial class GameEngine
     private void ResolveTurboSwordDefense(DieEffect effect, int die)
     {
         var p = State.Players[effect.Actor];
-        if (PreventDamageWithStar(p, effect.IncomingDamage, effect.Next)) return;
+        int? attacker = effect.AttackDie > 0 ? 1 - effect.Actor : null;
+        if (PreventDamageWithStar(p, effect.IncomingDamage, effect.Next, attacker)) return;
         var slot = Enumerable.Range(0, p.Skills.Count).FirstOrDefault(i =>
             p.SkillPosition(i) == effect.Slot && p.Skills[i] == CardCatalog.TurboSword.Id && !EffectsSuppressed(effect.Actor, FieldZone.Skill, i), -1);
         if (slot >= 0 && die == 5)
         {
             p.SkillCounters[slot] = p.CountersOnSkill(slot) + 1;
             State.LastCombat += " · Turbo Sword cancela el daño";
+            NotifyGuard(effect.Actor, attacker, CardCatalog.TurboSword.Id, effect.IncomingDamage, 0, blocked: true);
             Log($"{p.Name} cancela {effect.IncomingDamage} de daño con {CardCatalog.TurboSword.Name} y coloca un contador sobre esa copia.");
             Continue(effect.Next);
         }

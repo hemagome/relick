@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer, DieAdjustment, MemoryClaim, HandDiscard, HandSteal, Chain }
+public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer, DieAdjustment, MemoryClaim, HandDiscard, HandSteal, Chain, Guard }
 
 // Public presentation cues for ONE accepted revision. Never include card identities,
 // deck order, random tapes or hidden state. Clients discard cues on recovery/gaps.
@@ -30,6 +30,16 @@ public sealed class DuelVisualEvent
     // publicly (DuelResolutionView), so this repeats no hidden identity; it only adds which links ended canceled.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public List<PublicChainLink>? Chain { get; set; }
+    // Guard cues only: Player is the defender, Value the damage that still gets through and Original the damage before
+    // the public card in GuardCard lowered it (or stopped it, when Blocked). Attacker is set for attack damage.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? GuardCard { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int Original { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Blocked { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? Attacker { get; set; }
 }
 
 public static class DuelVisualEvents
@@ -71,6 +81,9 @@ public static class DuelVisualEvents
             Source = movement.Source, Destination = movement.Destination, Value = movement.Index, ToRivalMemory = movement.ToRivalMemory,
             DestinationPlayer = movement.DestinationPlayer ?? (movement.Destination == CardZone.Corrupted &&
                 movement.MemoryOwner >= 0 && movement.MemoryOwner != movement.Owner ? movement.MemoryOwner : null) });
+        game.DamageGuarded += guard => events.Add(new()
+            { Kind = DuelVisualKind.Guard, Player = guard.Defender, Value = guard.Final, Original = guard.Original,
+                GuardCard = guard.CardId, Blocked = guard.Blocked, Attacker = guard.Attacker });
         game.ChainResolved += chain => events.Add(new()
             { Kind = DuelVisualKind.Chain, Player = chain[0].Actor, Value = chain.Count, Chain = chain });
         return events;

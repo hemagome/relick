@@ -112,7 +112,7 @@ public partial class ImpactLayer : Control
     internal Rect2? SummonTarget => _summon?.To;
     internal Vector2? SummonMeet => _summon?.Meet;
     internal int SummonEchoes => _summon?.Ingredients.Length ?? 0;
-    internal int ActiveCount => _numbers.Count + _rings.Count + _projectiles.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0) + (_summon != null ? 1 : 0);
+    internal int ActiveCount => _numbers.Count + _rings.Count + _projectiles.Count + (_flash < FlashSeconds ? 1 : 0) + (_card != null ? 1 : 0) + (_summon != null ? 1 : 0) + _guards.Count;
     internal Vector2? LastNumberAt => _numbers.Count == 0 ? null : _numbers[^1].At;
 
     public override void _Ready()
@@ -179,7 +179,7 @@ public partial class ImpactLayer : Control
 
     internal void Clear()
     {
-        _numbers.Clear(); _rings.Clear(); _projectiles.Clear(); _flash = FlashSeconds; _card = null; _summon = null;
+        _numbers.Clear(); _rings.Clear(); _projectiles.Clear(); _guards.Clear(); _flash = FlashSeconds; _card = null; _summon = null;
         SetProcess(false); QueueRedraw();
     }
 
@@ -201,6 +201,7 @@ public partial class ImpactLayer : Control
             var projectile = _projectiles[i]; projectile.Age += step;
             if (projectile.Age >= projectile.Release + projectile.Travel) _projectiles.RemoveAt(i);
         }
+        AgeGuards(step);
         if (_flash < FlashSeconds) _flash = Math.Min(FlashSeconds, _flash + step);
         if (_card is { } card) _card = card.Age + step >= CardSeconds ? null : card with { Age = card.Age + step };
         if (_summon is { } summon) { summon.Age += step; if (summon.Age >= summon.Duration) _summon = null; }
@@ -300,6 +301,7 @@ public partial class ImpactLayer : Control
             BoardArt.Outline(this, rect, BoardArt.Tint(played.Accent, alpha), 8, 2);
         }
         foreach (var projectile in _projectiles) DrawProjectile(projectile, origin);
+        DrawGuards(origin);
         foreach (var (rect, color, age) in _rings)
         {
             var t = (float)(age / RingSeconds);

@@ -167,6 +167,7 @@ public sealed partial class GameEngine
         public void NegatePendingAttack()
         {
             var attack = State.PendingAttack!; var attacker = State.Players[attack.Attacker];
+            _engine.NotifyGuard(Actor, attack.Attacker, Card.Id, attack.Damage, 0, blocked: true);
             if (!attack.RewardPending) attacker.Relikia = Math.Max(0, attacker.Relikia - CardCatalog.Get(attack.SkillId).Reward);
             State.PendingAttack = null; State.Phase = Phase.Combat;
         }

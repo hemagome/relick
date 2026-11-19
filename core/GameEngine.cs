@@ -435,11 +435,13 @@ public sealed partial class GameEngine
             Log($"Estrella del Fontanero aumenta el daño de {State.Players[owner].Name} de {original} a {amount}.");
             State.LastCombat += $" · Estrella del Fontanero: {amount} de daño";
         }
-        if (PreventDamageWithStar(p, amount, completed)) return;
+        int? attacker = attackDie > 0 ? source : null;
+        if (PreventDamageWithStar(p, amount, completed, attacker)) return;
         var protection = ActiveEquipment(target);
         if (protection != null && (protection.PreventDamage || protection.DamageReduction > 0))
         {
             var reduced = protection.PreventDamage ? 0 : Math.Max(0, amount - protection.DamageReduction);
+            NotifyGuard(target, attacker, protection.Id, amount, reduced, blocked: protection.PreventDamage);
             Log($"{p.Name} reduce el daño de {amount} a {reduced} con {protection.Name}.");
             State.LastCombat += $" · {protection.Name}: {reduced} daño recibido";
             amount = reduced;
@@ -449,9 +451,10 @@ public sealed partial class GameEngine
             ApplyIncomingDamage(target, amount, attackDie, completed);
     }
 
-    private bool PreventDamageWithStar(PlayerState player, int amount, EngineContinuation? completed)
+    private bool PreventDamageWithStar(PlayerState player, int amount, EngineContinuation? completed, int? attacker = null)
     {
         if (player.StarEffects == 0) return false;
+        NotifyGuard(Seat(player), attacker, CardCatalog.PlumberStar.Id, amount, 0, blocked: true);
         Log($"{player.Name} transforma {amount} de daño en 0 con Estrella del Fontanero.");
         State.LastCombat += " · Estrella del Fontanero: 0 daño recibido";
         Continue(completed);
