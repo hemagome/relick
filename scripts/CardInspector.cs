@@ -10,6 +10,7 @@ internal static class CardInspectorText
     {
         var type = card.Kind switch
         {
+            CardKind.Skill when card.Special => "Habilidad especial · Universal",
             CardKind.Skill => RelikarioCatalog.Find(card.Relikario) is { } affinity ? $"Habilidad · {affinity.DisplayName}" : "Habilidad",
             CardKind.Code => card.CodeType switch
             {

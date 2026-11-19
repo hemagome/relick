@@ -45,6 +45,24 @@ static class VictoriousManualControlTests
                 p.CorruptsOnMemory(CardZone.Skill, 0) && game.State.Players[1].ZahiraHost == zahira &&
                 p.Relikia == 0 && !game.State.LearnedThisTurn, "Mover la misma copia conserva su estado y no equivale a enseñarla.");
         }),
+        ("Control Manual: mover Over al espacio de 1000 PR completa la victoria", () =>
+        {
+            foreach (var source in new[] { FieldZone.Bonus, FieldZone.Skill })
+            {
+                var (game, _) = Fixture();
+                var p = game.State.Active;
+                p.Skills.Add(CardCatalog.Game.Id);
+                p.SkillPositions = new() { [0] = 2 };
+                if (source == FieldZone.Bonus) p.Bonus = CardCatalog.Over.Id;
+                else p.Skills.Add(CardCatalog.Over.Id);
+                Check(game.PlayCode(0, 0).Success, "El Código puede mover Over.");
+                Source(game, source, source == FieldZone.Bonus ? -1 : 1);
+                Destination(game, "Habilidad 4");
+                Check(p.SkillPosition(1) == 3 && p.Skills[1] == CardCatalog.Over.Id && p.Health == 7 && p.Relikia == 0 &&
+                    game.State.Winner == 0 && game.State.Phase == Phase.Finished,
+                    "La condición depende del espacio final, sin pagar PR ni volver a enseñar.");
+            }
+        }),
         ("Control Manual: conserva el dueño, el dado y la marca de un equipo movido a canje y de vuelta", () =>
         {
             var (game, random) = Fixture();

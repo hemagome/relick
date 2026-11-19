@@ -159,6 +159,7 @@ public sealed partial class GameEngine
         }
         State.LearnedThisTurn = true;
         Log($"{p.Name} enseña {CardCatalog.Get(id).Name} ({cost} PR).");
+        if (TryFinishWithGameOver()) return CommandResult.Ok();
         if (CardCatalog.Get(id).DrawOnExpensiveLearn && cost is 500 or 1000)
             RollWithRelikario(p, DiePurpose.SkillLearning, new DieEffect { Purpose = DiePurpose.SkillLearning, Actor = actor });
         if (id == CardCatalog.TurboOverlap.Id)

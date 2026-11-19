@@ -4,6 +4,35 @@ public sealed partial class GameEngine
 {
     public int DefenseDiscardCost => State.PendingAttack?.Critical == true ? 4 : 3;
 
+    private bool TryFinishWithGameOver()
+    {
+        if (State.IsOver) return false;
+        // The non-active player's effect is added last and resolves first if both trigger together.
+        var active = State.CurrentPlayer;
+        int winner;
+        if (HasGameOverSkills(1 - active)) winner = 1 - active;
+        else if (HasGameOverSkills(active)) winner = active;
+        else return false;
+        Finish(winner, $"{State.Players[winner].Name} gana con Game en 500 PR y Over en 1000 PR.");
+        return true;
+    }
+
+    private bool HasGameOverSkills(int owner)
+    {
+        var player = State.Players[owner];
+        if (player.Skills.Count < 2) return false;
+        var hasGame = false;
+        var hasOver = false;
+        for (var index = 0; index < player.Skills.Count; index++)
+        {
+            var cost = SkillSlotCosts[player.SkillPosition(index)];
+            var id = player.Skills[index];
+            if (cost == 500 && id == CardCatalog.Game.Id) hasGame = true;
+            if (cost == 1000 && id == CardCatalog.Over.Id && !EffectsSuppressed(owner, FieldZone.Skill, index)) hasOver = true;
+        }
+        return hasGame && hasOver;
+    }
+
     public IEnumerable<int> AvailableDefenses(int actor)
     {
         if (actor < 0 || actor >= State.Players.Length) return Array.Empty<int>();

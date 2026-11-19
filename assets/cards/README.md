@@ -1,5 +1,22 @@
 # Cartas
 
+## Game y Over
+
+`game-clean.png` (LR-65/82) y `over-clean.png` (LR-64/82) se restauraron con
+`image_gen` a 1492 × 1054. Son habilidades S para cualquier Relikario. Ambas
+tienen 0 de daño normal y crítico, y dan 500 PR por un ataque exitoso. Over
+da la victoria cuando está activa en el espacio de 1000 PR y Game ocupa el de
+500 PR en el mismo campo. [Reglamento oficial, §§ 1.4 y 4.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompts de restauración</summary>
+
+> Restore the attached GAME card image as a precise retouch of the existing user-provided image. Remove only the repeated translucent diagonal word RELICK overlay throughout the background, over the letters and lower text panel. Preserve exact full landscape 987:697 card geometry, margins, dark gray and silver background, beveled orange-yellow arcade GAME lettering, both S icons, and every other printed element. Preserve precisely GAME (both placements), HABILIDAD, DAÑO NORMAL 0, DAÑO CRÍTICO 0, PREMIO 500 PR, LR-65/82, © 2018 FG. The lower white effect panel must remain blank. Flat edge-to-edge scan, no crop, no new borders, no redesign.
+
+> Restore the attached OVER card image as a precise retouch of the existing user-provided image. Remove only the repeated translucent diagonal word RELICK overlay throughout the background, over the letters and lower text panel. Preserve the exact full landscape 987:697 card geometry, margins, dark gray and silver background, beveled orange-yellow arcade OVER lettering, both S icons, and all other printed elements. Preserve precisely OVER (both placements), HABILIDAD, DAÑO NORMAL 0, DAÑO CRÍTICO 0, PREMIO 500 PR, LR-64/82, © 2018 FG. Preserve this Spanish rule on the lower panel verbatim, with the condition in red and result in black: «SI LA HABILIDAD EN TU ZONA DE HABILIDADES DE 500PR ES “GAME” Y ESTA CARTA ESTÁ EN TU ZONA DE HABILIDADES DE 1.000PR: GANAS EL JUEGO.» Flat edge-to-edge scan, no crop, no new borders, no redesign.
+
+</details>
+
 ## Púa del Destino
 
 `pua-del-destino-clean.png` restaura la carta BJ95-7/15 con `image_gen`.

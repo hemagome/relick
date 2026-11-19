@@ -60,6 +60,7 @@ public sealed partial class GameEngine
         if (source.Zone == FieldZone.Skill && destination.Zone == FieldZone.Skill)
         {
             (p.SkillPositions ??= [])[source.Index] = destination.Index;
+            TryFinishWithGameOver();
             return;
         }
 
@@ -89,6 +90,7 @@ public sealed partial class GameEngine
                 (p.SkillPositions ??= [])[destinationIndex] = destination.Index;
                 if (state?.Counters > 0) p.SkillCounters[destinationIndex] = state.Counters;
                 p.Skills.Add(id);
+                if (TryFinishWithGameOver()) return;
                 break;
             case FieldZone.Equipment:
                 p.Equipment = id;

@@ -151,6 +151,10 @@ public static class CardCatalog
     public static readonly CardDefinition TurboOverlap = new("turbo-overlap", "Relick Turbo Overlap", CardKind.Skill,
         "Al enseñar esta carta o realizar un crítico con ella, añade una Agilidad al 100% de tu mazo o memoria a tu mano.",
         NormalDamage: 3, Reward: 300, Relikario: RelikarioCatalog.Osamu.Id);
+    public static readonly CardDefinition Game = new("game", "Game", CardKind.Skill, "", Reward: 500, Special: true);
+    public static readonly CardDefinition Over = new("over", "Over", CardKind.Skill,
+        "Si Game está en tu espacio de habilidad de 500 PR y esta carta está en tu espacio de habilidad de 1000 PR, ganas el juego.",
+        Reward: 500, Special: true);
     public static readonly CardDefinition Senshuni = new("senshuni", "Senshuni", CardKind.Code,
         "Roba 2 cartas.", Draw: 2, CodeType: CodeType.Character);
     public static readonly CardDefinition Pendant = new("lucky-pendant", "Colgante de la Suerte", CardKind.Equipment,
@@ -177,7 +181,7 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 

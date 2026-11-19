@@ -77,7 +77,10 @@ public sealed partial class GameEngine
                 SendToMemory(p, target.CardId, CardZone.LightEquipment, target.Index);
                 RemoveLightEquipment(p, target.Index);
                 return;
-            case FieldZone.Zahira: RemoveZahira(target.Owner, ZahiraSlot(target.Index)); return;
+            case FieldZone.Zahira:
+                RemoveZahira(target.Owner, ZahiraSlot(target.Index));
+                TryFinishWithGameOver();
+                return;
             case FieldZone.GalacticShield: RemoveGalacticShield(target.Owner, target.Index); return;
             case FieldZone.EquipmentCover:
                 ChangeZahiraHosts(target.Owner, target.Zone, target.Index);

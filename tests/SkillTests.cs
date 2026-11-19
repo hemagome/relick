@@ -109,6 +109,90 @@ static class SkillTests
             Check(g.ResolveDefense(1, 0, new[] { 0, 1, 2, 3 }).Success);
             Check(defender.Health == 8 && g.State.Phase == Phase.MagnetChoice);
             Check(g.ResolveMagnet(0, false, 0).Success && defender.Hand.Count == 0);
+        }),
+        ("Game y Over: habilidades S legales para todos los Relikarios y elegibles en la apertura", () =>
+        {
+            foreach (var relikario in RelikarioCatalog.Playable)
+            {
+                var specific = CardCatalog.All.Values.First(c => c.Kind == CardKind.Skill && c.Relikario == relikario.Id);
+                var deck = CardCatalog.TrainingDeck().Where(id => CardCatalog.Get(id).Kind != CardKind.Skill)
+                    .Concat([specific.Id, CardCatalog.Game.Id, CardCatalog.Over.Id]).ToList();
+                Check(DeckRules.Validate(relikario.Id, deck, []).Count == 0);
+                foreach (var skill in new[] { CardCatalog.Game, CardCatalog.Over })
+                {
+                    var game = new GameEngine(new ScriptedRandom());
+                    var player = game.State.Players[0];
+                    player.Relikario = relikario;
+                    player.Deck = [.. deck];
+                    Check(skill.Special && game.InitialSkillsFor(0).Contains(skill.Id));
+                    Check(game.ChooseInitialSkill(0, skill.Id).Success && player.Hand.Count == 5 && player.Hand.Contains(skill.Id));
+                }
+            }
+        }),
+        ("Game y Over: un ataque acertado da 500 PR con daño base cero", () =>
+        {
+            foreach (var skill in new[] { CardCatalog.Game, CardCatalog.Over })
+            foreach (var die in new[] { 1, 4, 5, 6 })
+            {
+                var (game, random) = Fixture(skill.Id);
+                var rival = game.State.Players[1];
+                var health = rival.Health;
+                random.EnqueueDie(die);
+                Check(AttackKeepingRoll(game, 0, 0, 0).Success);
+                Check(rival.Health == health && game.State.Active.Relikia == (die >= 4 ? 500 : 0) && !game.State.IsOver);
+            }
+        }),
+        ("Game y Over: victoria en los espacios correctos y resultado público que persiste", () =>
+        {
+            foreach (var (gameAt, lessonAt, wins) in new[] { (2, 3, true), (3, 2, false), (1, 3, false) })
+            {
+                var (game, random) = Fixture(CardCatalog.Magnet.Id);
+                var player = game.State.Active;
+                player.Skills.AddRange([CardCatalog.Game.Id, CardCatalog.Destiny.Id]);
+                player.SkillPositions = new() { [1] = gameAt, [2] = gameAt == 1 ? 2 : 1 };
+                player.Hand[0] = CardCatalog.Over.Id;
+                player.Relikia = GameEngine.SkillSlotCosts[lessonAt];
+                var learn = DuelOptions.For(game, 0).Single(o => o.Move.Kind == DuelMoveKind.Learn);
+                Check(learn.Move.Apply(game, 0).Success && player.SkillPosition(3) == lessonAt && player.Relikia == 0);
+                if (!wins) { Check(!game.State.IsOver); continue; }
+                var restored = GameEngine.FromSnapshot(game.SaveSnapshot(false), random);
+                foreach (var viewer in new[] { 0, 1 })
+                {
+                    var view = DuelSnapshot.For(restored, viewer, 1);
+                    Check(view.Winner == 0 && view.EndReason?.Contains("Game en 500 PR y Over en 1000 PR") == true);
+                }
+                Check(restored.State.Phase == Phase.Finished && DuelOptions.For(restored, 0).Count == 0);
+            }
+        }),
+        ("Game y Over: Over suspendida por Zahira gana en cuanto se libera", () =>
+        {
+            var (game, random) = Fixture(CardCatalog.Magnet.Id);
+            var player = game.State.Active;
+            player.Skills.AddRange([CardCatalog.Destiny.Id, CardCatalog.Over.Id]);
+            player.SkillPositions = new() { [2] = 3 };
+            game.State.Players[1].ZahiraHost = new(0, FieldZone.Skill, 2, CardCatalog.Over.Id);
+            player.Hand[0] = CardCatalog.Game.Id;
+            player.Relikia = 500;
+            Check(game.Learn(0, 0).Success && !game.State.IsOver && player.SkillPosition(3) == 2);
+            Check(game.Advance(0).Success);
+            random.EnqueueDie(1);
+            Check(game.Advance(0).Success && game.State.Phase == Phase.Finished && game.State.Winner == 0 && game.State.Turn == 2);
+        }),
+        ("Game y Over: si ambas Over se liberan a la vez, resuelve primero la del jugador en espera", () =>
+        {
+            var (game, random) = Fixture(CardCatalog.Game.Id);
+            for (var seat = 0; seat < 2; seat++)
+            {
+                var player = game.State.Players[seat];
+                player.Skills = [CardCatalog.Game.Id, CardCatalog.Over.Id];
+                player.SkillPositions = new() { [0] = 2, [1] = 3 };
+                player.ZahiraHost = new(1 - seat, FieldZone.Skill, 1, CardCatalog.Over.Id);
+                player.Dexterity = 0;
+            }
+            game.State.Phase = Phase.Actions;
+            random.EnqueueDie(3);
+            Check(game.Advance(0).Success && game.State.Phase == Phase.ZahiraTarget);
+            Check(game.ResolveZahiraTarget(1, 0, FieldZone.Zahira, -1).Success && game.State.Phase == Phase.Finished && game.State.Winner == 1);
         })
     };
 

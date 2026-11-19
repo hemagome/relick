@@ -109,7 +109,7 @@ public sealed partial class GameEngine
         }
         else State.LastCombat += next.Flag ? " · Zahira Flair queda fuera del juego." : " · Zahira Flair sigue en su carta.";
         Log(State.LastCombat);
-        CompletePendingPlay();
+        if (!TryFinishWithGameOver()) CompletePendingPlay();
     }
 
     // Each Zahira Flair of the waiting player rolls once per final stage, in the order they were created.
