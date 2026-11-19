@@ -16,10 +16,7 @@ public sealed partial class GameEngine
         switch (decision.Step)
         {
             case RaidSides or RaidOrientMovedArea:
-                return [
-                    new DecisionChoice { Label = "Lado A para mí · Lado B para el rival", Value = decision.Decider, Public = "elige el lado A para sí." },
-                    new DecisionChoice { Label = "Lado B para mí · Lado A para el rival", Value = 1 - decision.Decider, Public = "elige el lado B para sí." }
-                ];
+                return AreaSideChoices(decision.Decider);
             case RaidAttack:
                 return [
                     new DecisionChoice { Label = "Colocar un Ataque debajo de mi Relikario", Value = 1, Primary = true,

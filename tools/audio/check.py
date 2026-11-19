@@ -8,7 +8,8 @@ root = Path(__file__).resolve().parents[2]
 # Beats, tempo and whether the piece loops; these match the .import files.
 music = {"menu": (144, 126, True), "yuno-combat": (192, 160, True), "yuno-climax": (160, 168, True),
          "yuno-to-combat": (8, 160, False), "yuno-to-climax": (8, 168, False),
-         "osamu-combat": (160, 144, True), "osamu-climax": (128, 174, True)}
+         "osamu-combat": (160, 144, True), "osamu-climax": (128, 174, True),
+         "ironwing-combat": (160, 156, True), "ironwing-climax": (144, 180, True)}
 paths = [path for folder in ("music", "sfx") for path in (root / "assets/audio" / folder).iterdir()]
 for path in sorted(paths):
     if path.suffix not in (".wav", ".ogg"):

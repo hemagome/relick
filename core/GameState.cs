@@ -92,6 +92,8 @@ public sealed class PlayerState
     public bool AttackRerollUsedThisTurn { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool RelikarioSearchUsedThisTurn { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HashSet<int>? IronwingFireUsed { get; internal set; }
     [JsonInclude]
     public int ActionsLeft { get; internal set; } = 2;
     [JsonInclude]
@@ -329,9 +331,10 @@ public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, in
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? NormalDamage = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? CriticalDamage = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool IronwingPaid = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, [property: JsonPropertyName("YunoStopped")] bool RerollStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 

@@ -32,7 +32,8 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch, ActivateArea, UsePurpleRing, DestinyPickMemory
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch, ActivateArea, UsePurpleRing, DestinyPickMemory,
+    IronwingDie, IronwingRoll, IronwingFire
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -111,6 +112,9 @@ public sealed class DuelMove
         DuelMoveKind.ComboResponses => game.SetComboResponses(actor, Flag),
         DuelMoveKind.Choose => game.ResolveDecision(actor, Index),
         DuelMoveKind.RelikarioSearch => game.UseOsamuSearch(actor),
+        DuelMoveKind.IronwingDie => game.BoostIronwingDie(actor, Value),
+        DuelMoveKind.IronwingRoll => game.UseIronwingRoll(actor, Index),
+        DuelMoveKind.IronwingFire => game.UseIronwingFire(actor, Index),
         _ => CommandResult.Fail("Jugada desconocida.")
     };
 }

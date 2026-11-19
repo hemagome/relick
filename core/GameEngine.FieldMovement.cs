@@ -1,7 +1,9 @@
 namespace Relick.Core;
 
 public sealed record MovedFieldCardState(int Counters = 0, int StoredDie = 0, int ExpiresOnTurn = 0,
-    int? AreaSide = null, List<ShieldCharge>? ShieldCharges = null, bool Borrowed = false);
+    int? AreaSide = null, List<ShieldCharge>? ShieldCharges = null, bool Borrowed = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int FireUsedOnTurn = 0);
 
 public sealed partial class GameEngine
 {
@@ -89,6 +91,7 @@ public sealed partial class GameEngine
             case FieldZone.Skill:
                 (p.SkillPositions ??= [])[destinationIndex] = destination.Index;
                 if (state?.Counters > 0) p.SkillCounters[destinationIndex] = state.Counters;
+                if (state?.FireUsedOnTurn == State.Turn) (p.IronwingFireUsed ??= []).Add(destinationIndex);
                 p.Skills.Add(id);
                 if (TryFinishWithGameOver()) return;
                 break;
@@ -154,6 +157,7 @@ public sealed partial class GameEngine
         MovedFieldCardState? state = zone switch
         {
             FieldZone.Skill when p.CountersOnSkill(slot) != 0 => new(Counters: p.CountersOnSkill(slot)),
+            FieldZone.Skill when p.IronwingFireUsed?.Contains(slot) == true => new(FireUsedOnTurn: State.Turn),
             FieldZone.Equipment when p.EquipmentCounters != 0 || p.EquipmentDie != 0 || p.EquipmentExpiresAtTurnStart =>
                 new(p.EquipmentCounters, p.EquipmentDie, p.EquipmentExpiresAtTurnStart ? State.Turn + 2 : 0),
             FieldZone.Area when p.AreaSideA != null => new(AreaSide: p.AreaSideA),

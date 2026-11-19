@@ -20,6 +20,11 @@ public static class DuelOptions
             Add(DuelMoveKind.Evolve, $"Evolucionar a {next.DisplayName} Lv {next.Level} · {next.EvolutionCost} PR");
         if (s.DecisionPlayer == actor)
         {
+            foreach (var slot in game.IronwingFireDestructions(actor))
+            {
+                Add(DuelMoveKind.IronwingFire, $"Ironwing Fire · destruir una carta · espacio {p.SkillPosition(slot) + 1}", slot);
+                result[^1].CardId = CardCatalog.IronwingFire.Id;
+            }
             if (s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)
                 for (var i = 0; i < (p.LightEquipment?.Count ?? 0); i++)
                 {
@@ -94,7 +99,8 @@ public static class DuelOptions
                             Add(DuelMoveKind.Learn, $"Enseñar {card.Name} · {game.SkillCost(p)} PR · carta {i + 1}", i);
                         if (card.Kind == CardKind.Attack && game.CanAttack(actor))
                             for (var skill = 0; skill < p.Skills.Count; skill++)
-                                Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {p.SkillPosition(skill) + 1} · carta {i + 1}", i, skill);
+                                if (GameEngine.CanAttackWithTaughtSkill(p, p.Skills[skill]))
+                                    Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {p.SkillPosition(skill) + 1} · carta {i + 1}", i, skill);
                     }
                     Add(DuelMoveKind.Advance, s.ExtraCombatStages > 0 ? "Repetir etapa de combate" : "Ir a acciones");
                     break;
@@ -187,6 +193,11 @@ public static class DuelOptions
                     Add(kind, "Conservar el dado");
                     if (game.CanRerollLearningDie(actor)) Add(DuelMoveKind.LearningDie, $"Relanzar por Reverse Shuffle · {2 - s.PendingDieRoll!.LearningRerolls} restantes");
                     if (game.CanUseDexterity(actor)) Add(DuelMoveKind.Dexterity, "Usar destreza · +1 al dado · 1 ficha");
+                    for (var count = 1; count <= game.IronwingDieCostLimit(actor); count++)
+                    {
+                        var increase = game.IronwingDieIncrease(actor, count);
+                        Add(DuelMoveKind.IronwingDie, $"Ironwing · destruir {count} Ataque(s) · +{increase} al dado", value: count);
+                    }
                     if (game.CanUsePc(actor)) Add(DuelMoveKind.Pc, $"Destruir PC 8BITS · valor guardado {p.EquipmentDie}");
                     if (game.CanUseRelikarioOnPendingDie(actor)) Add(kind, $"Relanzar con {p.Relikario.DisplayName}", flag: true);
                     foreach (var effect in Enum.GetValues<PendantEffect>().Where(e => game.CanUsePendant(actor, e)))
@@ -197,6 +208,11 @@ public static class DuelOptions
                     if (game.CanCancelAttackWithBox(actor)) Add(DuelMoveKind.BoxDefense, "Cancelar daño con Caja de Cartón");
                     foreach (var slot in game.AvailableDefenses(actor))
                         Add(DuelMoveKind.DestinyDefense, $"Defender con Destiny · espacio {p.SkillPosition(slot) + 1} · selecciona {game.DefenseDiscardCost} cartas", slot, discards: game.DefenseDiscardCost);
+                    foreach (var slot in game.IronwingRollDefenses(actor))
+                    {
+                        Add(DuelMoveKind.IronwingRoll, $"Ironwing Roll · destruir {game.IronwingRollCost} Ataques · espacio {p.SkillPosition(slot) + 1}", slot);
+                        result[^1].CardId = CardCatalog.IronwingRoll.Id;
+                    }
                     break;
                 case Phase.MagnetChoice:
                     Add(DuelMoveKind.SkipMagnet, "No tomar ninguna carta");

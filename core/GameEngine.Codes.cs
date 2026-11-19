@@ -194,6 +194,7 @@ public sealed partial class GameEngine
             return;
         }
         var die = attack != null ? RollAttack(out _, "Re-lanza · COMBO", superAttack: attack.SuperAttack) : Roll("Re-lanza · COMBO", roller: actor);
+        die = AdjustBlackHoleDie(actor, effect?.Purpose, die);
         if (attack != null) attack = attack with { Die = die, Modified = true, WasRerolled = true };
         if (effect != null) effect = effect with { Die = die, Modified = true, WasRerolled = true };
         State.PendingAttackRoll = null; State.PendingDieRoll = null; _pendingDieEffect = null;

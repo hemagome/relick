@@ -1,6 +1,6 @@
 # Música adaptativa y efectos
 
-El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. El menú, los temas de Yuno y Osamu y los puentes de Yuno se asignan en `assets/audio/music.tres`. Los cinco efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
+El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la sesión. Usa `AudioStreamInteractive` y el bus independiente `Music`. El menú, los temas de cada Relikario y los puentes de Yuno se asignan en `assets/audio/music.tres`. Los efectos están en `assets/audio/sfx/`. Véase [la procedencia y reproducción de los recursos](../assets/audio/README.md).
 
 ## Estados
 
@@ -24,7 +24,7 @@ Para añadir otro Relikario, agrega dos clips en `music.tres` llamados exactamen
 
 ## Transiciones
 
-Cada pieza tiene su propio compás y tempo. Los temas de Yuno empiezan con un puente de dos compases sobre la dominante. En el combate de Osamu, el clímax entra al siguiente compás con un fundido cruzado de dos pulsos.
+Cada pieza tiene su propio compás y tempo. Los temas de Yuno empiezan con un puente de dos compases sobre la dominante. En los combates de Osamu e Ironwing, el clímax entra al siguiente compás con un fundido cruzado de dos pulsos.
 
 | Pieza | Tempo y compás | Duración |
 | --- | --- | --- |
@@ -35,6 +35,8 @@ Cada pieza tiene su propio compás y tempo. Los temas de Yuno empiezan con un pu
 | ToClimax:yuno | 168 BPM, 8 pulsos y cola | 2,9 s + cola |
 | Combat:osamu | 144 BPM, 4/4, 160 pulsos | 66,7 s |
 | Climax:osamu | 174 BPM, 4/4, 128 pulsos | 44,1 s |
+| Combat:ironwing | 156 BPM, 4/4, 160 pulsos | 61,5 s |
+| Climax:ironwing | 180 BPM, 4/4, 144 pulsos | 48 s |
 
 | Cambio | Salida | Puente | Llegada |
 | --- | --- | --- | --- |

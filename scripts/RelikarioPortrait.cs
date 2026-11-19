@@ -140,7 +140,7 @@ public partial class RelikarioPortrait : Control
             _osamu.Advance(Motion, _elapsed, 0, ReducedMotion, FlipHorizontal);
             return;
         }
-        if (family == RelikarioArt.Ironwing && RelikarioArt.Load(RelikarioId, "sprite") is { } hull)
+        if (family == RelikarioCatalog.Ironwing.Id && RelikarioArt.Load(RelikarioId, "sprite") is { } hull)
         {
             _staticPortrait = null;
             _ironwing = new IronwingPortraitRig(hull);

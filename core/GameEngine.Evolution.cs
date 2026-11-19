@@ -7,11 +7,17 @@ public sealed partial class GameEngine
         if (actor < 0 || actor >= State.Players.Length) return "Jugador inválido.";
         var error = ValidateTurn(actor);
         if (error != null) return error;
-        if (State.Phase is not (Phase.Combat or Phase.Actions)) return "Completa el efecto pendiente antes de evolucionar.";
         var p = State.Players[actor];
+        if (State.Phase is not (Phase.Combat or Phase.Actions) &&
+            !(p.Relikario == RelikarioCatalog.Ironwing && State.Phase is Phase.Draw or Phase.Final))
+            return "Completa el efecto pendiente antes de evolucionar.";
         var next = RelikarioCatalog.EvolutionFor(p.Relikario);
         if (next == null) return "El Relikario ya está en su nivel máximo.";
-        if (next.EvolutionMaxHealth is int maxHealth)
+        if (next == RelikarioCatalog.IronwingLv2)
+        {
+            if (p.Area != CardCatalog.BlackHole.Id) return "Requiere tener Agujero Negro como tu Área activa.";
+        }
+        else if (next.EvolutionMaxHealth is int maxHealth)
         {
             if (p.Health > maxHealth) return $"Requiere tener {maxHealth} vidas o menos.";
         }
@@ -39,12 +45,14 @@ public sealed partial class GameEngine
         Log($"{p.Name} evoluciona a {p.Relikario.Name} Lv {p.Level}: paga {next.EvolutionCost} PR, recupera {p.Health - previousHealth} vida(s), hasta el máximo de {p.MaxHealth} de su nivel 1.");
         if (next == RelikarioCatalog.OsamuLv2 && !EffectsSuppressed(actor, FieldZone.Relikario))
             OfferOsamuSearch(actor, next.Id, OsamuEvolutionSearch);
+        if (next == RelikarioCatalog.IronwingLv2 && !EffectsSuppressed(actor, FieldZone.Relikario))
+            RecoverIronwingAttacks(actor);
         return CommandResult.Ok();
     }
 
     private void RegisterNaturalSix(PlayerState p, int die)
     {
-        if (die != 6 || State.Phase == Phase.Preparation || p.HasNaturalSix || p.Relikario.Family == RelikarioCatalog.Osamu.Id) return;
+        if (die != 6 || State.Phase == Phase.Preparation || p.HasNaturalSix || p.Relikario.Family != RelikarioCatalog.Yuno.Id) return;
         p.HasNaturalSix = true;
         Log($"{p.Name} obtiene un 6 natural: condición de evolución cumplida para esta partida.");
     }
@@ -69,22 +77,26 @@ public sealed partial class GameEngine
             DiePurpose.TurboSwordDefense => "Turbo Sword · Defensa",
             DiePurpose.TurboSwordDamage => "Turbo Sword · Daño",
             DiePurpose.TurboOverlapDamage => $"Turbo Overlap · Dado de daño {(effect.Slot == 0 ? 1 : 2)}",
+            DiePurpose.BlackHole => "Agujero Negro · Dado de Área",
             _ => ""
         };
         var die = rolledDie ?? Roll(caption, roller: actor);
         if (purpose == DiePurpose.TurboOverlapDamage && effect.Slot == 0 && !ReplaySequentialOverlap)
             effect.OverlapSecondDie = Roll("Turbo Overlap · Dados de daño", roller: actor, completesPair: true);
         if (rolledDie.HasValue) CurrentDieCaption = caption;
+        var rolled = die;
+        die = AdjustBlackHoleDie(actor, purpose, rolled);
+        var modified = die != rolled;
         State.LastDie = die;
-        if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || HasComboParry(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
+        if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || HasComboParry(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)) || CanBoostIronwingEffect(actor, die))
         {
             _pendingDieEffect = effect;
-            State.PendingDieRoll = new(actor, purpose, die, State.Phase);
+            State.PendingDieRoll = new(actor, purpose, die, State.Phase, Modified: modified);
             State.Phase = Phase.DieRerollChoice;
         }
         else
         {
-            RegisterNaturalSix(p, die);
+            if (!modified) RegisterNaturalSix(p, die);
             if (!TryOpenErrorAfterDie(effect, die)) ResolveDieEffect(effect, die);
         }
     }
@@ -104,6 +116,7 @@ public sealed partial class GameEngine
             OnOwnDieRerolled(actor);
             p.AttackRerollUsedThisTurn = true;
             die = Roll($"{p.Relikario.DisplayName} Lv {p.Level} · Relanzamiento", roller: actor); count++;
+            die = AdjustBlackHoleDie(actor, pending.Purpose, die);
             Log($"{p.Name} usa {p.Relikario.DisplayName} Lv {p.Level}: relanzamiento {count}/{p.Relikario.MaxRerolls} de {pending.Purpose}, resultado {die}.");
             State.PendingDieRoll = pending with { Die = die, Rerolls = count, WasRerolled = true, Modified = true, RerollStopped = die == 1 };
             if (CanRespondToEffectDie()) return CommandResult.Ok();

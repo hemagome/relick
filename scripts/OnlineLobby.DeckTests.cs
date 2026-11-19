@@ -101,7 +101,7 @@ public partial class OnlineLobby
             // A new deck starts by choosing its Relikario.
             ((Button)screen.FindChild("NewDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             var picker = screen.Picker!;
-            Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 2 && picker.Selected.Id == "yuno",
+            Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 3 && picker.Selected.Id == "yuno",
                 "el selector no lista los 18 Relikarios con Yuno elegido.");
             Expect(picker.Tiles["yuno"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
                 picker.Tiles["osamu"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
@@ -119,13 +119,18 @@ public partial class OnlineLobby
             Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: false } osamu && osamu.Text.Contains("Osamu") &&
                 RelikarioPicker.Card("osamu", 1) != null && RelikarioPicker.Card("osamu", 2) != null,
                 "Osamu no muestra sus dos cartas o no permite crear su mazo.");
+            picker.Tiles["ironwing"].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: false } ironwing && ironwing.Text.Contains("Ironwing") &&
+                RelikarioPicker.Card("ironwing", 1) != null && RelikarioPicker.Card("ironwing", 2) != null &&
+                picker.Tiles["ironwing"].FindChild("Portrait", true, false) is TextureRect { Texture: not null },
+                "Ironwing debe aparecer con retrato, dos cartas y un mazo seleccionable.");
             picker.Tiles["wd"].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: true, Text: "Próximamente" } && picker.FindChild("ComingSoonNote", true, false) != null,
                 "un Relikario sin programar permite crear un mazo.");
             if (picker.FindChild("FilterAvailable", true, false) is Button { Visible: true } available)
             {
                 available.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-                Expect(picker.Tiles.Values.Count(tile => tile.Visible) == 2 && picker.Selected.Id == "yuno", "el filtro Disponibles debe mostrar a Yuno y Osamu.");
+                Expect(picker.Tiles.Values.Count(tile => tile.Visible) == 3 && picker.Selected.Id == "yuno", "el filtro Disponibles debe mostrar a Yuno, Osamu e Ironwing.");
                 ((Button)picker.FindChild("FilterAll", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             }
             else picker.Tiles["yuno"].EmitSignal(BaseButton.SignalName.Pressed);
@@ -203,11 +208,12 @@ public partial class OnlineLobby
                 "la ampliación no muestra el arte seleccionado.");
             ((AcceptDialog)editor.FindChild("DeckCardZoom", true, false)!).Hide();
             await Frames();
-            CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt];
+            CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt,
+                CardCatalog.AttackIronwingUt, CardCatalog.AttackIronwingDt, CardCatalog.AttackIronwingNs];
             var alternates = variants.Select(card => (HandCard)editor.FindChild("Catalog_" + card.Id, true, false)!).ToArray();
             Expect(alternates.All(tile => tile.FaceTexture?.ResourcePath == $"res://assets/cards/{tile.Card.Id}-clean.png") &&
                 alternates.Append(attackInCatalog).Select(tile => tile.FaceTexture).Distinct().Count() == variants.Length + 1,
-                "la colección no distingue los cinco artes de Ataque.");
+                "la colección no distingue todos los artes de Ataque.");
             Expect(variants.All(card => editor.AddBlocked(card) != null),
                 "un arte alternativo permite superar los doce Ataques.");
             var catalogScroll = (ScrollContainer)editor.FindChild("CatalogGallery", true, false)!;

@@ -265,6 +265,9 @@ public sealed partial class GameEngine
         if (CardEffects.For(decision.Source) is { } effect)
             return effect.Choices(EffectFor(actor, decision.Source), decision);
         if (decision.Source == CardCatalog.EquipmentRaid.Id) return EquipmentRaidChoices(decision);
+        if (decision.Source == CardCatalog.BlackHole.Id) return BlackHoleChoices(decision);
+        if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||
+            decision.Source == RelikarioCatalog.IronwingLv2.Id) return IronwingChoices(decision);
         if (decision.Source == CardCatalog.PurpleRing.Id) return PurpleRingChoices(decision);
         return OsamuDecisionChoices(decision);
     }
@@ -286,6 +289,9 @@ public sealed partial class GameEngine
         if (CardEffects.For(decision.Source) is { } effect)
             effect.Choose(EffectFor(decision.Decider, decision.Source), decision, choice);
         else if (decision.Source == CardCatalog.EquipmentRaid.Id) ResolveEquipmentRaidChoice(decision, choice);
+        else if (decision.Source == CardCatalog.BlackHole.Id) ResolveBlackHoleChoice(decision, choice);
+        else if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||
+            decision.Source == RelikarioCatalog.IronwingLv2.Id) ResolveIronwingChoice(decision, choice);
         else if (decision.Source == CardCatalog.PurpleRing.Id) ResolvePurpleRingChoice(decision, choice);
         else ResolveOsamuDecision(decision, choice);
         CompleteActivationIfFinished();

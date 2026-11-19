@@ -52,6 +52,8 @@ public partial class OnlineArena
         var s = _snapshot!;
         return move.Kind switch
         {
+            DuelMoveKind.IronwingFire or DuelMoveKind.IronwingRoll =>
+                field.Owner == s.MySeat && field.Zone == FieldZone.Skill && field.Index == move.Index,
             DuelMoveKind.Destroy => move.Target == field.Owner && move.Value == (int)field.Zone &&
                 (move.Index == field.Index || field.Zone == FieldZone.Hand && move.Index < 0),
             // A card decision names its board target; a hand is one zone, its card drawn at random.
@@ -169,7 +171,8 @@ public partial class OnlineArena
             tile.Targetable = tile.Skill != null && (available.Contains(tile.SkillIndex) || s.Options.Any(option => MatchesField(option, field)));
             tile.Playable = showActivations && tile.Skill != null &&
                 (tile.SkillIndex == learningReroll && tile.Skill.Id == CardCatalog.Reverse.Id || s.Options.Any(o =>
-                    o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && o.Move.Index == tile.SkillIndex));
+                    o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction or DuelMoveKind.IronwingRoll or DuelMoveKind.IronwingFire &&
+                    o.Move.Index == tile.SkillIndex));
             tile.Chosen = tile.Skill != null && (_fieldSelection == field || tile.SkillIndex == _selectedSkill && (attack || _skillContext));
             if (tile.Targetable) _pulsingTargets.Add(tile);
             tile.QueueRedraw();

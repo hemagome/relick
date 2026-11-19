@@ -100,7 +100,7 @@ public partial class OnlineArena : Control
         (RelikarioCatalog.Find(decision.Source)?.Family == RelikarioCatalog.Osamu.Id || decision.Source == CardCatalog.TurboOverlap.Id);
     private bool ChoosingDeckGallery => ChoosingDeckSearch && (ChoosingOsamuCards || _snapshot!.Phase == Phase.DeckSearchChoice ||
         _snapshot.Decision?.Source == CardCatalog.KonamyCode.Id || _snapshot.Decision?.Source == CardCatalog.EquipmentRaid.Id ||
-        _snapshot.Decision?.Source == CardCatalog.Ellie.Id);
+        _snapshot.Decision?.Source == CardCatalog.Ellie.Id || _snapshot.Decision?.Source == RelikarioCatalog.IronwingLv2.Id);
     private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat ||
         Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);

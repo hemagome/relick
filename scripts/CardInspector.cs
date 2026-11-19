@@ -273,6 +273,7 @@ public partial class CardInspector : PanelContainer
         var counterLimit = card?.Id switch
         {
             var id when id == CardCatalog.Destiny.Id || id == CardCatalog.TurboSword.Id => 2,
+            var id when id == CardCatalog.IronwingRoll.Id => CardCatalog.IronwingRollCounterLimit,
             var id when id == CardCatalog.SuperMagnet.Id => CardCatalog.SuperMagnetCounterLimit,
             _ => 0
         };

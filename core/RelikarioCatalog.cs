@@ -52,15 +52,21 @@ public static class RelikarioCatalog
     public static readonly RelikarioDefinition OsamuLv2 = new("osamu-lv2", "Osamu Takahashi", Osamu.MaxHealth,
         "Al evolucionar, añade una Agilidad al 100% de tu mazo o memoria a tu mano. Una vez por turno, gasta 1 acción para buscar una carta de tu mazo o memoria. Esa copia se corrompe al ir a memoria. Suma +1 al D6 de ataque.",
         Level: 2, EvolutionCost: 1500) { ShortName = "Osamu", BaseForm = "osamu", EvolutionMaxHealth = 4, AttackDieBonusIncludingOne = 1 };
+    public static readonly RelikarioDefinition Ironwing = new("ironwing", "Ironwing CJC-019", 9,
+        "Al acertar un ataque, puedes enviar al fondo del mazo las cartas de tu zona de Bonus y reponer el Bonus, hasta tres veces por ataque. En tu D6 de ataque, puedes destruir hasta 4 Ataques de tu mazo y sumar +1 por cada 2, hasta 5. Evoluciona con Agujero Negro como tu Área activa y 1200 PR.")
+        { ShortName = "Ironwing", EvolvesTo = "ironwing-lv2" };
+    public static readonly RelikarioDefinition IronwingLv2 = new("ironwing-lv2", "Ironwing CJC-019", Ironwing.MaxHealth,
+        "Al evolucionar, devuelve hasta 5 Ataques de tu memoria al mazo y barájalo. Suma +1 a tu D6 de ataque. Cuando lances el dado de Agujero Negro, cámbialo a 6. Puedes destruir Ataques de tu mazo para sumar +1 por cada uno a un D6 propio.",
+        Level: 2, EvolutionCost: 1200) { ShortName = "Ironwing", BaseForm = "ironwing", AttackDieBonusIncludingOne = 1 };
 
     /// <summary>Every programmed form, evolutions included, by Id.</summary>
     public static readonly IReadOnlyDictionary<string, RelikarioDefinition> All =
-        new[] { Yuno, YunoLv2, Osamu, OsamuLv2 }.ToDictionary(r => r.Id);
+        new[] { Yuno, YunoLv2, Osamu, OsamuLv2, Ironwing, IronwingLv2 }.ToDictionary(r => r.Id);
 
     public static RelikarioDefinition? Find(string? id) => id != null && All.TryGetValue(id, out var r) ? r : null;
 
     /// <summary>Base forms a deck can be built around; evolutions are reached during the duel.</summary>
-    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno, Osamu];
+    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno, Osamu, Ironwing];
 
     /// <summary>Every Relikario of the game, in the order the deck builder lists them. Only those with a
     /// definition are programmed and can have decks built for them; the rest are shown as coming soon.</summary>
@@ -68,7 +74,7 @@ public static class RelikarioCatalog
     [
         new("yuno", "Yuno", Yuno), new("osamu", "Osamu", Osamu), new("wd", "WD"), new("godkira", "Godkira"), new("jen95", "Jen95"),
         new("yuno-8bits", "Yuno 8 bits"), new("yuno-abogado", "Yuno abogado"), new("yuno-oro", "Yuno oro"), new("senshuni", "Senshuni"),
-        new("zii-jay", "Zii Jay"), new("hiperman", "Hiperman"), new("ef-jen", "EF Jen"), new("ef-wd", "EF WD"), new("ironwing", "Ironwing"),
+        new("zii-jay", "Zii Jay"), new("hiperman", "Hiperman"), new("ef-jen", "EF Jen"), new("ef-wd", "EF WD"), new("ironwing", "Ironwing", Ironwing),
         new("shuya", "Shuya"), new("zarpo", "Zarpo"), new("kael", "Kael"), new("kurtz", "Kurtz")
     ];
 

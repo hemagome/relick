@@ -226,9 +226,11 @@ public sealed partial class GameEngine
 
     private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || HasComboParry(State.CurrentPlayer) ||
         HasDestinyPickResponse(State.CurrentPlayer) || CanUseRelikarioOnPendingDie(State.CurrentPlayer) ||
-        ActiveEquipment(State.CurrentPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
+        ActiveEquipment(State.CurrentPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer) ||
+        IronwingDieCostLimit(State.CurrentPlayer) > 0;
     private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || HasComboParry(State.DecisionPlayer) || CanUseRelikarioOnPendingDie(State.DecisionPlayer) ||
-        ActiveEquipment(State.DecisionPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer);
+        ActiveEquipment(State.DecisionPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer) ||
+        IronwingDieCostLimit(State.DecisionPlayer) > 0;
 
     public bool CanUsePendant(int actor, PendantEffect effect)
     {
@@ -258,6 +260,7 @@ public sealed partial class GameEngine
         var die = attack ? State.PendingAttackRoll!.Die : State.PendingDieRoll!.Die;
         die = effect switch { PendantEffect.AddOne => die + 1, PendantEffect.AddTwo => die + 2,
             _ => attack ? RollAttack(out _, "Colgante · Relanzamiento", superAttack: State.PendingAttackRoll!.SuperAttack) : Roll("Colgante · Relanzamiento", roller: actor) };
+        if (effect == PendantEffect.Reroll) die = AdjustBlackHoleDie(actor, State.PendingDieRoll?.Purpose, die);
         Log($"{p.Name} usa Colgante de la Suerte ({effect}): el dado queda en {die}.");
         if (attack)
         {

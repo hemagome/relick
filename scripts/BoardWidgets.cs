@@ -41,6 +41,8 @@ public static class BoardArt
 
     internal static Texture2D? LoadCardArtwork(CardDefinition card, string? relikario = null)
     {
+        if (card.Id == CardCatalog.Attack.Id && RelikarioArt.Family(relikario) == RelikarioCatalog.Ironwing.Id)
+            return LoadCardArtwork(CardCatalog.AttackIronwingUt);
         if (card.Id == CardCatalog.Attack.Id && relikario != null && RelikarioArt.Load(relikario, "attack-card") is { } alternate)
             return alternate;
         var path = $"res://assets/cards/{card.Id}-clean.png";
@@ -630,6 +632,7 @@ public partial class SkillTile : Button
         _skillArt = SkillArtwork.Load(Skill);
         TooltipText = Skill == null ? $"Enseñar una habilidad · {GameEngine.SkillSlotCosts[Slot]} PR." : Skill.Text +
             (Skill.Id == CardCatalog.Destiny.Id || Skill.Id == CardCatalog.TurboSword.Id ? $"\nEsta copia: {Counters}/2 contadores." :
+                Skill.Id == CardCatalog.IronwingRoll.Id ? $"\nEsta copia: {Counters}/{CardCatalog.IronwingRollCounterLimit} contadores." :
                 Skill.DamagePerReroll > 0 ? $"\nEsta copia: {Counters} aumentos · {Skill.NormalDamageAt(Counters)} normal / {Skill.CriticalDamageAt(Counters)} crítico." : "");
     }
     public override void _Draw()

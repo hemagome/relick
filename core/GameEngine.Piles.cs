@@ -57,7 +57,7 @@ public sealed partial class GameEngine
             CardZone.Area => p.AreaIsBorrowed,
             CardZone.LightEquipment => p.LightEquipment![index].Borrowed,
             CardZone.GalacticShield => p.GalacticShields![index].Borrowed,
-            CardZone.ShieldCharge => false,
+            CardZone.ShieldCharge or CardZone.Deck => false,
             CardZone.Bonus or CardZone.Exchange => ReleaseMovedFieldCard(p, index) ?? p.ReleaseForeignFieldCard(id),
             _ => p.ReleaseForeignFieldCard(id)
         };

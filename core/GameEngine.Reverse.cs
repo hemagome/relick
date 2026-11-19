@@ -41,6 +41,11 @@ public sealed partial class GameEngine
         p.SkillPositions = positions.Where((position, index) => position != index).Any()
             ? positions.Select((position, index) => (position, index)).ToDictionary(c => c.index, c => c.position) : null;
         p.SkillCounters = p.SkillCounters.Where(kv => kv.Key != slot).ToDictionary(kv => kv.Key > slot ? kv.Key - 1 : kv.Key, kv => kv.Value);
+        if (p.IronwingFireUsed != null)
+        {
+            p.IronwingFireUsed = p.IronwingFireUsed.Where(i => i != slot).Select(i => i > slot ? i - 1 : i).ToHashSet();
+            if (p.IronwingFireUsed.Count == 0) p.IronwingFireUsed = null;
+        }
         if (State.PendingAttackRoll is { } attack && attack.Attacker == owner && attack.SkillSlot is int source)
             State.PendingAttackRoll = attack with { SkillSlot = source == slot ? null : source > slot ? source - 1 : source };
         ShiftSavedAttackSlots(State.PendingDestruction?.Completed, owner, slot);

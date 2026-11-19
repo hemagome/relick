@@ -1,4 +1,4 @@
-[gd_resource type="AudioStreamInteractive" load_steps=8 format=3]
+[gd_resource type="AudioStreamInteractive" load_steps=10 format=3]
 
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/menu.ogg" id="1"]
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/yuno-combat.ogg" id="2"]
@@ -7,9 +7,11 @@
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/yuno-to-climax.ogg" id="5"]
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/osamu-combat.ogg" id="6"]
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/osamu-climax.ogg" id="7"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/ironwing-combat.ogg" id="8"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/ironwing-climax.ogg" id="9"]
 
 [resource]
-clip_count = 7
+clip_count = 9
 clip_0/name = &"Menu"
 clip_0/stream = ExtResource("1")
 clip_0/auto_advance = 0
@@ -33,6 +35,12 @@ clip_5/auto_advance = 0
 clip_6/name = &"Climax:osamu"
 clip_6/stream = ExtResource("7")
 clip_6/auto_advance = 0
+clip_7/name = &"Combat:ironwing"
+clip_7/stream = ExtResource("8")
+clip_7/auto_advance = 0
+clip_8/name = &"Climax:ironwing"
+clip_8/stream = ExtResource("9")
+clip_8/auto_advance = 0
 _transitions = {
 Vector2i(-1, -1): {
 "fade_beats": 4.0,
@@ -77,6 +85,12 @@ Vector2i(4, 2): {
 "to_time": 1
 },
 Vector2i(5, 6): {
+"fade_beats": 2.0,
+"fade_mode": 3,
+"from_time": 2,
+"to_time": 1
+},
+Vector2i(7, 8): {
 "fade_beats": 2.0,
 "fade_mode": 3,
 "from_time": 2,

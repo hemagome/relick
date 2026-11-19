@@ -10,11 +10,8 @@ namespace Relick;
 /// </summary>
 public static class RelikarioArt
 {
-    internal const string Ironwing = "ironwing";
-
     public static string Family(string? relikario) =>
-        RelikarioCatalog.Find(relikario)?.Family ??
-        (relikario == "ironwing-lv2" ? Ironwing : relikario ?? RelikarioCatalog.Yuno.Id);
+        RelikarioCatalog.Find(relikario)?.Family ?? relikario ?? RelikarioCatalog.Yuno.Id;
 
     public static string PathOf(string? relikario, string file) => $"res://assets/characters/{Family(relikario)}/{file}.png";
 
@@ -27,7 +24,8 @@ public static class RelikarioArt
     /// <summary>The portrait cut from its skill cards, shown beside decks.</summary>
     public static Texture2D? Thumbnail(string? relikario) => Load(relikario, "thumbnail") ?? Portrait(relikario);
     /// <summary>The square portrait of the Relikario picker.</summary>
-    public static Texture2D? Portrait(string? relikario) => Load(relikario, "portrait");
+    public static Texture2D? Portrait(string? relikario) => Load(relikario, "portrait") ??
+        (Family(relikario) == RelikarioCatalog.Ironwing.Id ? Load(relikario, "sprite") : null);
     /// <summary>The printed Relikario card at a level.</summary>
     public static Texture2D? Card(string? relikario, int level) => level >= 1 ? Load(relikario, $"card-lv{level}") : null;
 }

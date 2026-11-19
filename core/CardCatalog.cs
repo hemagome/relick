@@ -126,6 +126,8 @@ public static class CardCatalog
         CodeType: CodeType.Play);
     public static readonly CardDefinition EquipmentRaid = new("robo-de-equipos", "Misión: Robo de Equipos", CardKind.Area,
         "Lado A: cuando llega a ser el Área, puedes colocar 1 Ataque de la memoria del adversario debajo de tu Relikario. Añade ¡Dame ese equipo! de tu mazo o memoria a tu mano.\nLado B: cuando llega a ser el Área, equípate un Equipo de tu mazo. Si tu adversario añade a su campo o mano un Equipo del que eres dueño original, él gana 1500 PR, mira tu mano y añade una de esas cartas a su mano. Luego, destruye esta Área.");
+    public static readonly CardDefinition BlackHole = new("agujero-negro", "Agujero Negro", CardKind.Area,
+        "Lado A: al convertirse en el Área, envíala a tu mano o lanza 1D6. Con 1–5, destruye todas las cartas de tu campo excepto una. Luego destruye esta carta.\nLado B: si esta carta no fue enviada a la mano por su efecto, lanza 1D6. Con 1–5, destruye todas las cartas de tu campo excepto una.");
     public static readonly CardDefinition DiamondHelmet = new("diamond-helmet", "Casco de Diamantes", CardKind.Equipment,
         "Resta 2 puntos a cualquier daño que recibas. Si en el dado de ataque alguien saca 1: destruye esta carta.",
         DamageReduction: 2, DestroyOnAttackOne: true);
@@ -141,6 +143,16 @@ public static class CardCatalog
     public static readonly CardDefinition AttackOsamu = Attack with { Id = "attack-osamu-ns42", ArtworkLabel = "Osamu (NS-42/150)" };
     public static readonly CardDefinition AttackYunoDt = Attack with { Id = "attack-yuno-dt72", ArtworkLabel = "Yuno (DT-72/100)" };
     public static readonly CardDefinition AttackOsamuDt = Attack with { Id = "attack-osamu-dt73", ArtworkLabel = "Osamu (DT-73/100)" };
+    public static readonly CardDefinition AttackIronwingUt = Attack with { Id = "attack-ironwing-ut22", ArtworkLabel = "Ironwing (UT-22/50)" };
+    public static readonly CardDefinition AttackIronwingDt = Attack with { Id = "attack-ironwing-dt80", ArtworkLabel = "Ironwing (DT-80/100)" };
+    public static readonly CardDefinition AttackIronwingNs = Attack with { Id = "attack-ironwing-ns49", ArtworkLabel = "Ironwing (NS-49/150)" };
+    public static readonly CardDefinition IronwingRoll = new("ironwing-roll", "Relick Ironwing Roll", CardKind.Skill,
+        "Destruye 2 Ataques de tu mazo (4 si es crítico) y coloca 1 contador sobre esta copia para cancelar el daño de un ataque. Con 3 contadores, destruye esta carta.",
+        1, 2, 300, Relikario: RelikarioCatalog.Ironwing.Id);
+    public const int IronwingRollCounterLimit = 3;
+    public static readonly CardDefinition IronwingFire = new("ironwing-fire", "Relick Ironwing Fire", CardKind.Skill,
+        "Una vez por turno, puedes destruir de tu mazo 2 Ataques para sumar +1 al daño de un ataque, o 3 Ataques para destruir una no-habilidad del campo.",
+        3, 4, 400, Relikario: RelikarioCatalog.Ironwing.Id);
     public static readonly CardDefinition Magnet = new("magnet-shuffle", "Relick Magnet Shuffle", CardKind.Skill,
         "Daño normal: 1D6 · Crítico: 5 · Premio: 500 PR. Al realizar un crítico puedes mirar la mano del adversario y tomar una carta de ella o de su Bonus.", 0, 5, 500, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition Destiny = new("destiny-shuffle", "Relick Destiny Shuffle", CardKind.Skill,
@@ -181,7 +193,7 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 

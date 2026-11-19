@@ -374,7 +374,8 @@ internal sealed class PublicDuelObservation : IDisposable
             return p.Hand.ElementAtOrDefault(m.Index);
         return m.Kind switch
         {
-            DuelMoveKind.Attack or DuelMoveKind.DestinyDefense => p.Skills.ElementAtOrDefault(m.Kind == DuelMoveKind.Attack ? m.Value : m.Index),
+            DuelMoveKind.Attack or DuelMoveKind.DestinyDefense or DuelMoveKind.IronwingRoll or DuelMoveKind.IronwingFire =>
+                p.Skills.ElementAtOrDefault(m.Kind == DuelMoveKind.Attack ? m.Value : m.Index),
             DuelMoveKind.Relikia when m.Value == (int)RelikiaEffect.ReplayCode => p.Memory.ElementAtOrDefault(m.Index),
             DuelMoveKind.DestinyPickMemory => p.Memory.ElementAtOrDefault(m.Index),
             DuelMoveKind.FieldCode => m.Value == (int)FieldZone.Bonus ? p.Bonus : p.Exchange.ElementAtOrDefault(m.Index),
@@ -407,6 +408,9 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.CodeResponse => m.Flag ? $"{name} responde con Caja de Cartón." : $"{name} deja resolver el código.",
             DuelMoveKind.PassDefense or DuelMoveKind.EffectDamage => $"{name} confirma recibir el daño.",
             DuelMoveKind.BoxDefense => $"{name} cancela el daño con Caja de Cartón.", DuelMoveKind.DestinyDefense => $"{name} se defiende con {card}.",
+            DuelMoveKind.IronwingRoll => $"{name} se defiende con {card}.",
+            DuelMoveKind.IronwingFire => $"{name} activa {card}.",
+            DuelMoveKind.IronwingDie => $"{name} destruye {m.Value} Ataque(s) de su mazo con Ironwing.",
             DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => m.Flag ? $"{name} relanza con {(actor is 0 or 1 ? g.State.Players[actor].Relikario.DisplayName : "su Relikario")}." : $"{name} confirma el resultado del dado.",
             DuelMoveKind.Pc or DuelMoveKind.Pendant => $"{name} modifica el dado con {card}.",
             DuelMoveKind.UsePurpleRing => $"{name} usa {card} para ganar 500 PR.",

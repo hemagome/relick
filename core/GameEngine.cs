@@ -119,6 +119,7 @@ public sealed partial class GameEngine
         if (p.Hand.Select((id, index) => (id, index)).Any(card => CardCatalog.Get(card.id).IsCombo && CodeUnavailableReason(actor, card.index) == null)) return true;
         if (CanEvolve(actor)) return true;
         if (AvailablePurpleRings(actor).Any(c => CanUsePurpleRing(actor, c.Index))) return true;
+        if (IronwingFireDestructions(actor).Any()) return true;
         return State.Phase switch
         {
             Phase.Combat => FieldCombatTargets(actor).Any() ||
@@ -179,7 +180,8 @@ public sealed partial class GameEngine
     }
 
     public bool CanAttack(int actor) => AttackUnavailableReason(actor) == null &&
-        State.Active.Skills.Count > 0 && State.Active.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack);
+        State.Active.Skills.Any(id => CanAttackWithTaughtSkill(State.Active, id)) &&
+        State.Active.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack);
 
     public CommandResult Attack(int actor, int handIndex, int skillIndex)
     {
@@ -190,6 +192,8 @@ public sealed partial class GameEngine
             return CommandResult.Fail("Selecciona una carta de ataque.");
         if (skillIndex < 0 || skillIndex >= p.Skills.Count)
             return CommandResult.Fail("Primero enseña y selecciona una habilidad.");
+        if (!CanAttackWithTaughtSkill(p, p.Skills[skillIndex]))
+            return CommandResult.Fail("Selecciona una habilidad compatible con tu Relikario.");
         var skill = CardCatalog.Get(p.Skills[skillIndex]);
         var suppressed = EffectsSuppressed(actor, FieldZone.Skill, skillIndex);
         var superAttack = p.Hand[handIndex] == CardCatalog.SuperAttack.Id;
@@ -203,7 +207,9 @@ public sealed partial class GameEngine
             CriticalDamage: skill.DamagePerReroll > 0 && !suppressed ? skill.CriticalDamageAt(p.CountersOnSkill(skillIndex)) : null,
             EffectsSuppressed: suppressed, SuperAttack: superAttack);
         State.Phase = Phase.AttackRerollChoice;
-        State.LastCombat = $"{p.Name} · Dado de ataque {die} · Decide si relanza con {p.Relikario.DisplayName}";
+        State.LastCombat = p.Relikario.Family == RelikarioCatalog.Ironwing.Id
+            ? $"{p.Name} · Dado de ataque {die} · Conserva o modifica el resultado"
+            : $"{p.Name} · Dado de ataque {die} · Decide si relanza con {p.Relikario.DisplayName}";
         ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
         return CommandResult.Ok();
     }
@@ -377,7 +383,7 @@ public sealed partial class GameEngine
         {
             player.AttackRerollUsedThisTurn = false;
             player.RelikarioSearchUsedThisTurn = false;
-            player.BonusEffectUsed = false; player.ExchangeEffectsUsed = null;
+            player.BonusEffectUsed = false; player.ExchangeEffectsUsed = null; player.IronwingFireUsed = null;
         }
         State.Phase = Phase.Combat;
         foreach (var player in State.Players) player.ActionsLeft = 2;

@@ -22,7 +22,7 @@ public partial class OnlineArena
         _impacts.ReducedMotion = false;
         try
         {
-            foreach (var (actor, form) in new[] { (0, RelikarioCatalog.Yuno), (1, RelikarioCatalog.Osamu) })
+            foreach (var (actor, form) in new[] { (0, RelikarioCatalog.Yuno), (1, RelikarioCatalog.Osamu), (0, RelikarioCatalog.Ironwing) })
             {
                 var evolved = RelikarioCatalog.EvolutionFor(form)!;
                 var oldArt = RelikarioArt.Card(form.Id, form.Level);
@@ -30,7 +30,7 @@ public partial class OnlineArena
                 Check(oldArt != null && newArt != null && oldArt != newArt, "Falta el arte de una forma del Relikario.");
                 var game = GameEngine.FromOpening(new DuelOpening
                 {
-                    Names = ["Ana", "Beto"], Relikarios = [RelikarioCatalog.Yuno.Id, RelikarioCatalog.Osamu.Id], StartingSeat = actor,
+                    Names = ["Ana", "Beto"], Relikarios = [actor == 0 ? form.Id : RelikarioCatalog.Yuno.Id, actor == 1 ? form.Id : RelikarioCatalog.Osamu.Id], StartingSeat = actor,
                     Hands = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id]],
                     Decks = [[CardCatalog.Attack.Id], [CardCatalog.Agility.Id]], Bonuses = [null, null]
                 }, new SeededRandom(84));
@@ -39,6 +39,12 @@ public partial class OnlineArena
                 game.State.Active.Relikia = evolved.EvolutionCost;
                 game.State.Active.HasNaturalSix = true;
                 if (form == RelikarioCatalog.Osamu) game.State.Active.Memory.Add(CardCatalog.Agility.Id);
+                if (form == RelikarioCatalog.Ironwing)
+                {
+                    game.State.Active.Area = CardCatalog.BlackHole.Id;
+                    game.State.Active.AreaSideA = actor;
+                    game.State.Active.Memory.AddRange(Enumerable.Repeat(CardCatalog.Attack.Id, 6));
+                }
                 var before = new[] { DuelSnapshot.For(game, 0, 400), DuelSnapshot.For(game, 1, 400) };
                 Check(game.Evolve(actor).Success, "La evolución de prueba no se pudo resolver.");
 
@@ -58,9 +64,9 @@ public partial class OnlineArena
                         "La evolución no bloquea las jugadas desde la carta de origen del asiento correcto.");
                     await Layout();
                     var landing = EvolutionAnchor(relative);
-                    var ownOsamu = form == RelikarioCatalog.Osamu && actor == seat;
+                    var ownGallery = form != RelikarioCatalog.Yuno && actor == seat;
                     if (size.X == 1440)
-                        Check(ownOsamu == (landing == null), $"Aterrizaje incorrecto para {form.Id} en el asiento {seat}: {landing}.");
+                        Check(ownGallery == (landing == null), $"Aterrizaje incorrecto para {form.Id} en el asiento {seat}: {landing}.");
 
                     _evolution.AdvancePlayback(.36, landing);
                     if (size.X == 1440 && seat == actor) await Capture($"evolucion-{form.Id}-lv1");
@@ -68,8 +74,8 @@ public partial class OnlineArena
                     Check(_evolution.FaceTexture == newArt, "La carta no cambia al arte del nivel evolucionado.");
                     if (seat == actor && size.X is 1440 or 700) await Capture($"evolucion-{form.Id}-lv2-{size.X}");
                     _evolution.AdvancePlayback(EvolutionReveal.Duration, landing);
-                    Check(!IsAnimating && _portraits[relative].RelikarioId == evolved.Id && (!ownOsamu || ChoosingDeckGallery),
-                        "Al terminar no queda la forma evolucionada o se pierde la búsqueda de Osamu.");
+                    Check(!IsAnimating && _portraits[relative].RelikarioId == evolved.Id && (!ownGallery || ChoosingDeckGallery),
+                        "Al terminar no queda la forma evolucionada o se pierde su selección de cartas.");
                 }
 
                 var missed = DuelSnapshot.For(game, actor, 402);
@@ -90,6 +96,6 @@ public partial class OnlineArena
             }
         }
         finally { _impacts.ReducedMotion = reduced; ResetAnimations(); }
-        GD.Print("PVP_EVOLUTION_REVEAL_PASS · cartas Lv 1 y Lv 2, Yuno y Osamu, cuatro tamaños, ambos asientos, reconexión y movimiento reducido.");
+        GD.Print("PVP_EVOLUTION_REVEAL_PASS · cartas Lv 1 y Lv 2, Yuno, Osamu e Ironwing, cuatro tamaños, ambos asientos, reconexión y movimiento reducido.");
     }
 }

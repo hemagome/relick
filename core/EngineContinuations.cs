@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, RobotizeActionStart, BreakRobotize, BlockOpponentEquipment, BreakMetalHood }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, RobotizeActionStart, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -99,6 +99,16 @@ public sealed partial class GameEngine
                 break;
             case ContinuationKind.AttackOneEquipment: DestroyAttackOneEquipment(next.Actor, next.Next); break;
             case ContinuationKind.FinishCodeDestruction: FinishCodeDestruction(next); break;
+            case ContinuationKind.IronwingDiePaid: ResumeIronwingDie(next); break;
+            case ContinuationKind.IronwingBonus: OfferIronwingBonus(next.Attack!, next.Count); break;
+            case ContinuationKind.IronwingRoll: FinishIronwingRoll(next); break;
+            case ContinuationKind.IronwingFireDamage: FinishIronwingFireDamage(next.Actor); break;
+            case ContinuationKind.IronwingFireDestroy: DestroyWithIronwingFire(next); break;
+            case ContinuationKind.IronwingFieldDestroyed: FinishIronwingFieldDestruction(next); break;
+            case ContinuationKind.BlackHoleOtherSide: RollBlackHole(next.Actor, 1 - next.Value, sideA: false, destroyArea: next.Flag); break;
+            case ContinuationKind.BlackHoleDestroy: ContinueBlackHoleDestruction(next); break;
+            case ContinuationKind.BlackHoleCardDestroyed: FinishBlackHoleDestruction(next); break;
+            case ContinuationKind.BlackHoleFinish: FinishBlackHole(next); break;
             case ContinuationKind.OfferBlueEggDraw: OfferBlueEggDraw(next.Actor); break;
             case ContinuationKind.CardEffectStep: ContinueCardEffect(next); break;
             case ContinuationKind.AreaRaidSideB: PresentRaidSideB(next.Value, next.Actor); break;
@@ -108,7 +118,7 @@ public sealed partial class GameEngine
             case ContinuationKind.PurpleRingDamage: FinishPurpleRingDamage(next); break;
             case ContinuationKind.LoadGalacticShield: LoadGalacticShield(next); break;
             case ContinuationKind.OrientMovedArea:
-                AskRaid(next.Actor, next.Actor, RaidOrientMovedArea, DecisionKind.Confirm, "Elige qué lado del Área se aplica a ti");
+                AskAreaOrientation(next.Actor, moved: true);
                 break;
             case ContinuationKind.UsePendant: FinishPendant(next.Actor, (PendantEffect)next.Value); break;
             case ContinuationKind.UsePc: FinishPc(next.Actor, next.Value); break;
@@ -182,6 +192,7 @@ public sealed partial class GameEngine
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {
+            case DiePurpose.BlackHole: ResolveBlackHoleDie(effect, die); break;
             case DiePurpose.TurboSwordDamage:
             case DiePurpose.TurboOverlapDamage: ResolveTurboDamageDie(effect, die); break;
             case DiePurpose.TurboSwordDefense: ResolveTurboSwordDefense(effect, die); break;

@@ -45,6 +45,7 @@ public sealed partial class GameEngine
     private bool CanDefend(int actor, bool critical) =>
         HasTurnBuffInHand(actor) || HasComboParry(actor) || HasDestinyPickResponse(actor) ||
         ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => id == CardCatalog.Dodge.Id && AvailableActions(actor) >= CardCatalog.Dodge.ActionCost) || ActiveEquipment(actor)?.Id == CardCatalog.CardboardBox.Id ||
+        IronwingRollDefenses(actor).Any() ||
         (State.Players[actor].Hand.Count >= (critical ? 4 : 3) && AvailableDefenses(actor).Any());
 
     public CommandResult PassDefense(int actor)

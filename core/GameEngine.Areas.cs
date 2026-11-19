@@ -2,6 +2,12 @@ namespace Relick.Core;
 
 public sealed partial class GameEngine
 {
+    private static DecisionChoice[] AreaSideChoices(int actor) =>
+    [
+        new() { Label = "Lado A para mí · Lado B para el rival", Value = actor, Public = "elige el lado A para sí." },
+        new() { Label = "Lado B para mí · Lado A para el rival", Value = 1 - actor, Public = "elige el lado B para sí." }
+    ];
+
     public bool CanActivateArea(int actor, int index) => ValidateAction(actor) == null &&
         State.Players[actor] is { Area: null } p && InHand(p, index) && IsArea(p.Hand[index]);
 
@@ -114,7 +120,7 @@ public sealed partial class GameEngine
                 p.AreaNeedsBonus = false;
                 RefillBonus(p);
             }
-            else AskRaid(holder, holder, RaidSides, DecisionKind.Confirm, "Elige qué lado del Área se aplica a ti");
+            else AskAreaOrientation(holder);
             return true;
         }
         return false;

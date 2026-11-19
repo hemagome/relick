@@ -11,6 +11,8 @@ Las composiciones instrumentales se sintetizan específicamente para este proyec
 | `music/yuno-climax.ogg` | La última tirada | Cero vidas contra Yuno: 168 BPM, cadencia descendente y el tema del combate a toda orquesta. 57,1 s. |
 | `music/osamu-combat.ogg` | Pulso de acero | Duelo contra Osamu. 144 BPM, cuerdas graves, metales apagados y acentos de percusión metálica. 66,7 s. |
 | `music/osamu-climax.ogg` | La última orden | Cero vidas contra Osamu. 174 BPM, el motivo del combate en los metales y cuerdas en semicorcheas. 44,1 s. |
+| `music/ironwing-combat.ogg` | Órbita de combate | Duelo contra Ironwing. 156 BPM, sintetizador FM, bajo en octavas y un interludio de flauta. 61,5 s. |
+| `music/ironwing-climax.ogg` | Última maniobra | Cero vidas contra Ironwing. 180 BPM, el mismo motivo con notas más cortas, cuerdas y timbales. 48 s. |
 
 Las piezas comparten re como centro tonal. Los clímax retoman el motivo del combate de cada Relikario. En las piezas en bucle, las reverberaciones y las colas de las notas se pliegan sobre el comienzo para mantener continuidad. Los puentes conservan su cola después del último pulso para que suene sobre la pieza siguiente. Los archivos `.import` conservan el tempo, el compás, la longitud musical y la repetición.
 
