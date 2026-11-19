@@ -31,8 +31,8 @@ internal sealed class MindResetEffect : ICardEffect
 
     private static bool HasNonSkill(PlayerState p) => p.Hand.Any(id => CardCatalog.Get(id).Kind != CardKind.Skill);
 
-    private static DecisionChoice End(string label, string why) =>
-        new() { Label = label, Button = "Finalizar", Value = -1, Public = $"termina Resetear la Mente {why}." };
+    private static DecisionChoice End(string label, string why, bool showsHand = false) =>
+        new() { Label = label, Button = "Finalizar", Value = -1, Public = $"termina Resetear la Mente {why}.", RequiresAcknowledgement = showsHand };
 
     // Computed from the board each time, like the former options: an interruption may have emptied a hand.
     public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
@@ -46,7 +46,7 @@ internal sealed class MindResetEffect : ICardEffect
                     Primary = seat != ctx.Actor, Public = $"revisa la mano de {ctx.PlayerName(seat)}."
                 }).ToList();
         var target = decision.ShowsHandOf!.Value; var hand = s.Players[target].Hand; var picked = Picked(decision);
-        if (!HasNonSkill(s.Players[target])) return [End("No hay no-habilidades: finalizar sin devolver cartas", "sin devolver cartas")];
+        if (!HasNonSkill(s.Players[target])) return [End("No hay no-habilidades: finalizar sin devolver cartas", "sin devolver cartas", showsHand: true)];
         if (picked.Count < Memories)
             return ctx.ResettableMemoryCards().Where(m => !picked.Contains(m)).Select(m =>
             {

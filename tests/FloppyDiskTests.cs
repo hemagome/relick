@@ -29,19 +29,17 @@ static class FloppyDiskTests
         {
             foreach (var owner in new[] { 0, 1 })
             {
-                var (g, rng) = Fixture(); g.State.Players[owner].Memory.Add(CardCatalog.FloppyDisk.Id);
-                Check(g.PlayCode(0, 0).Success); var activeIndex = g.State.Active.Memory.Count - 1;
-                Reject(g, () => g.ResolveMemoryRecovery(0, 0, activeIndex));
-                Check(!g.DecisionChoices(0).Any(c => c.Owner == 0 && c.Value == activeIndex));
-                g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
-                Check(g.ResolveMemoryRecovery(0, owner, 0).Success && g.State.Active.Hand.Single() == CardCatalog.FloppyDisk.Id);
+                var (g, _) = Fixture(); g.State.Players[owner].Memory.Add(CardCatalog.FloppyDisk.Id);
+                var cues = DuelVisualEvents.Capture(g);
+                Check(g.PlayCode(0, 0).Success && g.State.Active.Hand.Single() == CardCatalog.FloppyDisk.Id);
+                Check(g.State.Phase == Phase.Actions && cues.Single(c => c.Kind == DuelVisualKind.MemoryClaim).Player == owner);
                 Check(g.State.Active.Memory.Single() == CardCatalog.FloppyDisk.Id);
             }
         }),
         ("Disquete: no se activa sin objetivos ni recupera corruptas; rechazos no mutan", () =>
         {
             var (g, _) = Fixture(); g.State.Active.CorruptedMemory.Add(CardCatalog.Destiny.Id);
-            Reject(g, () => g.PlayCode(0, 0)); g.State.Players[1].Memory.Add(CardCatalog.Attack.Id);
+            Reject(g, () => g.PlayCode(0, 0)); g.State.Players[1].Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Pendant.Id]);
             g.State.Phase = Phase.Combat; Reject(g, () => g.PlayCode(0, 0)); g.State.Phase = Phase.Actions;
             g.State.Active.ActionsLeft = 0; Reject(g, () => g.PlayCode(0, 0)); g.State.Active.ActionsLeft = 2;
             Check(g.PlayCode(0, 0).Success);
@@ -52,13 +50,14 @@ static class FloppyDiskTests
         }),
         ("Disquete: recupera selección y opciones al reconectar y mantiene privada la mano", () =>
         {
-            var (g, rng) = Fixture(1); g.State.Players[0].Memory.Add(CardCatalog.Destiny.Id);
+            var (g, rng) = Fixture(1); g.State.Players[0].Memory.AddRange([CardCatalog.Destiny.Id, CardCatalog.Pendant.Id]);
             Check(g.PlayCode(1, 0).Success && g.HasAvailablePlay(1) && !g.HasAvailablePlay(0));
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             var mine = DuelSnapshot.For(g, 1, 4); var other = DuelSnapshot.For(g, 0, 4);
-            Check(mine.Stage == Phase.Actions && mine.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose).CardId == CardCatalog.Destiny.Id);
+            Check(mine.Stage == Phase.Actions && mine.Options.Where(o => o.Move.Kind == DuelMoveKind.Choose).Select(o => o.CardId)
+                .SequenceEqual([CardCatalog.Destiny.Id, CardCatalog.Pendant.Id]));
             Check(other.Options.All(o => o.Move.Kind != DuelMoveKind.Choose && o.CardId == null));
-            Check(mine.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose).Move.Apply(g, 1).Success);
+            Check(mine.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.CardId == CardCatalog.Destiny.Id).Move.Apply(g, 1).Success);
             Check(DuelSnapshot.For(g, 1, 5).Players[1].Hand.Single() == CardCatalog.Destiny.Id);
             Check(DuelSnapshot.For(g, 0, 5).Players[1].Hand.Single() == null && !g.State.Active.IsHandCardRevealed(0));
         }),
@@ -74,7 +73,7 @@ static class FloppyDiskTests
                 if (late)
                 {
                     Reject(g, () => g.PlayCode(1, g.State.Players[1].Hand.IndexOf(CardCatalog.LoadError.Id)));
-                    Check(!g.CanPlayLoadError(1) && g.ResolveMemoryRecovery(0, 1, 0).Success);
+                    Check(!g.CanPlayLoadError(1) && g.State.Phase == Phase.Actions);
                     Check(g.State.Active.ActionsLeft == 1 && g.State.Active.Hand.Single() == CardCatalog.Bonfire.Id);
                     continue;
                 }
@@ -100,7 +99,7 @@ static class FloppyDiskTests
                 rival.Memory.Add(CardCatalog.Destiny.Id);
                 Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.CodeResponse && g.ResolveCodeResponse(1, cancel).Success);
                 if (cancel) Check(g.State.Phase == Phase.Actions && g.State.Active.ActionsLeft == 2 && rival.Equipment == null && g.State.Active.Hand.Count == 0);
-                else Check(g.ResolveMemoryRecovery(0, 1, 0).Success && g.State.Active.ActionsLeft == 1 && rival.Equipment == CardCatalog.CardboardBox.Id);
+                else Check(g.State.Active.Hand.Single() == CardCatalog.Destiny.Id && g.State.Active.ActionsLeft == 1 && rival.Equipment == CardCatalog.CardboardBox.Id);
             }
         }),
         ("Disquete: Relikia corrompe la copia activada y recupera otra carta por 400 PR y dos acciones", () =>
@@ -110,24 +109,22 @@ static class FloppyDiskTests
             p.Memory.Add(CardCatalog.FloppyDisk.Id);
             Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && p.CorruptedMemory.Single() == CardCatalog.FloppyDisk.Id);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
-            Check(g.ResolveMemoryRecovery(0, 0, 0).Success && p.Hand.Single() == CardCatalog.FloppyDisk.Id && p.Memory.Count == 0);
+            Check(g.State.Phase == Phase.Actions && p.Hand.Single() == CardCatalog.FloppyDisk.Id && p.Memory.Count == 0);
             Check(p.ActionsLeft == 0 && p.Relikia == 0 && p.CorruptedMemory.Single() == CardCatalog.FloppyDisk.Id);
         }),
-        ("Disquete: Resetear puede quitar los objetivos durante la resolución sin bloquearla", () =>
+        ("Disquete: resuelve si queda una carta o ninguna tras Resetear la Mente", () =>
         {
-            foreach (var removeActive in new[] { false, true })
+            foreach (var corruptReset in new[] { false, true })
             {
-                var (g, rng) = Fixture(); var p = g.State.Active; p.Hand.Add(CardCatalog.MindReset.Id); p.Memory.Add(CardCatalog.Attack.Id);
-                Check(g.PlayCode(0, 0).Success && g.PlayCode(0, 0).Success && g.ChooseMindResetTarget(0, 1).Success);
-                Check(g.ChooseMindResetMemory(0, 0, removeActive ? 1 : 0).Success && g.ChooseMindResetMemory(0, 0, 2).Success);
-                Check(g.ResolveMindReset(0, 0).Success);
-                if (removeActive)
-                {
-                    g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
-                    Check(g.State.Phase == Phase.Decision && g.ResolveMemoryRecovery(0, 0, 0).Success);
-                    Check(g.State.Active.Hand.Single() == CardCatalog.Attack.Id);
-                }
-                else Check(g.State.Phase == Phase.Actions && p.Memory.Single() == CardCatalog.FloppyDisk.Id && p.Hand.Count == 0);
+                var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Add(CardCatalog.MindReset.Id);
+                if (corruptReset) p.MarkForCorruption(CardZone.Hand, 1);
+                p.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Pendant.Id]);
+                Check(g.PlayCode(0, 0).Success && g.DecisionChoices(0).Count == 2);
+                Check(g.PlayCode(0, 0).Success && g.State.PendingDecision?.Step == "memory");
+                Check(g.ChooseMindResetMemory(0, 0, 1).Success && g.ChooseMindResetMemory(0, 0, corruptReset ? 0 : 3).Success);
+                Check(g.State.Phase == Phase.Actions && g.State.PendingDecision == null);
+                Check(corruptReset ? p.Hand.Count == 0 : p.Hand.Single() == CardCatalog.Attack.Id);
+                Check(p.Memory.Single() == CardCatalog.FloppyDisk.Id);
             }
         })
     };

@@ -32,6 +32,8 @@ public sealed class DecisionChoice
     /// <summary>Effect-specific payload: a deck position, whether to pay.</summary>
     public int Value { get; init; }
     public bool Primary { get; init; }
+    /// <summary>Keep the decision visible until the player has seen the information the effect shows.</summary>
+    public bool RequiresAcknowledgement { get; init; }
 }
 
 /// <summary>
@@ -223,7 +225,16 @@ public sealed partial class GameEngine
         decision.Suspended = State.Phase == Phase.Decision ? State.PendingDecision : null;
         State.PendingDecision = decision;
         State.Phase = Phase.Decision;
+        if (ResolveOnlyChoice(decision, DecisionChoices(decision.Decider))) return;
         if (announce) State.LastCombat = $"{State.Players[decision.Decider].Name} · {decision.Title()} · {decision.Instruction}";
+    }
+
+    private bool ResolveOnlyChoice(PendingDecision decision, IReadOnlyList<DecisionChoice> choices)
+    {
+        // Version 1 duels recorded selections as separate moves, even with a single eligible choice.
+        if (LegacyBlueEgg || choices is not [{ RequiresAcknowledgement: false } choice]) return false;
+        ApplyDecision(decision, choice);
+        return true;
     }
 
     /// <summary>The live choices of the pending decision, only for the player who decides.</summary>
@@ -243,15 +254,20 @@ public sealed partial class GameEngine
             return CommandResult.Fail("No te corresponde decidir.");
         var choices = DecisionChoices(actor);
         if (choice < 0 || choice >= choices.Count) return CommandResult.Fail("Esa opción ya no está disponible.");
+        ApplyDecision(decision, choices[choice]);
+        return CommandResult.Ok();
+    }
+
+    private void ApplyDecision(PendingDecision decision, DecisionChoice choice)
+    {
         State.PendingDecision = decision.Suspended;
         State.Phase = decision.ResumePhase;
         if (CardEffects.For(decision.Source) is { } effect)
-            effect.Choose(EffectFor(actor, decision.Source), decision, choices[choice]);
-        else if (decision.Source == CardCatalog.EquipmentRaid.Id) ResolveEquipmentRaidChoice(decision, choices[choice]);
-        else if (decision.Source == CardCatalog.PurpleRing.Id) ResolvePurpleRingChoice(decision, choices[choice]);
-        else ResolveOsamuDecision(decision, choices[choice]);
+            effect.Choose(EffectFor(decision.Decider, decision.Source), decision, choice);
+        else if (decision.Source == CardCatalog.EquipmentRaid.Id) ResolveEquipmentRaidChoice(decision, choice);
+        else if (decision.Source == CardCatalog.PurpleRing.Id) ResolvePurpleRingChoice(decision, choice);
+        else ResolveOsamuDecision(decision, choice);
         CompleteActivationIfFinished();
-        return CommandResult.Ok();
     }
 
     /// <summary>Answers the pending decision with the choice that matches, for commands that predate decisions.</summary>
@@ -272,12 +288,13 @@ public sealed partial class GameEngine
     }
 
     /// <summary>
-    /// A decision restored after an interruption (a COMBO, Resetear la Mente) may have lost every choice. With no valid
-    /// target left the effect fails completely (A.2), instead of waiting on an empty decision.
+    /// Recomputes the remaining choices after an interruption. With no valid target left the effect fails (A.2).
     /// </summary>
     private void RecheckDecision()
     {
-        if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || DecisionChoices(decision.Decider).Count > 0) return;
+        if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision) return;
+        var choices = DecisionChoices(decision.Decider);
+        if (ResolveOnlyChoice(decision, choices) || choices.Count > 0) return;
         Log($"{decision.Title()} se resuelve sin opciones disponibles después de las respuestas.");
         State.PendingDecision = decision.Suspended; State.Phase = decision.ResumePhase;
         CompleteActivationIfFinished();

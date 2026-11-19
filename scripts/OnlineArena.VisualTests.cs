@@ -1068,6 +1068,18 @@ public partial class OnlineArena
         }, random);
         game.State.Turn = 2;
         game.State.Active.Skills.Add(CardCatalog.TurboOverlap.Id);
+        var missRandom = new DuelRandom(); missRandom.Replay([1]);
+        var miss = GameEngine.FromSnapshot(game.SaveSnapshot(), missRandom);
+        miss.State.Active.Memory.Add(CardCatalog.Agility.Id);
+        if (!miss.Attack(0, 0, 0).Success || miss.State.Phase != Phase.Combat)
+            throw new Exception("Osamu debe recuperar automáticamente la única Agilidad de su memoria.");
+        var automaticRecovery = DuelSnapshot.For(miss, 0, 98);
+        missRandom.Replay([1]);
+        miss = GameEngine.FromSnapshot(game.SaveSnapshot(), missRandom);
+        miss.State.Active.Memory.AddRange([CardCatalog.Agility.Id, CardCatalog.Agility.Id]);
+        if (!miss.Attack(0, 0, 0).Success || miss.State.Phase != Phase.Decision)
+            throw new Exception("Osamu debe elegir si hay dos copias de Agilidad en su memoria.");
+        var missSearch = DuelSnapshot.For(miss, 0, 99);
         if (!game.Attack(0, 0, 0).Success || game.State.Phase != Phase.Decision)
             throw new Exception("No se abrió la búsqueda de Osamu Lv 1.");
         var baseSearch = DuelSnapshot.For(game, 0, 100);
@@ -1104,6 +1116,15 @@ public partial class OnlineArena
         var window = GetWindow();
         var oldSize = window.Size;
         var oldContentScale = window.ContentScaleSize;
+        ResetAnimations(); PresentTestSnapshot(automaticRecovery);
+        await Layout();
+        if (ChoosingEffectCards || !_handCards.Any(card => card.Card.Id == CardCatalog.Agility.Id))
+            throw new Exception("La recuperación automática debe mostrar Agilidad en la mano sin abrir la galería.");
+        ResetAnimations(); PresentTestSnapshot(missSearch);
+        await Layout();
+        if (_handCards.Count != 2 || !_hand!.GetParent().GetChildren().OfType<Label>()
+            .Any(label => label.Text == "OSAMU TAKAHASHI · RECUPERA UNA AGILIDAD AL 100% DE TU MEMORIA."))
+            throw new Exception("La recuperación debe mostrar el nombre y la instrucción de Osamu.");
         foreach (var size in new[] { new Vector2I(700, 390), new(700, 600), new(819, 450), new(844, 390), new(960, 540), new(1024, 600),
             new(1024, 768), new(1099, 700), new(1100, 599), new(1100, 768), new(1280, 720), new(1366, 768),
             new(1440, 980), new(1820, 1024), new(2280, 1024) })
@@ -1309,7 +1330,7 @@ public partial class OnlineArena
                 else if (step == 1)
                 {
                     game.Advance(actor); player.Hand.Clear(); player.Hand.Add(CardCatalog.BlueEgg.Id); player.Relikia = 200; player.Equipment = CardCatalog.Pc.Id;
-                    if (!game.PlayCode(actor, 0).Success || !game.ResolveDestruction(actor, actor, FieldZone.Equipment).Success)
+                    if (!game.PlayCode(actor, 0).Success || game.State.Phase != Phase.DestructionResponse)
                         throw new Exception("No se ofrece la protección de Reverse.");
                 }
                 else
@@ -1482,7 +1503,7 @@ public partial class OnlineArena
             var game = new GameEngine(91); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
             foreach (var player in game.State.Players)
             {
-                player.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id]);
+                player.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id, CardCatalog.Attack.Id]);
                 player.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Pendant.Id, CardCatalog.Magnet.Id]);
             }
             game.State.Active.Hand.Insert(0, CardCatalog.MindReset.Id);
@@ -1762,15 +1783,16 @@ public partial class OnlineArena
             game.State.Active.Deck.AddRange([CardCatalog.Attack.Id, CardCatalog.Dodge.Id]);
             game.State.Active.Equipment = CardCatalog.Pendant.Id;
             game.State.Players[1 - actor].Equipment = CardCatalog.DiamondHelmet.Id;
+            game.State.Players[1 - actor].LightEquipment = [new(CardCatalog.PurpleRing.Id)];
             if (!game.PlayCode(actor, 0).Success) throw new Exception("No se abre la selección de equipo rival.");
             var before = DuelSnapshot.For(game, actor, 11);
             ResetAnimations(); PresentTestSnapshot(before);
             await Layout();
             var own = (ZoneCardButton)ZoneNode(0, CardZone.Equipment, -1)!;
             var rival = (ZoneCardButton)ZoneNode(1, CardZone.Equipment, -1)!;
-            var choice = before.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose);
+            var choice = before.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.Field?.Zone == FieldZone.Equipment);
             if (!rival.Targetable || own.Targetable || PresentsOption(choice))
-                throw new Exception("La carta debe señalar solamente el equipo rival y esperar a que se seleccione.");
+                throw new Exception("La carta debe señalar los equipos rivales y esperar a que se seleccione uno.");
             SelectEquipment(1 - actor);
             if (PresentedButton(choice)?.Text != "Tomar equipo" || !rival.Chosen)
                 throw new Exception("La selección del equipo rival no muestra su acción.");

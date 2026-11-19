@@ -38,6 +38,7 @@ public partial class OnlineArena
                 game.State.Active.Health = 4;
                 game.State.Active.Relikia = evolved.EvolutionCost;
                 game.State.Active.HasNaturalSix = true;
+                if (form == RelikarioCatalog.Osamu) game.State.Active.Memory.Add(CardCatalog.Agility.Id);
                 var before = new[] { DuelSnapshot.For(game, 0, 400), DuelSnapshot.For(game, 1, 400) };
                 Check(game.Evolve(actor).Success, "La evolución de prueba no se pudo resolver.");
 

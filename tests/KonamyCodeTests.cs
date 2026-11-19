@@ -114,8 +114,8 @@ static class KonamyCodeTests
             {
                 var (g, r) = Fixture(); var p = g.State.Active; p.Deck.Clear(); p.Deck.Add(CardCatalog.Attack.Id);
                 p.Recycled = recycled; p.Equipment = CardCatalog.DiamondHelmet.Id;
-                Check(g.PlayCode(0, 0).Success); r.EnqueueDie(6);
-                Check(g.ResolveDeckSearch(0, 0).Success && p.Hand.Single() == CardCatalog.Attack.Id);
+                r.EnqueueDie(6);
+                Check(g.PlayCode(0, 0).Success && p.Hand.Single() == CardCatalog.Attack.Id);
                 if (recycled) Check(g.State.IsOver && p.Health == 6 && g.State.Winner == 1);
                 else
                 {

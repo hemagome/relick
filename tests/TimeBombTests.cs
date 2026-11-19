@@ -10,8 +10,8 @@ static class TimeBombTests
             foreach (var owner in new[] { 0, 1 })
             {
                 var (g, _) = Fixture(); var target = g.State.Players[owner]; target.Equipment = CardCatalog.DiamondHelmet.Id;
-                Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.Decision);
-                Check(g.ResolveDestruction(0, owner, FieldZone.Equipment).Success && target.Equipment == null && target.Memory.Contains(CardCatalog.DiamondHelmet.Id));
+                Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.Actions);
+                Check(target.Equipment == null && target.Memory.Contains(CardCatalog.DiamondHelmet.Id));
                 Check(g.State.Active.ActionsLeft == 1 && g.State.Active.Relikia == 0);
             }
         }),
@@ -21,7 +21,7 @@ static class TimeBombTests
             {
                 var (g, _) = Fixture(); var p = g.State.Players[owner]; p.Bonus = CardCatalog.Destiny.Id;
                 p.Deck.Clear(); p.Deck.AddRange(new[] { CardCatalog.Attack.Id, CardCatalog.Attack.Id });
-                Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, owner, FieldZone.Bonus).Success);
+                Check(g.PlayCode(0, 0).Success);
                 Check(p.Memory.Contains(CardCatalog.Destiny.Id) && p.Bonus == CardCatalog.Attack.Id && p.Deck.Count == 1);
             }
         }),
@@ -31,6 +31,7 @@ static class TimeBombTests
             {
                 var (g, r) = Fixture(); var p = g.State.Players[owner];
                 p.Hand.AddRange(new[] { CardCatalog.Attack.Id, CardCatalog.Magnet.Id, CardCatalog.Destiny.Id });
+                p.Bonus = CardCatalog.Senshuni.Id;
                 Check(g.PlayCode(0, 0).Success); var before = State(g);
                 Check(!g.ResolveDestruction(0, owner, FieldZone.Hand, 0).Success && State(g) == before);
                 r.EnqueueDie(3); var cues = DuelVisualEvents.Capture(g);
@@ -43,9 +44,10 @@ static class TimeBombTests
         ("Bomba: las opciones no revelan identidades ni posiciones de la mano rival", () =>
         {
             var (g, _) = Fixture(); g.State.Players[1].Hand.AddRange(new[] { CardCatalog.Magnet.Id, CardCatalog.Destiny.Id });
+            g.State.Active.Bonus = CardCatalog.Senshuni.Id;
             Check(g.PlayCode(0, 0).Success);
             var options = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
-            Check(options.Length == 1 && options[0].Field is { Index: -1, Owner: 1, Zone: FieldZone.Hand, CardId: "" });
+            Check(options.Single(o => o.Field?.Zone == FieldZone.Hand).Field is { Index: -1, Owner: 1, CardId: "" });
             var text = JsonSerializer.Serialize(options);
             Check(!text.Contains(CardCatalog.Magnet.Id) && !text.Contains(CardCatalog.Destiny.Id) && !text.Contains("Shuffle"));
         }),
@@ -76,6 +78,7 @@ static class TimeBombTests
         ("Bomba: recuperar la elección y el azar produce el mismo resultado", () =>
         {
             var (g, _) = Fixture(); g.State.Players[1].Hand.AddRange(new[] { CardCatalog.Magnet.Id, CardCatalog.Attack.Id });
+            g.State.Active.Bonus = CardCatalog.Senshuni.Id;
             Check(g.PlayCode(0, 0).Success); var saved = g.SaveSnapshot();
             var a = new DuelRandom(); a.Replay([1]); var first = GameEngine.FromSnapshot(saved, a);
             Check(!first.ResolveDestruction(0, 1, FieldZone.Hand, 0).Success && first.SaveSnapshot() == saved);
@@ -97,7 +100,7 @@ static class TimeBombTests
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.Clear(); p.Memory.Add(CardCatalog.TimeBomb.Id); p.Relikia = 400;
             g.State.Players[1].Bonus = CardCatalog.Magnet.Id;
             Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && p.Relikia == 0 && p.ActionsLeft == 0 && p.CorruptedMemory.Contains(CardCatalog.TimeBomb.Id));
-            Check(g.ResolveDestruction(0, 1, FieldZone.Bonus).Success);
+            Check(g.State.Players[1].Memory.Single() == CardCatalog.Magnet.Id && g.State.Phase == Phase.Actions);
         })
     };
     static (GameEngine, ScriptedRandom) Fixture()

@@ -514,9 +514,9 @@ public partial class OnlineArena : Control
         var galleryTitle = ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR"
             : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO"
             : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER"
-            : ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA"
-            : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA"
-            : DecisionGalleryTitle ?? (ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null);
+            : DecisionGalleryTitle ?? (ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA"
+                : ChoosingResetCards ? "RESETEAR LA MENTE · ELIGE UNA CARTA"
+                : ChoosingDeckSearch ? "TU MAZO · ELIGE UNA NO-HABILIDAD" : null);
         _hand = _choosingOpeningSkill ? ArenaPresentation.InitialSkills(handColumn, _availableInitialSkills, _initialSkillCandidate,
             SelectInitialSkillCandidate, Short, choiceGallery ? 0 : railColumns, desktop) : ArenaPresentation.Hand(handColumn, SelectableCards.Select(id => id!).ToArray(), index => _selected.Contains(index), SelectCard, _preparing, Short || choiceGallery && Compact,
                 galleryTitle, choiceGallery ? 0 : railColumns,

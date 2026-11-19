@@ -118,7 +118,7 @@ static class PurpleRingTests
             g.State.Active.Hand.Add(CardCatalog.EquipmentRaid.Id);
             g.State.Active.Deck.Insert(0, Ring);
             Check(g.ActivateArea(0, 0).Success && g.ResolveDecision(0, 1).Success, "El jugador se asigna el lado B.");
-            Check(g.DecisionChoices(0).Single().CardId == Ring && g.ResolveDecision(0, 0).Success &&
+            Check(g.State.PendingDecision == null &&
                 g.State.Active.LightEquipment?.Single().CardId == Ring && g.State.Active.Equipment == Helmet, "El Área equipa el ligero desde el mazo.");
         })
     ];

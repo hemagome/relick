@@ -96,7 +96,7 @@ static class HandLimitTests
                 p.Hand[0] = CardCatalog.MindReset.Id; p.Memory.AddRange(["attack", "attack"]);
                 Check(g.Advance(0).Success && g.PlayCode(0, 0).Success);
                 Check(g.State.CurrentPlayer == 0 && g.State.PendingDecision?.Source == CardCatalog.MindReset.Id && p.Hand.Count == 7);
-                Check(g.ChooseMindResetTarget(0, 0).Success);
+                Check(g.State.PendingDecision?.ShowsHandOf == 0);
                 if (noTarget) Check(g.ResolveMindReset(0, -1).Success);
                 else
                 {

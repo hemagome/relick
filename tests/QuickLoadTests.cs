@@ -136,8 +136,8 @@ static class QuickLoadTests
             var (g, rng) = Fixture(); var p = g.State.Active; p.Equipment = CardCatalog.Pendant.Id;
             p.Memory.Add(CardCatalog.Attack.Id); p.Deck[0] = CardCatalog.MindReset.Id; rng.EnqueueDie(2);
             Check(g.PlayCode(0, 0).Success && p.Hand.Count == 2 && g.PlayCode(0, 0).Success);
-            Check(g.ChooseMindResetTarget(0, 0).Success && g.ChooseMindResetMemory(0, 0, 0).Success && g.ChooseMindResetMemory(0, 0, 2).Success);
-            Check(g.ResolveMindReset(0, 0).Success && p.Hand.Count == 1 && g.State.PendingDieRoll?.Die == 2);
+            Check(g.State.PendingDecision is { Step: "memory", ShowsHandOf: 0 } && g.ChooseMindResetMemory(0, 0, 0).Success && g.ChooseMindResetMemory(0, 0, 2).Success);
+            Check(p.Hand.Count == 1 && g.State.PendingDieRoll?.Die == 2);
             Check(g.ResolveDieReroll(0, false).Success && g.State.Phase == Phase.Discard && g.State.DiscardsRemaining == 1);
             Check(g.Discard(0, 0).Success && p.Hand.Count == 0 && g.State.Phase == Phase.Actions);
         })

@@ -28,14 +28,12 @@ static class GoldenTotemTests
                 Check(DuelSnapshot.For(g, 1 - actor, 2).Players[actor].EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id);
             }
         }),
-        ("Oro: exige equipo debajo y rechaza cero si aún no existe, antes de mutar", () =>
+        ("Oro: equipa automáticamente el único Tótem si no hay equipo debajo", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active; p.Hand.RemoveAll(id => id == CardCatalog.Totem.Id);
             Reject(g, () => g.PlayCode(0, 0)); p.Hand.Add(CardCatalog.Totem.Id);
             Check(g.PlayCode(0, 0).Success);
-            Check(DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Choose).Select(o => o.Button).SequenceEqual(["Mostrar 1 Tótem"]));
-            Reject(g, () => g.ResolveGoldenTotem(0, []));
-            Check(g.ResolveGoldenTotem(0, [1]).Success && p.Equipment == CardCatalog.Totem.Id && p.EquipmentCovers!.Count == 1);
+            Check(g.State.Phase == Phase.Actions && p.Equipment == CardCatalog.Totem.Id && p.EquipmentCovers!.Count == 1);
         }),
         ("Oro: valida propietario, índices distintos, tipo de carta y máximo de dos", () =>
         {

@@ -89,7 +89,7 @@ static class ReverseTests
                 if (zone == FieldZone.Exchange) defender.Exchange.Add(CardCatalog.Pc.Id);
                 if (zone == FieldZone.Attached) defender.AttachedCards.Add(CardCatalog.Pc.Id);
                 g.State.Phase = Phase.Actions; g.State.Active.Hand.Add(CardCatalog.BlueEgg.Id); g.State.Active.Relikia = 200;
-                Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 1, zone, zone is FieldZone.Exchange or FieldZone.Attached ? 0 : -1).Success);
+                Check(g.PlayCode(0, 0).Success);
                 Check(g.State.Phase == Phase.DestructionResponse && g.State.DecisionPlayer == 1);
                 Check(DuelSnapshot.For(g, 1, 1).Stage == Phase.Actions);
                 Reject(g, () => g.ResolveDestructionProtection(0, 0)); Reject(g, () => g.ResolveDestructionProtection(1, 9));
@@ -106,8 +106,7 @@ static class ReverseTests
             {
                 var (g, rng) = Fixture(); var defender = g.State.Players[1]; defender.Skills.Add(CardCatalog.Reverse.Id); defender.Hand.Add(CardCatalog.Sniper.Id);
                 g.State.Phase = Phase.Actions; g.State.Active.Hand.Add(CardCatalog.TimeBomb.Id);
-                Check(g.PlayCode(0, 0).Success); rng.EnqueueDie(1);
-                Check(g.ResolveDestruction(0, 1, FieldZone.Hand).Success);
+                rng.EnqueueDie(1); Check(g.PlayCode(0, 0).Success);
                 var view = DuelSnapshot.For(g, 0, 1);
                 Check(view.Players[1].Hand.Single() == null && !view.LastCombat.Contains(CardCatalog.Sniper.Name));
                 Check(g.ResolveDestructionProtection(1, protect ? 0 : -1).Success);
@@ -118,7 +117,7 @@ static class ReverseTests
         {
             var (g, _) = Fixture(); g.State.Active.Skills.Add(CardCatalog.Reverse.Id); g.State.Players[1].Equipment = CardCatalog.Pc.Id;
             g.State.Phase = Phase.Actions; g.State.Active.Hand.Add(CardCatalog.BlueEgg.Id);
-            Check(g.PlayCode(0, 0).Success && g.ResolveDestruction(0, 1, FieldZone.Equipment).Success);
+            Check(g.PlayCode(0, 0).Success);
             Check(g.State.Phase == Phase.Actions && g.State.Active.Skills.Count == 1 && g.State.Players[1].Equipment == null);
         }),
         ("Reverse: conserva PC o Colgante pagando la destrucción con la habilidad", () =>
@@ -207,7 +206,7 @@ static class ReverseTests
                 g.State.Phase = Phase.Actions; p.Relikia = 200; p.Hand.Add(CardCatalog.BlueEgg.Id);
                 if (counter) p.Hand.Add(CardCatalog.LoadError.Id);
                 defender.Equipment = CardCatalog.Pc.Id; defender.Skills.Add(CardCatalog.Reverse.Id); defender.Hand.Add(CardCatalog.LoadError.Id);
-                Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success && g.ResolveDestruction(0, 1, FieldZone.Equipment).Success);
+                Check(g.PlayCode(0, 0).Success && g.PassErrorResponse(1).Success);
                 Check(g.State.Phase == Phase.DestructionResponse);
                 var before = g.SaveSnapshot(); Check(!g.PlayCode(1, 0).Success && before == g.SaveSnapshot());
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; defender = g.State.Players[1];

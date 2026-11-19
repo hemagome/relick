@@ -69,8 +69,8 @@ static class RecyclingTests
             var (g, rng) = Fixture(); var p = g.State.Players[1]; p.Bonus = CardCatalog.Attack.Id;
             p.Deck.Clear(); p.Deck.Add(CardCatalog.Attack.Id); p.Memory.AddRange(Enumerable.Repeat(CardCatalog.Attack.Id, 6));
             g.State.Active.Hand.Clear(); g.State.Active.Hand.Add(CardCatalog.TimeBomb.Id);
-            Check(g.PlayCode(0, 0).Success); rng.EnqueueDie(6);
-            Check(g.ResolveDestruction(0, 1, FieldZone.Bonus).Success && g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1);
+            rng.EnqueueDie(6);
+            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             Check(DuelSnapshot.For(g, 1, 1).Stage == Phase.Actions && g.ResolveRecycling(1, [0, 1, 2, 3, 4, 5]).Success);
             Check(g.State.Phase == Phase.Actions && g.State.CurrentPlayer == 0 && g.State.Players[1].Deck.Count == 6);

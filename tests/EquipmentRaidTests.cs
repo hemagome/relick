@@ -93,11 +93,9 @@ static class EquipmentRaidTests
                 "A no anexa el Ataque de su dueño original.");
             Check(g.DecisionChoices(0).Count == 2 && g.DecisionChoices(1).Count == 0, "La búsqueda debe ser privada y ofrecer mazo y memoria.");
             Choose(g, 0);
-            Check(p.Hand.Single() == Take && p.Memory.Single() == Take && g.State.DecisionPlayer == 1, "A no recupera del mazo o B no recibe su elección.");
-            Choose(g, 1);
+            Check(p.Hand.Single() == Take && p.Memory.Single() == Take, "A no recupera del mazo.");
             Check(rival.Equipment == Helmet && rival.ActionsLeft == 2 && g.State.Phase == Phase.Actions, "B no se equipa gratis.");
             Check(g.PlayCode(0, 0).Success, "No puede jugar el Código recuperado.");
-            Choose(g, 0);
             Check(p.Equipment == Helmet && p.AttachedCards.Count == 2 && p.Relikia == 1500 && p.Area == Area, "La transferencia no inicia el premio.");
             Check(DuelSnapshot.For(g, 0, 4).Players[1].Hand.SequenceEqual(rival.Hand) &&
                 DuelSnapshot.For(g, -1, 4).Players[1].Hand.All(id => id == null) &&

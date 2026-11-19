@@ -22,8 +22,7 @@ static class MindResetTests
                 Check(g.ChooseMindResetTarget(actor, target).Success);
                 Check(g.ChooseMindResetMemory(actor, owners[0], 0).Success);
                 Check(g.ChooseMindResetMemory(actor, owners[1], owners[0] == owners[1] ? 1 : 0).Success);
-                var handIndex = g.State.Players[target].Hand.FindIndex(id => id == "senshuni");
-                Check(g.ResolveMindReset(actor, handIndex).Success && g.State.Phase == Phase.Actions);
+                Check(g.State.Phase == Phase.Actions);
                 Check(g.State.Players[actor].Memory.Contains(CardCatalog.MindReset.Id));
                 Check(Count(g) == total && g.State.Players[target].Hand.Count == hands[target] - (target == actor ? 1 : 0));
                 Check(cues.Count(v => v.Kind == DuelVisualKind.Draw && v.Player == target) == 1);
@@ -34,7 +33,8 @@ static class MindResetTests
         }),
         ("Resetear: mira solo mano elegida en proyección privada y recupera cada selección", () =>
         {
-            var (g, rng) = Fixture(); Check(g.PlayCode(0, 0).Success);
+            var (g, rng) = Fixture(); g.State.Players[1].Hand.Add(CardCatalog.Attack.Id);
+            Check(g.PlayCode(0, 0).Success);
             Check(DuelSnapshot.For(g, 0, 1).Players[1].Hand.All(id => id == null));
             Check(g.ChooseMindResetTarget(0, 1).Success);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
@@ -54,6 +54,7 @@ static class MindResetTests
             Reject(g, () => g.PlayCode(0, 0)); p.ActionsLeft = 2;
             foreach (var player in g.State.Players) player.Memory.Clear();
             Reject(g, () => g.PlayCode(0, 0)); p.Memory.AddRange(["attack", "attack"]);
+            g.State.Players[1].Hand.Add(CardCatalog.Attack.Id);
             Check(g.PlayCode(0, 0).Success);
             Reject(g, () => g.ChooseMindResetTarget(1, 0));
             Reject(g, () => g.ChooseMindResetTarget(0, 7));
@@ -99,7 +100,7 @@ static class MindResetTests
                 Check(g.PlayCode(actor, 0).Success && g.State.DecisionPlayer == actor);
                 Check(g.ChooseMindResetTarget(actor, 1 - actor).Success);
                 Check(g.ChooseMindResetMemory(actor, 0, 0).Success && g.ChooseMindResetMemory(actor, 1, 0).Success);
-                Check(g.ResolveMindReset(actor, 0).Success && g.State.Phase == Phase.AttackRerollChoice);
+                Check(g.State.Phase == Phase.AttackRerollChoice);
                 Check(g.State.PendingAttackRoll is { Die: 2, Modified: false } && g.State.Players[actor].ActionsLeft == 1);
                 Check(g.ResolveAttackReroll(0, false).Success && g.Advance(0).Success);
                 Check(attacker.ActionsLeft == (actor == 0 ? 1 : 2));
@@ -112,7 +113,7 @@ static class MindResetTests
             Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 2).Success && p.ActionsLeft == 0 && p.Relikia == 0);
             Check(p.CorruptedMemory.Single() == CardCatalog.MindReset.Id);
             Check(g.ChooseMindResetTarget(0, 1).Success && g.ChooseMindResetMemory(0, 0, 0).Success && g.ChooseMindResetMemory(0, 1, 0).Success);
-            Check(g.ResolveMindReset(0, 0).Success && g.State.Phase == Phase.Actions);
+            Check(g.State.Phase == Phase.Actions);
             (g, _) = Fixture(); p = g.State.Active; p.Hand.Clear(); p.Memory.Clear(); g.State.Players[1].Memory.Clear();
             p.Memory.AddRange([CardCatalog.MindReset.Id, "attack"]); p.Relikia = 400;
             Check(!g.CanReplayMemoryCode(0, 0));
@@ -123,9 +124,9 @@ static class MindResetTests
             p.Relikario = RelikarioCatalog.YunoLv2; p.Health = 1; p.Hand.Add("extra-life");
             rng.EnqueueDie(4); Check(g.PlayCode(0, p.Hand.Count - 1).Success && g.State.Phase == Phase.DieRerollChoice);
             Check(g.PlayCode(0, 0).Success && g.ChooseMindResetTarget(0, 1).Success);
-            Check(g.ChooseMindResetMemory(0, 0, 0).Success && g.ChooseMindResetMemory(0, 0, 1).Success);
             g.State.Players[1].Deck.Clear(); rng.EnqueueDie(2);
-            Check(g.ResolveMindReset(0, 0).Success && g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1);
+            Check(g.ChooseMindResetMemory(0, 0, 0).Success && g.ChooseMindResetMemory(0, 0, 1).Success);
+            Check(g.State.Phase == Phase.RecycleChoice && g.State.DecisionPlayer == 1);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             Check(g.ResolveRecycling(1, Enumerable.Range(0, g.RecyclingCount)).Success && g.State.Phase == Phase.DieRerollChoice);
             Check(g.State.PendingDieRoll is { Player: 0, Die: 4, Purpose: DiePurpose.ExtraLife });

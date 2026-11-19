@@ -52,7 +52,7 @@ static class TotemTests
         {
             var (g, _) = Fixture(); var target = g.State.Players[1]; Stack(target, 2); var count = Count(g);
             g.State.Phase = Phase.Actions; g.State.Active.Relikia = 200; g.State.Active.Hand.Add(CardCatalog.BlueEgg.Id); count++;
-            Check(g.PlayCode(0, 1).Success && g.ResolveDestruction(0, 1, true).Success);
+            Check(g.PlayCode(0, 1).Success);
             Check(target.Equipment == CardCatalog.Totem.Id && target.EquipmentStackedCopies == 0 && target.Memory.Single() == CardCatalog.Totem.Id && Count(g) == count);
         }),
         ("Tótem: una copia conserva los fallos y no se consume con daño no letal", () =>

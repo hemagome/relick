@@ -78,7 +78,7 @@ static class CardOwnershipTests
         {
             var (g, _) = Fixture([CardCatalog.FloppyDisk.Id], []);
             var p = g.State.Players[0]; var rival = g.State.Players[1]; rival.Memory.Add(CardCatalog.Senshuni.Id);
-            Check(g.PlayCode(0, 0).Success && g.ResolveMemoryRecovery(0, 1, 0).Success && p.IsForeignHandCard(0));
+            Check(g.PlayCode(0, 0).Success && p.IsForeignHandCard(0));
             Check(g.PlayCode(0, 0).Success && rival.Memory.Single() == CardCatalog.Senshuni.Id && p.Memory.Single() == CardCatalog.FloppyDisk.Id);
         }),
         ("Dueño: un Disquete ajeno se excluye a sí mismo en la memoria de su dueño", () =>
@@ -87,7 +87,7 @@ static class CardOwnershipTests
             Steal(g, 0, 0); g.State.Phase = Phase.Actions; var p = g.State.Players[0]; var rival = g.State.Players[1];
             p.Memory.Add(CardCatalog.Attack.Id);
             Check(g.PlayCode(0, 0).Success && rival.Memory.Single() == CardCatalog.FloppyDisk.Id);
-            Check(!g.ResolveMemoryRecovery(0, 1, 0).Success && g.ResolveMemoryRecovery(0, 0, 0).Success);
+            Check(g.State.PendingDecision == null && !g.ResolveMemoryRecovery(0, 1, 0).Success);
             Check(p.Hand.Single() == CardCatalog.Attack.Id && p.ForeignHandSlots == null);
         }),
         ("Dueño: una Mira de Sniper ajena descartada puede equiparse y vuelve a su dueño", () =>
@@ -120,8 +120,8 @@ static class CardOwnershipTests
             var (g, _) = Fixture([CardCatalog.MindReset.Id], [CardCatalog.Senshuni.Id]);
             Steal(g, 0, 0); g.State.Phase = Phase.Actions; var p = g.State.Players[0]; var rival = g.State.Players[1];
             p.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Attack.Id]); var deck = p.Deck.Count;
-            Check(g.PlayCode(0, 0).Success && g.ChooseMindResetTarget(0, 0).Success);
-            Check(g.ChooseMindResetMemory(0, 0, 0).Success && g.ChooseMindResetMemory(0, 0, 1).Success && g.ResolveMindReset(0, 0).Success);
+            Check(g.PlayCode(0, 0).Success && g.State.PendingDecision is { Step: "memory", ShowsHandOf: 0 });
+            Check(g.ChooseMindResetMemory(0, 0, 0).Success && g.ChooseMindResetMemory(0, 0, 1).Success && g.State.Phase == Phase.Actions);
             Check(rival.Deck.Contains(CardCatalog.Senshuni.Id) && !p.Deck.Contains(CardCatalog.Senshuni.Id) && p.Deck.Count == deck + 2 - 1);
             Check(p.ForeignHandSlots == null);
         }),

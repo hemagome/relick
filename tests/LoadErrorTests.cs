@@ -15,7 +15,7 @@ static class LoadErrorTests
                 if (counter)
                 {
                     Check(a.ActionsLeft == 0 && b.ActionsLeft == 2 && a.Relikia == 200 && g.State.Phase == Phase.Decision);
-                    Check(g.ResolveDestruction(0, 1, true).Success && b.Equipment == null && (g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm));
+                    Check(b.Equipment == null && (g.State.Phase == Phase.Decision && g.State.PendingDecision!.Kind == DecisionKind.Confirm));
                 }
                 else Check(a.ActionsLeft == 2 && b.ActionsLeft == 1 && a.Relikia == 200 && b.Equipment == "lucky-pendant" && g.State.Phase == Phase.Actions);
                 Check(a.Memory.Contains("blue-egg") && b.Memory.Contains("load-error"));

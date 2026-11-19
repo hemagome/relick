@@ -13,14 +13,17 @@ static class TakeEquipmentTests
                 var rival = g.State.Players[1 - actor];
                 p.Equipment = CardCatalog.Pendant.Id;
                 rival.EquipmentCounters = 2;
+                rival.LightEquipment = [new(CardCatalog.PurpleRing.Id)];
                 p.MarkForCorruption(CardZone.Deck, 0);
                 rival.MarkForCorruption(CardZone.Equipment, 0);
                 Check(g.PlayCode(actor, 0).Success && g.State.DecisionPlayer == actor);
-                var option = Choice(g, actor);
+                var options = DuelOptions.For(g, actor).Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
+                Check(options.Length == 2 && options.All(o => o.Field?.Owner == 1 - actor));
+                var option = options.Single(o => o.Field?.Zone == FieldZone.Equipment);
                 Check(option.Field == new FieldTarget(1 - actor, FieldZone.Equipment, -1, CardCatalog.Sniper.Id));
                 Check(DuelSnapshot.For(g, 1 - actor, 2).Options.All(o => o.Move.Kind != DuelMoveKind.Choose));
                 var saved = g.SaveSnapshot();
-                Check(!option.Move.Apply(g, 1 - actor).Success && !g.ResolveDecision(actor, 1).Success && g.SaveSnapshot() == saved);
+                Check(!option.Move.Apply(g, 1 - actor).Success && !g.ResolveDecision(actor, 2).Success && g.SaveSnapshot() == saved);
                 var events = DuelVisualEvents.Capture(g);
                 rng.EnqueueDie(1);
                 Check(option.Move.Apply(g, actor).Success && g.State.Phase == Phase.Actions);
@@ -60,7 +63,7 @@ static class TakeEquipmentTests
                 var (g, rng) = Fixture();
                 g.State.Active.Equipment = CardCatalog.Pendant.Id;
                 g.State.Active.Skills.Add(CardCatalog.Reverse.Id);
-                Check(g.PlayCode(0, 0).Success && Choice(g, 0).Move.Apply(g, 0).Success && g.State.Phase == Phase.DestructionResponse);
+                Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DestructionResponse);
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
                 Check(g.ResolveDestructionProtection(0, protect ? 0 : -1).Success && g.State.Phase == Phase.Actions);
                 Check(g.State.Active.Equipment == (protect ? CardCatalog.Pendant.Id : CardCatalog.Sniper.Id));
@@ -74,7 +77,7 @@ static class TakeEquipmentTests
             var rival = g.State.Players[1];
             p.Equipment = CardCatalog.Pendant.Id;
             rival.Equipment = CardCatalog.SuperMagnet.Id;
-            Check(g.PlayCode(0, 0).Success && Choice(g, 0).Move.Apply(g, 0).Success);
+            Check(g.PlayCode(0, 0).Success);
             Check(rival.EquipmentCounters == 1 && rival.Equipment == CardCatalog.SuperMagnet.Id && p.Equipment == CardCatalog.Pendant.Id);
             Check(p.AttachedCards.Count == 0 && p.Deck.Count == 3 && g.State.Phase == Phase.Actions);
         }),
@@ -87,7 +90,7 @@ static class TakeEquipmentTests
             rival.MarkForeignFieldCard(CardCatalog.Totem.Id);
             rival.EquipmentCovers = [CardCatalog.GoldenTotem.Id];
             rival.ZahiraHost = new(1, FieldZone.Equipment, 0, CardCatalog.Totem.Id);
-            Check(g.PlayCode(0, 0).Success && Choice(g, 0).Move.Apply(g, 0).Success);
+            Check(g.PlayCode(0, 0).Success);
             Check(p.Equipment == CardCatalog.Totem.Id && rival.Equipment == null && rival.ForeignFieldCards == null);
             Check(p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id && rival.EquipmentCovers == null);
             Check(p.ForeignFieldCards!.Single() == CardCatalog.GoldenTotem.Id && rival.ZahiraHost == new FieldTarget(0, FieldZone.Equipment, 0, CardCatalog.Totem.Id));
@@ -99,7 +102,7 @@ static class TakeEquipmentTests
             g.State.Active.Deck = [CardCatalog.Attack.Id];
             g.State.Players[1].Equipment = CardCatalog.Pc.Id;
             rng.EnqueueDie(4);
-            Check(g.PlayCode(0, 0).Success && Choice(g, 0).Move.Apply(g, 0).Success && g.State.Phase == Phase.DieRerollChoice);
+            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DieRerollChoice);
             Check(g.State.Active.Equipment == CardCatalog.Pc.Id && g.State.Active.AttachedCards.Count == 0);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             rng.EnqueueDie(1);
@@ -112,7 +115,7 @@ static class TakeEquipmentTests
             var (g, _) = Fixture();
             var p = g.State.Active;
             p.Hand.Clear(); p.Memory.Add(CardCatalog.TakeEquipment.Id); p.Relikia = 400;
-            Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success && Choice(g, 0).Move.Apply(g, 0).Success);
+            Check(g.UseRelikiaEffect(0, RelikiaEffect.ReplayCode, 0).Success);
             Check(p.Relikia == 0 && p.ActionsLeft == 0 && p.CorruptedMemory.Single() == CardCatalog.TakeEquipment.Id && p.AttachedCards.Count == 1);
         })
     ];
@@ -131,8 +134,6 @@ static class TakeEquipmentTests
         game.State.Players[1 - actor].Equipment = CardCatalog.Sniper.Id;
         return (game, rng);
     }
-
-    private static DuelOption Choice(GameEngine game, int actor) => DuelOptions.For(game, actor).Single(o => o.Move.Kind == DuelMoveKind.Choose);
 
     private static void Check(bool value)
     {

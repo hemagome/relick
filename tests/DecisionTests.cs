@@ -25,11 +25,11 @@ static class DecisionTests
         {
             var g = Fixture(CardCatalog.BlueEgg.Id); var p = g.State.Active; var rival = g.State.Players[1];
             p.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Senshuni.Id, CardCatalog.Attack.Id]); p.Relikia = 200; p.ActionsLeft = 2;
-            rival.Equipment = CardCatalog.Pendant.Id;
+            rival.Equipment = CardCatalog.Pendant.Id; p.Bonus = CardCatalog.Senshuni.Id;
             Check(g.PlayCode(0, 0).Success && g.State.PendingDecision is { Step: "target", Kind: DecisionKind.ChooseTarget, AllowsCombos: true });
             var star = p.Hand.IndexOf(CardCatalog.PlumberStar.Id);
             Check(g.CodeUnavailableReason(0, star) == null);
-            var target = DuelOptions.For(g, 0).Single(o => o.Move.Kind == DuelMoveKind.Choose);
+            var target = DuelOptions.For(g, 0).Single(o => o.Move.Kind == DuelMoveKind.Choose && o.Field?.Zone == FieldZone.Equipment);
             Check(target.Field is { Owner: 1, Zone: FieldZone.Equipment } && target.Button == "Destruir" && target.CardId == null);
             Check(target.Move.Apply(g, 0).Success && rival.Equipment == null && g.State.PendingDecision is { Step: "draw", Kind: DecisionKind.Confirm, AllowsCombos: false });
             Check(g.CodeUnavailableReason(0, p.Hand.IndexOf(CardCatalog.PlumberStar.Id)) != null);
@@ -41,25 +41,25 @@ static class DecisionTests
         ("Decisión: Estrella del Fontanero interrumpe la elección de Huevo y la devuelve intacta", () =>
         {
             var g = Fixture(CardCatalog.BlueEgg.Id); var p = g.State.Active; var rival = g.State.Players[1];
-            p.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Senshuni.Id]); p.ActionsLeft = 2; rival.Bonus = CardCatalog.Senshuni.Id;
+            p.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Senshuni.Id]); p.ActionsLeft = 2; rival.Bonus = CardCatalog.Senshuni.Id; p.Equipment = CardCatalog.Pendant.Id;
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.Decision);
             var pending = g.State.PendingDecision!;
             Check(g.PlayCode(0, p.Hand.IndexOf(CardCatalog.PlumberStar.Id)).Success && g.State.PendingDecision == null && g.State.Phase == Phase.TurnBuffDiscard);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), new ScriptedRandom()); p = g.State.Active; rival = g.State.Players[1];
             Check(g.ResolveTurnBuffDiscard(0, 0).Success && p.StarEffects == 1);
             Check(g.State.Phase == Phase.Decision && g.State.PendingDecision is { Source: "blue-egg", Step: "target" } restored && restored.ResumePhase == pending.ResumePhase);
-            Check(g.ResolveDecision(0, 0).Success && rival.Memory.Contains(CardCatalog.Senshuni.Id) && g.State.Phase == Phase.Actions);
+            Check(g.ResolveDestruction(0, 1, FieldZone.Bonus).Success && rival.Memory.Contains(CardCatalog.Senshuni.Id) && g.State.Phase == Phase.Actions);
         }),
         ("Decisión: un duelo guardado con la fase anterior de Huevo se termina con sus jugadas de entonces", () =>
         {
             var g = Fixture(CardCatalog.BlueEgg.Id); var p = g.State.Active; var rival = g.State.Players[1];
-            p.Relikia = 200; rival.Equipment = CardCatalog.Pendant.Id;
+            p.Relikia = 200; rival.Equipment = CardCatalog.Pendant.Id; p.Bonus = CardCatalog.Senshuni.Id;
             Check(g.PlayCode(0, 0).Success);
             // Rewrite the save as the previous version wrote it: the destruction phase and its actor, no decision.
             var json = JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
             state["Phase"] = (int)Phase.DestroyChoice; state["DestroyActor"] = 0; state.Remove("PendingDecision");
             var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom()); p = legacy.State.Active; rival = legacy.State.Players[1];
-            var destroy = DuelOptions.For(legacy, 0).Single(o => o.Move.Kind == DuelMoveKind.Destroy);
+            var destroy = DuelOptions.For(legacy, 0).Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == 1);
             Check(destroy.Move.Kind == DuelMoveKind.Destroy && destroy.Move.Apply(legacy, 0).Success && rival.Equipment == null);
             Check(legacy.State.Phase == Phase.BlueEggDrawChoice && DuelOptions.For(legacy, 0).Count(o => o.Move.Kind == DuelMoveKind.BlueEggDraw) == 2);
             Check(legacy.ResolveBlueEggDraw(0, false).Success && legacy.State.Phase == Phase.Actions && p.Relikia == 200);
@@ -92,8 +92,8 @@ static class DecisionTests
         ("Decisión: Resetear la Mente pausa la búsqueda de Konamy, muestra la mano solo a quien decide y la devuelve intacta", () =>
         {
             var g = Fixture(CardCatalog.KonamyCode.Id); var p = g.State.Active; var rival = g.State.Players[1];
-            p.Hand.Add(CardCatalog.MindReset.Id); p.ActionsLeft = 2; p.Deck[0] = CardCatalog.Pendant.Id;
-            p.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Magnet.Id]); rival.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id]);
+            p.Hand.AddRange([CardCatalog.MindReset.Id, CardCatalog.Attack.Id]); p.ActionsLeft = 2; p.Deck[0] = CardCatalog.Pendant.Id;
+            p.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Magnet.Id]); rival.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id, CardCatalog.Attack.Id]);
             g.PublicHistory = new DuelHistory();
             Check(g.PlayCode(0, 0).Success && g.State.PendingDecision is { Source: "konamy-code" } search);
             Check(g.PlayCode(0, p.Hand.IndexOf(CardCatalog.MindReset.Id)).Success);
@@ -108,9 +108,9 @@ static class DecisionTests
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), new ScriptedRandom()); p = g.State.Active; rival = g.State.Players[1]; g.PublicHistory = new DuelHistory();
             Check(g.ResolveDecision(0, 0).Success && g.State.PendingDecision is { Step: "hand", Kind: DecisionKind.ChooseCard });
             var hand = DuelOptions.For(g, 0).Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
-            Check(hand.Select(o => o.CardId).SequenceEqual([CardCatalog.Senshuni.Id]) && hand[0].Button == "Devolver al mazo");
+            Check(hand.Select(o => o.CardId).SequenceEqual([CardCatalog.Senshuni.Id, CardCatalog.Attack.Id]) && hand[0].Button == "Devolver al mazo");
             // Senshuni and both memory cards go to their decks, and the rival draws one card back.
-            Check(hand[0].Move.Apply(g, 0).Success && rival.Hand.Count == 2 && rival.Deck.Count == 6 && p.Memory.SequenceEqual([CardCatalog.KonamyCode.Id, CardCatalog.MindReset.Id]));
+            Check(hand[0].Move.Apply(g, 0).Success && rival.Hand.Count == 3 && rival.Deck.Count == 6 && p.Memory.SequenceEqual([CardCatalog.KonamyCode.Id, CardCatalog.MindReset.Id]));
             Check(!JsonSerializer.Serialize(g.PublicHistory.Entries).Contains(CardCatalog.Senshuni.Name));
             Check(g.State.Phase == Phase.Decision && g.State.PendingDecision is { Source: "konamy-code", Suspended: null } && DuelSnapshot.For(g, 0, 2).Players[1].Hand.All(c => c == null));
             var pendant = DuelOptions.For(g, 0).Single(o => o.Move.Kind == DuelMoveKind.Choose && o.CardId == CardCatalog.Pendant.Id);

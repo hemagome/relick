@@ -35,24 +35,39 @@ static class OsamuTests
             Check(options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.CardId == null).Move.Apply(game, 0).Success);
             Check(game.State.OtherHealth() == 5 && game.State.Active.Relikia == 300 && game.State.Active.Hand.Count == 0);
         }),
-        ("Osamu Lv 1: un fallo con 2 recupera Agilidad y un 1 no ofrece búsqueda", () =>
+        ("Osamu Lv 1: en un ataque exitoso puede pasar aunque solo haya una carta en el mazo", () =>
         {
-            foreach (var die in new[] { 1, 2 })
+            var random = new ScriptedRandom();
+            var game = Open(random, RelikarioCatalog.Osamu);
+            var p = game.State.Active;
+            p.Hand.Add(CardCatalog.Attack.Id);
+            p.Skills.Add(CardCatalog.TurboOverlap.Id);
+            p.Deck.Add(CardCatalog.Agility.Id);
+            random.EnqueueDie(5);
+            Check(game.Attack(0, 0, 0).Success && game.State.Phase == Phase.Decision);
+            Check(game.DecisionChoices(0).Select(o => o.CardId).SequenceEqual([CardCatalog.Agility.Id, null]));
+            Check(game.ResolveDecision(0, 1).Success && p.Deck.Single() == CardCatalog.Agility.Id && p.Hand.Count == 0);
+        }),
+        ("Osamu Lv 1: recupera automáticamente la única Agilidad con un 2 o 3, pero no con un 1", () =>
+        {
+            foreach (var (die, inMemory) in new[] { (1, true), (2, false), (2, true), (3, true) })
             {
                 var random = new ScriptedRandom();
                 var game = Open(random, RelikarioCatalog.Osamu);
                 var p = game.State.Active;
                 p.Hand.Add(CardCatalog.Attack.Id);
                 p.Skills.Add(CardCatalog.TurboSword.Id);
-                p.Memory.AddRange([CardCatalog.Agility.Id, CardCatalog.TimeBomb.Id]);
+                p.Memory.Add(CardCatalog.TimeBomb.Id);
+                if (inMemory) p.Memory.Add(CardCatalog.Agility.Id);
+                p.Deck.Add(CardCatalog.Agility.Id);
+                game.State.Players[1].Memory.Add(CardCatalog.Agility.Id);
+                var cues = DuelVisualEvents.Capture(game);
                 random.EnqueueDie(die);
-                Check(game.Attack(0, 0, 0).Success);
-                if (die == 2)
-                {
-                    var choice = DuelOptions.For(game, 0).Single(o => o.Move.Kind == DuelMoveKind.Choose);
-                    Check(choice.CardId == CardCatalog.Agility.Id && choice.Owner == 0 && choice.Move.Apply(game, 0).Success);
-                }
-                Check(p.Hand.Contains(CardCatalog.Agility.Id) == (die == 2) && game.State.Phase == Phase.Combat);
+                Check(new DuelMove { Kind = DuelMoveKind.Attack, Index = 0, Value = 0 }.Apply(game, 0).Success);
+                var recovers = inMemory && die != 1;
+                Check(p.Hand.Contains(CardCatalog.Agility.Id) == recovers && p.Memory.Contains(CardCatalog.Agility.Id) == (inMemory && !recovers));
+                Check(game.State.Phase == Phase.Combat && game.State.PendingDecision == null && game.State.OtherHealth() == 8);
+                Check(cues.Count(c => c.Kind == DuelVisualKind.MemoryClaim) == (recovers ? 1 : 0));
             }
         }),
         ("Osamu Lv 2: evoluciona a cuatro vidas por 1500 PR, toma Agilidad y sube incluso el 1 de ataque", () =>
@@ -66,7 +81,7 @@ static class OsamuTests
             Check(!game.Evolve(0).Success && p.Relikia == 1500);
             p.Health = 4;
             Check(game.Evolve(0).Success && p.Relikario == RelikarioCatalog.OsamuLv2 && p.Relikia == 0 && p.Health == 4);
-            Check(game.ResolveDecision(0, 0).Success && p.Hand.Single() == CardCatalog.Agility.Id);
+            Check(game.State.PendingDecision == null && p.Hand.Single() == CardCatalog.Agility.Id);
             Check(!p.CorruptsOnMemory(CardZone.Hand, 0) && !game.CanUseOsamuSearch(0));
             p.Skills.Add(CardCatalog.TurboSword.Id); p.Hand.Add(CardCatalog.Attack.Id);
             random.EnqueueDie(1);
@@ -101,7 +116,7 @@ static class OsamuTests
             Check(p.CorruptsOnMemory(CardZone.Equipment, 0));
             game.State.CurrentPlayer = 1;
             game.State.Players[1].Hand.Add(CardCatalog.BlueEgg.Id);
-            Check(game.PlayCode(1, 0).Success && game.ResolveDestruction(1, 0, FieldZone.Equipment).Success);
+            Check(game.PlayCode(1, 0).Success);
             Check(p.Equipment == null && p.CorruptedMemory.SequenceEqual([CardCatalog.Pendant.Id]) && p.Memory.Count == 0);
         }),
         ("Turbo Sword: daño variable respetando mínimos y 500 PR", () =>
@@ -172,8 +187,8 @@ static class OsamuTests
             Check(dice is [{ Value: 6, SecondDie: 0 }, { Value: 2, SecondDie: 5 }]);
             game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
             Check(game.DecisionChoices(0).Select(o => o.Value).SequenceEqual([2, 5]) && game.ResolveDecision(0, 0).Success);
-            Check(game.State.OtherHealth() == 6 && game.State.Phase == Phase.Decision);
-            Check(game.ResolveDecision(0, 0).Success && game.State.Active.Hand.Single() == CardCatalog.Agility.Id &&
+            Check(game.State.OtherHealth() == 6 && game.State.Phase == Phase.Combat);
+            Check(game.State.Active.Hand.Single() == CardCatalog.Agility.Id &&
                 game.State.Active.Relikia == 300 && !game.State.Active.CorruptsOnMemory(CardZone.Hand, 0));
         }),
         ("Turbo Overlap: ambos dados salen juntos, conservan sus modificadores y se pueden elegir aunque empaten", () =>
