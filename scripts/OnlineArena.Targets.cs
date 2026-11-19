@@ -27,11 +27,18 @@ public partial class OnlineArena
         _arenaMenu = new IconMenuButton { Name = "ArenaMenu", CustomMinimumSize = icon,
             TooltipText = "Menú", AccessibilityName = "Menú" };
         header.AddChild(_arenaMenu); var popup = _arenaMenu.GetPopup(); ArenaViewport.TouchMenu(popup);
+        if (Desktop)
+        {
+            popup.AddCheckItem("Vista de mesa", TableViewMenuId);
+            popup.SetItemChecked(popup.GetItemIndex(TableViewMenuId), _requestedTableView);
+            popup.SetItemTooltip(popup.GetItemIndex(TableViewMenuId), "Marcada: mesa con profundidad. Desmarcada: vista clásica.");
+        }
         if (!_preparing) popup.AddItem("Historial de jugadas", 3);
         if (s.Winner != null || _preparing) popup.AddItem(s.Winner != null ? "Volver al lobby" : "Cerrar sala", 2);
         if (s.Winner != null) popup.AddItem("Ver resultado", 4);
         popup.IdPressed += id =>
         {
+            if (id == TableViewMenuId) ToggleTableView(popup);
             if (id == 3) ShowDuelHistory();
             if (id == 2) { if (s.Winner != null) RequestResultExit(); else Connection.Leave(RoomCode); }
             if (id == 4) { _resultDismissed = false; UpdateResultPresentation(); }

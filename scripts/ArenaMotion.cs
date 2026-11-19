@@ -18,7 +18,7 @@ public static class ArenaMotion
 
     /// <summary>A card taken from one hand into the other: plucked out with a tug, then swept across the table on a curve.</summary>
     public static void StealCard(Control card, Rect2 source, Rect2 destination, float t, float flip = 1,
-        float sourceRotation = 0, float destinationRotation = 0)
+        float sourceRotation = 0, float destinationRotation = 0, bool emphasize = true)
     {
         const float pluck = 0.22f;
         var from = source.GetCenter();
@@ -47,7 +47,7 @@ public static class ArenaMotion
             rotation = Mathf.Lerp(sourceRotation, destinationRotation, eased) + Mathf.Sin(v * Mathf.Pi) * 0.32f * -bow;
             grow = 1.08f + 0.1f * Mathf.Sin(v * Mathf.Pi) - 0.08f * eased;
         }
-        var size = source.Size.Lerp(destination.Size, Math.Clamp((t - pluck) / (1 - pluck), 0, 1)) * grow;
+        var size = source.Size.Lerp(destination.Size, Math.Clamp((t - pluck) / (1 - pluck), 0, 1)) * (emphasize ? grow : 1);
         card.PivotOffset = card.Size / 2;
         card.Scale = size / card.Size * new Vector2(flip, 1);
         card.Position = center - card.Size / 2;

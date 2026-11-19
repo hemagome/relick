@@ -20,13 +20,19 @@ public partial class MemoryZoneButton : Button
     internal int DisplayedAmount => Math.Max(0, (Corrupted ? CorruptedCount : Cards.Length) - _pendingArrivals);
     /// <summary>On the desktop board the pile fills its zone, like every other card.</summary>
     public bool Board { get; init; }
+    internal bool RaisedPile { get; init; }
     // Legacy docks keep the compact counter; board rows show the top card as a real pile.
     private bool Tall => Size.Y > 96;
     public Rect2 CardRect
     {
         get
         {
-            if (Board) return BoardArt.FitArtwork(new Vector2(126, 175), new Rect2(4, 4, Size.X - 8, Size.Y - 8));
+            if (Board)
+            {
+                var area = RaisedPile ? BoardArt.StackArea(Size) : new Rect2(4, 4, Size.X - 8, Size.Y - 8);
+                var face = RaisedPile && _back != null ? _back.GetSize() : new Vector2(126, 175);
+                return BoardArt.FitArtwork(face, area);
+            }
             if (!Tall) return new(6, 18, 26, 36.8f);
             var height = Size.Y - 48;
             var extent = new Vector2(height * 126 / 184, height);
@@ -145,7 +151,8 @@ public partial class MemoryZoneButton : Button
         }
         else
         {
-            if (_back != null) DrawTextureRect(_back, BoardArt.FitArtwork(_back, new Rect2(4, 4, Size.X - 8, Size.Y - 8)), false);
+            if (RaisedPile) BoardArt.StackEdges(this, card, amount, Accent);
+            if (_back != null) DrawTextureRect(_back, RaisedPile ? card : BoardArt.FitArtwork(_back, new Rect2(4, 4, Size.X - 8, Size.Y - 8)), false);
             BoardArt.Outline(this, card.Grow(2), BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.55f), 6);
             var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 9).X + 14;
             var tab = new Rect2((Size.X - width) / 2, 0, width, 16);

@@ -114,6 +114,7 @@ public partial class OnlineArena : Control
         var background = new ArenaBackground { Name = "ArenaBackdrop" }; AddChild(background);
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _background = background;
+        _tableView = _requestedTableView = LoadTableView();
         BindRelikarioPreviews();
         foreach (var pool in _actionPools)
         {
@@ -192,6 +193,7 @@ public partial class OnlineArena : Control
         PresentPlaymat();
         foreach (var target in _pulsingTargets)
             if (IsInstanceValid(target)) target.QueueRedraw();
+        ApplyRequestedTableView();
     }
 
     private void PresentDuelSnapshot(DuelSnapshot snapshot)
@@ -299,6 +301,8 @@ public partial class OnlineArena : Control
             crystals.Visible = !_preparing && s.Phase != Phase.Preparation;
             _portraits[relative].SetRelikario(player.RelikarioId);
             _portraits[relative].SetHealth(player.Health);
+            _portraits[relative].Scale = Vector2.One;
+            _portraits[relative].StandingOnTable = TableView;
             return new ArenaPlayerActions
             {
                 Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory,
@@ -328,7 +332,7 @@ public partial class OnlineArena : Control
             var columns = new HBoxContainer { Name = "ArenaColumns", SizeFlagsVertical = SizeFlags.ExpandFill };
             columns.AddThemeConstantOverride("separation", 0); _root.AddChild(columns);
             // One playmat: every zone has the same card size and the hands hang over its edges.
-            var canvas = new BoardCanvas { Name = "DuelArena", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipContents = true };
+            var canvas = new BoardCanvas { Name = "DuelArena", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipContents = true, TableView = TableView };
             columns.AddChild(canvas);
             _arenaScroll = null;
             canvas.GuiInput += ClearContextOnFieldClick;
@@ -343,8 +347,11 @@ public partial class OnlineArena : Control
             brand.AddChild(_status);
             canvas.Place(brand, new Rect2(24, 14, 300, 42), BoardAnchor.Top);
 
-            ArenaPresentation.Mat(canvas, true, Active(1));
-            ArenaPresentation.Mat(canvas, false, Active(0));
+            if (!canvas.TableView)
+            {
+                ArenaPresentation.Mat(canvas, true, Active(1));
+                ArenaPresentation.Mat(canvas, false, Active(0));
+            }
             void Side(int relative)
             {
                 var seat = relative == 0 ? s.MySeat : 1 - s.MySeat;
@@ -356,13 +363,14 @@ public partial class OnlineArena : Control
             Side(1);
             Side(0);
 
-            // The rival's hand hangs from the top edge at full card size and shows the same band as ours.
+            // Classic cuts the fan at the top edge. On the table it is held beyond the far rail.
             const float rivalBand = ArenaPresentation.DesktopHandVisible;
             const float rivalFanHeight = BoardCanvas.CardHeight + 60;
             var rivalHand = new HBoxContainer { Name = "RivalHandRow", Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
             rivalHand.AddThemeConstantOverride("separation", 8);
-            canvas.Place(rivalHand, new Rect2(340, rivalBand - rivalFanHeight, BoardCanvas.DesignWidth - 680, rivalFanHeight), BoardAnchor.Top);
-            BuildOpponentHand(rivalHand, new Vector2(BoardCanvas.CardWidth, BoardCanvas.CardHeight));
+            if (canvas.TableView) canvas.Place(rivalHand, BoardCanvas.RivalHandSlot);
+            else canvas.Place(rivalHand, new Rect2(340, rivalBand - rivalFanHeight, BoardCanvas.DesignWidth - 680, rivalFanHeight), BoardAnchor.Top);
+            BuildOpponentHand(rivalHand, canvas.TableView ? BoardCanvas.RivalCardSize : new Vector2(BoardCanvas.CardWidth, BoardCanvas.CardHeight));
 
             // Turn, stage and the advance button live on the divider, in the colour of whose turn it is.
             var turnAccent = _preparing || s.Winner != null ? BoardArt.Gold : s.CurrentPlayer == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral;
@@ -616,8 +624,8 @@ public partial class OnlineArena : Control
         if (boardFace != null)
         {
             // The rival's hand mirrors ours: same card size, tilt and visible band, hanging from the top edge.
-            row = new HandFan { Name = "OpponentHandFan", Mirrored = true, Headroom = 0, MaximumAngle = 3, Spread = true,
-                VisibleBand = ArenaPresentation.DesktopHandVisible,
+            row = new HandFan { Name = "OpponentHandFan", Mirrored = !TableView, HeldOffTable = TableView, Headroom = 0,
+                MaximumAngle = TableView ? 18 : 3, Spread = !TableView, VisibleBand = TableView ? 0 : ArenaPresentation.DesktopHandVisible,
                 SizeFlagsVertical = SizeFlags.Fill };
         }
         else

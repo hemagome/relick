@@ -46,6 +46,12 @@ public partial class RelikarioPortrait : Control
     public bool Inspectable { get; init; }
     public bool FlipHorizontal { get; set; }
     public Color AccentColor { get; set; } = new("75e6bd");
+    internal bool StandingOnTable
+    {
+        get => _standingOnTable;
+        set { if (_standingOnTable != value) { _standingOnTable = value; Refresh(); } }
+    }
+    private bool _standingOnTable;
 
     public PortraitMotion Motion { get; private set; }
     public bool IsActionPlaying => !Clips[Motion].Loops;
@@ -199,6 +205,12 @@ public partial class RelikarioPortrait : Control
 
     private (Vector2 Halo, float Radius, Rect2 Target) Placement()
     {
+        if (StandingOnTable)
+        {
+            var extentOnTable = new Vector2(FrameWidth, FrameHeight) * Math.Min((Size.X - 12) / FrameWidth, (Size.Y - 26) / FrameHeight);
+            var feet = new Vector2(Size.X / 2, Size.Y * .94f);
+            return (feet, extentOnTable.X * .43f, new Rect2(feet - extentOnTable * new Vector2(.5f, 1), extentOnTable));
+        }
         const float captionSpace = 24;
         var availableHeight = Math.Max(0, Size.Y - captionSpace);
         var scale = Math.Min(Size.X / FrameWidth, availableHeight / FrameHeight);
@@ -213,8 +225,19 @@ public partial class RelikarioPortrait : Control
     {
         if (_osamu == null && !_sheets.ContainsKey(Motion) && _staticPortrait == null) return;
         var (halo, radius, _) = Placement();
-        for (var i = 3; i >= 1; i--) DrawCircle(halo, radius * i / 3, BoardArt.Tint(AccentColor, 0.025f));
-        DrawArc(halo, radius, -Mathf.Pi * 0.9f, Mathf.Pi * 0.7f, 64, BoardArt.Tint(AccentColor, 0.16f), 1, true);
+        if (StandingOnTable)
+        {
+            DrawSetTransform(halo, 0, new Vector2(1, .14f));
+            DrawCircle(new Vector2(0, 13), radius * 1.13f, new Color(0f, .02f, .04f, .48f), antialiased: true);
+            DrawCircle(Vector2.Zero, radius, RelickVisuals.Playmat.Background, antialiased: true);
+            DrawArc(Vector2.Zero, radius, 0, Mathf.Tau, 54, BoardArt.Tint(AccentColor, .7f), 1.3f, true);
+            DrawSetTransform(Vector2.Zero);
+        }
+        else
+        {
+            for (var i = 3; i >= 1; i--) DrawCircle(halo, radius * i / 3, BoardArt.Tint(AccentColor, 0.025f));
+            DrawArc(halo, radius, -Mathf.Pi * 0.9f, Mathf.Pi * 0.7f, 64, BoardArt.Tint(AccentColor, 0.16f), 1, true);
+        }
         if (!IsActionPlaying) return;
         var caption = Motion switch
         {

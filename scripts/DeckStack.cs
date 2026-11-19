@@ -13,6 +13,7 @@ public partial class DeckStack : Control
     private Texture2D? _back;
     /// <summary>On the desktop board the pile fills its zone, like every other card.</summary>
     public bool Board { get; init; }
+    internal bool RaisedPile { get; init; }
     public override void _Ready()
     {
         CustomMinimumSize = new(Math.Max(70, CustomMinimumSize.X), 116);
@@ -29,7 +30,7 @@ public partial class DeckStack : Control
         {
             if (Board)
             {
-                var fit = BoardArt.FitArtwork(new Vector2(54, 77), new Rect2(4, 4, Size.X - 12, Size.Y - 12));
+                var fit = BoardArt.FitArtwork(new Vector2(54, 77), RaisedPile ? BoardArt.StackArea(Size) : new Rect2(4, 4, Size.X - 12, Size.Y - 12));
                 return fit;
             }
             if (Size.Y <= 118) return new(new Vector2(5, 5), new Vector2(54, 77));
@@ -45,11 +46,15 @@ public partial class DeckStack : Control
         var top = TopRect;
         if (Amount > 0 && _back != null)
         {
-            var layers = Math.Min(5, Math.Max(1, Amount / 6));
-            RelickVisuals.Shadow(this, new Rect2(top.Position + new Vector2(layers * 1.5f, layers * 1.5f + 2), top.Size).Grow(-2), new Color(0, 0, 0, 0.6f), 8);
-            for (var layer = layers; layer > 0; layer--)
-                BoardArt.Plate(this, new Rect2(top.Position + new Vector2(layer * 1.5f, layer * 1.5f), top.Size),
-                    new Color("1d2740"), new Color("5f6f96"), 3);
+            if (RaisedPile) BoardArt.StackEdges(this, top, Amount, Accent, deck: true);
+            else
+            {
+                var layers = Math.Min(5, Math.Max(1, Amount / 6));
+                RelickVisuals.Shadow(this, new Rect2(top.Position + new Vector2(layers * 1.5f, layers * 1.5f + 2), top.Size).Grow(-2), new Color(0, 0, 0, 0.6f), 8);
+                for (var layer = layers; layer > 0; layer--)
+                    BoardArt.Plate(this, new Rect2(top.Position + new Vector2(layer * 1.5f, layer * 1.5f), top.Size),
+                        new Color("1d2740"), new Color("5f6f96"), 3);
+            }
             DrawTextureRect(_back, top, false);
         }
         else

@@ -19,6 +19,9 @@ public partial class OpponentHandCard : Button
     public bool Targetable { get; set; }
     public bool Chosen { get; set; }
     private Texture2D? _back;
+    private HandCard? _front;
+    internal Rect2 VisibleFaceRect => _back != null ? BoardArt.FitArtwork(_back, new Rect2(Vector2.Zero, Size)) :
+        _front != null ? _front.GetTransform() * _front.VisibleFaceRect : new Rect2(Vector2.Zero, Size);
 
     public override void _Ready()
     {
@@ -42,7 +45,7 @@ public partial class OpponentHandCard : Button
                 Position = (FaceSize - new Vector2(126, 184) * scale) / 2, RelikarioId = ArtworkRelikario
             };
             front.Ready += () => { front.MouseFilter = MouseFilterEnum.Ignore; front.SetProcess(false); };
-            AddChild(front);
+            AddChild(front); _front = front;
         }
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
         FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
@@ -52,9 +55,7 @@ public partial class OpponentHandCard : Button
     {
         if (_back != null)
         {
-            var scale = Math.Min(Size.X / _back.GetWidth(), Size.Y / _back.GetHeight());
-            var extent = _back.GetSize() * scale;
-            var rect = new Rect2((Size - extent) / 2, extent);
+            var rect = VisibleFaceRect;
             RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
             DrawTextureRect(_back, rect, false);
         }

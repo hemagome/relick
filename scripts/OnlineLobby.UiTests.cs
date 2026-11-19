@@ -53,6 +53,11 @@ public partial class OnlineLobby
                 await online.CaptureBoardPreview(boardPreview.Split('=', 2)[1]); online.QueueFree(); await Layout();
                 GD.Print("PVP_BOARD_PREVIEW_DONE"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--table-view-only"))
+            {
+                await online.CheckTableView(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--dexterity-only"))
             {
                 await online.CheckDexterityLayout(); online.QueueFree(); await Layout();
@@ -353,6 +358,7 @@ public partial class OnlineLobby
             await online.CheckHandLimitLayout();
             await online.CheckDexterityLayout();
             await online.CheckEvolutionReveal();
+            await online.CheckTableView();
             await online.CheckYunoEvolutionLayout();
             await online.CheckReverseLayout();
             await online.CheckHandStealAnimation();

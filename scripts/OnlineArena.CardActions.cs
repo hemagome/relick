@@ -80,7 +80,7 @@ public partial class OnlineArena
 
         // The fan rotates the cards. Keep the controls level and outside the scroll clips.
         var toArena = GetGlobalTransform().AffineInverse();
-        Rect2 Bounds(Control control) => (toArena * control.GetGlobalTransform()) * new Rect2(Vector2.Zero, control.Size);
+        Rect2 Bounds(Control control) => toArena * Global(control, new Rect2(Vector2.Zero, control.Size));
         var area = Bounds(_root!);
         var visible = Bounds(anchor).Intersection(area);
         for (var parent = anchor.GetParentControl(); parent != null && parent != this; parent = parent.GetParentControl())

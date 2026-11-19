@@ -8,6 +8,8 @@ internal static class GuiInputTestDriver
     private static (Viewport Viewport, Vector2 Point) PointerTarget(Control control)
     {
         if (!control.IsVisibleInTree()) throw new InvalidOperationException("Control oculto: " + control.Name);
+        if (ProjectedTable.Of(control) is { } table)
+            return (table.GetViewport(), table.ScreenPoint(control, control.Size / 2, withCanvas: true));
         var viewport = control.GetViewport();
         var point = control.GetGlobalTransformWithCanvas() * (control.Size / 2);
         if (viewport is Window window && window.IsEmbedded())

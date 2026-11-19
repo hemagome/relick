@@ -55,23 +55,29 @@ public partial class OnlineArena
     };
     private static Rect2 ZoneRect(Control control) => control switch
     {
-        MemoryZoneButton pile => Global(pile, pile.CardRect),
-        ZoneCardButton zone => Global(zone, zone.CardRect),
-        AttachmentStack attached => Global(attached, attached.CardRect),
-        DeckStack deck => Global(deck, deck.TopRect),
-        HandCard { InFan: true } card => Upright(card),
-        OpponentHandCard card => Upright(card),
-        _ => control.GetGlobalRect()
+        MemoryZoneButton pile => FlightFootprint(pile, pile.CardRect),
+        ZoneCardButton zone => FlightFootprint(zone, zone.CardRect),
+        AttachmentStack attached => FlightFootprint(attached, attached.CardRect),
+        DeckStack deck => FlightFootprint(deck, deck.TopRect),
+        HandCard { InFan: true } card => Upright(card, OnTable(card) ? card.VisibleFaceRect : null),
+        OpponentHandCard card => Upright(card, OnTable(card) ? card.VisibleFaceRect : null),
+        _ => FlightFootprint(control, new Rect2(Vector2.Zero, control.Size))
     };
 
-    // The desktop board is a scaled stage: zone rectangles go through the control's transform.
-    private static Rect2 Global(Control control, Rect2 local) => control.GetGlobalTransform() * local;
+    private static Rect2 Global(Control control, Rect2 local) => ProjectedTable.Of(control) is { } table
+        ? table.ScreenBounds(control, local) : control.GetGlobalTransform() * local;
 
-    private static Rect2 Upright(Control card)
+    private static Rect2 FlightFootprint(Control control, Rect2 local) => ProjectedTable.Of(control) is { } table
+        ? table.FlightFootprint(control, local) : control.GetGlobalTransform() * local;
+
+    private static bool OnTable(Control card) => card.FindParent("DuelArena") is BoardCanvas { TableView: true };
+
+    private static Rect2 Upright(Control card, Rect2? face = null)
     {
         var transform = card.GetGlobalTransform();
-        var size = card.Size * transform.Scale;
-        return new Rect2(transform * (card.Size / 2) - size / 2, size);
+        var rect = face ?? new Rect2(Vector2.Zero, card.Size);
+        var size = rect.Size * transform.Scale;
+        return new Rect2(transform * rect.GetCenter() - size / 2, size);
     }
 
     private Dictionary<DuelVisualEvent, Flight> CaptureOrigins(DuelSnapshot current, DuelSnapshot? previous)
@@ -510,7 +516,7 @@ public partial class OnlineArena
         if (placement.IsExchangePlacement && placement.Face is { } face && target is ZoneCardButton { Card: null } exchange)
         {
             var rect = exchange.ArtworkRect(BoardArt.LoadCardArtwork(CardCatalog.Get(face), FlightArtworkRelikario(placement.Event)));
-            slot = Global(exchange, rect);
+            slot = FlightFootprint(exchange, rect);
         }
         _placementPreview = target == null || !bounds.Encloses(slot) || !RectVisible(target, slot);
         if (_placementPreview)
@@ -521,8 +527,11 @@ public partial class OnlineArena
             slot = new Rect2(board.GetCenter() - preview / 2, preview);
         }
         var source = placement.Origin ?? PreviewRect(new Vector2(Size.X / 2, Size.Y - 52));
-        var halfSize = source.Size / 2;
-        source.Position = source.GetCenter().Clamp(bounds.Position + halfSize, bounds.End - halfSize) - halfSize;
+        if (!TableView)
+        {
+            var halfSize = source.Size / 2;
+            source.Position = source.GetCenter().Clamp(bounds.Position + halfSize, bounds.End - halfSize) - halfSize;
+        }
         // Flights use portrait artwork, even when the slot displays a horizontal card.
         return (source, placement.TurnsSideways ? PortraitFootprint(slot) : slot);
     }
@@ -558,7 +567,7 @@ public partial class OnlineArena
             {
                 var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
                 if (deck == null) { SetDestinationPending(next, target, false); FinishHandDeparture(); return; }
-                var deckRect = Global(deck, deck.TopRect);
+                var deckRect = ZoneRect(deck);
                 if (kind is DuelVisualKind.Draw or DuelVisualKind.HandSteal) PlaySound(SoundCue.CardDraw);
                 if (kind == DuelVisualKind.Shuffle) PlaySound(SoundCue.CardShuffle);
                 var fromPrevious = kind is DuelVisualKind.Return or DuelVisualKind.BonusClaim or DuelVisualKind.Pile or DuelVisualKind.HandTransfer or DuelVisualKind.MemoryClaim or DuelVisualKind.HandDiscard or DuelVisualKind.HandSteal;
@@ -598,7 +607,7 @@ public partial class OnlineArena
             {
                 _flightFront = new HandCard { Card = CardCatalog.Get(id), RelikarioId = FlightArtworkRelikario(next.Event),
                     Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore };
-                _flight.AddChild(_flightFront); _flightFront.SetProcess(false);
+                AddFlightFront(_flight, _flightFront);
             }
             _flightTime = 0;
             if (next.Paired) TryLaunchCompanion(next);
@@ -629,7 +638,7 @@ public partial class OnlineArena
                 _flightBack!.Visible = !_flightFront.Visible;
             }
             if (_activeFlight.IsSteal)
-                ArenaMotion.StealCard(_flight, _flightSource, _flightDestination, t, flip, _activeFlight.OriginRotation, _flightTarget?.Rotation ?? 0);
+                ArenaMotion.StealCard(_flight, _flightSource, _flightDestination, t, flip, _activeFlight.OriginRotation, _flightTarget?.Rotation ?? 0, emphasize: !TableView);
             else
                 ArenaMotion.PositionCard(_flight, _flightSource, _flightDestination, t, relative, flip,
                     _activeFlight.OriginRotation, _activeFlight.TurnsSideways ? Mathf.Pi / 2 : _flightTarget?.Rotation ?? 0);
@@ -646,9 +655,21 @@ public partial class OnlineArena
         FinishHandDeparture();
         PlayPendingPortraits();
     }
-    private static TextureRect FlightBack(string? sleeve = null) => new() { Texture = SleeveArt.Back(sleeve),
-        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-        Position = new(1, 7), Size = new(124, 175), MouseFilter = MouseFilterEnum.Ignore };
+    private TextureRect FlightBack(string? sleeve) => new() { Texture = SleeveArt.Back(sleeve),
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TableView ? TextureRect.StretchModeEnum.Scale : TextureRect.StretchModeEnum.KeepAspectCentered,
+        Position = TableView ? Vector2.Zero : new(1, 7), Size = TableView ? new(126, 184) : new(124, 175), MouseFilter = MouseFilterEnum.Ignore };
+
+    private void AddFlightFront(Control flight, HandCard front)
+    {
+        flight.AddChild(front);
+        front.SetProcess(false);
+        if (!TableView) return;
+        // The flight transform sizes the visible face, including when a foreshortened card lands upright.
+        var face = front.VisibleFaceRect;
+        front.Scale = flight.Size / face.Size;
+        front.Position = -face.Position * front.Scale;
+    }
 
     private string FlightArtworkRelikario(DuelVisualEvent cue)
     {
@@ -670,7 +691,7 @@ public partial class OnlineArena
         var discard = pair.Event.Kind == DuelVisualKind.HandDiscard;
         var target = discard ? ZoneNode(relative, CardZone.Memory, -1) : ZoneNode(relative, CardZone.Hand, pair.Event.Value);
         var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
-        Rect2? deckRect = deck == null ? null : Global(deck, deck.TopRect);
+        Rect2? deckRect = deck == null ? null : ZoneRect(deck);
         var source = discard ? pair.Origin : deckRect;
         Rect2? destination = target == null ? null : ZoneRect(target);
         var bounds = new Rect2(Vector2.Zero, Size);
@@ -688,7 +709,7 @@ public partial class OnlineArena
         {
             front = new HandCard { Card = CardCatalog.Get(id), RelikarioId = FlightArtworkRelikario(pair.Event),
                 Size = new(126, 184), MouseFilter = MouseFilterEnum.Ignore };
-            node.AddChild(front); front.SetProcess(false);
+            AddFlightFront(node, front);
         }
         _companion = new(pair, node, front, back, target, source.Value, destination.Value);
     }
@@ -767,7 +788,7 @@ public partial class OnlineArena
                 // Both hands hang over the edges of the desktop board on purpose: there a card
                 // counts as visible while any part of it is on the playmat.
                 // The board is a scaled stage: allow for the rounding of its transforms.
-                var bounds = clip.GetGlobalRect().Grow(1);
+                var bounds = Global(clip, new Rect2(Vector2.Zero, clip.Size)).Grow(1);
                 if (clip is BoardCanvas ? !bounds.Intersects(rect) : !bounds.Encloses(rect)) return false;
             }
         return true;

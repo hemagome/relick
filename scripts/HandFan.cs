@@ -11,6 +11,7 @@ public partial class HandFan : Control
     internal bool Spread { get; init; }
     /// <summary>The rival's fan: it hangs from the top edge, so the arc and the tilt are mirrored.</summary>
     internal bool Mirrored { get; init; }
+    internal bool HeldOffTable { get; init; }
     /// <summary>
     /// The hand's card count, kept beside the cards it counts: past the last card, inside the band the
     /// screen edge leaves visible. A fan that spreads across the board would otherwise leave it far away,
@@ -38,10 +39,12 @@ public partial class HandFan : Control
 
         var face = cards[0].CustomMinimumSize;
         var pivot = face / 2;
-        var step = face.X * 0.55f;
+        var step = face.X * (HeldOffTable ? .36f : .55f);
         // The minimum footprint keeps the tight overlap; a wide board lets the cards breathe.
         var spread = Spread && cards.Length > 1
             ? Math.Clamp((Size.X - face.X - 40) / (cards.Length - 1), step, face.X * 0.8f) : step;
+        if (HeldOffTable && cards.Length > 1)
+            spread = Math.Min(step, Math.Max(1, (Size.X - face.X - 90) / (cards.Length - 1)));
         var halfCount = (cards.Length - 1) / 2f;
         var maxAngle = Mathf.DegToRad(Math.Min(MaximumAngle, halfCount * 7));
         var poses = new Transform2D[cards.Length];
@@ -52,7 +55,7 @@ public partial class HandFan : Control
             {
                 var side = (i - halfCount) / Math.Max(0.5f, halfCount);
                 var mirror = Mirrored ? -1 : 1;
-                var center = new Vector2(i * spacing, mirror * 8 * side * side);
+                var center = new Vector2(i * spacing, mirror * (HeldOffTable ? 16 : 8) * side * side);
                 var pose = new Transform2D(mirror * side * maxAngle, center);
                 poses[i] = pose;
                 var rect = pose * new Rect2(-pivot, face);
@@ -61,11 +64,11 @@ public partial class HandFan : Control
             return bounds;
         }
 
-        CustomMinimumSize = Pose(step).Size.Ceil() + new Vector2(12, 2 + Headroom);
+        CustomMinimumSize = HeldOffTable ? face + new Vector2(12, 2) : Pose(step).Size.Ceil() + new Vector2(12, 2 + Headroom);
         var bounds = Pose(spread);
         // A mirrored fan rests its lowest edge on the bottom of the control, where the screen edge cuts it.
         var offset = new Vector2(Math.Max(Size.X, CustomMinimumSize.X) / 2 - bounds.GetCenter().X,
-            Mirrored ? Math.Max(Size.Y, CustomMinimumSize.Y) - Headroom - bounds.End.Y : Headroom - bounds.Position.Y);
+            Mirrored || HeldOffTable ? Math.Max(Size.Y, CustomMinimumSize.Y) - Headroom - bounds.End.Y : Headroom - bounds.Position.Y);
         for (var i = 0; i < cards.Length; i++)
         {
             var card = cards[i];
@@ -87,7 +90,7 @@ public partial class HandFan : Control
         // The own fan shows its top band. The rival's hangs from the top edge: its count sits just under
         // that edge, clear of the rival's first row of zones.
         var bottom = cards is { } shown ? shown.End.Y : area.Y;
-        var y = Mirrored
+        var y = Mirrored || HeldOffTable
             ? VisibleBand > 0 ? bottom - VisibleBand + edge : bottom - inset - size.Y
             : (cards?.Position.Y ?? Headroom) + inset;
         counter.Size = size;

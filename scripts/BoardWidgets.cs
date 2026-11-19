@@ -55,6 +55,30 @@ public static class BoardArt
         return new Rect2(area.GetCenter() - extent / 2, extent);
     }
 
+    // The footprint of the top card stays put as cards are added or removed, so flights never jump.
+    internal static Rect2 StackArea(Vector2 slot) => new(4, 4, Math.Max(1, slot.X - 13), Math.Max(1, slot.Y - 23));
+
+    internal static void StackEdges(CanvasItem item, Rect2 top, int cards, Color accent, bool deck = false)
+    {
+        if (cards < 2 || !top.HasArea()) return;
+        var thickness = deck ? Math.Clamp(2 + cards * .44f, 4, 17) : Math.Clamp((cards - 1) * 3f, 3, 14);
+        var offset = new Vector2(thickness * .22f, thickness);
+        var right = new Vector2(top.End.X, top.Position.Y);
+        var left = new Vector2(top.Position.X, top.End.Y);
+        var corner = top.End;
+        var edge = new Color("8a94ac").Lerp(accent, .22f);
+        var paper = new Color("29364b");
+        item.DrawColoredPolygon([right, corner, corner + offset, right + offset], paper.Darkened(.33f));
+        item.DrawColoredPolygon([left, corner, corner + offset, left + offset], paper);
+        var seams = Math.Min(cards - 1, 8);
+        for (var line = 1; line <= seams; line++)
+        {
+            var layer = offset * (line / (float)seams);
+            item.DrawLine(left + layer, corner + layer, Tint(edge, line == seams ? .85f : .56f), 1, true);
+            item.DrawLine(corner + layer, right + layer, Tint(edge, .38f), 1, true);
+        }
+    }
+
     private static Vector2[] Octagon(Rect2 rect, int radius)
     {
         var cut = Math.Min(Math.Min(radius, 8), Math.Min(rect.Size.X, rect.Size.Y) / 2);
@@ -768,6 +792,7 @@ public partial class ZoneCardButton : Button
     public float SlotWidth { get; init; }
     public ZoneCardLayout Layout { get; init; }
     public bool EffectUsed { get; init; }
+    internal int StackCopies { get; init; }
     public CardDefinition? Card { get; set; }
     public string? RelikarioId { get; init; }
     public string Caption { get; set; } = "";
@@ -806,7 +831,7 @@ public partial class ZoneCardButton : Button
 
     internal Rect2 ArtworkRect(Texture2D? artwork)
     {
-        var area = new Rect2(4, 4, Size.X - 8, Size.Y - 8);
+        var area = StackCopies > 0 ? BoardArt.StackArea(Size) : new Rect2(4, 4, Size.X - 8, Size.Y - 8);
         if (artwork == null) return area;
         if (ArtworkRotation(artwork) == 0) return BoardArt.FitArtwork(artwork, area);
         var unrotated = BoardArt.FitArtwork(artwork, new Rect2(0, 0, area.Size.Y, area.Size.X));
@@ -859,6 +884,7 @@ public partial class ZoneCardButton : Button
             var rect = CardRect;
             var rotation = ArtworkRotation(artwork);
             RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 7);
+            BoardArt.StackEdges(this, rect, AwaitingEquipment ? StackCopies - 1 : StackCopies, Accent);
             if (rotation != 0)
             {
                 var origin = rotation > 0 ? new Vector2(rect.End.X, rect.Position.Y) : new Vector2(rect.Position.X, rect.End.Y);
@@ -885,6 +911,7 @@ public partial class AttachmentStack : Button
     public float SlotWidth { get; init; }
     /// <summary>On the desktop board the top card fills the zone; the count tells how many lie under it.</summary>
     public bool Board { get; init; }
+    internal bool RaisedPile { get; init; }
     private int Amount => Cards.Count;
     private Texture2D[] _previews = [];
     internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(Vector2.Zero, Size) : PreviewRect(_previews.Length - 1);
@@ -899,7 +926,7 @@ public partial class AttachmentStack : Button
 
     private Rect2 PreviewRect(int index)
     {
-        if (Board) return BoardArt.FitArtwork(_previews[index], new Rect2(4, 4, Size.X - 8, Size.Y - 8));
+        if (Board) return BoardArt.FitArtwork(_previews[index], RaisedPile ? BoardArt.StackArea(Size) : new Rect2(4, 4, Size.X - 8, Size.Y - 8));
         const float offset = 14;
         var spread = (_previews.Length - 1) * offset;
         var area = new Rect2(4 + index * offset, 4, Size.X - 8 - spread, Size.Y - 8);
@@ -934,6 +961,7 @@ public partial class AttachmentStack : Button
         {
             var rect = PreviewRect(i);
             RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
+            if (RaisedPile) BoardArt.StackEdges(this, rect, Amount, accent);
             DrawTextureRect(_previews[i], rect, false);
         }
         if (Amount > 1) BoardArt.CardBadge(this, Size, $"×{Amount}");
@@ -982,6 +1010,15 @@ public partial class HandCard : Button
     private float _hover;
     private Texture2D? _artwork;
     internal Texture2D? FaceTexture => _artwork;
+    internal Rect2 VisibleFaceRect
+    {
+        get
+        {
+            var (rect, scale, origin) = FacePose();
+            if (_artwork != null && Card.Kind != CardKind.Skill) rect = BoardArt.FitArtwork(_artwork, rect);
+            return new Rect2(origin + rect.Position * scale, rect.Size * scale);
+        }
+    }
     public bool HasSkillArtwork => Card.Kind == CardKind.Skill && _artwork != null;
     public bool HasAttackArtwork => Card.Kind == CardKind.Attack && _artwork != null;
     private bool OwnerIsForeign => OriginalOwner is { } owner && ViewerSeat is { } viewer && owner.Seat != viewer;
@@ -1020,16 +1057,23 @@ public partial class HandCard : Button
         _hover = Mathf.Lerp(_hover, target, Math.Min(1, (float)delta * 14));
         QueueRedraw();
     }
+    private (Rect2 Rect, float Scale, Vector2 Origin) FacePose()
+    {
+        var y = 7 - _hover * (InFan ? Lift : 5);
+        var r = new Rect2(new Vector2(1, y), Face);
+        var zoom = Zoom;
+        var scale = PresentationScale * zoom;
+        var origin = new Vector2(DrawSize.X / 2, r.End.Y) * PresentationScale * (1 - zoom);
+        return (r, scale, origin);
+    }
+
     public override void _Draw()
     {
         var accent = BoardArt.CardColor(Card, ArtworkRelikario);
         var icon = BoardArt.CardIcon(Card);
-        var y = 7 - _hover * (InFan ? Lift : 5);
-        var r = new Rect2(new Vector2(1, y), Face);
+        var (r, scale, origin) = FacePose();
+        var y = r.Position.Y;
         // A raised card grows from its lower edge, so neighbours keep their place in the fan.
-        var zoom = Zoom;
-        var scale = PresentationScale * zoom;
-        var origin = new Vector2(DrawSize.X / 2, r.End.Y) * PresentationScale * (1 - zoom);
         DrawSetTransform(origin, 0, Vector2.One * scale);
         RelickVisuals.Shadow(this, new Rect2(r.Position + new Vector2(0, 4 + 5 * _hover), r.Size).Grow(-3), new Color(0, 0, 0, 0.5f), (int)(9 + 7 * _hover), 8);
         if (_artwork != null)

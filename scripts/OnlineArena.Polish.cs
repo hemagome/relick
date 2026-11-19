@@ -144,10 +144,11 @@ public partial class OnlineArena
         var entry = recipe.Entry;
         if (_impacts.ReducedMotion || _root == null || BoardArt.LoadCardArtwork(CardCatalog.Get(entry.CardId)) is not { } art) return false;
         var relative = entry.Actor == current.MySeat ? 0 : 1;
-        Rect2? Find(string name) => _root.FindChild(name, true, false) is Control { } node && node.IsVisibleInTree() ? node.GetGlobalRect() : null;
+        Rect2 Bounds(Control node) => Global(node, new Rect2(Vector2.Zero, node.Size));
+        Rect2? Find(string name) => _root.FindChild(name, true, false) is Control { } node && node.IsVisibleInTree() ? Bounds(node) : null;
         var memory = Find("MemoryButton" + relative);
         var exchange = _exchangeTracks[relative] is { } track && IsInstanceValid(track)
-            ? track.ExchangeButtons.Where(IsInstanceValid).Select(b => b.GetGlobalRect()).Aggregate((a, b) => a.Merge(b)) : (Rect2?)null;
+            ? track.ExchangeButtons.Where(IsInstanceValid).Select(Bounds).Aggregate((a, b) => a.Merge(b)) : (Rect2?)null;
         if (memory == null || exchange == null) return false;
         var ingredients = recipe.Ingredients.Where(CardCatalog.All.ContainsKey)
             .Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), current.Players[entry.Actor].RelikarioId)).OfType<Texture2D>().ToArray();

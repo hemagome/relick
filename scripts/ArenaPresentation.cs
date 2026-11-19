@@ -133,7 +133,10 @@ public static class ArenaPresentation
         if (enemy) { hero.AddChild(info); hero.AddChild(stand); } else { hero.AddChild(stand); hero.AddChild(info); }
         portrait.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         portrait.CustomMinimumSize = new(0, 96);
-        stand.AddChild(portrait);
+        if (canvas.TableView)
+            stand.AddChild(new Control { CustomMinimumSize = portrait.CustomMinimumSize, SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+                MouseFilter = Control.MouseFilterEnum.Ignore });
+        else stand.AddChild(portrait);
         // Whose turn it is lives in the phase bar's status cell; the name is only the name.
         var ownerName = Heading(owner.Name, 17, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; info.AddChild(ownerName);
@@ -165,7 +168,8 @@ public static class ArenaPresentation
             evolve.CustomMinimumSize = new(0, 28); evolve.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
             if (actions.CanEvolve && owner.Level == 1) InviteEvolution(evolve);
         }
-        Put(hero, 306, top, 286, H);
+        canvas.PlaceTableHud(hero, BoardCanvas.FieldRect(enemy, 306, top, 286, H));
+        if (canvas.TableView) canvas.PlaceFigure(portrait, enemy);
 
         var equipmentStatus = owner.Equipment switch
         {
@@ -177,17 +181,20 @@ public static class ArenaPresentation
             _ => ""
         };
         var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
-            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W };
+            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W,
+            StackCopies = canvas.TableView ? owner.EquipmentStackedCopies + 1 : 0 };
         equipment.Pressed += actions.Equipment; Put(equipment, 306, bottom, W, H);
-        if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W) is { } lights)
+        if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W, canvas.TableView) is { } lights)
             Put(lights, 1150, top, W, H);
-        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId, SlotWidth = W, Board = true };
+        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
+            SlotWidth = W, Board = true, RaisedPile = canvas.TableView };
         attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, bottom, W, H);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
             // Gold lies over the equipment it protects, leaving a strip of that card in sight.
             var cover = new ZoneCardButton { Name = $"EquipmentCoverZone{index}", Caption = "ORO", SlotWidth = W,
-                Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold, StatusText = covers.Length > 1 ? $"×{covers.Length}" : "" };
+                Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold, StatusText = covers.Length > 1 ? $"×{covers.Length}" : "",
+                StackCopies = canvas.TableView ? covers.Length : 0 };
             cover.Pressed += actions.EquipmentCovers; Put(cover, 306 + 42, bottom, W, H);
         }
 
@@ -210,12 +217,17 @@ public static class ArenaPresentation
             Put(skill, x, y, H, W);
         }
 
-        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Cards = owner.Memory, Accent = accent, Board = true, RelikarioId = owner.RelikarioId };
+        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Cards = owner.Memory, Accent = accent, Board = true,
+            RaisedPile = canvas.TableView, RelikarioId = owner.RelikarioId };
         memory.Pressed += () => actions.Memory(false); Put(memory, 996, top, W, H);
-        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", CorruptedCount = owner.CorruptedCount, Corrupted = true, Board = true, Sleeve = owner.Sleeve };
+        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", CorruptedCount = owner.CorruptedCount,
+            Corrupted = true, Board = true, RaisedPile = canvas.TableView, Sleeve = owner.Sleeve };
         corrupted.Pressed += () => actions.Memory(true); Put(corrupted, 996, bottom, W, H);
-        // The space beside the deck stays free for a Relikario that plays with two decks.
-        Put(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, Board = true, Sleeve = owner.Sleeve }, BoardCanvas.DesignWidth - W, bottom, W, H);
+        // Center each deck vertically in the outer column, just beyond the opposing Bonus/Área frame.
+        var deckRow = canvas.TableView ? (top + bottom) / 2 : bottom;
+        var deckInset = canvas.TableView ? 10 : 0;
+        Put(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, Board = true,
+            RaisedPile = canvas.TableView, Sleeve = owner.Sleeve }, BoardCanvas.DesignWidth - W - deckInset, deckRow, W, H);
     }
 
     /// <summary>
@@ -225,7 +237,7 @@ public static class ArenaPresentation
     public static (Control Lane, HBoxContainer Row) PhaseBar(BoardCanvas canvas, Phase stage, string detail, Color accent)
     {
         var lane = new CenterContainer { Name = "CombatCenter", MouseFilter = Control.MouseFilterEnum.Ignore };
-        canvas.Place(lane, new Rect2(306, BoardCanvas.Seam - 30, 828, 60));
+        canvas.PlaceTableHud(lane, new Rect2(306, BoardCanvas.Seam - 30, 828, 60));
         var panel = new PanelContainer { Name = "StageIndicator", MouseFilter = Control.MouseFilterEnum.Ignore };
         var frame = RelickVisuals.Glass(RelickVisuals.Playmat.Raised.Lerp(accent, 0.14f), RelickVisuals.Playmat.Surface,
             BoardArt.Tint(accent, 0.9f), 10, 8, BoardArt.Tint(accent, 0.30f));
@@ -419,14 +431,14 @@ public static class ArenaPresentation
         column.AddChild(skills);
     }
 
-    private static ZoneCardButton? LightEquipmentZone(DuelPlayerView owner, int index, Action inspect, bool compact, float width = 0)
+    private static ZoneCardButton? LightEquipmentZone(DuelPlayerView owner, int index, Action inspect, bool compact, float width = 0, bool raisedPile = false)
     {
         if (owner.LightEquipment is not { Length: > 0 } cards) return null;
         var zone = new ZoneCardButton
         {
             Name = $"LightEquipmentZone{index}", Caption = "EQUIPOS LIGEROS", Card = CardCatalog.Get(cards[^1]),
             StatusText = cards.Length == 1 ? "LIGERO" : $"×{cards.Length}", Accent = new("7cc8ff"),
-            SlotWidth = width, Compact = compact
+            SlotWidth = width, Compact = compact, StackCopies = raisedPile ? cards.Length : 0
         };
         zone.Pressed += inspect;
         return zone;
