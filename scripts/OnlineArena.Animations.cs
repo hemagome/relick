@@ -121,6 +121,16 @@ public partial class OnlineArena
                     : new Flight(cue, origin, face, Duration: 0.60, IsPlacement: true);
                 continue;
             }
+            if (source == CardZone.Activation && cue.Destination == CardZone.Attached)
+            {
+                // Robotizar lands on the Relikario: straight from the hand when nobody answered it, or from the activation after a response.
+                result[cue] = previous.Phase == Phase.Actions && previous.CurrentPlayer == cue.Player &&
+                    player.HandCount == current.Players[cue.Player].HandCount + 1
+                    ? CaptureHandPlacement(current, previous, cue.Player, CardCatalog.Robotize.Id, CardZone.Attached) with
+                        { Event = cue, StartsFaceUp = cue.Player == current.MySeat }
+                    : new Flight(cue, origin, CardCatalog.Robotize.Id, Duration: 0.60, IsPlacement: true);
+                continue;
+            }
             if (cue.Kind == DuelVisualKind.HandSteal)
             {
                 // The card shows its face only on the side of the board that may see it: a hidden card

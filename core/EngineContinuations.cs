@@ -269,7 +269,7 @@ public sealed partial class GameEngine
         {
             if (frame.FieldSource is { } source) DestroyCardNow(source);
         }
-        else if (!CorruptWaitingFieldCard(frame) && frame.Kind == ActivationKind.Equipment)
+        else if (!CorruptWaitingFieldCard(frame) && (frame.Kind == ActivationKind.Equipment || frame.CardId == CardCatalog.Robotize.Id))
             NotifyPileMove(State.Players[frame.Actor], frame.CardId, CardZone.Activation, memoryOwner: frame.MemorySeat);
         State.Phase = frame.ResumePhase;
         if (frame.Kind == ActivationKind.Reroll) _activeActivation = frame.Parent;

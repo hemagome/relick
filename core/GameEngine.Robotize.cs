@@ -8,6 +8,7 @@ public sealed partial class GameEngine
         var frame = _activeActivation!;
         if (frame.CorruptOnMemory) player.MarkForCorruption(CardZone.Attached, player.AttachedCards.Count);
         frame.CorruptOnMemory = false;
+        NotifyPileMove(player, CardCatalog.Robotize.Id, CardZone.Activation, destination: CardZone.Attached);
         MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), player);
         player.AttachedCards.Add(CardCatalog.Robotize.Id);
         State.LastCombat = $"{player.Name} coloca Robotizar encima de su Relikario.";

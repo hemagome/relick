@@ -227,7 +227,11 @@ public sealed partial class GameEngine
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
         var deferCorruption = (card.Id == CardCatalog.GoldenTotem.Id || card.Id == CardCatalog.GalacticShield.Id || card.Id == CardCatalog.Robotize.Id) &&
             p.CorruptsOnMemory(CardZone.Hand, handIndex);
-        var played = SendHandToMemory(p, handIndex, deferCorruption);
+        // Robotizar waits in memory like an equipment: it announces its flight when it lands or when it is canceled.
+        var robotize = card.Id == CardCatalog.Robotize.Id;
+        var played = robotize ? SendToMemory(p, card.Id, CardZone.Hand, handIndex, notify: false, deferCorruption: deferCorruption)
+            : SendHandToMemory(p, handIndex, deferCorruption);
+        if (robotize) p.RemoveHandCard(handIndex);
         p.ActionsLeft -= card.ActionCost;
         p.Relikia -= CodePrCost(card);
         Log($"{p.Name} juega {card.Name}.");

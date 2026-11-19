@@ -56,6 +56,26 @@ public partial class OnlineArena
                 after.Players[actor].Exchange.Single() != code.Id)
                 throw new Exception("La carta debe llegar al canje desde el mazo.");
         }
+        foreach (var seat in new[] { 0, 1 })
+        {
+            var game = GameEngine.FromOpening(new DuelOpening
+            {
+                Names = ["Ana", "Beto"], Hands = [[robotize.Id], []], Decks = [[attack], [attack]],
+                Bonuses = [null, null], StartingSeat = 0
+            }, new SeededRandom(26));
+            game.State.Phase = Phase.Actions;
+            ResetAnimations();
+            var before = DuelSnapshot.For(game, seat, 10);
+            PresentTestSnapshot(before);
+            var visuals = DuelVisualEvents.Capture(game);
+            if (!game.PlayCode(0, 0).Success) throw new Exception("No se juega Robotizar.");
+            var after = DuelSnapshot.For(game, seat, 11);
+            after.Visuals = visuals;
+            var flight = CaptureOrigins(after, before).Values.SingleOrDefault();
+            if (flight is not { IsPlacement: true } || flight.Event.Destination != CardZone.Attached || flight.Face != robotize.Id ||
+                flight.StartsFaceUp != (seat == 0) || ZoneNode(seat == 0 ? 0 : 1, CardZone.Attached, -1) is not AttachmentStack)
+                throw new Exception("Robotizar debe volar desde la mano hasta encima del Relikario, no a la memoria.");
+        }
         GD.Print("PVP_ROBOTIZE_PASS");
     }
 }

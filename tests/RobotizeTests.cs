@@ -26,6 +26,31 @@ static class RobotizeTests
                 p.Bonus == Attack && p.Memory.Single() == Attack && p.CorruptedMemory.Single() == Pendant &&
                 p.ActionsLeft == 2, "Repetir Acciones activa Robotizar y completa el canje de forma normal.");
         }),
+        ("Robotizar: anuncia su vuelo al Relikario, no a la memoria, y vuelve a la memoria solo si lo anulan", () =>
+        {
+            var (game, _) = Fixture(Attack);
+            var moves = new List<PileMovement>();
+            game.CardMovedToPile += moves.Add;
+            game.State.Active.Hand.Add(Robotize);
+            Check(game.PlayCode(0, 0).Success && moves.Single() is { Source: CardZone.Activation, Destination: CardZone.Attached },
+                "Jugar Robotizar debe anunciar que llega encima del Relikario.");
+            foreach (var cancel in new[] { false, true })
+            {
+                (game, _) = Fixture(Attack);
+                moves.Clear();
+                game.CardMovedToPile += moves.Add;
+                game.State.Active.Hand.Add(Robotize);
+                game.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
+                Check(game.PlayCode(0, 0).Success && game.State.Phase == Phase.ErrorResponse && moves.Count == 0,
+                    "Mientras espera la respuesta, Robotizar no vuela a la memoria.");
+                Check((cancel ? game.PlayCode(1, 0) : game.PassErrorResponse(1)).Success, "Se resuelve la respuesta.");
+                var robotize = moves.Where(m => m.CardId == Robotize).ToArray();
+                Check(cancel
+                    ? robotize.Single() is { Source: CardZone.Activation, Destination: CardZone.Memory } && game.State.Active.Memory.Contains(Robotize)
+                    : robotize.Single() is { Source: CardZone.Activation, Destination: CardZone.Attached } && game.State.Active.AttachedCards.Single() == Robotize,
+                    "Robotizar anulado vuelve a la memoria; confirmado, llega al Relikario.");
+            }
+        }),
         ("Robotizar: un Código del tope ofrece una decisión privada que persiste al reconectar", () =>
         {
             foreach (var toHand in new[] { true, false })
