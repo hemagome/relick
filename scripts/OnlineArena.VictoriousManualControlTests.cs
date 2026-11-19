@@ -31,7 +31,8 @@ public partial class OnlineArena
             PresentTestSnapshot(DuelSnapshot.For(game, seat, 61));
             var source = _snapshot!.Options.Single(option => option.Field is { Zone: FieldZone.Skill, Index: 0 });
             var tile = _ownSkills.Single(skill => skill.SkillIndex == 0 && skill.Skill != null);
-            if (!tile.Targetable) throw new Exception("La habilidad movible debe resaltarse.");
+            if (!tile.Targetable || !source.Label.EndsWith("Habilidad 0 PR"))
+                throw new Exception("La habilidad movible debe resaltarse e indicar los PR de su casilla.");
             tile.EmitSignal(BaseButton.SignalName.Pressed);
             if (!tile.Chosen || !PresentsOption(source) || !source.Move.Apply(game, seat).Success)
                 throw new Exception("La habilidad debe seleccionarse desde el tablero.");
@@ -39,7 +40,7 @@ public partial class OnlineArena
             PresentTestSnapshot(DuelSnapshot.For(game, seat, 62));
             var destinations = _snapshot!.Options.Where(option => option.Move.Kind == DuelMoveKind.Choose).ToArray();
             if (destinations.Length != 4 || destinations.Any(option => !PresentsOption(option)) ||
-                !destinations.Single(option => option.Label == "Habilidad 3").Move.Apply(game, seat).Success)
+                !destinations.Single(option => option.Label == "Habilidad 500 PR").Move.Apply(game, seat).Success)
                 throw new Exception("La arena debe mostrar el canje y las tres casillas de habilidad libres.");
 
             PresentTestSnapshot(DuelSnapshot.For(game, seat, 63));

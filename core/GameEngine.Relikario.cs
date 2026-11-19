@@ -42,6 +42,15 @@ public sealed partial class GameEngine
         FinishAttackRoll(pending.Die, pending.WasRerolled);
     }
 
+    private bool ResolveUnopposedDie() => State.Phase switch
+    {
+        Phase.AttackRerollChoice when State.PendingAttackRoll is { } attack && !CanRespondToAttackDie() =>
+            ResolveAttackReroll(attack.Attacker, false).Success,
+        Phase.DieRerollChoice when State.PendingDieRoll is { } effect && !CanRespondToEffectDie() =>
+            ResolveDieReroll(effect.Player, false).Success,
+        _ => false
+    };
+
     private void FinishAttackRoll(int die, bool rerolled = false)
     {
         var pending = State.PendingAttackRoll!;

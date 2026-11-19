@@ -174,7 +174,12 @@ public sealed partial class GameEngine
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
         : State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor;
-    private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && PlayableCards(actor).Any(entry => { var c = CardCatalog.Get(entry.Id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && AvailableActions(actor) >= c.ActionCost; });
+    private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && PlayableCards(actor).Any(entry =>
+    {
+        var card = CardCatalog.Get(entry.Id);
+        return card.IsCombo && (card.RerollOwnDie || card.SetOwnDie > 0) &&
+            (LegacyBlueEgg ? AvailableActions(actor) >= card.ActionCost : CodeUnavailableReason(actor, entry.Index) == null);
+    });
     private CommandResult PlayRerollCombo(int actor, int index)
     {
         var p = State.Players[actor]; var card = CardCatalog.Get(PlayableHandCard(p, index)!);

@@ -100,17 +100,23 @@ public sealed partial class GameEngine
         die = AdjustBlackHoleDie(actor, purpose, rolled);
         var modified = die != rolled;
         State.LastDie = die;
-        if (die > 6 || purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || HasComboParry(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)) || CanBoostIronwingEffect(actor, die))
+        var resume = State.Phase;
+        // Older logs can contain a separate confirmation for a die with no remaining options.
+        var keepLegacyChoice = LegacyBlueEgg && (die > 6 || purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) ||
+            HasComboParry(actor) || p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1 ||
+            equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0 ||
+            p.Dexterity > 0 && CanBoostWithDexterity(die) || CanBoostIronwingEffect(actor, die));
+        State.PendingDieRoll = new(actor, purpose, die, resume, Modified: modified);
+        State.Phase = Phase.DieRerollChoice;
+        if (keepLegacyChoice || !LegacyBlueEgg && CanRespondToEffectDie())
         {
             _pendingDieEffect = effect;
-            State.PendingDieRoll = new(actor, purpose, die, State.Phase, Modified: modified);
-            State.Phase = Phase.DieRerollChoice;
+            return;
         }
-        else
-        {
-            if (!modified) RegisterNaturalSix(p, die);
-            FinishEffectDieWithGhost(effect, die);
-        }
+        State.PendingDieRoll = null;
+        State.Phase = resume;
+        if (!modified) RegisterNaturalSix(p, die);
+        FinishEffectDieWithGhost(effect, die);
     }
 
     public CommandResult ResolveDieReroll(int actor, bool reroll)

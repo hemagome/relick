@@ -24,7 +24,7 @@ internal sealed class VictoriousManualControlEffect : ICardEffect
         if (decision.Step == Source)
             return ctx.MovableFieldCards().Select(card => new DecisionChoice
             {
-                Label = $"{CardCatalog.Get(card.CardId).Name} · {GameEngine.FieldCardPlace(ctx.State, card)}",
+                Label = $"{CardCatalog.Get(card.CardId).Name} · {SourceName(ctx, card)}",
                 Button = card.Zone == FieldZone.Equipment && ctx.Player.EquipmentStackedCopies > 0
                     ? $"Mover copia {card.Index + 1}" : "Mover esta carta",
                 Field = card, Public = $"elige mover {CardCatalog.Get(card.CardId).Name}."
@@ -37,9 +37,14 @@ internal sealed class VictoriousManualControlEffect : ICardEffect
         }).ToArray();
     }
 
+    private static string SourceName(GameEngine.EffectContext ctx, FieldTarget source) => source.Zone == FieldZone.Skill
+        ? SkillSpaceName(ctx.Player.SkillPosition(source.Index)) : GameEngine.FieldCardPlace(ctx.State, source);
+
+    private static string SkillSpaceName(int position) => $"Habilidad {GameEngine.SkillSlotCosts[position]} PR";
+
     internal static string DestinationName(FieldTarget destination) => destination.Zone switch
     {
-        FieldZone.Skill => $"Habilidad {destination.Index + 1}",
+        FieldZone.Skill => SkillSpaceName(destination.Index),
         FieldZone.Exchange => $"Canje {destination.Index + 1}",
         FieldZone.Equipment => "Equipo",
         FieldZone.LightEquipment => "Equipos ligeros",

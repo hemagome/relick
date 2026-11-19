@@ -25,15 +25,27 @@ public partial class OnlineArena
             game.State.Phase = Phase.Actions;
             game.State.Active.AttachedCards.Add(attack);
             game.State.Active.Hand.Add(shield.Id);
-            if (!game.PlayCode(seat, 0).Success) throw new Exception("No se coloca Escudo Galáctico.");
             ResetAnimations();
-            PresentTestSnapshot(DuelSnapshot.For(game, seat, 41));
+            var beforeShield = DuelSnapshot.For(game, seat, 40);
+            PresentTestSnapshot(beforeShield);
+            for (var i = 0; i < 2; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var shieldVisuals = DuelVisualEvents.Capture(game);
+            if (!game.PlayCode(seat, 0).Success) throw new Exception("No se coloca Escudo Galáctico.");
+            var afterShield = DuelSnapshot.For(game, seat, 41);
+            afterShield.Visuals = shieldVisuals;
+            var shieldOrigins = CaptureOrigins(afterShield, beforeShield);
+            var loads = shieldVisuals.Where(cue => cue is { Source: CardZone.Deck, Destination: CardZone.ShieldCharge }).ToArray();
+            if (loads.Length != 3 || loads.Any(cue => shieldOrigins[cue].Face != null))
+                throw new Exception("Las tres cargas del Escudo deben viajar boca abajo.");
+            PresentTestSnapshot(afterShield);
             for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var shieldNode = (ZoneCardButton)ZoneNode(0, CardZone.GalacticShield, 0)!;
             var attached = (AttachmentStack)ZoneNode(0, CardZone.Attached, -1)!;
-            if (shieldNode.Card?.Id != shield.Id || shieldNode.StatusText != "×3" ||
+            if (shieldNode.Card?.Id != shield.Id || shieldNode.PresentedShieldCharges != 3 ||
                 !shieldNode.CardRect.HasArea() || attached.CardRect.End.X > shieldNode.Position.X)
                 throw new Exception($"El tablero debe mostrar el Escudo y conservar espacio para el Ataque anexo ({size}).");
+            await CheckAttachmentLoadFlights(shieldVisuals, shieldOrigins, loads, shieldNode, () => shieldNode.PresentedShieldCharges!.Value, faceUp: false);
+            ResetAnimations();
             shieldNode.EmitSignal(BaseButton.SignalName.Pressed);
             if (_fieldSelection != (seat, FieldZone.GalacticShield, 0))
                 throw new Exception("El Escudo debe poder inspeccionarse por separado.");
@@ -77,6 +89,26 @@ public partial class OnlineArena
                 throw new Exception("El Escudo rival debe poder seleccionarse como objetivo.");
         }
         GD.Print("PVP_GALACTIC_SHIELD_PASS");
+    }
+
+    private async Task CheckAttachmentLoadFlights(List<DuelVisualEvent> cues, Dictionary<DuelVisualEvent, Flight> origins,
+        DuelVisualEvent[] loads, Control target, Func<int> presentedCount, bool faceUp)
+    {
+        Animate(cues, origins);
+        if (presentedCount() != 0) throw new Exception("Las cartas deben contarse conforme aterrizan.");
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        for (var i = 0; i < loads.Length; i++)
+        {
+            var load = loads[i];
+            for (var frame = 0; _activeFlight?.Event != load && frame < 12; frame++)
+                UpdateFlights(_activeFlight == null ? 0 : 1.2);
+            if (_activeFlight?.Event != load || _flightTarget != target || _flightFront?.Visible == true || (_flightFront != null) != faceUp)
+                throw new Exception($"El vuelo {load.Destination} debe empezar boca abajo y dirigirse a su carta anfitriona.");
+            UpdateFlights(0.27);
+            if ((_flightFront?.Visible == true) != faceUp) throw new Exception("Solo se revela el arte de las cartas públicas.");
+            UpdateFlights(1.2);
+            if (presentedCount() != i + 1) throw new Exception("La carta debe contarse cuando aterriza.");
+        }
     }
 
     private async Task CheckShieldChargeFlight(List<DuelVisualEvent> cues, Dictionary<DuelVisualEvent, Flight> origins, DuelVisualEvent charge)

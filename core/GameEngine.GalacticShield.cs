@@ -33,6 +33,7 @@ public sealed partial class GameEngine
         frame.CorruptOnMemory = false;
         frame.CanInterrupt = false;
         shields.Add(new GalacticShield { Borrowed = frame.MemorySeat != actor, Instance = frame.FieldCardId == null ? null : id });
+        NotifyPileMove(player, CardCatalog.GalacticShield.Id, CardZone.Activation, slot, CardZone.GalacticShield);
         Log($"{player.Name} coloca Escudo Galáctico encima de su Relikario.");
         LoadGalacticShield(new EngineContinuation { Kind = ContinuationKind.LoadGalacticShield, Actor = actor, Value = slot });
     }
@@ -43,9 +44,11 @@ public sealed partial class GameEngine
         var cards = player.GalacticShields![load.Value].Cards;
         while (cards.Count < GalacticShieldCapacity && player.Deck.Count > 0)
         {
-            cards.Add(new(player.Deck[0], player.CorruptsOnMemory(CardZone.Deck, 0)));
+            var id = player.Deck[0];
+            cards.Add(new(id, player.CorruptsOnMemory(CardZone.Deck, 0)));
             player.Deck.RemoveAt(0);
             player.RemoveCorruptionSlots(CardZone.Deck, 0);
+            NotifyPileMove(player, id, CardZone.Deck, load.Value, CardZone.ShieldCharge);
             if (player.Deck.Count > 0) continue;
             Exhaust(player, load);
             return;

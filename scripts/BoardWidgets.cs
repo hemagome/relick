@@ -810,6 +810,7 @@ public partial class ZoneCardButton : Button
     public ZoneCardLayout Layout { get; init; }
     public bool EffectUsed { get; init; }
     internal int StackCopies { get; init; }
+    internal int? ShieldCharges { get; init; }
     public CardDefinition? Card { get; set; }
     public string? RelikarioId { get; init; }
     public string Caption { get; set; } = "";
@@ -820,7 +821,9 @@ public partial class ZoneCardButton : Button
     private Texture2D? _departingArtwork;
     private bool _departingEffectUsed;
     private Texture2D? Artwork => HasDeparturePreview ? _departingArtwork : _artwork;
-    private string CardStatus => EffectUsed ? "USADA" : StatusText;
+    private int _pendingShieldCharges;
+    internal int? PresentedShieldCharges => ShieldCharges - _pendingShieldCharges;
+    private string CardStatus => EffectUsed ? "USADA" : PresentedShieldCharges is int charges ? $"×{charges}" : StatusText;
     private string? PresentedStatus => AwaitingEquipment ? _previousEquipmentStatus : HasDeparturePreview ?
         (_departingEffectUsed ? "USADA" : "") : CardStatus;
     private string? _previousEquipmentStatus;
@@ -840,6 +843,13 @@ public partial class ZoneCardButton : Button
     internal void SetArrivalPending(bool pending)
     {
         AwaitingArrival = pending;
+        DescribeCard();
+        QueueRedraw();
+    }
+
+    internal void ChangePendingShieldCharges(int delta)
+    {
+        _pendingShieldCharges = Math.Clamp(_pendingShieldCharges + delta, 0, ShieldCharges ?? 0);
         DescribeCard();
         QueueRedraw();
     }
@@ -892,7 +902,8 @@ public partial class ZoneCardButton : Button
     {
         var card = PresentedCard;
         var status = PresentedStatus;
-        AccessibilityName = card == null ? Caption : $"{Caption} · {card.Name}" + (status is { Length: > 0 } ? $" · {status}" : "");
+        var caption = PresentedShieldCharges is int charges ? $"{charges} cartas boca abajo" : Caption;
+        AccessibilityName = card == null ? caption : $"{caption} · {card.Name}" + (status is { Length: > 0 } ? $" · {status}" : "");
         TooltipText = card == null ? "" : $"{AccessibilityName}\n{card.Text}\nPulsa para ampliar y consultar el efecto.";
     }
 
@@ -915,7 +926,7 @@ public partial class ZoneCardButton : Button
             var rect = CardRect;
             var rotation = ArtworkRotation(artwork);
             RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 7);
-            BoardArt.StackEdges(this, rect, AwaitingEquipment ? StackCopies - 1 : StackCopies, Accent);
+            BoardArt.StackEdges(this, rect, StackCopies - _pendingShieldCharges - (AwaitingEquipment ? 1 : 0), Accent);
             if (rotation != 0)
             {
                 var origin = rotation > 0 ? new Vector2(rect.End.X, rect.Position.Y) : new Vector2(rect.Position.X, rect.End.Y);
@@ -944,11 +955,26 @@ public partial class AttachmentStack : Button
     /// <summary>On the desktop board the top card fills the zone; the count tells how many lie under it.</summary>
     public bool Board { get; init; }
     internal bool RaisedPile { get; init; }
-    private int Amount => Cards.Count + TomeCardCount;
-    private float PileWidth => Size.X / (Amount == 0 ? 1 : ShieldCount + 1);
+    private int _pendingTomeCards;
+    internal int PresentedTomeCards => TomeCardCount - _pendingTomeCards;
+    private int Amount => Cards.Count + PresentedTomeCards;
+    private float PileWidth => Size.X / (Cards.Count == 0 ? 1 : ShieldCount + 1);
     private Texture2D[] _previews = [];
     internal string? TopCardId { get; private set; }
     internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(0, 0, PileWidth, Size.Y) : PreviewRect(_previews.Length - 1);
+
+    internal void ChangePendingTomeCards(int delta)
+    {
+        _pendingTomeCards = Math.Clamp(_pendingTomeCards + delta, 0, TomeCardCount);
+        DescribeStack();
+        QueueRedraw();
+    }
+
+    private void DescribeStack()
+    {
+        AccessibilityName = $"{Location(Cards)}: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
+        TooltipText = $"{AccessibilityName}. Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
+    }
 
     internal static string Location(IReadOnlyList<string> cards, string? relikario = null)
     {
@@ -972,8 +998,7 @@ public partial class AttachmentStack : Button
         CustomMinimumSize = new(SlotWidth > 0 ? SlotWidth : 92, 86);
         Disabled = Amount == 0;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
-        AccessibilityName = $"{Location(Cards)}: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
-        TooltipText = $"{AccessibilityName}. Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
+        DescribeStack();
         var previews = Cards.OrderBy(id => !DeckRules.IsAttack(CardCatalog.Get(id))).TakeLast(3).ToArray();
         TopCardId = previews.LastOrDefault();
         _previews = previews.Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId)).OfType<Texture2D>().ToArray();

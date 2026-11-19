@@ -438,6 +438,8 @@ public sealed partial class GameEngine
             ResumeRamResolution();
             return;
         }
+        // An interrupt can spend or remove the last option before returning to the pending die.
+        if (!LegacyBlueEgg && ResolveUnopposedDie()) return;
         if (_activeActivation == null && State is { Phase: Phase.Actions, ActionStartActor: int actor })
         {
             ResolveGhostDogsAtActionStart(actor);

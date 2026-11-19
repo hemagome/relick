@@ -23,9 +23,9 @@ public partial class OnlineArena
                 var slot = i;
                 var shield = new ZoneCardButton
                 {
-                    Name = GalacticShieldNodeName(relative, slot), Caption = $"{charges[slot]} cartas boca abajo",
+                    Name = GalacticShieldNodeName(relative, slot), Caption = "SOBRE RELIKARIO",
                     Card = CardCatalog.GalacticShield, Accent = new Color("6ee3bd"), SlotWidth = 1,
-                    StatusText = $"×{charges[slot]}",
+                    ShieldCharges = charges[slot],
                     StackCopies = anchor.RaisedPile ? charges[slot] + 1 : 0
                 };
                 shield.Pressed += () => SelectField(owner, FieldZone.GalacticShield, slot);

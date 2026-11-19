@@ -239,6 +239,7 @@ static class JessicaTests
         ("Jessica: mover el origen durante el dado no permite que Error retire una copia de reemplazo", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active;
+            p.Dexterity = 1;
             p.Exchange.Add(CardCatalog.Attack.Id); p.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Sniper.Id]);
             p.Deck.Insert(0, CardCatalog.Jessica.Id); rng.EnqueueDie(4);
             Check(g.UseFieldCode(0, FieldZone.Bonus).Success && g.State.Phase == Phase.DieRerollChoice);

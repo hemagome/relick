@@ -57,17 +57,23 @@ static class PlumberStarTests
         ("Estrella: Error impide el descarte, devuelve la acción y conserva el dado pendiente al reconectar", () =>
         {
             foreach (var actor in new[] { 0, 1 })
+            foreach (var canReroll in new[] { true, false })
             {
                 var (g, rng) = Fixture(actor); var p = g.State.Active; rng.EnqueueDie(5);
+                p.AttackRerollUsedThisTurn = !canReroll;
                 Check(g.Attack(actor, 2, 0).Success && g.State.Phase == Phase.AttackRerollChoice);
                 g.State.Players[1 - actor].Hand.Add(CardCatalog.LoadError.Id);
                 Check(g.PlayCode(actor, 0).Success && g.State.Phase == Phase.ErrorResponse);
                 Check(p.Hand.Single() == CardCatalog.Senshuni.Id && !p.Memory.Contains(CardCatalog.Senshuni.Id));
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
                 Check(g.PlayCode(1 - actor, g.State.Players[1 - actor].Hand.IndexOf(CardCatalog.LoadError.Id)).Success);
-                Check(g.State.Phase == Phase.AttackRerollChoice && g.State.PendingAttackRoll?.Die == 5 && p.StarEffects == 0 && p.ActionsLeft == 2);
+                Check(p.StarEffects == 0 && p.ActionsLeft == 2);
+                if (canReroll)
+                    Check(g.State.Phase == Phase.AttackRerollChoice && g.State.PendingAttackRoll?.Die == 5 && g.ResolveAttackReroll(actor, false).Success);
+                else
+                    Check(g.State.Phase == Phase.Combat && g.State.PendingAttackRoll == null && g.State.LastAttackDie == 5);
                 Check(p.Hand.Single() == CardCatalog.Senshuni.Id && p.Memory.Contains(CardCatalog.PlumberStar.Id));
-                Check(g.ResolveAttackReroll(actor, false).Success && g.State.Players[1 - actor].Health == 5);
+                Check(g.State.Players[1 - actor].Health == 5);
             }
         }),
         ("Estrella: la cadena pública empieza por el ataque pendiente y lo conserva al anular la Estrella", () =>
@@ -144,14 +150,13 @@ static class PlumberStarTests
                 Check(p.StarEffects == (mode == "box" ? 0 : 1) && g.State.Phase == (mode == "relikia" ? Phase.Actions : Phase.Combat));
             }
         }),
-        ("Estrella: suspende y recupera el dado y la activación de Vida Extra", () =>
+        ("Estrella: resuelve automáticamente el dado de Vida Extra al gastar la última respuesta", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active; g.State.Phase = Phase.Actions; p.Health = 2;
             p.Hand.Insert(0, CardCatalog.ExtraLife.Id); rng.EnqueueDie(5);
             Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DieRerollChoice);
             Cast(g, 0); g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
-            Check(g.State.Phase == Phase.DieRerollChoice && g.State.PendingDieRoll?.Die == 5 && p.StarEffects == 1);
-            Check(g.ResolveDieReroll(0, false).Success && p.Health == 5 && p.ActionsLeft == 0 && g.State.Phase == Phase.Actions);
+            Check(g.State.PendingDieRoll == null && p.StarEffects == 1 && p.Health == 5 && p.ActionsLeft == 0 && g.State.Phase == Phase.Actions);
         }),
         ("Estrella: cancelar el equipo gratuito de la Mira no devuelve su descarte ni bloquea el turno", () =>
         {

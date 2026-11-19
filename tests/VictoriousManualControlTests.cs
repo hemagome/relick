@@ -36,10 +36,11 @@ static class VictoriousManualControlTests
             game.State.Players[1].ZahiraHost = zahira;
             Check(game.PlayCode(0, 0).Success, "El Código puede mover una habilidad.");
             Source(game, FieldZone.Skill, 0);
-            Check(!game.ResolveDecision(1, 0).Success && !game.DecisionChoices(0).Any(c => c.Label is "Habilidad 1" or "Habilidad 4"),
-                "El rival no decide y las casillas ocupadas no son elegibles.");
+            Check(!game.ResolveDecision(1, 0).Success && game.DecisionChoices(0).Where(c => c.Label.StartsWith("Habilidad"))
+                .Select(c => c.Label).SequenceEqual(["Habilidad 300 PR", "Habilidad 500 PR"]),
+                "El rival no decide y las casillas libres se identifican por sus PR.");
             game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
-            Destination(game, "Habilidad 3");
+            Destination(game, "Habilidad 500 PR");
             p = game.State.Active;
             Check(p.SkillPosition(0) == 2 && p.SkillPosition(1) == 3 && p.CountersOnSkill(0) == 2 &&
                 p.CorruptsOnMemory(CardZone.Skill, 0) && game.State.Players[1].ZahiraHost == zahira &&
@@ -57,7 +58,7 @@ static class VictoriousManualControlTests
                 else p.Skills.Add(CardCatalog.Over.Id);
                 Check(game.PlayCode(0, 0).Success, "El Código puede mover Over.");
                 Source(game, source, source == FieldZone.Bonus ? -1 : 1);
-                Destination(game, "Habilidad 4");
+                Destination(game, "Habilidad 1000 PR");
                 Check(p.SkillPosition(1) == 3 && p.Skills[1] == CardCatalog.Over.Id && p.Health == 7 && p.Relikia == 0 &&
                     game.State.Winner == 0 && game.State.Phase == Phase.Finished,
                     "La condición depende del espacio final, sin pagar PR ni volver a enseñar.");

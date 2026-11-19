@@ -17,6 +17,8 @@ public partial class OnlineArena
         public bool IsExchangePlacement => IsPlacement && Event.Destination == CardZone.Exchange;
         public bool LeavesExchange => Event.Kind == DuelVisualKind.Pile && Event.Source == CardZone.Exchange;
         public bool TurnsSideways => IsSkillLesson || IsExchangePlacement;
+        public bool LoadsAttachment => Event is { Kind: DuelVisualKind.Pile, Source: CardZone.Deck,
+            Destination: CardZone.TomeCard or CardZone.ShieldCharge };
     }
     private readonly Queue<Flight> _flights = new();
     private readonly List<(int Player, PortraitMotion Motion)> _pendingPortraits = [];
@@ -56,6 +58,20 @@ public partial class OnlineArena
         CardZone.Deck => _root?.FindChild("DeckStack" + relative, true, false) as Control,
         _ => null
     };
+
+    private Control? PileFlightTarget(Flight flight)
+    {
+        var cue = flight.Event;
+        var owner = PileRecipient(cue);
+        var relative = owner == _snapshot!.MySeat ? 0 : 1;
+        if (cue.Destination == CardZone.TomeCard)
+        {
+            var child = _snapshot.Players[owner].TomeCards?.FirstOrDefault(card => card.Slot == cue.Value);
+            return child is { HostZone: FieldZone.Attached } ? ZoneNode(relative, CardZone.Attached, child.HostIndex) : null;
+        }
+        return ZoneNode(relative, cue.Destination, flight.IsPlacement || flight.LoadsAttachment || cue.Destination == CardZone.Hand ? cue.Value : -1);
+    }
+
     private static Rect2 ZoneRect(Control control) => control switch
     {
         MemoryZoneButton pile => FlightFootprint(pile, pile.CardRect),
@@ -121,15 +137,24 @@ public partial class OnlineArena
                     : new Flight(cue, origin, face, Duration: 0.60, IsPlacement: true);
                 continue;
             }
-            if (source == CardZone.Activation && cue.Destination == CardZone.Attached)
+            if (source == CardZone.Activation && cue.Destination is CardZone.Attached or CardZone.GalacticShield)
             {
                 var attached = current.Players[cue.Player].Attached;
-                var face = attached.ElementAtOrDefault(cue.Value) ?? attached.LastOrDefault();
+                var face = cue.Destination == CardZone.GalacticShield ? CardCatalog.GalacticShield.Id :
+                    attached.ElementAtOrDefault(cue.Value) ?? attached.LastOrDefault();
                 result[cue] = previous.Phase == Phase.Actions && previous.CurrentPlayer == cue.Player &&
                     player.HandCount == current.Players[cue.Player].HandCount + 1
-                    ? CaptureHandPlacement(current, previous, cue.Player, face, CardZone.Attached) with
+                    ? CaptureHandPlacement(current, previous, cue.Player, face, cue.Destination, cue.Value) with
                         { Event = cue, StartsFaceUp = cue.Player == current.MySeat }
                     : new Flight(cue, origin, face, Duration: 0.60, IsPlacement: true);
+                continue;
+            }
+            if (source == CardZone.Deck && cue.Destination is CardZone.TomeCard or CardZone.ShieldCharge)
+            {
+                var face = cue.Destination == CardZone.TomeCard
+                    ? current.Players[cue.Player].TomeCards?.FirstOrDefault(card => card.Slot == cue.Value)?.CardId : null;
+                result[cue] = new Flight(cue, origin, face, Duration: 0.32, OriginRotation: rotation,
+                    StartsFaceUp: false, EndsFaceUp: face != null);
                 continue;
             }
             if (cue.Kind == DuelVisualKind.HandSteal)
@@ -605,8 +630,7 @@ public partial class OnlineArena
             var target = kind switch
             {
                 DuelVisualKind.Return or DuelVisualKind.Shuffle => null,
-                DuelVisualKind.Pile => ZoneNode(PileRecipient(next.Event) == _snapshot.MySeat ? 0 : 1, next.Event.Destination,
-                    next.IsPlacement || next.Event.Destination == CardZone.Hand ? next.Event.Value : -1),
+                DuelVisualKind.Pile => PileFlightTarget(next),
                 DuelVisualKind.BonusPlace => ZoneNode(relative, CardZone.Bonus, -1),
                 DuelVisualKind.BonusClaim or DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, next.Event.Value),
                 DuelVisualKind.HandTransfer => ZoneNode(next.Event.Target == _snapshot.MySeat ? 0 : 1, CardZone.Hand, 0),
@@ -615,7 +639,11 @@ public partial class OnlineArena
             };
             _flightOriginRotation = next.OriginRotation;
             _flightDestinationRotation = (target?.Rotation ?? 0) + (next.TurnsSideways ? Mathf.Pi / 2 : 0);
-            if (next.IsPlacement) (_flightSource, _flightDestination) = PlacementPath(next, target);
+            if (next.IsPlacement || next.LoadsAttachment && target != null)
+            {
+                (_flightSource, _flightDestination) = PlacementPath(next, target);
+                if (next.LoadsAttachment) PlaySound(SoundCue.CardDraw);
+            }
             else
             {
                 var sourceSlot = kind == DuelVisualKind.BonusClaim ? ZoneNode(relative, CardZone.Bonus, -1) :
@@ -823,14 +851,26 @@ public partial class OnlineArena
 
     private void SetDestinationPending(Flight flight, Control? target, bool pending, bool queued = false)
     {
+        if (flight.LoadsAttachment)
+        {
+            if (queued || !pending)
+            {
+                var delta = pending ? 1 : -1;
+                if (target is AttachmentStack tome) tome.ChangePendingTomeCards(delta);
+                if (target is ZoneCardButton shield) shield.ChangePendingShieldCharges(delta);
+            }
+            return;
+        }
         if ((queued || !pending) && flight.MemoryArrivals is { } arrivals)
             foreach (var arrival in arrivals)
                 if (ZoneNode(arrival.Player == _snapshot!.MySeat ? 0 : 1, arrival.Zone, -1) is MemoryZoneButton pile)
                     pile.ChangePendingArrivals(pending ? arrival.Count : -arrival.Count);
 
         if (target is MemoryZoneButton) return;
-        if (target is SkillTile skill) skill.SetLessonPending(pending);
-        else if ((flight.IsExchangePlacement || flight.Event.Kind == DuelVisualKind.BonusPlace) && target is ZoneCardButton slot)
+        if (target is AttachmentStack { ShieldCount: > 0 } attached) attached.SelfModulate = new(1, 1, 1, pending ? 0 : 1);
+        else if (target is SkillTile skill) skill.SetLessonPending(pending);
+        else if ((flight.IsExchangePlacement || flight.Event.Kind == DuelVisualKind.BonusPlace ||
+                  flight.Event.Destination == CardZone.GalacticShield) && target is ZoneCardButton slot)
             slot.SetArrivalPending(pending);
         else if (flight.IsPlacement && target is ZoneCardButton equipment)
             equipment.SetEquipmentPending(pending, flight.PreviousEquipmentStatus);

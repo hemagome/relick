@@ -31,16 +31,23 @@ public partial class OnlineArena
             ResetAnimations();
             var before = DuelSnapshot.For(game, 0, 1);
             PresentTestSnapshot(before);
+            for (var frame = 0; frame < 2; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
             var visuals = DuelVisualEvents.Capture(game);
             if (!game.PlayCode(0, 0).Success) throw new Exception("No se pudo jugar Tomo de Magia.");
             var after = DuelSnapshot.For(game, 0, 2);
             after.Visuals = visuals;
-            var flight = CaptureOrigins(after, before).Values.Single(cue => cue.Event is { Source: CardZone.Activation, Destination: CardZone.Attached });
+            var origins = CaptureOrigins(after, before);
+            var flight = origins.Values.Single(cue => cue.Event is { Source: CardZone.Activation, Destination: CardZone.Attached });
             if (flight.Face != tome) throw new Exception("El Tomo debe llegar al Relikario con su propia ilustración.");
             PresentTestSnapshot(after);
-            if (ZoneNode(0, CardZone.Attached, -1) is not AttachmentStack { TopCardId: var top, TomeCardCount: 2 } || top != tome)
+            if (ZoneNode(0, CardZone.Attached, -1) is not AttachmentStack { TopCardId: var top, TomeCardCount: 2 } stack || top != tome)
                 throw new Exception("La pila del Relikario no cuenta las dos cartas del Tomo.");
+            var loads = visuals.Where(cue => cue is { Source: CardZone.Deck, Destination: CardZone.TomeCard }).ToArray();
+            if (!loads.Select(cue => origins[cue].Face).SequenceEqual([senshuni, attack]))
+                throw new Exception("Las dos cartas públicas del Tomo deben mostrar su arte al llegar, en orden.");
+            await CheckAttachmentLoadFlights(visuals, origins, loads, stack, () => stack.PresentedTomeCards, faceUp: true);
+            ResetAnimations();
             var code = after.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode && o.Field?.Zone == FieldZone.TomeCard);
             SelectField(0, FieldZone.TomeCard, code.Field!.Index);
             if (!PresentsOption(code)) throw new Exception("La carta enderezada del Tomo no ofrece su jugada.");
