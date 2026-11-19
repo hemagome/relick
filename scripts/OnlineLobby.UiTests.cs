@@ -170,6 +170,41 @@ public partial class OnlineLobby
                 await online.CheckPurpleRingLayout(); online.QueueFree(); await Layout();
                 QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--galactic-shield-only"))
+            {
+                await online.CheckGalacticShieldLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--victorious-manual-control-only"))
+            {
+                await online.CheckVictoriousManualControlLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--ellie-only"))
+            {
+                await online.CheckEllieLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--robotize-only"))
+            {
+                await online.CheckRobotizeLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--combo-parry-only"))
+            {
+                await online.CheckComboParryLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--metal-hood-only"))
+            {
+                await online.CheckMetalHoodLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
+            if (OS.GetCmdlineUserArgs().Contains("--destiny-pick-only"))
+            {
+                await online.CheckDestinyPickLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--inspector-only"))
             {
                 await online.CheckCardInspector(); online.QueueFree(); await Layout();
@@ -342,6 +377,13 @@ public partial class OnlineLobby
             await online.CheckTakeEquipmentLayout();
             await online.CheckEquipmentRaidLayout();
             await online.CheckPurpleRingLayout();
+            await online.CheckGalacticShieldLayout();
+            await online.CheckVictoriousManualControlLayout();
+            await online.CheckEllieLayout();
+            await online.CheckRobotizeLayout();
+            await online.CheckComboParryLayout();
+            await online.CheckMetalHoodLayout();
+            await online.CheckDestinyPickLayout();
             await online.CheckDeckSearchLayout();
             await online.CheckOsamuSearchLayout();
             await online.CheckOsamuPresentation();

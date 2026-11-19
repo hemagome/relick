@@ -1,5 +1,162 @@
 # Cartas
 
+## Púa del Destino
+
+`pua-del-destino-clean.png` restaura la carta BJ95-7/15 con `image_gen`.
+Se retiró la marca diagonal y se conservaron las reglas y los créditos.
+
+Es un Código Objeto COMBO de una acción. Elige un solo efecto: robar una carta,
+infligir 1 de daño no letal al rival o corromper una carta de cualquiera de
+las dos memorias. La elección de corrupción admite todos los tipos de carta.
+El daño puede causar el primer 0 de vida y se limita si fuera a terminar el
+duelo. Se aplican las defensas habituales contra el daño.
+
+En la propia etapa de Acciones, selecciona una copia en tu memoria y usa
+«Activar Púa». Su efecto propio cuesta una acción, sin PR, y corrompe esa
+copia antes de elegir el efecto. Error de Carga y Caja de Cartón pueden
+responder al Código jugado desde la mano. La activación del efecto propio
+desde memoria sigue la distinción entre carta y efecto del
+[reglamento oficial, §§ 5.4 y 6.5](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the supplied portrait Relick trading card PÚA DEL DESTINO. Remove only the large translucent repeating diagonal RELICK watermark. Reconstruct the original silver and gray guitar pick with dark zigzag graphic across the purple heart and white gleam, diagonal white guitar strings, navy panel and gray circuit lines underneath the watermark. Preserve the flat composition, colors, typography, border, margins and full card proportions 697:987. Preserve every printed word and credit. Headings OBJETO, CÓDIGO, COMBO. Title PÚA DEL DESTINO. Rules: ESCOGE 1: ROBA 1 CARTA. HAZ 1 PUNTO DE DAÑO NO LETAL. CORROMPE 1 CARTA DE CUALQUIER MEMORIA. COMO UNA ACCIÓN EN TU ETAPA DE ACCIONES: PUEDES CORROMPER ESTA CARTA DE TU MEMORIA PARA USAR SU EFECTO. Keep red emphasis on ESCOGE 1 and the entire closing instruction. Footer BJ95 - 7 / 15, FONDO. FREEPIK, ©2018 FUYUHIRO GUSHIKEN. No cropping, additions, perspective, or redesign.
+
+</details>
+
+## Capirote Metálico
+
+`capirote-metalico-clean.png` restaura la carta TD-13/15 con `image_gen`.
+Se retiró la marca diagonal y se conservaron las reglas y los créditos.
+
+Es un equipo normal. Quien lo juega gasta una acción y elige su zona de equipo
+o la del rival. Se aplican las reglas de reemplazo y las protecciones de equipo
+habituales. Si se destruye, vuelve a la memoria de su dueño original, con las
+reglas de corrupción habituales.
+
+Mientras el equipo está activo, quien lo lleva recibe 2 menos de daño y tiene
+1 acción disponible menos, con un mínimo de cero. Si se retira el equipo durante
+el turno, se recupera margen dentro del presupuesto de acciones de ese turno.
+La carta se destruye si quien la lleva confirma un 1 en su dado de ataque o
+efecto después de aplicar los modificadores.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the supplied CAPIROTE METÁLICO portrait trading card scan. Remove only the large translucent diagonal repeating RELICK watermark. Reconstruct the obscured gray polygonal metal hood and face, beige radial lines and green circuit board traces by continuing the original detail. Preserve the flat full card, exact 697:987 proportions, framing and margins, printed design, colors, positions, title, red emphasis and attribution. Text exactly: EQUIPO; CAPIROTE METÁLICO; PUEDES EQUIPAR ESTA CARTA A TU ADVERSARIO. MIENTRAS ESTA CARTA ESTÉ EQUIPADA: RESTA -2 A LOS DAÑOS QUE RECIBAS Y RESTA -1 A TUS ACCIONES DEL TURNO. SI SACAS 1 EN UN DADO DESTRUYE ESTA CARTA. Footer TD-13/15, IDEA. DANIEL VARGAS, ©2018 FUYUHIRO GUSHIKEN. No crop, no redesign, no added elements.
+
+</details>
+
+## Combo Parry
+
+`combo-parry-clean.png` restaura la carta DT-86/100 con la herramienta integrada
+`image_gen`. Se retiró la marca diagonal y se conservaron el texto, el
+identificador y los créditos impresos.
+
+Combo Parry es un Código Jugada COMBO de una acción. La mano rival se muestra
+temporalmente al activador para que pueda revisarla. Al confirmar, todos los
+COMBO de esa mano regresan al mazo y se baraja. Las copias prestadas vuelven al
+mazo de su dueño y se barajan ambos mazos si los dos reciben cartas. El rival
+baraja aunque su mano esté vacía o carezca de COMBO.
+
+La activación prescinde de la ventana de contrarespuesta, incluido Error de
+Carga. Combo Parry puede responder a una activación inicial y reanuda la
+resolución que interrumpe. Se aplican las reglas habituales de COMBO, la
+preferencia de pasar respuestas y los costes de Relikia. [Reglamento oficial, §§ 5.2 y 6.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Edit the supplied COMBO PARRY portrait trading card scan. Remove only the large translucent repeated diagonal RELICK watermark across the art and border, restoring the original two martial artists' poses and clothing, bright blue impact rays, and gray circuit lines beneath it. Keep the exact original flat composition, margins, proportions 697:987, typography, colors and all printed words and credits. Labels JUGADA, CÓDIGO, COMBO. Title COMBO PARRY. Exact rules: TU ADVERSARIO REVELA SU MANO Y ENVÍA A SU MAZO TODAS LAS CARTAS COMBO EN SU MANO, LUEGO ESTE REVUELVE SU MAZO. NO SE PUEDEN ACTIVAR COMBOS EN RESPUESTA A ESTA CARTA. Preserve red emphasis on the final sentence. Footer DT-86/100, FONDO. FREEPIK, ©2018 FUYUHIRO GUSHIKEN. No cropping, no redesign, no additions.
+
+</details>
+
+## Robotizar
+
+`robotizar-clean.png` restaura la carta DT-27/100 con la herramienta integrada
+`image_gen`. Se retiró la marca diagonal y se conservaron el texto, el
+identificador y los créditos impresos.
+
+Robotizar es un Código Jugada de una acción que se coloca encima del Relikario.
+Cada copia activa reduce el daño recibido en 1. Al comenzar cada etapa de
+Acciones propia, incluidas las repetidas, cada copia envía el tope del mazo al
+canje. Si es un Código, su controlador puede elegir añadirlo directamente a la
+mano. El nombre se muestra solo a quien elige hasta que la carta llega al canje.
+
+Cada copia se destruye cuando su controlador confirma un 1 en un D6 propio de
+ataque o de efecto. El resultado se comprueba después de los modificadores.
+Se aplican el agotamiento, las reglas de canje y las protecciones de destrucción
+habituales. La colocación se hace desde la mano. [Reglamento oficial, §§ 4.6 y 6.6](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the supplied portrait Robotizar trading card scan. Remove only the large translucent repeating diagonal RELICK watermark. Reconstruct the underlying blue robot with red eyes, helmet emblem, dark circuit panel, pink outlines and gray printed circuitry by continuing the original detail. Preserve the entire card frame, every margin, flat composition, original 697:987 proportions, typography, printed colors, and exact Spanish print. Labels JUGADA and CÓDIGO. Title ROBOTIZAR. Rules exactly: COLOCA ESTA CARTA ENCIMA DE TU RELIKARIO Y MIENTRAS PERMANEZCA AHÍ: RESTA -1 A LOS DAÑOS QUE RECIBAS Y AL INICIO DE TU ETAPA DE ACCIÓN: ENVÍA LA CARTA DEL TOPE DEL MAZO AL CANJE (SI ES UN CÓDIGO PUEDES AÑADIRLO A TU MANO.) SI SACAS 1 EN 1D6 DESTRUYE ESTA CARTA. Retain the original red emphasis. Footer DT-27/100, FONDO. FREEPIK and ©2018 FUYUHIRO GUSHIKEN. No crop, no redesign, no added elements.
+
+</details>
+
+## Ellie
+
+`ellie-clean.png` restaura la carta LR-19/82 con la herramienta integrada
+`image_gen`. Se retiró la marca diagonal y se conservaron el texto, el
+identificador y los créditos impresos.
+
+Ellie es un Código Personaje de una acción. Su búsqueda añade hasta dos cartas
+del mazo que contengan las palabras completas «vida» o «vidas» en el nombre o en
+las reglas, con independencia de mayúsculas. Las copias de Ellie se excluyen.
+La galería solo muestra las coincidencias al jugador que elige. Cuando queda
+una sola opción, se añade automáticamente. El mazo conserva su orden restante
+y, si se vacía, se aplica el agotamiento habitual.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the supplied portrait Relick trading card scan ELLIE. Remove ONLY the large translucent repeating diagonal RELICK watermark. Reconstruct the exact underlying watercolor character illustration, purple bob haircut, eyes, pink bow, blue dress with cream apron, glass milk bottle with its red M, pale pink burst, and gray printed circuit lines beneath it. Preserve all framing, margins, aspect ratio 697:987, and printed labels, text, and attribution. Printed text exactly: PERSONAJE; CÓDIGO; ELLIE; BUSCA EN TU MAZO 2 CARTAS CON LA PALABRA “VIDA” O “VIDAS” EXCEPTO “ELLIE” Y AÑÁDELAS A TU MANO. Footer: LR-19/82; ILUS. CANDY C; ©2018FG. Preserve the red highlights for VIDA and VIDAS. Output a crisp, flat portrait scan, faithful to the original without cropping, additional details, or redesign.
+
+</details>
+
+## Control Manual Victorioso
+
+`control-manual-victorioso-clean.png` restaura la imagen aportada con la
+herramienta integrada `image_gen` a 1054 × 1492. Se retiró la marca diagonal y se
+conservaron las reglas, el identificador LR-9/82 y los créditos impresos.
+
+El Código Objeto consume una acción y paga 1 vida al resolver el traslado,
+después de las respuestas. Si se activa con Relikia, se aplican sus costes y
+la corrupción habituales. Se puede usar con 1 vida. Si el pago devuelve al
+jugador a 0 después de haberse recuperado, termina el duelo.
+
+Se puede mover una carta del campo propio a un espacio libre de habilidad,
+equipo normal, equipos ligeros, Área, Bonus o canje, según su tipo. Para canje
+se usa el siguiente espacio libre. El Relikario y los Códigos Trampa conservan
+sus lugares específicos. El traslado conserva la titularidad, las marcas y el
+estado de la copia, y mueve con ella sus Zahiras y las cargas del Escudo. Se
+repone el Bonus retirado y se completan los canjes que correspondan. Mover
+una carta a equipo, habilidad o Área no dispara los efectos de activarla,
+enseñarla o equiparla. [Reglamento oficial, §§ 4.6, 4.8 y 7.5](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Edit the supplied flat portrait trading card PNG. Remove only the large repeating diagonal translucent RELICK watermark. Restore underlying gray circuit traces, dark hexagonal background, joystick and outline from their neighboring detail. Preserve the full original border and exact 697:987 proportions, shapes, typography, colors, joystick and its red button. Preserve the title and all printed text and attribution. Text exactly: OBJETO; CÓDIGO; CONTROL MANUAL VICTORIOSO; PAGA 1 PUNTO DE VIDA: MUEVE UNA CARTA EN TU CAMPO A UNA DE TUS ZONAS QUE ESTÉ VACÍA Y QUE SEA COMPATIBLE. Footer: LR-9/82; FONDO. COOLVECTOR / FREEPIK; ©2018FG. No crop, no redesign.
+
+</details>
+
+## Escudo Galáctico
+
+`escudo-galactico-clean.png` restaura la imagen aportada con la herramienta
+integrada `image_gen` a 1054 × 1492. Se retiró la marca diagonal y se conservaron
+las reglas, el identificador y los créditos impresos. El arte reconstruido
+puede presentar pequeñas diferencias.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Edit target: the attached Escudo Galáctico card PNG. Remove only the large translucent diagonal repeating watermark superimposed across the image. Reconstruct the obscured circuitry, green rays and electric blue shield directly beneath those letters by continuing neighboring detail. Maintain the original composition, full portrait card, pixel alignment, colors, border, framing, illustration, original typography and all printed Spanish words, rules text, card ID and footer credits. Do not crop or redesign. Maintain aspect ratio 697:987.
+
+</details>
+
 ## Súper Ataque
 
 `super-attack-clean.png` restaura con `image_gen` la imagen aportada, a

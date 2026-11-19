@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, RobotizeActionStart, BreakRobotize, BlockOpponentEquipment, BreakMetalHood }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -19,6 +19,8 @@ public sealed class EngineContinuation
     public PendingAttackRoll? Attack { get; set; }
     public PendingDieRoll? Die { get; set; }
     public DieEffect? SavedDieEffect { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? NonlethalDamageTarget { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public List<int>? UsedLightEquipment { get; set; }
 }
@@ -57,6 +59,9 @@ public sealed class EngineActivation
     public bool Canceled { get; set; }
     public bool ReplayCorrupted { get; set; }
     public bool FinishSniperExchange { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool EquipOpponent { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore] public int EquipmentRecipient => EquipOpponent ? 1 - Actor : Actor;
     public bool CanInterrupt { get; set; } = true;
     public bool FromMemory { get; set; }
     public int MemoryIndex { get; set; }
@@ -84,6 +89,14 @@ public sealed partial class GameEngine
         switch (next.Kind)
         {
             case ContinuationKind.AttackDieReady: ContinueAttackDie(); break;
+            case ContinuationKind.ConfirmedAttackDie: ResolveConfirmedAttackDie(next.Attack!); break;
+            case ContinuationKind.ConfirmedEffectDie: ApplyDieEffect(next.SavedDieEffect!, next.Value); break;
+            case ContinuationKind.RobotizeActionStart: ContinueRobotizeActionStart(next); break;
+            case ContinuationKind.BreakRobotize:
+            case ContinuationKind.BreakMetalHood:
+                Log($"{p.Name} saca 1 en su D6 y debe destruir {FieldCardName(next.Target!)}.");
+                RequestDestruction(next.Target!, next.Next);
+                break;
             case ContinuationKind.AttackOneEquipment: DestroyAttackOneEquipment(next.Actor, next.Next); break;
             case ContinuationKind.FinishCodeDestruction: FinishCodeDestruction(next); break;
             case ContinuationKind.OfferBlueEggDraw: OfferBlueEggDraw(next.Actor); break;
@@ -93,6 +106,10 @@ public sealed partial class GameEngine
             case ContinuationKind.CheckAreaEquipDeck: Exhaust(p); break;
             case ContinuationKind.PurpleRingPoints: AwardPurpleRingPoints(next.Actor); CompletePendingPlay(); break;
             case ContinuationKind.PurpleRingDamage: FinishPurpleRingDamage(next); break;
+            case ContinuationKind.LoadGalacticShield: LoadGalacticShield(next); break;
+            case ContinuationKind.OrientMovedArea:
+                AskRaid(next.Actor, next.Actor, RaidOrientMovedArea, DecisionKind.Confirm, "Elige qué lado del Área se aplica a ti");
+                break;
             case ContinuationKind.UsePendant: FinishPendant(next.Actor, (PendantEffect)next.Value); break;
             case ContinuationKind.UsePc: FinishPc(next.Actor, next.Value); break;
             case ContinuationKind.BoxDefense:
@@ -101,6 +118,7 @@ public sealed partial class GameEngine
             case ContinuationKind.BoxCode: FinishBoxCode(next.Actor); break;
             case ContinuationKind.EquipInstall: FinishEquipmentInstall(); break;
             case ContinuationKind.ReplaceEquipment: ReplaceEquipment(next); break;
+            case ContinuationKind.BlockOpponentEquipment: CompleteActivationIfFinished(); break;
             case ContinuationKind.PlaceSuperMagnet: FinishSuperMagnetPlacement(next.Actor); break;
             case ContinuationKind.PlaceZahira: FinishZahiraPlacement(next); break;
             case ContinuationKind.FinishZahiraDestruction: FinishZahiraDestruction(next); break;
@@ -147,6 +165,13 @@ public sealed partial class GameEngine
     }
 
     private void ResolveDieEffect(DieEffect effect, int die)
+    {
+        if (die == 1 && TryBreakCardsOnOwnOne(effect.Actor, new EngineContinuation
+            { Kind = ContinuationKind.ConfirmedEffectDie, Actor = effect.Actor, Value = die, SavedDieEffect = effect })) return;
+        ApplyDieEffect(effect, die);
+    }
+
+    private void ApplyDieEffect(DieEffect effect, int die)
     {
         if (effect.Step != null)
         {
@@ -230,8 +255,7 @@ public sealed partial class GameEngine
                 RollWithRelikario(p, DiePurpose.FieldCombat, new DieEffect { Purpose = DiePurpose.FieldCombat, Actor = frame.Actor, SkillId = frame.CardId });
                 break;
             case ActivationKind.Equipment:
-                frame.CanInterrupt = false;
-                ReplaceEquipment(new EngineContinuation { Kind = ContinuationKind.ReplaceEquipment, Actor = frame.Actor });
+                BeginEquipmentInstall(frame);
                 break;
             case ActivationKind.MindReset: TryResolveWithEffect(p, CardCatalog.Get(frame.CardId)); break;
             case ActivationKind.Reroll: _activeActivation = frame.Parent; ResolveRerollComboEffect(frame.Actor, CardCatalog.Get(frame.CardId)); break;

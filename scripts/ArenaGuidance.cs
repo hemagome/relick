@@ -62,6 +62,7 @@ internal static class ArenaGuidance
             Phase.Combat when Has(DuelMoveKind.Learn) => "Puedes enseñar una habilidad antes de avanzar.",
             Phase.Combat when Has(DuelMoveKind.FieldCode) => "Puedes activar una carta iluminada en Bonus o canje.",
             Phase.Actions when Has(DuelMoveKind.Equip) || Has(DuelMoveKind.Exchange) || Has(DuelMoveKind.PlayCode) || Has(DuelMoveKind.ActivateArea) => "Elige una carta para ver sus jugadas disponibles.",
+            Phase.Actions when Has(DuelMoveKind.DestinyPickMemory) => "Abre tu memoria para activar Púa del Destino.",
             Phase.Actions when Has(DuelMoveKind.Relikia) => "Puedes activar una Relikia antes de terminar.",
             _ when Has(DuelMoveKind.UsePurpleRing) => "Selecciona Anillo Morado en tus equipos ligeros para usarlo.",
             _ when Has(DuelMoveKind.PlayCode) => "Puedes activar un COMBO o avanzar de fase.",

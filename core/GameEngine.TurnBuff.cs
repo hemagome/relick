@@ -37,7 +37,7 @@ public sealed partial class GameEngine
     private bool HandReservedForActivation(int actor) => State.PendingTurnBuff is { } pending && pending.Actor == actor &&
         pending.DiscardsPaid < pending.RequiredDiscards && State.Players[actor].Hand.Count <= pending.RequiredDiscards - pending.DiscardsPaid;
 
-    private bool HasTurnBuffInHand(int actor) => ComboResponsesEnabled(actor) && State.PendingTurnBuff == null && State.Players[actor].ActionsLeft > 0 &&
+    private bool HasTurnBuffInHand(int actor) => ComboResponsesEnabled(actor) && State.PendingTurnBuff == null && AvailableActions(actor) > 0 &&
         State.Players[actor].Hand.Count >= 2 && State.Players[actor].Hand.Any(id => CardCatalog.Get(id).DiscardForTurnBuff);
 
     private void BeginTurnBuff(EngineActivation frame)

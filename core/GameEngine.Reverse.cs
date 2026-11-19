@@ -32,11 +32,11 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void RemoveLearnedSkill(int owner, int slot)
+    private void RemoveLearnedSkill(int owner, int slot, FieldTarget? movedTo = null)
     {
         var p = State.Players[owner]; var id = p.Skills[slot];
         var positions = Enumerable.Range(0, p.Skills.Count).Where(index => index != slot).Select(p.SkillPosition).ToArray();
-        ChangeZahiraHosts(owner, FieldZone.Skill, slot);
+        ChangeZahiraHosts(owner, FieldZone.Skill, slot, movedTo: movedTo);
         p.Skills.RemoveAt(slot);
         p.SkillPositions = positions.Where((position, index) => position != index).Any()
             ? positions.Select((position, index) => (position, index)).ToDictionary(c => c.index, c => c.position) : null;
@@ -45,7 +45,7 @@ public sealed partial class GameEngine
             State.PendingAttackRoll = attack with { SkillSlot = source == slot ? null : source > slot ? source - 1 : source };
         ShiftSavedAttackSlots(State.PendingDestruction?.Completed, owner, slot);
         ShiftSavedAttackSlots(_pendingDieEffect?.Next, owner, slot);
-        SendToMemory(p, id, CardZone.Skill, slot);
+        if (movedTo == null) SendToMemory(p, id, CardZone.Skill, slot);
         p.RemoveCorruptionSlots(CardZone.Skill, slot);
     }
 

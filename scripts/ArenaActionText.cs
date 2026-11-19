@@ -9,7 +9,10 @@ internal static class ArenaActionText
     {
         DuelMoveKind.Learn => "Enseñar",
         DuelMoveKind.Attack => "Atacar",
+        DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.ComboParry.Id => "Combo Parry",
         DuelMoveKind.PlayCode => HandCard(option, s)?.CancelActivation == true ? "Anular" : HandCard(option, s)?.IsCombo == true ? "Activar" : "Jugar",
+        DuelMoveKind.Equip when option.Move.Flag => "Equipar al rival",
+        DuelMoveKind.Equip when HandCard(option, s)?.Id == CardCatalog.MetalHood.Id => "Equiparme",
         DuelMoveKind.Equip => "Equipar",
         DuelMoveKind.UsePurpleRing => "Ganar 500 PR",
         DuelMoveKind.Exchange => "Canjear",
@@ -41,6 +44,7 @@ internal static class ArenaActionText
         DuelMoveKind.Placement => option.Move.Value == (int)CardDestination.Exchange ? "Canjear" : "Al mazo",
         DuelMoveKind.Reward => option.Move.Value == (int)RelikiaReward.OpponentDiscards ? "Provocar descartes" : "Corromper códigos",
         DuelMoveKind.Corrupt => "Corromper",
+        DuelMoveKind.DestinyPickMemory => "Activar Púa del Destino",
         DuelMoveKind.Recycle => "Reciclar",
         DuelMoveKind.SearchDeck => "Añadir a mano",
         DuelMoveKind.MindResetTarget => option.Move.Target == s.MySeat ? "Mi mano" : "Mano rival",
@@ -67,6 +71,7 @@ internal static class ArenaActionText
         CardKind.Attack when card.Id == CardCatalog.SuperAttack.Id => "Canje de dos Ataques",
         CardKind.Code when card.Id == CardCatalog.SuperMagnet.Id => "Canje de un Equipo y otra carta",
         CardKind.Code when card.Id == CardCatalog.ZahiraFlair.Id => "Canje de dos Personajes",
+        CardKind.Code when card.Id == CardCatalog.VictoriousManualControl.Id => "1 acción · 1 vida",
         CardKind.Code => Resources(card.ActionCost, card.PrCost, card.DiscardCost),
         CardKind.Equipment => "1 acción", CardKind.Attack => "Consume 1 Ataque",
         CardKind.Skill => "Según el espacio de habilidad elegido", _ => ""
@@ -79,8 +84,10 @@ internal static class ArenaActionText
         {
             case DuelMoveKind.PlayCode:
                 var card = HandCard(option, s)!;
+                if (card.Id == CardCatalog.VictoriousManualControl.Id) return CardCost(card);
                 return Resources(card.ActionCost, GameEngine.CodePrCost(card, s.LegacyBlueEgg), card.DiscardCost);
-            case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch: return "1 acción";
+            case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch:
+            case DuelMoveKind.DestinyPickMemory: return "1 acción";
             case DuelMoveKind.UsePurpleRing:
             case DuelMoveKind.Choose when s.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field != null:
                 return "Destruye Anillo Morado";
@@ -90,8 +97,10 @@ internal static class ArenaActionText
                 return Resources(0, GameEngine.SkillSlotCosts[position]);
             case DuelMoveKind.Relikia:
                 var effect = RelikiaEffects.Get((RelikiaEffect)m.Value);
-                return Resources(effect.Actions, effect.Cost + (effect.Id == RelikiaEffect.ReplayCode ? GameEngine.CodePrCost(CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]), s.LegacyBlueEgg) : 0),
-                    effect.Id == RelikiaEffect.ReplayCode ? CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]).DiscardCost : 0);
+                var replayed = effect.Id == RelikiaEffect.ReplayCode ? CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]) : null;
+                var resources = Resources(effect.Actions, effect.Cost + (replayed == null ? 0 : GameEngine.CodePrCost(replayed, s.LegacyBlueEgg)),
+                    replayed?.DiscardCost ?? 0);
+                return replayed?.Id == CardCatalog.VictoriousManualControl.Id ? resources + " · 1 vida" : resources;
             case DuelMoveKind.FieldCode: case DuelMoveKind.Sniper: return "Sin coste adicional";
             case DuelMoveKind.Attack: return HandCard(option, s)?.Id == CardCatalog.SuperAttack.Id
                 ? "Consume Súper Ataque" : "Consume 1 Ataque";

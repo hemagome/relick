@@ -5,7 +5,12 @@ public enum PendantEffect { Reroll, AddOne, AddTwo }
 public sealed partial class GameEngine
 {
     private int DamageWithEquipmentBonus(int actor, int damage) => damage + (ActiveEquipment(actor)?.DamageBonus ?? 0);
-    public CommandResult Equip(int actor, int handIndex)
+    public int AvailableActions(int actor) =>
+        Math.Max(0, State.Players[actor].ActionsLeft - (ActiveEquipment(actor)?.Id == CardCatalog.MetalHood.Id ? 1 : 0));
+
+    public CommandResult Equip(int actor, int handIndex) => Equip(actor, handIndex, onOpponent: false);
+
+    public CommandResult Equip(int actor, int handIndex, bool onOpponent)
     {
         var error = ValidateAction(actor);
         if (error != null) return CommandResult.Fail(error);
@@ -13,20 +18,22 @@ public sealed partial class GameEngine
         if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Equipment)
             return CommandResult.Fail("Selecciona un equipo de tu mano.");
         var id = p.Hand[handIndex];
+        if (onOpponent && id != CardCatalog.MetalHood.Id)
+            return CommandResult.Fail("Este equipo no se puede colocar en el campo rival.");
         // The card waits in its owner's memory while the activation can still be answered.
         var corruptOnMemory = p.CorruptsOnMemory(CardZone.Hand, handIndex);
         var waiting = SendToMemory(p, id, CardZone.Hand, handIndex, notify: false, deferCorruption: true)!;
         p.RemoveHandCard(handIndex); State.ActionsLeft--;
         var frame = new EngineActivation(actor, id, 1, 0, State.Phase)
             { Kind = ActivationKind.Equipment, MemoryIndex = waiting.Index, MemoryOwner = waiting.Owner == actor ? null : waiting.Owner,
-                CorruptOnMemory = corruptOnMemory };
+                CorruptOnMemory = corruptOnMemory, EquipOpponent = onOpponent };
         BeginActivation(frame);
         return CommandResult.Ok();
     }
 
     private void FinishEquipmentInstall()
     {
-        var frame = _activeActivation!; var p = State.Players[frame.Actor];
+        var frame = _activeActivation!; var p = State.Players[frame.EquipmentRecipient];
         var card = CardCatalog.Get(frame.CardId);
         if (card.LightEquipment)
         {
@@ -55,7 +62,12 @@ public sealed partial class GameEngine
             p.Equipment = frame.CardId; p.EquipmentDie = 0; p.EquipmentCounters = 0;
             p.EquipmentStackedCopies = 0;
             p.EquipmentExpiresAtTurnStart = card.DestroyAtNextTurnStart;
-            Log($"{p.Name} pone {card.Name} en su zona de equipo (1 acción).");
+            if (frame.EquipOpponent)
+                NotifyPileMove(State.Players[frame.Actor], card.Id, CardZone.Activation, destination: CardZone.Equipment,
+                    destinationPlayer: frame.EquipmentRecipient);
+            Log(frame.EquipOpponent
+                ? $"{State.Players[frame.Actor].Name} equipa {card.Name} a {p.Name} (1 acción)."
+                : $"{p.Name} pone {card.Name} en su zona de equipo (1 acción).");
             if (card.Heal > 0) Heal(p, card.Heal);
             if (frame.FinishSniperExchange) CompleteExchange(p);
             if (card.StoreDie) RollEquipmentStorage(p);
@@ -88,9 +100,20 @@ public sealed partial class GameEngine
             landed.Owner == Seat(p) ? "va a su memoria" : $"va a la memoria de {State.Players[landed.Owner].Name}, su dueño")}.");
     }
 
+    private void BeginEquipmentInstall(EngineActivation frame)
+    {
+        frame.CanInterrupt = false;
+        var recipient = frame.EquipmentRecipient;
+        if (frame.EquipOpponent && State.Players[recipient].Equipment is { } equipment &&
+            TryReplaceOpponentFieldEffect(frame.Actor, new(recipient, FieldZone.Equipment, -1, equipment),
+                new EngineContinuation { Kind = ContinuationKind.BlockOpponentEquipment, Actor = frame.Actor }))
+            return;
+        ReplaceEquipment(new EngineContinuation { Kind = ContinuationKind.ReplaceEquipment, Actor = frame.Actor });
+    }
+
     private void ReplaceEquipment(EngineContinuation next)
     {
-        var frame = _activeActivation!; var p = State.Players[frame.Actor];
+        var frame = _activeActivation!; var p = State.Players[frame.EquipmentRecipient];
         if (next.Prevented || CanInstallEquipment(p, CardCatalog.Get(frame.CardId)))
             FinishEquipmentInstall();
         else DestroyEquipment(p, next);
@@ -201,9 +224,10 @@ public sealed partial class GameEngine
         return false;
     }
 
-    private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || CanUseRelikarioOnPendingDie(State.CurrentPlayer) ||
+    private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || HasComboParry(State.CurrentPlayer) ||
+        HasDestinyPickResponse(State.CurrentPlayer) || CanUseRelikarioOnPendingDie(State.CurrentPlayer) ||
         ActiveEquipment(State.CurrentPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer);
-    private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || CanUseRelikarioOnPendingDie(State.DecisionPlayer) ||
+    private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || HasComboParry(State.DecisionPlayer) || CanUseRelikarioOnPendingDie(State.DecisionPlayer) ||
         ActiveEquipment(State.DecisionPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)

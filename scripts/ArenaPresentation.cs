@@ -112,6 +112,7 @@ public static class ArenaPresentation
         var track = new ExchangeTrack { Name = $"BonusTrack{index}", Detached = true, OwnerCaption = index == 0 ? "TÚ" : "RIVAL",
             ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing, RelikarioId = owner.RelikarioId,
             BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
+            ShieldCharges = owner.MovedShieldCharges,
             BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = accent,
             AreaCard = owner.Area == null ? null : CardCatalog.Get(owner.Area), AreaSide = owner.AreaSide };
         track.BonusInspected += bonusPressed; track.ExchangeInspected += exchangePressed;
@@ -187,7 +188,7 @@ public static class ArenaPresentation
         if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W, canvas.TableView) is { } lights)
             Put(lights, 1150, top, W, H);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
-            SlotWidth = W, Board = true, RaisedPile = canvas.TableView };
+            SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0 };
         attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, bottom, W, H);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
@@ -383,7 +384,8 @@ public static class ArenaPresentation
         var permanent = new VBoxContainer { CustomMinimumSize = new(92, 0),
             SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.Fill };
         permanent.AddThemeConstantOverride("separation", 6);
-        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId };
+        var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
+            ShieldCount = owner.GalacticShieldCharges?.Length ?? 0 };
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
@@ -472,6 +474,7 @@ public static class ArenaPresentation
                 Compact = compact, RelikarioId = owner.RelikarioId,
                 ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing,
                 BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
+                ShieldCharges = owner.MovedShieldCharges,
                 BonusCard = owner.Bonus == null ? null : CardCatalog.Get(owner.Bonus), Accent = index == 0 ? Mint : Coral,
                 AreaCard = owner.Area == null ? null : CardCatalog.Get(owner.Area), AreaSide = owner.AreaSide };
             track.BonusInspected += () => bonusPressed(index); track.AreaInspected += () => areaPressed(index);

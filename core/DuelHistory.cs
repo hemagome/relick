@@ -55,7 +55,8 @@ public sealed partial class GameEngine
     {
         var state = State;
         if (state.IsOver || state.Phase is Phase.Preparation or Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final or Phase.Finished) return null;
-        var frame = _activationChain.FirstOrDefault() ?? _activeActivation;
+        var frame = state.PendingDecision?.Source == CardCatalog.ComboParry.Id ? _activeActivation :
+            _activationChain.FirstOrDefault() ?? _activeActivation;
         var card = frame?.CardId ?? state.PendingCode?.CardId ?? state.PendingAttack?.SkillId ?? state.PendingAttackRoll?.SkillId ??
             state.PendingDecision?.Attack?.SkillId;
         var actor = frame?.Actor ?? state.PendingCode?.Actor ?? state.PendingAttack?.Attacker ?? state.PendingAttackRoll?.Attacker ?? state.DecisionPlayer;
@@ -97,7 +98,7 @@ internal sealed class PublicDuelObservation : IDisposable
     {
         _game = game; _actor = actor; _move = move; _turn = game.State.Turn;
         _beforeResolution = game.PublicResolution();
-        _before = game.State.Players.Select(p => (p.Health, p.Relikia, p.ActionsLeft, p.Equipment, p.EquipmentStackedCopies, p.ZahiraHost, p.ZahiraHost2)).ToArray();
+        _before = game.State.Players.Select((p, i) => (p.Health, p.Relikia, game.AvailableActions(i), p.Equipment, p.EquipmentStackedCopies, p.ZahiraHost, p.ZahiraHost2)).ToArray();
         var source = PublicSource(game, actor, move);
         _card = source ?? _beforeResolution?.CardId ?? "";
         _sourceActor = source != null ? actor : _beforeResolution?.Actor ?? actor;
@@ -124,7 +125,7 @@ internal sealed class PublicDuelObservation : IDisposable
     private void Pile(PileMovement move)
     {
         // Hidden hand/deck moves and face-down corruption never contribute identities.
-        if (move.Destination == CardZone.Memory && move.Source is CardZone.Equipment or CardZone.EquipmentCover or CardZone.LightEquipment or CardZone.Skill or CardZone.Bonus or CardZone.Area or CardZone.Exchange or CardZone.Attached or CardZone.Activation)
+        if (move.Destination == CardZone.Memory && move.Source is CardZone.Equipment or CardZone.EquipmentCover or CardZone.LightEquipment or CardZone.Skill or CardZone.Bonus or CardZone.Area or CardZone.Exchange or CardZone.Attached or CardZone.Activation or CardZone.GalacticShield)
             _outcomes.Add(move.ToRivalMemory ? $"{Card(move.CardId)} de {Player(move.Owner)} va a la memoria de {Player(move.MemoryOwner)}, su dueño."
                 : $"{Card(move.CardId)} de {Player(move.Owner)} va a memoria.");
         if (move.Destination == CardZone.OutOfGame && move.Source != CardZone.Hand)
@@ -162,7 +163,8 @@ internal sealed class PublicDuelObservation : IDisposable
         {
             var p = state.Players[i]; var old = _before[i];
             if (p.Health != old.Health) _outcomes.Add($"{Player(i)}: vidas {old.Health} → {p.Health}.");
-            if (p.ActionsLeft > old.Actions) _outcomes.Add($"{Player(i)}: acciones {old.Actions} → {p.ActionsLeft}.");
+            var actions = _game.AvailableActions(i);
+            if (actions > old.Actions) _outcomes.Add($"{Player(i)}: acciones {old.Actions} → {actions}.");
             if (p.Relikia != old.Pr) _outcomes.Add($"{Player(i)}: {(p.Relikia > old.Pr ? "+" : "")}{p.Relikia - old.Pr} PR.");
             if (_draws[i] > 0) _outcomes.Add($"{Player(i)} roba {_draws[i]} carta(s).");
             if (p.Equipment != null && (p.Equipment != old.Equipment || p.EquipmentStackedCopies > old.Copies))
@@ -195,6 +197,7 @@ internal sealed class PublicDuelObservation : IDisposable
         {
             DuelMoveKind.Attack or DuelMoveKind.DestinyDefense => p.Skills.ElementAtOrDefault(m.Kind == DuelMoveKind.Attack ? m.Value : m.Index),
             DuelMoveKind.Relikia when m.Value == (int)RelikiaEffect.ReplayCode => p.Memory.ElementAtOrDefault(m.Index),
+            DuelMoveKind.DestinyPickMemory => p.Memory.ElementAtOrDefault(m.Index),
             DuelMoveKind.FieldCode => m.Value == (int)FieldZone.Bonus ? p.Bonus : p.Exchange.ElementAtOrDefault(m.Index),
             DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse when m.Flag => CardCatalog.CardboardBox.Id,
             DuelMoveKind.Pc => CardCatalog.Pc.Id, DuelMoveKind.Pendant => CardCatalog.Pendant.Id,
@@ -217,7 +220,9 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.Attack when actor is 0 or 1 && g.State.Players[actor].Hand.ElementAtOrDefault(m.Index) == CardCatalog.SuperAttack.Id
                 => $"{name} usa Súper Ataque con {card}.",
             DuelMoveKind.Attack => $"{name} ataca con {card}.",
-            DuelMoveKind.Learn => $"{name} enseña {card}.", DuelMoveKind.Equip => $"{name} juega {card} como equipo.",
+            DuelMoveKind.Learn => $"{name} enseña {card}.",
+            DuelMoveKind.Equip when m.Flag => $"{name} juega {card} como equipo para {g.State.Players[1 - actor].Name}.",
+            DuelMoveKind.Equip => $"{name} juega {card} como equipo.",
             DuelMoveKind.Exchange => $"{name} coloca {card} en canje.", DuelMoveKind.FieldCode => $"{name} activa {card} desde {(m.Value == (int)FieldZone.Bonus ? "Bonus" : "canje")}.",
             DuelMoveKind.PassError => $"{name} deja resolver la cadena.",
             DuelMoveKind.CodeResponse => m.Flag ? $"{name} responde con Caja de Cartón." : $"{name} deja resolver el código.",
@@ -236,6 +241,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.SkipMagnet => $"{name} decide no tomar una carta por Magnet Shuffle.",
             DuelMoveKind.Placement => $"{name} coloca una carta {(m.Value == (int)CardDestination.Exchange ? "en canje" : "al fondo del mazo")}.",
             DuelMoveKind.Relikia => $"{name} activa Relikia: {RelikiaEffects.All.FirstOrDefault(e => e.Id == (RelikiaEffect)m.Value)?.Name ?? "efecto"}.",
+            DuelMoveKind.DestinyPickMemory => $"{name} usa Púa del Destino desde su memoria.",
             DuelMoveKind.Recycle => $"{name} recicla {m.Discards.Length} carta(s) de memoria.",
             DuelMoveKind.SearchDeck => $"{name} añade una carta del mazo a su mano.",
             DuelMoveKind.MindResetTarget => $"{name} revisa la mano de {Target()}.", DuelMoveKind.MindResetMemory => $"{name} elige una carta de memoria para Resetear la Mente.",

@@ -11,6 +11,7 @@ public partial class CardCollectionView : HBoxContainer
     public bool ShortScreen { get; init; }
     public float InspectorWidth { get; init; } = 340;
     public event Action<int>? CardPressed;
+    public event Action<int>? SelectionChanged;
     internal int SelectedIndex { get; private set; } = -1;
     internal CardInspector Inspector { get; private set; } = null!;
     /// <summary>The large card art above the inspector, as on the duel's reading rail; absent on short screens.</summary>
@@ -106,5 +107,6 @@ public partial class CardCollectionView : HBoxContainer
             Showcase?.Present(null);
         }
         Inspector.SizeFlagsVertical = SizeFlags.ExpandFill;
+        SelectionChanged?.Invoke(index);
     }
 }

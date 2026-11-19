@@ -158,7 +158,8 @@ public partial class OnlineArena
     private void BuildContextMoves()
     {
         var s = _snapshot!;
-        var indices = Enumerable.Range(0, s.Options.Count).Where(i => s.Options[i].Move.Kind is not (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve)).ToList();
+        var indices = Enumerable.Range(0, s.Options.Count).Where(i => s.Options[i].Move.Kind is not
+            (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve or DuelMoveKind.DestinyPickMemory)).ToList();
         // Responses must remain visible even with no hand card (or another card) selected.
         if (s.Phase == Phase.ErrorResponse)
             indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
@@ -395,15 +396,24 @@ public partial class OnlineArena
         return _selected.Count == 1 ? SelectableCards.ElementAtOrDefault(_selected.Single()) : null;
     }
 
+    private static bool OffersParryResponse(DuelSnapshot s) => s.Options.Any(option =>
+        option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.Id == CardCatalog.ComboParry.Id);
+
+    private static string ActivationResponseCard(DuelSnapshot s) =>
+        OffersParryResponse(s) && !s.Options.Any(option => option.Move.Kind == DuelMoveKind.PlayCode &&
+            ArenaActionText.HandCard(option, s)?.CancelActivation == true) ? CardCatalog.ComboParry.Id : CardCatalog.LoadError.Id;
+
     private string? InspectorActivationId() =>
         !_preparing && _snapshot is { } s && s.DecisionPlayer == s.MySeat
             ? s.Phase switch
             {
-                Phase.ErrorResponse => CardCatalog.LoadError.Id,
+                Phase.ErrorResponse => ActivationResponseCard(s),
                 Phase.GoldenTotemChoice => CardCatalog.GoldenTotem.Id,
                 Phase.TrapCraftChoice => s.TrapCardId,
                 Phase.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
                 Phase.BlueEggDrawChoice => CardCatalog.BlueEgg.Id,
+                Phase.Decision when s.Decision?.Source == CardCatalog.Robotize.Id =>
+                    s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId,
                 Phase.Decision when s.Decision is { } decision && CardCatalog.All.ContainsKey(decision.Source) => decision.Source,
                 Phase.TurnBuffDiscard => s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id,
                 _ => null
@@ -504,7 +514,7 @@ public partial class OnlineArena
             return decision.Title;
         if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget && InspectorActivationId() is { } trap)
             return CardCatalog.Get(trap).Name;
-        if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.LoadError.Name;
+        if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(ActivationResponseCard(s)).Name;
         var id = SelectedCardId(); if (id != null) return CardCatalog.Get(id).Name;
         if (s.Winner != null) return "Duelo terminado";
         if (_selected.Count > 1) return $"{_selected.Count} cartas seleccionadas";
@@ -526,9 +536,14 @@ public partial class OnlineArena
     {
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
+        if (s.Phase == Phase.ErrorResponse && myTurn && OffersParryResponse(s))
+            return "Elige cómo responder a la activación o deja que se resuelva.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return s.ErrorAfterDie
             ? $"Dado final: {s.Die}. Anula el código ahora o deja que termine su efecto." : "Anula la activación o deja que se resuelva.";
         if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) return ArenaGuidance.Instruction(s);
+        if (myTurn && s.Decision?.Source == CardCatalog.Robotize.Id &&
+            s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId is { } top)
+            return $"Elige qué hacer con {CardCatalog.Get(top).Name}, la carta del tope de tu mazo.";
         if (Deciding == DecisionKind.ChooseTarget && _fieldSelection is { Zone: FieldZone.Hand, Index: < 0 }) return "Se destruirá una carta al azar de esa mano.";
         if (Deciding is DecisionKind.Confirm or DecisionKind.ChooseTarget && _fieldSelection == null) return ArenaGuidance.Instruction(s);
         if (ChoosingRecycling) return $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas elegidas. " + (_selected.Count == s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards ? "Confirma para reciclar." : "Elige las cartas que faltan.");

@@ -31,6 +31,7 @@ public partial class OnlineArena
             FieldZone.EquipmentCover => _root!.FindChild("EquipmentCoverZone" + relative, true, false) as Control,
             FieldZone.Area => ZoneNode(relative, CardZone.Area, -1),
             FieldZone.Attached => _root!.FindChild("AttachmentStack" + relative, true, false) as Control,
+            FieldZone.GalacticShield => ZoneNode(relative, CardZone.GalacticShield, field.Index),
             FieldZone.Bonus when _root!.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track => track.BonusButton,
             FieldZone.Exchange when _root!.FindChild("BonusTrack" + relative, true, false) is ExchangeTrack track =>
                 track.ExchangeButtons.ElementAtOrDefault(field.Index),

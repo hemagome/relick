@@ -1,5 +1,5 @@
 namespace Relick.Core;
-public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover, Relikario, Zahira, Area, LightEquipment }
+public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover, Relikario, Zahira, Area, LightEquipment, GalacticShield }
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
@@ -54,6 +54,7 @@ public sealed partial class GameEngine
                 yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
             for (var i = 0; i < p.AttachedCards.Count; i++)
                 if (CardCatalog.Get(p.AttachedCards[i]).Kind != CardKind.Skill) yield return new(owner, FieldZone.Attached, i, p.AttachedCards[i]);
+            foreach (var shield in GalacticShieldTargets(owner)) yield return shield;
             if (p.Bonus != null && CardCatalog.Get(p.Bonus).Kind != CardKind.Skill)
                 yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
             if (p.Area != null) yield return new(owner, FieldZone.Area, -1, p.Area);
@@ -107,7 +108,7 @@ public sealed partial class GameEngine
             State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)))
             return "Activa las respuestas COMBO para responder con esta carta.";
         if (!card.IsCombo) { var error = ValidateTurn(actor, Phase.Actions); if (error != null) return error; }
-        if (p.ActionsLeft < card.ActionCost) return "No quedan acciones disponibles.";
+        if (AvailableActions(actor) < card.ActionCost) return "No quedan acciones disponibles.";
         return CodeEffectUnavailable(p, card, excludedHand: handIndex);
     }
     public CommandResult ResolveDestruction(int actor, int owner, bool equipment, int index = -1)
@@ -167,7 +168,7 @@ public sealed partial class GameEngine
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
         : State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor;
-    private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => { var c = CardCatalog.Get(id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && State.Players[actor].ActionsLeft >= c.ActionCost; });
+    private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => { var c = CardCatalog.Get(id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && AvailableActions(actor) >= c.ActionCost; });
     private CommandResult PlayRerollCombo(int actor, int index)
     {
         var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);

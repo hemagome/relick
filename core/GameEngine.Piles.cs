@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck, Area, LightEquipment }
+public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck, Area, LightEquipment, GalacticShield, ShieldCharge }
 /// <summary>Owner is the player the card leaves; MemoryOwner is the memory that receives it.</summary>
 public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1, int? DestinationPlayer = null)
 {
@@ -46,7 +46,7 @@ public sealed partial class GameEngine
     /// whoever controlled it. Call this before removing a hand card: its slot carries the ownership.
     /// </summary>
     private MemorySelection? SendToMemory(PlayerState p, string id, CardZone source, int index, bool notify = true,
-        bool deferCorruption = false, int? corruptionIndex = null)
+        bool deferCorruption = false, int? corruptionIndex = null, bool marked = false)
     {
         var holder = Seat(p);
         var foreign = source switch
@@ -54,11 +54,14 @@ public sealed partial class GameEngine
             CardZone.Hand => p.IsForeignHandCard(index),
             CardZone.Area => p.AreaIsBorrowed,
             CardZone.LightEquipment => p.LightEquipment![index].Borrowed,
+            CardZone.GalacticShield => p.GalacticShields![index].Borrowed,
+            CardZone.ShieldCharge => false,
+            CardZone.Bonus or CardZone.Exchange => ReleaseMovedFieldCard(p, index) ?? p.ReleaseForeignFieldCard(id),
             _ => p.ReleaseForeignFieldCard(id)
         };
         var owner = foreign ? 1 - holder : holder;
         var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
-        var corrupt = !trap && !deferCorruption && p.CorruptsOnMemory(source, corruptionIndex ?? index);
+        var corrupt = !trap && !deferCorruption && (marked || p.CorruptsOnMemory(source, corruptionIndex ?? index));
         var destination = trap ? CardZone.OutOfGame : corrupt ? CardZone.Corrupted : CardZone.Memory;
         if (notify) NotifyPileMove(p, id, source, index, destination, trap ? -1 : owner);
         if (trap) return null;
@@ -87,11 +90,19 @@ public sealed partial class GameEngine
     /// <summary>Removes a memory card that returns to play under <paramref name="holder"/>'s control.</summary>
     private void MoveMemoryCardToField(MemorySelection source, PlayerState holder, bool lightEquipment = false)
     {
-        var id = State.Players[source.Owner].Memory[source.Index];
-        State.Players[source.Owner].Memory.RemoveAt(source.Index); ShiftSniperIndices(source.Owner, source.Index);
+        var id = RemoveMemoryCard(source);
         var borrowed = source.Owner != Seat(holder);
         if (lightEquipment) InstallLightEquipment(holder, id, borrowed);
         else if (borrowed) MarkBorrowedFieldCard(holder, id);
+    }
+
+    private string RemoveMemoryCard(MemorySelection source)
+    {
+        var memory = State.Players[source.Owner].Memory;
+        var id = memory[source.Index];
+        memory.RemoveAt(source.Index);
+        ShiftSniperIndices(source.Owner, source.Index);
+        return id;
     }
 
     /// <summary>Returns the seat whose deck received the card, or -1 when a trap left the game.</summary>

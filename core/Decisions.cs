@@ -103,7 +103,9 @@ internal static class CardEffects
         new ICardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
             new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
-            new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect() }.ToDictionary(e => e.CardId);
+            new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
+            new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
+            new DestinyPickEffect() }.ToDictionary(e => e.CardId);
 
     public static ICardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
@@ -151,6 +153,12 @@ public sealed partial class GameEngine
         }
 
         public void Draw(int count, EngineContinuation? then = null) => _engine.DrawCards(Player, count, then);
+        public void DealNonlethalDamage(int amount, EngineContinuation then)
+        {
+            then.NonlethalDamageTarget = 1 - Actor;
+            _engine.DealDamage(1 - Actor, amount, completed: then, source: Actor);
+        }
+        public void CorruptMemoryCard(int owner, int index) => _engine.Corrupt(Actor, owner, index);
         public int Heal(int amount) => _engine.Heal(Player, amount);
         /// <summary>Swaps the whole hands of both players; each copy keeps its owner and whether it was revealed.</summary>
         public void SwapHands() => _engine.SwapHands(Actor);
@@ -158,6 +166,19 @@ public sealed partial class GameEngine
         public void ReloadBothHands() => _engine.BeginReloadHands(Actor);
         /// <summary>Shows these Tótems de Salvación and places them with Tótem de Oro on top, through the engine's placement sequence.</summary>
         public void DeployGoldenTotem(int[] handIndices) => _engine.DeployGoldenTotem(Actor, handIndices);
+        public void DeployGalacticShield() => _engine.DeployGalacticShield(Actor);
+        public void DeployRobotize() => _engine.DeployRobotize(Actor);
+        public IReadOnlyList<DecisionChoice> RobotizeTopCardChoices() => _engine.RobotizeTopCardChoices(Actor);
+        public void ResolveRobotizeTopCard(EngineContinuation next, bool toHand) => _engine.ResolveRobotizeTopCard(Actor, next, toHand);
+        public void FinishComboParry() => _engine.FinishComboParry(Actor);
+        public bool CanParryActivation() => _engine.CanParryActivation(Actor);
+        public bool CanPlayDestinyPick() => _engine.CanPlayDestinyPick(Actor);
+        public IReadOnlyList<DecisionChoice> GalacticShieldChoices(PendingDecision decision) => _engine.GalacticShieldChoices(decision);
+        public void ResolveGalacticShieldChoice(PendingDecision decision, DecisionChoice choice) => _engine.ResolveGalacticShieldChoice(decision, choice);
+        public IEnumerable<FieldTarget> MovableFieldCards() => _engine.MovableFieldCards(Actor);
+        public IEnumerable<FieldTarget> CompatibleFieldDestinations(FieldTarget source) => _engine.CompatibleFieldDestinations(source);
+        public void AskFieldDestination(FieldTarget source) => _engine.AskFieldDestination(source);
+        public void PayLifeAndMoveFieldCard(FieldTarget source, FieldTarget destination) => _engine.PayLifeAndMoveFieldCard(source, destination);
         public IEnumerable<FieldTarget> RivalEquipment() => _engine.EquipmentTransferTargets(1 - Actor);
         public void TakeEquipment(FieldTarget target, EngineContinuation then)
         {
@@ -205,7 +226,7 @@ public sealed partial class GameEngine
         /// <summary>Once the effect commits to a result, Error de Carga can no longer cancel it.</summary>
         public void CloseErrorWindow() { if (_engine._activeActivation != null) _engine._activeActivation.CanInterrupt = false; }
         public void RefillBonus(int owner, EngineContinuation? then) => _engine.RefillBonus(State.Players[owner], then);
-        public void MoveDeckCardToHand(int deckIndex) => _engine.MoveDeckCard(Player, deckIndex, false);
+        public void MoveDeckCardToHand(int deckIndex, EngineContinuation? then = null) => _engine.MoveDeckCard(Player, deckIndex, false, then);
         public int Random(int exclusiveMax) => _engine._random.Next(exclusiveMax);
         /// <summary>Ends the activation before the effect's last move, as a search does before taking its card.</summary>
         public void EndActivation() => _engine._activeActivation = null;
@@ -327,6 +348,8 @@ public sealed partial class GameEngine
         {
             FieldZone.Equipment or FieldZone.EquipmentCover => "equipo",
             FieldZone.LightEquipment => "equipo ligero",
+            FieldZone.Skill => "habilidad",
+            FieldZone.GalacticShield => $"sobre {s.Players[t.Owner].Relikario.DisplayName}",
             FieldZone.Attached => $"{(DeckRules.IsAttack(CardCatalog.Get(t.CardId)) ? "debajo de" : "sobre")} {s.Players[t.Owner].Relikario.DisplayName}",
             FieldZone.Bonus => "Bonus", FieldZone.Area => "Área", _ => "canje"
         };

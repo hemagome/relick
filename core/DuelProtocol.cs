@@ -32,7 +32,7 @@ public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch, ActivateArea, UsePurpleRing
+    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch, ActivateArea, UsePurpleRing, DestinyPickMemory
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -64,7 +64,8 @@ public sealed class DuelMove
         DuelMoveKind.Learn => game.Learn(actor, Index),
         DuelMoveKind.Attack => game.Attack(actor, Index, Value),
         DuelMoveKind.PlayCode => game.PlayCode(actor, Index),
-        DuelMoveKind.Equip => game.Equip(actor, Index),
+        DuelMoveKind.DestinyPickMemory => game.UseDestinyPickFromMemory(actor, Index),
+        DuelMoveKind.Equip => game.Equip(actor, Index, Flag),
         DuelMoveKind.ActivateArea => game.ActivateArea(actor, Index),
         DuelMoveKind.UsePurpleRing => game.UsePurpleRing(actor, Index),
         DuelMoveKind.Exchange => game.Exchange(actor, Index),

@@ -100,11 +100,17 @@ public static class DuelOptions
                     break;
                 case Phase.Actions:
                     if (game.CanUseOsamuSearch(actor)) Add(DuelMoveKind.RelikarioSearch, "Buscar con Osamu Lv 2 · 1 acción");
-                    if (p.ActionsLeft > 0)
+                    foreach (var i in game.DestinyPickMemorySlots(actor))
+                        Add(DuelMoveKind.DestinyPickMemory, $"Activar Púa del Destino · memoria {i + 1}", i);
+                    if (game.AvailableActions(actor) > 0)
                         for (var i = 0; i < p.Hand.Count; i++)
                         {
                             if (CardCatalog.Get(p.Hand[i]).Kind == CardKind.Equipment)
+                            {
                                 Add(DuelMoveKind.Equip, $"Equipar {Card(p.Hand[i])} · carta {i + 1}", i);
+                                if (p.Hand[i] == CardCatalog.MetalHood.Id)
+                                    Add(DuelMoveKind.Equip, $"Equipar {Card(p.Hand[i])} al rival · carta {i + 1}", i, flag: true);
+                            }
                             if (game.CanActivateArea(actor, i)) Add(DuelMoveKind.ActivateArea, $"Activar {Card(p.Hand[i])} · carta {i + 1}", i);
                             if (p.Bonus != null) Add(DuelMoveKind.Exchange, $"Canjear {Card(p.Hand[i])} · carta {i + 1}", i);
                         }

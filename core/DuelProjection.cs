@@ -49,6 +49,10 @@ public sealed class DuelPlayerView
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? AreaSide { get; set; }
     public string[] Attached { get; set; } = [];
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? GalacticShieldCharges { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<int, int>? MovedShieldCharges { get; set; }
     public string[] Exchange { get; set; } = [];
     public string[] Memory { get; set; } = [];
     // Original owner of each hand slot. Null at an index whose card is hidden;
@@ -141,6 +145,12 @@ public sealed class DuelSnapshot
         if (s.PendingReload != null && !s.IsOver) stagePhase = Phase.Actions;
         if (s.PendingTotemDamage != null && !s.IsOver) stagePhase = s.PendingTotemDamage.ResumePhase;
         if (s.PendingGoldenTotem != null && !s.IsOver) stagePhase = Phase.Actions;
+        var stageDecision = s.PendingDecision ?? s.PendingTurnBuff?.Decision;
+        if (stagePhase == Phase.Decision && stageDecision?.Source == CardCatalog.ComboParry.Id)
+        {
+            stagePhase = stageDecision.ResumePhase;
+            stageDecision = stageDecision.Suspended;
+        }
         return new DuelSnapshot
         {
             LegacyBlueEgg = game.LegacyBlueEgg,
@@ -155,7 +165,7 @@ public sealed class DuelSnapshot
             ActivationDiscardsRemaining = s.PendingTurnBuff is { Completed: false } cost ? cost.RequiredDiscards - cost.DiscardsPaid : 0,
             Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.PendingTurnBuff?.AttackRoll?.Die ?? s.PendingTurnBuff?.DieRoll?.Die ?? s.LastDie,
             Stage = stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.DeckSearchChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
-                stagePhase == Phase.Decision ? (s.PendingDecision ?? s.PendingTurnBuff?.Decision)!.ResumePhase :
+                stagePhase == Phase.Decision ? stageDecision!.ResumePhase :
                 stagePhase == Phase.MemoryRecoveryChoice ? Phase.Actions :
                 stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
                 stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase,
@@ -171,7 +181,7 @@ public sealed class DuelSnapshot
                 Name = p.Name, Health = p.Health, MaxHealth = p.MaxHealth, Level = p.Level, Pr = p.Relikia, Dexterity = p.Dexterity, Sleeve = p.Sleeve ?? CosmeticCatalog.DefaultSleeve, Dice = p.Dice ?? CosmeticCatalog.DefaultDice,
                 HasReachedZero = p.HasReachedZero,
                 RelikarioId = p.Relikario.Id,
-                Actions = p.ActionsLeft, DeckCount = p.Deck.Count, HandCount = p.Hand.Count,
+                Actions = game.AvailableActions(index), DeckCount = p.Deck.Count, HandCount = p.Hand.Count,
                 Hand = p.Hand.Select((id, i) => HandSlotVisible(s, p, i, index, seat) ? id : null).ToArray(),
                 // Ownership is only disclosed for slots whose identity is already visible;
                 // a hidden card must not leak whether it originally belonged to the rival.
@@ -181,6 +191,9 @@ public sealed class DuelSnapshot
                 ZahiraHost = p.ZahiraHost, ZahiraHost2 = p.ZahiraHost2,
                 Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, EquipmentStackedCopies = p.EquipmentStackedCopies, EquipmentCovers = p.EquipmentCovers?.ToArray(), StarEffects = p.StarEffects, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
                 LightEquipment = p.LightEquipment?.Select(c => c.CardId).ToArray(),
+                GalacticShieldCharges = p.GalacticShields?.Select(shield => shield.Cards.Count).ToArray(),
+                MovedShieldCharges = p.MovedFieldCards?.Where(entry => entry.Value.ShieldCharges != null).ToDictionary(
+                    entry => entry.Key, entry => entry.Value.ShieldCharges!.Count) is { Count: > 0 } charges ? charges : null,
                 Area = p.Area, AreaSide = p.AreaSideA is int sideA ? sideA == index ? "A" : "B" : null,
                 Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
             }).ToArray()

@@ -76,7 +76,7 @@ public sealed partial class GameEngine
             effect.OverlapSecondDie = Roll("Turbo Overlap · Dados de daño", roller: actor, completesPair: true);
         if (rolledDie.HasValue) CurrentDieCaption = caption;
         State.LastDie = die;
-        if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
+        if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || HasComboParry(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)))
         {
             _pendingDieEffect = effect;
             State.PendingDieRoll = new(actor, purpose, die, State.Phase);

@@ -16,13 +16,15 @@ public sealed partial class GameEngine
 
     private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex, int? memoryOwner = null, bool corruptOnMemory = false)
     {
+        var parry = card.Id == CardCatalog.ComboParry.Id;
         var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : card.ActionCost,
             CodePrCost(card) + (fromMemory ? 400 : 0), State.Phase)
         {
             Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex, MemoryOwner = memoryOwner == actor ? null : memoryOwner,
             CorruptOnMemory = corruptOnMemory,
-            // Replaying a Code from memory is a relikia effect, which Error de Carga cannot cancel (6.5, A.2).
-            CanInterrupt = !fromMemory
+            Parent = parry ? _activeActivation : null,
+            // Relikia and Combo Parry both resolve without an Error de Carga response.
+            CanInterrupt = !fromMemory && !parry
         };
         if (card.DiscardForTurnBuff || card.RepeatStage) { BeginTurnBuff(frame); return; }
         BeginActivation(frame);
@@ -79,7 +81,6 @@ public sealed partial class GameEngine
             Log($"{State.Players[actor].Name} cancela {card.Name} con Caja de Cartón; el descarte no vuelve a la mano.");
             FinishTurnBuff(star); return;
         }
-        _activeActivation = null;
         Log($"{State.Players[actor].Name} usa Caja de Cartón: cancela {card.Name}, que queda en la memoria de su dueño.");
         CompleteActivationIfFinished();
     }

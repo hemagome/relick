@@ -69,7 +69,9 @@ public static class DuelVisualEvents
         game.HandDiscarded += (owner, count) => events.Add(new()
             { Kind = DuelVisualKind.HandDiscard, Player = owner, Value = count, Source = CardZone.Hand, Destination = CardZone.Memory });
         game.CardDrawn += (player, slot) => Add(DuelVisualKind.Draw, player, slot);
-        game.CardReturnedToDeck += (player, slot, _) => Add(DuelVisualKind.Return, player, slot);
+        game.CardReturnedToDeck += (player, slot, _) => events.Add(new()
+            { Kind = DuelVisualKind.Return, Player = player, Value = slot,
+                DestinationPlayer = game.State.Players[player].IsForeignHandCard(slot) ? 1 - player : null });
         game.CardsReturnedToDeck += player => Add(DuelVisualKind.Shuffle, player);
         game.BonusPlaced += (player, _) => Add(DuelVisualKind.BonusPlace, player);
         game.BonusClaimed += (owner, recipient, slot, _) => events.Add(new() { Kind = DuelVisualKind.BonusClaim, Player = owner, Target = recipient, Value = slot });

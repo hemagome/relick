@@ -38,7 +38,7 @@ public sealed partial class GameEngine
         State.LastCombat = $"{p.Name} · Jessica Lee · D6 = {die} · {damage} daño(s)" + (die == 6 ? " y roba 1 carta" : "");
         Log(State.LastCombat);
         var pending = new PendingEffectDamage(effect.Actor, damage, die == 6);
-        if (damage > 0 && HasTurnBuffInHand(1 - effect.Actor))
+        if (damage > 0 && (HasTurnBuffInHand(1 - effect.Actor) || HasComboParry(1 - effect.Actor)))
         {
             State.PendingEffectDamage = pending; State.Phase = Phase.EffectDamageChoice;
             return;
@@ -73,6 +73,7 @@ public sealed partial class GameEngine
 
     private void ShiftExchangeEffects(PlayerState p, int removed, int count)
     {
+        ShiftMovedFieldCards(p, removed, count);
         if (p.ExchangePlacementTurns != null)
         {
             p.ExchangePlacementTurns = p.ExchangePlacementTurns.Where(entry => entry.Key < removed || entry.Key >= removed + count)

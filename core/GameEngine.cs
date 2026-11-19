@@ -125,9 +125,9 @@ public sealed partial class GameEngine
                 CanAttack(actor) ||
                 (!State.LearnedThisTurn && p.Skills.Count < MaxSkills && p.Relikia >= SkillCost(p) &&
                  p.Hand.Any(id => CanLearnSkill(p, CardCatalog.Get(id)))),
-            Phase.Actions => (State.ActionsLeft > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment ||
+            Phase.Actions => (AvailableActions(actor) > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment ||
                 CanActivateArea(actor, c.i) || CodeUnavailableReason(actor, c.i) == null)) ||
-                CanUseOsamuSearch(actor) || RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
+                CanUseOsamuSearch(actor) || DestinyPickMemorySlots(actor).Any() || RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
             Phase.Discard => State.DiscardsRemaining > 0 && p.Hand.Count > 0,
             Phase.Final => p.Hand.Count > MaxHandSize,
             Phase.RelikiaChoice => true,
@@ -225,7 +225,8 @@ public sealed partial class GameEngine
         if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
-        var deferCorruption = card.Id == CardCatalog.GoldenTotem.Id && p.CorruptsOnMemory(CardZone.Hand, handIndex);
+        var deferCorruption = (card.Id == CardCatalog.GoldenTotem.Id || card.Id == CardCatalog.GalacticShield.Id || card.Id == CardCatalog.Robotize.Id) &&
+            p.CorruptsOnMemory(CardZone.Hand, handIndex);
         var played = SendHandToMemory(p, handIndex, deferCorruption);
         p.ActionsLeft -= card.ActionCost;
         p.Relikia -= CodePrCost(card);
@@ -270,6 +271,12 @@ public sealed partial class GameEngine
 
     private void PlaceInExchange(PlayerState p, string id, EngineContinuation? completed = null, int? fieldPlacedTurn = null)
     {
+        AddToExchange(p, id, fieldPlacedTurn);
+        CompleteExchange(p, completed);
+    }
+
+    private void AddToExchange(PlayerState p, string id, int? fieldPlacedTurn = null)
+    {
         p.Exchange.Add(id);
         if (CardCatalog.Get(id).FieldCombatDie)
         {
@@ -277,7 +284,6 @@ public sealed partial class GameEngine
             p.ExchangePlacementTurns[p.Exchange.Count - 1] = fieldPlacedTurn ?? Math.Max(1, State.Turn);
         }
         Log($"{p.Name} coloca {CardCatalog.Get(id).Name} en canje ({p.Exchange.Count}/2).");
-        CompleteExchange(p, completed);
     }
 
     private void CompleteExchange(PlayerState p, EngineContinuation? completed = null)
@@ -315,7 +321,8 @@ public sealed partial class GameEngine
         {
             if (ConsumeRepeatedStage(Phase.Combat)) return CommandResult.Ok();
             State.Phase = Phase.Actions;
-            Log($"{State.Active.Name} entra en acciones ({State.ActionsLeft} disponibles).");
+            Log($"{State.Active.Name} entra en acciones ({AvailableActions(actor)} disponibles).");
+            ResolveRobotizeAtActionStart(actor);
         }
         else if (State.Phase == Phase.Actions)
         {
@@ -426,7 +433,7 @@ public sealed partial class GameEngine
 
     private void DealDamage(int target, int amount, int attackDie = 0, EngineContinuation? completed = null, int? source = null)
     {
-        if (amount <= 0) { Continue(completed); return; }
+        if (amount <= 0 || LimitNonlethalDamage(target, amount, completed) == 0) { Continue(completed); return; }
         var p = State.Players[target];
         if (source is int owner && State.Players[owner].StarEffects > 0)
         {
@@ -462,10 +469,12 @@ public sealed partial class GameEngine
     }
 
     private void ApplyIncomingDamage(int target, int amount, int attackDie, EngineContinuation? completed) =>
-        OfferPurpleRingDamage(target, amount, attackDie, completed);
+        OfferPurpleRingDamage(target, ReduceDamageWithRobotize(target, amount, attackDie), attackDie, completed);
 
-    private void ApplyDamageAfterRings(int target, int amount, int attackDie, EngineContinuation? completed)
+    private void ApplyDamageAfterShields(int target, int amount, int attackDie, EngineContinuation? completed)
     {
+        amount = LimitNonlethalDamage(target, amount, completed);
+        if (amount == 0) { Continue(completed); return; }
         var p = State.Players[target];
         if (ActiveEquipment(target) is { DamageCounterLimit: > 0 } protection)
         {
@@ -481,6 +490,8 @@ public sealed partial class GameEngine
 
     private void ApplyHealthDamage(int target, int amount, int attackDie, EngineContinuation? completed)
     {
+        amount = LimitNonlethalDamage(target, amount, completed);
+        if (amount == 0) { Continue(completed); return; }
         var p = State.Players[target];
         var wasZero = p.Health == 0;
         p.Health = Math.Max(0, p.Health - amount);
@@ -497,6 +508,14 @@ public sealed partial class GameEngine
             Log($"{p.Name} queda en 0 vidas: un nuevo daño terminará la partida.");
         }
         Continue(completed);
+    }
+
+    private int LimitNonlethalDamage(int target, int amount, EngineContinuation? completed)
+    {
+        if (completed?.NonlethalDamageTarget != target) return amount;
+        var player = State.Players[target];
+        // The first drop to zero leaves the player in the duel.
+        return Math.Min(amount, Math.Max(0, player.Health - (player.HasReachedZero ? 1 : 0)));
     }
 
     private void DrawCards(PlayerState p, int count, EngineContinuation? completed = null)
@@ -531,13 +550,13 @@ public sealed partial class GameEngine
         else Continue(completed);
     }
 
-    private void PlaceBonus(PlayerState p, string id)
+    private void PlaceBonus(PlayerState p, string id, bool fromDeck = true)
     {
         ForgetFieldCodeSource(p, FieldZone.Bonus);
         p.Bonus = id;
         p.InitialAreaWaitingInBonus = false;
         if (CardCatalog.Get(id).FieldCombatDie) p.BonusPlacedTurn = Math.Max(1, State.Turn);
-        BonusPlaced?.Invoke(Seat(p), id);
+        if (fromDeck) BonusPlaced?.Invoke(Seat(p), id);
     }
     private void Exhaust(PlayerState p, EngineContinuation? completed = null)
     {
@@ -576,7 +595,7 @@ public sealed partial class GameEngine
     }
 
     private string? ValidateAction(int actor) =>
-        ValidateTurn(actor, Phase.Actions) ?? (State.ActionsLeft <= 0 ? "Ya usaste tus dos acciones." : null);
+        ValidateTurn(actor, Phase.Actions) ?? (AvailableActions(actor) <= 0 ? "No quedan acciones disponibles." : null);
 
     private static bool InHand(PlayerState p, int index) => index >= 0 && index < p.Hand.Count;
     public string CurrentDieCaption { get; private set; } = "";

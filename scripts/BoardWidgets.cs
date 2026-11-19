@@ -706,6 +706,7 @@ public partial class ExchangeTrack : VBoxContainer
     public bool Preparing { get; set; }
     public bool BonusEffectUsed { get; set; }
     public IReadOnlyCollection<int> ExchangeEffectsUsed { get; set; } = Array.Empty<int>();
+    internal IReadOnlyDictionary<int, int>? ShieldCharges { get; init; }
     public Color Accent { get; set; }
     public ZoneCardButton BonusButton { get; private set; } = null!;
     public ZoneCardButton? AreaButton { get; private set; }
@@ -756,6 +757,7 @@ public partial class ExchangeTrack : VBoxContainer
             {
                 Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = "CANJE", Accent = Accent, Compact = Compact,
                 Layout = ZoneCardLayout.Landscape, EffectUsed = ExchangeEffectsUsed.Contains(slot), SizeFlagsStretchRatio = 1.25f,
+                StatusText = ShieldStatus(slot),
                 CustomMinimumSize = new(0, TrackWidth > 0 ? 86 : 0),
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null, RelikarioId = RelikarioId
             };
@@ -766,7 +768,7 @@ public partial class ExchangeTrack : VBoxContainer
         BonusButton = new ZoneCardButton
         {
             Name = Detached ? $"{Name}BonusCard" : "BonusCard", Caption = "BONUS", Card = Preparing ? null : BonusCard, Compact = Compact,
-            Layout = ZoneCardLayout.Portrait, EffectUsed = BonusEffectUsed, Accent = Accent, RelikarioId = RelikarioId
+            Layout = ZoneCardLayout.Portrait, EffectUsed = BonusEffectUsed, Accent = Accent, RelikarioId = RelikarioId, StatusText = ShieldStatus(-1)
         };
         BonusButton.Pressed += () => BonusInspected?.Invoke();
         row.AddChild(BonusButton);
@@ -786,6 +788,8 @@ public partial class ExchangeTrack : VBoxContainer
         foreach (var zone in row.GetChildren()) row.RemoveChild(zone);
         row.Free();
     }
+
+    private string ShieldStatus(int slot) => ShieldCharges?.TryGetValue(slot, out var count) == true ? $"×{count}" : "";
 }
 
 public enum ZoneCardLayout { Portrait, Landscape }
@@ -929,6 +933,7 @@ public partial class ZoneCardButton : Button
 public partial class AttachmentStack : Button
 {
     public IReadOnlyList<string> Cards { get; init; } = [];
+    internal int ShieldCount { get; init; }
     public string? RelikarioId { get; init; }
     /// <summary>Board rows widen the slot so the fanned copies keep the row's full height.</summary>
     public float SlotWidth { get; init; }
@@ -936,8 +941,10 @@ public partial class AttachmentStack : Button
     public bool Board { get; init; }
     internal bool RaisedPile { get; init; }
     private int Amount => Cards.Count;
+    private float PileWidth => Size.X / (Amount == 0 ? 1 : ShieldCount + 1);
     private Texture2D[] _previews = [];
-    internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(Vector2.Zero, Size) : PreviewRect(_previews.Length - 1);
+    internal string? TopCardId { get; private set; }
+    internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(0, 0, PileWidth, Size.Y) : PreviewRect(_previews.Length - 1);
 
     internal static string Location(IReadOnlyList<string> cards, string? relikario = null)
     {
@@ -949,10 +956,10 @@ public partial class AttachmentStack : Button
 
     private Rect2 PreviewRect(int index)
     {
-        if (Board) return BoardArt.FitArtwork(_previews[index], RaisedPile ? BoardArt.StackArea(Size) : new Rect2(4, 4, Size.X - 8, Size.Y - 8));
-        const float offset = 14;
+        if (Board) return BoardArt.FitArtwork(_previews[index], RaisedPile ? BoardArt.StackArea(new(PileWidth, Size.Y)) : new Rect2(4, 4, PileWidth - 8, Size.Y - 8));
+        var offset = Math.Min(14, PileWidth / 6);
         var spread = (_previews.Length - 1) * offset;
-        var area = new Rect2(4 + index * offset, 4, Size.X - 8 - spread, Size.Y - 8);
+        var area = new Rect2(4 + index * offset, 4, PileWidth - 8 - spread, Size.Y - 8);
         return BoardArt.FitArtwork(_previews[index], area);
     }
 
@@ -963,7 +970,9 @@ public partial class AttachmentStack : Button
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         AccessibilityName = $"{Location(Cards)}: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
         TooltipText = $"{AccessibilityName}. Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
-        _previews = Cards.TakeLast(3).Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId)).OfType<Texture2D>().ToArray();
+        var previews = Cards.OrderBy(id => !DeckRules.IsAttack(CardCatalog.Get(id))).TakeLast(3).ToArray();
+        TopCardId = previews.LastOrDefault();
+        _previews = previews.Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId)).OfType<Texture2D>().ToArray();
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         Resized += QueueRedraw;
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
@@ -979,7 +988,7 @@ public partial class AttachmentStack : Button
             if (Size.Y > 60) BoardArt.Icon(this, GameIcon.Flag, Size / 2 + new Vector2(0, 5), 20, BoardArt.Tint(accent, 0.16f));
         }
         else if (_previews.Length == 0)
-            BoardArt.Icon(this, GameIcon.Cards, Size / 2, 32, BoardArt.Muted);
+            BoardArt.Icon(this, GameIcon.Cards, new Vector2(PileWidth, Size.Y) / 2, 32, BoardArt.Muted);
         for (var i = Board ? Math.Max(0, _previews.Length - 1) : 0; i < _previews.Length; i++)
         {
             var rect = PreviewRect(i);
@@ -987,7 +996,7 @@ public partial class AttachmentStack : Button
             if (RaisedPile) BoardArt.StackEdges(this, rect, Amount, accent);
             DrawTextureRect(_previews[i], rect, false);
         }
-        if (Amount > 1) BoardArt.CardBadge(this, Size, $"×{Amount}");
+        if (Amount > 1) BoardArt.CardBadge(this, new(PileWidth, Size.Y), $"×{Amount}");
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, !Disabled && IsHovered(), HasFocus());
     }
 }

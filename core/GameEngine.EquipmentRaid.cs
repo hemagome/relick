@@ -2,7 +2,7 @@ namespace Relick.Core;
 
 public sealed partial class GameEngine
 {
-    private const string RaidSides = "sides", RaidAttack = "attack", RaidSearch = "search",
+    private const string RaidSides = "sides", RaidOrientMovedArea = "orient-moved-area", RaidAttack = "attack", RaidSearch = "search",
         RaidEquip = "equip", RaidReward = "reward";
 
     private void AskRaid(int holder, int actor, string step, DecisionKind kind, string instruction, int? showsHandOf = null) =>
@@ -15,7 +15,7 @@ public sealed partial class GameEngine
         var rival = State.Players[1 - decision.Decider];
         switch (decision.Step)
         {
-            case RaidSides:
+            case RaidSides or RaidOrientMovedArea:
                 return [
                     new DecisionChoice { Label = "Lado A para mí · Lado B para el rival", Value = decision.Decider, Public = "elige el lado A para sí." },
                     new DecisionChoice { Label = "Lado B para mí · Lado A para el rival", Value = 1 - decision.Decider, Public = "elige el lado B para sí." }
@@ -58,6 +58,10 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         switch (decision.Step)
         {
+            case RaidOrientMovedArea:
+                State.Players[holder].AreaSideA = choice.Value;
+                CompletePendingPlay();
+                break;
             case RaidSides:
                 State.Players[holder].AreaSideA = choice.Value;
                 if (EffectsSuppressed(holder, FieldZone.Area)) { CompletePendingPlay(); break; }

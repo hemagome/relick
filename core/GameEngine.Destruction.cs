@@ -20,9 +20,10 @@ public sealed partial class GameEngine
             CardCatalog.Get(State.Players[target.Owner].Skills[slot]).ProtectOwnCard &&
             !EffectsSuppressed(target.Owner, FieldZone.Skill, slot) && !(target.Zone == FieldZone.Skill && target.Index == slot));
 
-    private void RequestDestruction(FieldTarget target, EngineContinuation? completed = null)
+    private void RequestDestruction(FieldTarget target, EngineContinuation? completed = null, bool checkShield = true)
     {
         if (State.IsOver) return;
+        if (checkShield && TryProtectWithGalacticShield(target, completed)) return;
         var p = State.Players[target.Owner];
         var cover = Enumerable.Range(0, p.EquipmentCovers?.Count ?? 0).LastOrDefault(index =>
             p.EquipmentCovers![index] == CardCatalog.GoldenTotem.Id && !EffectsSuppressed(target.Owner, FieldZone.EquipmentCover, index), -1);
@@ -77,6 +78,7 @@ public sealed partial class GameEngine
                 RemoveLightEquipment(p, target.Index);
                 return;
             case FieldZone.Zahira: RemoveZahira(target.Owner, ZahiraSlot(target.Index)); return;
+            case FieldZone.GalacticShield: RemoveGalacticShield(target.Owner, target.Index); return;
             case FieldZone.EquipmentCover:
                 ChangeZahiraHosts(target.Owner, target.Zone, target.Index);
                 p.EquipmentCovers!.RemoveAt(target.Index);
@@ -93,7 +95,7 @@ public sealed partial class GameEngine
             case FieldZone.Exchange:
                 ChangeZahiraHosts(target.Owner, target.Zone, target.Index);
                 ForgetFieldCodeSource(p, FieldZone.Exchange, target.Index); p.Exchange.RemoveAt(target.Index);
-                ShiftExchangeEffects(p, target.Index, 1); break;
+                break;
             case FieldZone.Bonus:
                 ChangeZahiraHosts(target.Owner, target.Zone, -1); ForgetFieldCodeSource(p, FieldZone.Bonus);
                 p.Bonus = null; p.InitialAreaWaitingInBonus = false; break;
@@ -103,6 +105,7 @@ public sealed partial class GameEngine
             FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, FieldZone.EquipmentCover => CardZone.EquipmentCover, _ => CardZone.Attached
         };
         SendToMemory(p, target.CardId, source, target.Index);
+        if (source == CardZone.Exchange) ShiftExchangeEffects(p, target.Index, 1);
         if (source == CardZone.Bonus) p.ClearCorruptionMarks(source);
         else p.RemoveCorruptionSlots(source, target.Index);
     }
@@ -127,6 +130,23 @@ public sealed partial class GameEngine
     {
         if (die == 1 && !HasStackedTotem(State.CurrentPlayer)) DestroyAttackOneEquipment(0, completed);
         else Continue(completed);
+    }
+
+    private bool TryBreakCardsOnOwnOne(int actor, EngineContinuation? completed)
+    {
+        var next = completed;
+        // Prepend in slot order so attached cards resolve from the highest slot down.
+        foreach (var copy in ActiveRobotizeCopies(actor))
+            next = new EngineContinuation { Kind = ContinuationKind.BreakRobotize, Actor = actor, Target = copy, Next = next };
+        if (ActiveEquipment(actor)?.Id == CardCatalog.MetalHood.Id)
+            next = new EngineContinuation
+            {
+                Kind = ContinuationKind.BreakMetalHood, Actor = actor,
+                Target = new(actor, FieldZone.Equipment, -1, CardCatalog.MetalHood.Id), Next = next
+            };
+        if (next == completed) return false;
+        Continue(next);
+        return true;
     }
 
     private void FinishCodeDestruction(EngineContinuation next)

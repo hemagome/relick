@@ -10,7 +10,7 @@ public sealed partial class GameEngine
         if (error != null) return error;
         if (!Enum.IsDefined(effect)) return "Efecto desconocido.";
         var definition = RelikiaEffects.Get(effect);
-        if (State.ActionsLeft < definition.Actions) return $"Necesitas {definition.Actions} acciones disponibles.";
+        if (AvailableActions(actor) < definition.Actions) return $"Necesitas {definition.Actions} acciones disponibles.";
         if (State.Active.Relikia < definition.Cost) return $"Necesitas {definition.Cost} PR.";
         return null;
     }
@@ -67,6 +67,7 @@ public sealed partial class GameEngine
             case RelikiaEffect.ChangeBonus:
                 var bonus = p.Bonus!;
                 var bonusPlacedTurn = p.BonusPlacedTurn;
+                MoveNeutralCardState(p, -1, p.Exchange.Count);
                 if (p.CorruptsOnMemory(CardZone.Bonus, -1)) p.MarkForCorruption(CardZone.Exchange, p.Exchange.Count);
                 p.ClearCorruptionMarks(CardZone.Bonus);
                 ChangeZahiraHosts(actor, FieldZone.Bonus, -1, movedTo: new(actor, FieldZone.Exchange, p.Exchange.Count, bonus));
@@ -158,11 +159,12 @@ public sealed partial class GameEngine
     private void TakeBonus(PlayerState source, PlayerState recipient)
     {
         var id = source.Bonus!;
+        var borrowed = ReleaseMovedFieldCard(source, -1) ?? source.ReleaseForeignFieldCard(id);
         ChangeZahiraHosts(Array.IndexOf(State.Players, source), FieldZone.Bonus, -1);
         ForgetFieldCodeSource(source, FieldZone.Bonus);
         source.Bonus = null;
         source.InitialAreaWaitingInBonus = false;
-        var owner = source.ReleaseForeignFieldCard(id) ? 1 - Seat(source) : Seat(source);
+        var owner = borrowed ? 1 - Seat(source) : Seat(source);
         if (source.CorruptsOnMemory(CardZone.Bonus, -1)) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count);
         source.ClearCorruptionMarks(CardZone.Bonus);
         recipient.Hand.Add(id);
@@ -193,7 +195,7 @@ public sealed partial class GameEngine
         var p = State.Players[owner];
         var id = p.Memory[index];
         NotifyPileMove(p, id, CardZone.Memory, index, CardZone.Corrupted);
-        p.Memory.RemoveAt(index);
+        RemoveMemoryCard(new(owner, index));
         p.CorruptedMemory.Add(id);
         Log($"{State.Players[actor].Name} corrompe {CardCatalog.Get(id).Name} de la memoria de {p.Name} (boca abajo).");
     }

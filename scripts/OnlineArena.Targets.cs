@@ -56,7 +56,8 @@ public partial class OnlineArena
                 (move.Index == field.Index || field.Zone == FieldZone.Hand && move.Index < 0),
             // A card decision names its board target; a hand is one zone, its card drawn at random.
             DuelMoveKind.Choose or DuelMoveKind.UsePurpleRing => option?.Field is { } t && t.Owner == field.Owner && t.Zone == field.Zone &&
-                (t.Index == field.Index || field.Zone == FieldZone.Hand && t.Index < 0),
+                (t.Index == field.Index || field.Zone == FieldZone.Hand && t.Index < 0 ||
+                 field.Zone == FieldZone.Equipment && field.Index < 0 && s.Decision?.Source == CardCatalog.VictoriousManualControl.Id),
             DuelMoveKind.FieldCode => field.Owner == s.MySeat && move.Value == (int)field.Zone && move.Index == field.Index,
             DuelMoveKind.Magnet => field.Owner != s.MySeat && (move.Flag
                 ? field.Zone == (move.Value == (int)FieldZone.Area ? FieldZone.Area : FieldZone.Bonus)
@@ -85,6 +86,7 @@ public partial class OnlineArena
             FieldZone.Bonus => p.Bonus, FieldZone.Area => p.Area, FieldZone.Exchange => p.Exchange.ElementAtOrDefault(field.Index),
             FieldZone.Hand => p.Hand.ElementAtOrDefault(field.Index), FieldZone.Skill => p.Skills.ElementAtOrDefault(field.Index),
             FieldZone.Attached => p.Attached.ElementAtOrDefault(field.Index),
+            FieldZone.GalacticShield when field.Index >= 0 && field.Index < p.GalacticShieldCharges?.Length => CardCatalog.GalacticShield.Id,
             FieldZone.Zahira when p.Zahira(GameEngine.ZahiraSlot(field.Index)) != null => CardCatalog.ZahiraFlair.Id, _ => null
         };
     }
@@ -130,6 +132,11 @@ public partial class OnlineArena
     {
         if (IsAnimating) return;
         var s = _snapshot!;
+        if (s.Options.Any(option => MatchesField(option, (s.MySeat, FieldZone.Skill, index))))
+        {
+            SelectField(s.MySeat, FieldZone.Skill, index);
+            return;
+        }
         var attacks = SelectedAttacks().ToArray();
         if (_choosingAttackSkill)
         {
@@ -158,11 +165,12 @@ public partial class OnlineArena
             ? s.Players[s.MySeat].Skills.Length - 1 : -1;
         foreach (var tile in _ownSkills)
         {
-            tile.Targetable = tile.Skill != null && available.Contains(tile.SkillIndex);
+            var field = (s.MySeat, FieldZone.Skill, tile.SkillIndex);
+            tile.Targetable = tile.Skill != null && (available.Contains(tile.SkillIndex) || s.Options.Any(option => MatchesField(option, field)));
             tile.Playable = showActivations && tile.Skill != null &&
                 (tile.SkillIndex == learningReroll && tile.Skill.Id == CardCatalog.Reverse.Id || s.Options.Any(o =>
                     o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && o.Move.Index == tile.SkillIndex));
-            tile.Chosen = tile.Skill != null && tile.SkillIndex == _selectedSkill && (attack || _skillContext);
+            tile.Chosen = tile.Skill != null && (_fieldSelection == field || tile.SkillIndex == _selectedSkill && (attack || _skillContext));
             if (tile.Targetable) _pulsingTargets.Add(tile);
             tile.QueueRedraw();
         }
@@ -191,6 +199,8 @@ public partial class OnlineArena
             Mark(ZoneNode(relative, CardZone.LightEquipment, -1) as ZoneCardButton, FieldZone.LightEquipment, -1);
             var covers = s.Players[owner].EquipmentCovers;
             Mark(_coverZones[relative], FieldZone.EquipmentCover, (covers?.Length ?? 0) - 1);
+            for (var slot = 0; slot < (s.Players[owner].GalacticShieldCharges?.Length ?? 0); slot++)
+                Mark(ZoneNode(relative, CardZone.GalacticShield, slot) as ZoneCardButton, FieldZone.GalacticShield, slot);
             if (_exchangeTracks[relative] is { } track)
             {
                 Mark(track.BonusButton, FieldZone.Bonus, -1);

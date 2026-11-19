@@ -52,6 +52,7 @@ public partial class OnlineArena
         CardZone.EquipmentCover => _root?.FindChild("EquipmentCoverZone" + relative, true, false) as Control,
         CardZone.Skill => _root?.FindChild($"Skill{relative}_{_snapshot!.Players[relative == 0 ? _snapshot.MySeat : 1 - _snapshot.MySeat].SkillPosition(slot)}", true, false) as Control,
         CardZone.Attached => _root?.FindChild("AttachmentStack" + relative, true, false) as Control,
+        CardZone.GalacticShield or CardZone.ShieldCharge => _root?.FindChild(GalacticShieldNodeName(relative, slot), true, false) as Control,
         CardZone.Deck => _root?.FindChild("DeckStack" + relative, true, false) as Control,
         _ => null
     };
@@ -98,6 +99,7 @@ public partial class OnlineArena
                 CardZone.Hand => player.Hand.ElementAtOrDefault(slot), CardZone.Bonus => player.Bonus, CardZone.Area => player.Area,
                 CardZone.Equipment => player.Equipment, CardZone.EquipmentCover => player.EquipmentCovers?.ElementAtOrDefault(cue.Value), CardZone.Skill => player.Skills.ElementAtOrDefault(cue.Value), CardZone.Attached => player.Attached.ElementAtOrDefault(cue.Value),
                 CardZone.LightEquipment => player.LightEquipment?.ElementAtOrDefault(cue.Value),
+                CardZone.GalacticShield => CardCatalog.GalacticShield.Id,
                 CardZone.Exchange => player.Exchange.ElementAtOrDefault(cue.Value), CardZone.Memory => player.Memory.ElementAtOrDefault(slot), _ => null
             };
             if (cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard) id = null; // One face-down packet per hand, regardless of its size.
@@ -108,6 +110,16 @@ public partial class OnlineArena
                 origin = RectVisible(center, activation) ? activation : null;
             }
             var rotation = (node?.Rotation ?? 0) + (source == CardZone.Exchange ? Mathf.Pi / 2 : 0);
+            if (source == CardZone.Activation && cue.Destination == CardZone.Equipment &&
+                cue.DestinationPlayer is { } recipient)
+            {
+                var face = current.Players[recipient].Equipment;
+                result[cue] = previous.Phase == Phase.Actions && player.HandCount == current.Players[cue.Player].HandCount + 1
+                    ? CaptureHandPlacement(current, previous, cue.Player, face, CardZone.Equipment) with
+                        { Event = cue, StartsFaceUp = cue.Player == current.MySeat }
+                    : new Flight(cue, origin, face, Duration: 0.60, IsPlacement: true);
+                continue;
+            }
             if (cue.Kind == DuelVisualKind.HandSteal)
             {
                 // The card shows its face only on the side of the board that may see it: a hidden card
@@ -124,6 +136,15 @@ public partial class OnlineArena
             if (source == CardZone.Deck && cue.Destination == CardZone.Attached)
             {
                 result[cue] = new Flight(cue, origin, current.Players[cue.Player].Attached.LastOrDefault(), OriginRotation: rotation, StartsFaceUp: false);
+                continue;
+            }
+            if (source == CardZone.Deck && cue.Destination == CardZone.Exchange)
+            {
+                var departure = current.Visuals.SkipWhile(eventBefore => eventBefore != cue).Skip(1).FirstOrDefault(e =>
+                    e.Kind == DuelVisualKind.Pile && e.Player == cue.Player && e.Source == CardZone.Exchange && e.Value == cue.Value);
+                var face = departure == null ? current.Players[cue.Player].Exchange.ElementAtOrDefault(cue.Value) :
+                    CompletedExchangeFace(current, previous, cue.Player, departure);
+                result[cue] = new Flight(cue, origin, face, OriginRotation: rotation, IsPlacement: true, StartsFaceUp: false);
                 continue;
             }
             if (source == CardZone.Deck && cue.Destination is CardZone.Equipment or CardZone.LightEquipment)
@@ -202,6 +223,8 @@ public partial class OnlineArena
     {
         for (var actor = 0; actor < current.Players.Length; actor++)
         {
+            if (origins.Keys.Any(cue => cue.Player == actor && cue.Source == CardZone.Deck && cue.Destination == CardZone.Exchange))
+                continue;
             var before = previous.Players[actor];
             var after = current.Players[actor];
             // A completed exchange sends the new card to memory in the same revision.
@@ -581,7 +604,8 @@ public partial class OnlineArena
                     _flightOriginRotation = slot.Rotation + (next.LeavesExchange ? Mathf.Pi / 2 : 0);
                     slot.SetDeparturePreview(null);
                 }
-                var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
+                var deckSide = returning && next.Event.DestinationPlayer is int owner ? (owner == _snapshot.MySeat ? 0 : 1) : relative;
+                var deck = ZoneNode(deckSide, CardZone.Deck, -1) as DeckStack;
                 if (deck == null) { SetDestinationPending(next, target, false); FinishHandDeparture(); return; }
                 var deckRect = ZoneRect(deck);
                 if (kind is DuelVisualKind.Draw or DuelVisualKind.HandSteal) PlaySound(SoundCue.CardDraw);

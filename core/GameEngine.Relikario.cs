@@ -49,6 +49,13 @@ public sealed partial class GameEngine
         State.LastAttackDie = die;
         State.Phase = Phase.Combat;
         pending = pending with { Die = die, WasRerolled = rerolled };
+        if (die == 1 && TryBreakCardsOnOwnOne(pending.Attacker,
+            new EngineContinuation { Kind = ContinuationKind.ConfirmedAttackDie, Actor = pending.Attacker, Attack = pending })) return;
+        ResolveConfirmedAttackDie(pending);
+    }
+
+    private void ResolveConfirmedAttackDie(PendingAttackRoll pending)
+    {
         if (!OfferOsamuAttackSearch(pending)) ResolveSkillAttack(pending);
     }
 

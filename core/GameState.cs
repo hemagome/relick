@@ -193,6 +193,8 @@ public sealed class PlayerState
     public string? Equipment { get; internal set; }
     [JsonInclude]
     public List<string> AttachedCards { get; internal set; } = new();
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<GalacticShield>? GalacticShields { get; internal set; }
     [JsonInclude]
     public List<string> Skills { get; internal set; } = new();
     // Counters belong to a learned copy (slot), not to the shared card definition.
@@ -208,6 +210,9 @@ public sealed class PlayerState
     public List<string> Exchange { get; internal set; } = new();
     [JsonInclude]
     public string? Bonus { get; internal set; }
+    // State carried by cards moved to Bonus (-1) or to one of the exchange slots.
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<int, MovedFieldCardState>? MovedFieldCards { get; internal set; }
 }
 
 public sealed class GameState

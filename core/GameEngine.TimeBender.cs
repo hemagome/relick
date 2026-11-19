@@ -22,7 +22,7 @@ public sealed partial class GameEngine
     {
         var p = State.Active;
         return !p.AutoPassCombos && p.Hand.Any(id => CardCatalog.All.TryGetValue(id, out var card) && card.RepeatStage &&
-            p.ActionsLeft >= card.ActionCost && p.Relikia >= card.PrCost && p.Hand.Count >= card.DiscardCost + 1);
+            AvailableActions(State.CurrentPlayer) >= card.ActionCost && p.Relikia >= card.PrCost && p.Hand.Count >= card.DiscardCost + 1);
     }
 
     private void FinishDrawStage(bool explicitStage)
@@ -65,6 +65,7 @@ public sealed partial class GameEngine
         }
         State.Phase = stage;
         State.LastCombat = $"{p.Name} repite su etapa de {StageName(stage)} sin cambiar de turno."; Log(State.LastCombat);
+        if (stage == Phase.Actions) ResolveRobotizeAtActionStart(State.CurrentPlayer);
         return true;
     }
 

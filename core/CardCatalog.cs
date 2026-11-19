@@ -52,6 +52,12 @@ public static class CardCatalog
         "Canjea un Equipo y cualquier otra carta para crearlo en la zona de equipos. Se considera un equipo. Cuando un efecto rival vaya a afectar una o más de tus cartas en el campo, sustituye ese efecto por colocar 1 contador sobre Súper Imán. Con 3 o más contadores, destruye esta carta. Si sale del campo, queda fuera del juego.",
         CodeType: CodeType.Trap, ActionCost: 0);
     public const int SuperMagnetCounterLimit = 3;
+    public static readonly CardDefinition GalacticShield = new("escudo-galactico", "Escudo Galáctico", CardKind.Code,
+        "Coloca esta carta encima de tu Relikario y pon debajo las 3 cartas del tope de tu mazo boca abajo. Antes de recibir daño, añade a tu mano una de esas cartas y resta 2 al daño. Si otra carta encima de tu Relikario fuera a salir del campo, puedes enviar una de esas cartas a tu memoria para evitarlo.",
+        CodeType: CodeType.Object);
+    public static readonly CardDefinition VictoriousManualControl = new("control-manual-victorioso", "Control Manual Victorioso", CardKind.Code,
+        "Paga 1 punto de vida: mueve una carta en tu campo a una de tus zonas que esté vacía y que sea compatible.",
+        CodeType: CodeType.Object);
     public static readonly CardDefinition GoldenTotem = new("golden-totem", "Tótem de Oro", CardKind.Code,
         "Muestra hasta 2 Tótems de Salvación de tu mano y colócalos en la zona de equipos. Coloca esta carta encima de tu equipo. Necesita al menos un equipo debajo. Si un Tótem de Salvación equipado fuera a ser destruido, destruye esta carta en su lugar. No puede activarse con Relikia.",
         CodeType: CodeType.Character);
@@ -100,6 +106,18 @@ public static class CardCatalog
         CodeType: CodeType.Play, EarliestTurn: 2);
     public static readonly CardDefinition KonamyCode = new("konamy-code", "Código Konamy", CardKind.Code,
         "Busca en tu mazo una no-habilidad y añádela a tu mano.", CodeType: CodeType.Play);
+    public static readonly CardDefinition Ellie = new("ellie", "Ellie", CardKind.Code,
+        "Busca en tu mazo 2 cartas con la palabra «vida» o «vidas» excepto «Ellie» y añádelas a tu mano.",
+        CodeType: CodeType.Character);
+    public static readonly CardDefinition Robotize = new("robotizar", "Robotizar", CardKind.Code,
+        "Coloca esta carta encima de tu Relikario. Mientras permanezca ahí, resta 1 al daño que recibas. Al inicio de tu etapa de acción, envía la carta del tope de tu mazo al canje o, si es un Código, puedes añadirla a tu mano. Si sacas 1 en 1D6, destruye esta carta.",
+        CodeType: CodeType.Play);
+    public static readonly CardDefinition ComboParry = new("combo-parry", "Combo Parry", CardKind.Code,
+        "COMBO. Tu adversario revela su mano y envía a su mazo todas las cartas COMBO de su mano. Luego baraja su mazo. No se pueden activar COMBO en respuesta a esta carta.",
+        CodeType: CodeType.Play, IsCombo: true);
+    public static readonly CardDefinition DestinyPick = new("pua-del-destino", "Púa del Destino", CardKind.Code,
+        "COMBO. Escoge uno: roba 1 carta, haz 1 punto de daño no letal a tu adversario o corrompe 1 carta de cualquier memoria. Como una acción en tu etapa de acciones, puedes corromper esta carta de tu memoria para usar su efecto.",
+        CodeType: CodeType.Object, IsCombo: true);
     public static readonly CardDefinition TimeBomb = new("time-bomb", "Bomba de Tiempo", CardKind.Code,
         "Escoge una de estas opciones: zona de equipos, mano al azar o zona Bonus. Destruye una carta de ese lugar.",
         CodeType: CodeType.Object);
@@ -111,6 +129,9 @@ public static class CardCatalog
     public static readonly CardDefinition DiamondHelmet = new("diamond-helmet", "Casco de Diamantes", CardKind.Equipment,
         "Resta 2 puntos a cualquier daño que recibas. Si en el dado de ataque alguien saca 1: destruye esta carta.",
         DamageReduction: 2, DestroyOnAttackOne: true);
+    public static readonly CardDefinition MetalHood = new("capirote-metalico", "Capirote Metálico", CardKind.Equipment,
+        "Puedes equipar esta carta a tu adversario. Mientras esté equipada, quien la lleva recibe 2 menos de daño y tiene 1 acción menos por turno. Si quien la lleva saca 1 en un dado, destruye esta carta.",
+        DamageReduction: 2);
     public static readonly CardDefinition PurpleRing = new("anillo-morado", "Anillo Morado", CardKind.Equipment,
         "Equipo ligero. Puedes destruir esta carta para ganar 500 PR o, cuando recibas daño, recibir solo la mitad de ese daño.",
         LightEquipment: true);
@@ -156,7 +177,7 @@ public static class CardCatalog
         "COMBO. Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick }.ToDictionary(c => c.Id);
 
     public static CardDefinition Get(string id) => All[id];
 

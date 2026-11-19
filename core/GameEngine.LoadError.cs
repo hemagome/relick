@@ -15,7 +15,7 @@ public sealed partial class GameEngine
         if ((State.PendingAttackRoll ?? State.PendingTurnBuff?.AttackRoll) is { } roll) return new() { Actor = roll.Attacker, CardId = roll.SkillId, Attack = true };
         return null;
     }
-    private bool HasLoadError(int actor) => ComboResponsesEnabled(actor) && State.Players[actor].ActionsLeft > 0 && !HandReservedForActivation(actor) &&
+    private bool HasLoadError(int actor) => ComboResponsesEnabled(actor) && AvailableActions(actor) > 0 && !HandReservedForActivation(actor) &&
         State.Players[actor].Hand.Any(id => CardCatalog.Get(id).CancelActivation);
     public bool CanPlayLoadError(int actor)
     {
@@ -28,7 +28,7 @@ public sealed partial class GameEngine
     private void BeginActivation(EngineActivation frame)
     {
         _activeActivation = frame;
-        if (frame.CanInterrupt && HasLoadError(1 - frame.Actor)) OpenErrorChain(frame, frame.ResumePhase);
+        if (frame.CanInterrupt && (HasLoadError(1 - frame.Actor) || HasComboParry(1 - frame.Actor))) OpenErrorChain(frame, frame.ResumePhase);
         else { ResumeActivation(frame); CompleteActivationIfFinished(); }
     }
     private void OpenErrorChain(EngineActivation frame, Phase resume)
@@ -133,6 +133,7 @@ public sealed partial class GameEngine
             // The text is void: the rest of the effect never applies. What already happened (cards drawn first) stays.
             CancelActivation(root); _activeActivation = root.Parent;
             State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Anulada tras el dado ({die}) · Acción devuelta";
+            if (die == 1) TryBreakCardsOnOwnOne(effect.Actor, null);
         }
         else
         {

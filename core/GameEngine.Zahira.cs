@@ -47,6 +47,7 @@ public sealed partial class GameEngine
                 yield return new(owner, FieldZone.EquipmentCover, i, p.EquipmentCovers![i]);
             for (var i = 0; i < p.Skills.Count; i++) yield return new(owner, FieldZone.Skill, i, p.Skills[i]);
             for (var i = 0; i < p.AttachedCards.Count; i++) yield return new(owner, FieldZone.Attached, i, p.AttachedCards[i]);
+            foreach (var shield in GalacticShieldTargets(owner)) yield return shield;
             if (p.Bonus is { } bonus) yield return new(owner, FieldZone.Bonus, -1, bonus);
             if (p.Area is { } area) yield return new(owner, FieldZone.Area, -1, area);
             for (var i = 0; i < p.Exchange.Count; i++) yield return new(owner, FieldZone.Exchange, i, p.Exchange[i]);
@@ -71,7 +72,7 @@ public sealed partial class GameEngine
     private FieldZone? ZahiraRootZone(int owner, int slot) => State.Players[owner].Zahira(slot) switch
     {
         { Zone: FieldZone.Zahira } host => ZahiraRootZone(host.Owner, ZahiraSlot(host.Index)),
-        { Zone: FieldZone.Attached } => FieldZone.Relikario,
+        { Zone: FieldZone.Attached or FieldZone.GalacticShield } => FieldZone.Relikario,
         { } host => host.Zone,
         _ => null
     };

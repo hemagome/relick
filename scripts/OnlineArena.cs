@@ -98,7 +98,8 @@ public partial class OnlineArena : Control
     private bool ChoosingOsamuCards => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } decision &&
         (RelikarioCatalog.Find(decision.Source)?.Family == RelikarioCatalog.Osamu.Id || decision.Source == CardCatalog.TurboOverlap.Id);
     private bool ChoosingDeckGallery => ChoosingDeckSearch && (ChoosingOsamuCards || _snapshot!.Phase == Phase.DeckSearchChoice ||
-        _snapshot.Decision?.Source == CardCatalog.KonamyCode.Id || _snapshot.Decision?.Source == CardCatalog.EquipmentRaid.Id);
+        _snapshot.Decision?.Source == CardCatalog.KonamyCode.Id || _snapshot.Decision?.Source == CardCatalog.EquipmentRaid.Id ||
+        _snapshot.Decision?.Source == CardCatalog.Ellie.Id);
     private bool ChoosingMemoryRecovery => _snapshot is { Phase: Phase.MemoryRecoveryChoice } s && s.DecisionPlayer == s.MySeat ||
         Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingResetCards => _snapshot is { Phase: Phase.MindResetChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.CardId != null);
@@ -311,7 +312,7 @@ public partial class OnlineArena : Control
             return new ArenaPlayerActions
             {
                 Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory,
-                    player.CorruptedCount, relikarioOf: _ => player.RelikarioId),
+                    player.CorruptedCount, relikarioOf: _ => player.RelikarioId, memoryActivation: seat == s.MySeat && !corrupt ? s : null),
                 Attached = () => SelectFieldPile(seat, FieldZone.Attached),
                 Area = () => SelectField(seat, FieldZone.Area, -1),
                 Equipment = () => SelectEquipment(seat),
@@ -556,6 +557,7 @@ public partial class OnlineArena : Control
             _exchangeTracks[relative] = _root.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack;
         }
         _opponentCards.Clear(); _opponentCards.AddRange(_root.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>());
+        PlaceGalacticShields(s);
         PlaceZahiras(s);
         MoveChild(_cardActions, GetChildCount() - 1);
         MoveChild(_diceOverlay, GetChildCount() - 1);
@@ -778,7 +780,7 @@ public partial class OnlineArena : Control
     }
 
     private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null,
-        Func<int, string?>? relikarioOf = null)
+        Func<int, string?>? relikarioOf = null, DuelSnapshot? memoryActivation = null)
     {
         if (GetChildren().OfType<Window>().Any(w => w.Visible)) return;
         var dialog = new AcceptDialog { Name = "CardCollectionDialog", Title = title, OkButtonText = "Volver al duelo" };
@@ -788,6 +790,26 @@ public partial class OnlineArena : Control
                 InspectorWidth = Short ? 260 : Math.Clamp(Size.X * 0.3f, 320, 380),
                 CustomMinimumSize = new(Math.Min(960, Size.X - 72), Math.Min(480, Size.Y - 140)) };
             if (select != null) view.CardPressed += index => { select(index); dialog.QueueFree(); };
+            if (memoryActivation != null)
+            {
+                var options = memoryActivation.Options.Select((option, index) => (option, index))
+                    .Where(entry => entry.option.Move.Kind == DuelMoveKind.DestinyPickMemory)
+                    .ToDictionary(entry => entry.option.Move.Index, entry => entry.index);
+                if (options.Count > 0)
+                {
+                    var activate = dialog.AddButton("Activar Púa · 1 acción", false);
+                    activate.Name = "ActivateDestinyPick";
+                    activate.Disabled = true;
+                    activate.CustomMinimumSize = new(0, 48);
+                    view.SelectionChanged += slot => activate.Disabled = !options.ContainsKey(slot);
+                    activate.Pressed += () =>
+                    {
+                        if (!ReferenceEquals(_snapshot, memoryActivation) || !options.TryGetValue(view.SelectedIndex, out var index)) return;
+                        PlayOption(index, memoryActivation);
+                        dialog.QueueFree();
+                    };
+                }
+            }
             dialog.AddChild(view);
         }
         else

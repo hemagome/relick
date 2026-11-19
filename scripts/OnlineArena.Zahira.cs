@@ -40,9 +40,9 @@ public partial class OnlineArena
                 var hostName = host.Zone == FieldZone.Relikario ? RelikarioCatalog.NameOf(hostPlayer.RelikarioId) : CardCatalog.Get(host.CardId).Name;
                 var caption = $"Zahira Flair de {snapshot.Players[owner].Name} sobre {hostName} · {hostPlayer.Name}";
                 TextureRect? buriedHost = null;
-                if (host.Zone == FieldZone.Attached && hostPlayer.Attached.LastOrDefault() != host.CardId)
+                if (host.Zone == FieldZone.Attached && anchor is AttachmentStack attached && attached.TopCardId != host.CardId)
                 {
-                    // The attachment slot normally shows the last card. Reveal the face actually being covered.
+                    // Reveal the face actually being covered if it is under the top card of the stack.
                     buriedHost = new TextureRect
                     {
                         Texture = BoardArt.LoadCardArtwork(CardCatalog.Get(host.CardId), hostPlayer.RelikarioId),
@@ -59,14 +59,15 @@ public partial class OnlineArena
                 };
                 trap.Pressed += () => SelectField(owner, FieldZone.Zahira, GameEngine.ZahiraIndex(slot));
                 anchor.AddChild(trap);
-                var standalone = host.Zone == FieldZone.Relikario && hostPlayer.Attached.Length == 0 && cards.Length == 1;
+                var standalone = host.Zone == FieldZone.Relikario && hostPlayer.Attached.Length == 0 &&
+                    hostPlayer.GalacticShieldCharges is not { Length: > 0 } && cards.Length == 1;
                 var behindCover = Desktop && host.Zone == FieldZone.Equipment && hostPlayer.EquipmentCovers is { Length: > 0 };
                 var position = i;
                 void Arrange()
                 {
                     var bounds = anchor switch
                     {
-                        AttachmentStack attached when attached.Cards.Count > 0 => attached.CardRect,
+                        AttachmentStack pile when pile.Cards.Count > 0 => pile.CardRect,
                         ZoneCardButton zone => zone.CardRect,
                         _ => new Rect2(Vector2.Zero, anchor.Size).Grow(-4)
                     };
