@@ -21,7 +21,7 @@ public partial class OnlineArena
     private double _initiativeResultRemaining;
     private Tween? _initiativeTween;
     /// <summary>How long the winner stays on screen after both dice land.</summary>
-    internal const double InitiativeResultSeconds = 2.6;
+    internal const double InitiativeResultSeconds = 2.0;
     internal int PlayedInitiativeRolls { get; private set; }
 
     private void BuildInitiativeOverlay()
@@ -156,8 +156,6 @@ public partial class OnlineArena
         _initiativeTween.TweenProperty(loser, "modulate", new Color(1, 1, 1, 0.45f), 0.35);
         // After the pop, the announcement breathes gently until the overlay closes.
         var breathe = _initiativeTween.Chain().SetParallel(false);
-        breathe.TweenProperty(_initiativeWinner, "scale", new Vector2(1.06f, 1.06f), 0.5).SetTrans(Tween.TransitionType.Sine);
-        breathe.TweenProperty(_initiativeWinner, "scale", Vector2.One, 0.5).SetTrans(Tween.TransitionType.Sine);
         breathe.TweenProperty(_initiativeWinner, "scale", new Vector2(1.06f, 1.06f), 0.5).SetTrans(Tween.TransitionType.Sine);
         breathe.TweenProperty(_initiativeWinner, "scale", Vector2.One, 0.5).SetTrans(Tween.TransitionType.Sine);
     }

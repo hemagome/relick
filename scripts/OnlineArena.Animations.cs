@@ -498,12 +498,14 @@ public partial class OnlineArena
     private void UpdateFlights(double delta)
     {
         if (_flightLayoutFrames > 0) { _flightLayoutFrames--; return; }
+        if (FinishHandDeparture()) return;
         if (_flight == null && _flights.Count == 0 && _openingInitiative != null)
         { UpdateOpeningInitiative(delta); return; }
         if (_flight == null && _flights.TryPeek(out var next))
         {
             if (WaitForDrawAnnouncement(next.Event)) return;
             _flights.Dequeue();
+            LaunchHandDeparture(next);
             var own = next.Event.Player == _snapshot!.MySeat;
             var relative = own ? 0 : 1;
             var returning = next.Event.Kind == DuelVisualKind.Return;
@@ -523,7 +525,7 @@ public partial class OnlineArena
             else
             {
                 var deck = _root!.FindChild("DeckStack" + relative, true, false) as DeckStack;
-                if (deck == null) { SetDestinationPending(next, target, false); return; }
+                if (deck == null) { SetDestinationPending(next, target, false); FinishHandDeparture(); return; }
                 var deckRect = Global(deck, deck.TopRect);
                 if (kind is DuelVisualKind.Draw or DuelVisualKind.HandSteal) PlaySound(SoundCue.CardDraw);
                 if (kind == DuelVisualKind.Shuffle) PlaySound(SoundCue.CardShuffle);
@@ -542,7 +544,7 @@ public partial class OnlineArena
                 bool OnScreen(Rect2 rect) => _handLowered ? bounds.Intersects(rect) : bounds.Encloses(rect);
                 if (source == null || destination == null || !OnScreen(source.Value) || !OnScreen(destination.Value) ||
                     (!fromPrevious || returning) && !RectVisible(deck, deckRect) || target != null && !RectVisible(target, destination.Value))
-                { SetDestinationPending(next, target, false); return; }
+                { SetDestinationPending(next, target, false); FinishHandDeparture(); return; }
                 _flightSource = next.Event.Source == CardZone.Exchange ? PortraitFootprint(source.Value) : source.Value;
                 _flightDestination = destination.Value;
             }
@@ -609,6 +611,7 @@ public partial class OnlineArena
                     while (_placementDice.TryDequeue(out var cue)) PresentDieCue(cue);
             }
         }
+        FinishHandDeparture();
         PlayPendingPortraits();
     }
     private static TextureRect FlightBack(string? sleeve = null) => new() { Texture = SleeveArt.Back(sleeve),
@@ -744,6 +747,7 @@ public partial class OnlineArena
         SetQueuedDestinationsPending(false);
         ResetOpeningInitiative();
         _placementDice.Clear(); _queuedPlay = null; FinishSummonedEquipment();
+        _handDeparture = null;
         _flights.Clear(); _pendingPortraits.Clear(); _pendingImpacts.Clear(); FinishFlight(); _die.Value = 0;
         _secondDie.Value = 0;
         _secondDie.Hide();

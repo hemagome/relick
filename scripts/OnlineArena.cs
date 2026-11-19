@@ -50,7 +50,7 @@ public partial class OnlineArena : Control
     internal int BoardBuildCount { get; private set; }
     internal int PlayedVisualRevisions { get; private set; }
     private bool DiceBusy => _die.IsBusy || _secondDie.IsBusy;
-    public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null;
+    public bool IsAnimating => DiceBusy || _flights.Count > 0 || _flight != null || _openingInitiative != null || _handDeparture != null;
     private bool Compact => ArenaViewport.Compact(this);
     private bool Short => ArenaViewport.Short(this);
     // The full board needs the desktop canvas; smaller windows keep the stacked layouts.
@@ -104,7 +104,7 @@ public partial class OnlineArena : Control
     private DuelOption[] _deckSearchOptions = [];
     private IReadOnlyList<string?> SelectableCards => ChoosingRecycling
         ? _snapshot!.Players[_snapshot.MySeat].Memory : ChoosingEffectCards
-            ? _deckSearchOptions.Select(OptionCardId).ToArray() : _snapshot!.Players[_snapshot.MySeat].Hand;
+            ? _deckSearchOptions.Select(OptionCardId).ToArray() : _handDeparture?.Hand ?? _snapshot!.Players[_snapshot.MySeat].Hand;
 
     public override void _Ready()
     {
@@ -189,6 +189,7 @@ public partial class OnlineArena : Control
                 _secondDie.Value = 0;
             }
             _snapshot = snapshot; _preparing = false; _choosingOpeningSkill = false; ResetInteraction();
+            _handDeparture = animate && placement == null ? CaptureHandDeparture(previous!, snapshot) : null;
             if (!animate)
             {
                 _pendingTrapRecipe = null;
@@ -639,7 +640,7 @@ public partial class OnlineArena : Control
     private CardOwner? HandCardOwner(int holder, int index)
     {
         var s = _snapshot!;
-        var owners = s.Players[holder].HandOwners;
+        var owners = holder == s.MySeat && _handDeparture != null ? _handDeparture.Owners : s.Players[holder].HandOwners;
         return owners is { } seats && index >= 0 && index < seats.Length && seats[index] is int owner
             ? new CardOwner(owner, s.Players[owner].Name, s.Players[owner].RelikarioId) : null;
     }

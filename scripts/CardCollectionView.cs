@@ -13,6 +13,8 @@ public partial class CardCollectionView : HBoxContainer
     public event Action<int>? CardPressed;
     internal int SelectedIndex { get; private set; } = -1;
     internal CardInspector Inspector { get; private set; } = null!;
+    /// <summary>The large card art above the inspector, as on the duel's reading rail; absent on short screens.</summary>
+    internal CardShowcase? Showcase { get; private set; }
     internal ScrollContainer Gallery { get; private set; } = null!;
     private GridContainer _grid = null!;
     private readonly List<Button> _cards = [];
@@ -30,9 +32,18 @@ public partial class CardCollectionView : HBoxContainer
         _grid = new GridContainer { Name = "CollectionCards", Columns = 1, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _grid.AddThemeConstantOverride("h_separation", 10); _grid.AddThemeConstantOverride("v_separation", 10);
         Gallery.AddChild(_grid);
-        Inspector = new CardInspector { Name = "CollectionInspector", ShortScreen = ShortScreen,
-            CustomMinimumSize = new(InspectorWidth, 0) };
-        AddChild(Inspector);
+        var reading = new VBoxContainer { Name = "CollectionReading", CustomMinimumSize = new(InspectorWidth, 0),
+            SizeFlagsHorizontal = SizeFlags.Fill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        reading.AddThemeConstantOverride("separation", 8);
+        AddChild(reading);
+        if (!ShortScreen)
+        {
+            Showcase = new CardShowcase { Name = "CollectionShowcase", CustomMinimumSize = new(0, 200),
+                SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.1f };
+            reading.AddChild(Showcase);
+        }
+        Inspector = new CardInspector { Name = "CollectionInspector", ShortScreen = ShortScreen };
+        reading.AddChild(Inspector);
         Inspector.SizeFlagsHorizontal = SizeFlags.Fill;
         var scale = ShortScreen ? 0.6f : 1f;
         for (var index = 0; index < Cards.Count; index++)
@@ -87,8 +98,13 @@ public partial class CardCollectionView : HBoxContainer
         {
             var card = CardCatalog.Get(id);
             Inspector.Present(card, card.Name, ArenaActionText.CardCost(card));
+            Showcase?.Present(card, RelikarioOf?.Invoke(index));
         }
-        else Inspector.Present(null, "Carta oculta", hint: "La identidad de esta carta permanece oculta.");
+        else
+        {
+            Inspector.Present(null, "Carta oculta", hint: "La identidad de esta carta permanece oculta.");
+            Showcase?.Present(null);
+        }
         Inspector.SizeFlagsVertical = SizeFlags.ExpandFill;
     }
 }

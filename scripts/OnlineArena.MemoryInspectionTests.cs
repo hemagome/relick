@@ -9,6 +9,14 @@ public partial class OnlineArena
     {
         void Check(bool value, string message) { if (!value) throw new Exception(message); }
         async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+        var capture = OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
+        async Task Capture(string name)
+        {
+            if (capture == null || DisplayServer.GetName() == "headless") return;
+            System.IO.Directory.CreateDirectory(capture);
+            await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+            GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(capture, name + ".png"));
+        }
         var embedded = GetViewport().GuiEmbedSubwindows;
         GetViewport().GuiEmbedSubwindows = true;
         try
@@ -53,7 +61,10 @@ public partial class OnlineArena
                                 "Consultar una carta cierra la memoria o pierde su selección única.");
                             Check(inspector.GetInstanceId() == instance && inspector.TitleLabel.Text == CardCatalog.Get(ids[i]).Name &&
                                 inspector.DescriptionLabel.Text == CardInspectorText.Description(CardCatalog.Get(ids[i])), "Cambiar de carta no actualiza el mismo inspector.");
+                            Check((view.Showcase != null) == !Short && (view.Showcase == null || view.Showcase.Card?.Id == ids[i] && view.Showcase.FaceTexture != null),
+                                "La memoria no muestra la imagen de la carta consultada como el inspector del duelo.");
                         }
+                        if (seat == 0 && relative == 0) await Capture($"memory-inspector-{size.X}x{size.Y}");
                     }
                     if (dialog.Size.X > size.X || dialog.Size.Y > size.Y)
                     {

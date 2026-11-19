@@ -623,8 +623,23 @@ public partial class OnlineArena
                 discards.Single(c => c.Destination == CardZone.Corrupted).DestinationPlayer != attacker)
                 throw new Exception("Destiny pierde descartes o envía una carta corrupta ajena a la pila equivocada.");
             var origins = CaptureOrigins(after, before);
+            var departures = discards.Where(c => LeavesHand(c, seat)).ToArray();
+            _handDeparture = CaptureHandDeparture(before, after);
+            if ((defender == seat) != (_handDeparture != null))
+                throw new Exception("La mano propia no conserva las cartas descartadas durante su vuelo.");
             PresentTestSnapshot(after); Animate(cues, origins);
             await Layout();
+
+            // Our hand still shows every discarded card that has not taken off yet; the rival's hand is untouched.
+            void CheckHand(int launched)
+            {
+                if (defender != seat) return;
+                var cards = _hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().ToArray();
+                var expected = launched < departures.Length ? before.Players[seat].Hand.Length : after.Players[seat].Hand.Length;
+                var hidden = launched < departures.Length ? launched : 0;
+                if (cards.Length != expected || cards.Count(c => c.Modulate.A == 0) != hidden)
+                    throw new Exception($"Los descartes no salen de la mano uno por uno ({launched}/{departures.Length}).");
+            }
 
             void CheckPiles(int landed)
             {
@@ -640,11 +655,12 @@ public partial class OnlineArena
                 }
             }
 
-            CheckPiles(0);
+            CheckPiles(0); CheckHand(0);
             UpdateFlights(0); UpdateFlights(0);
             for (var i = 0; i < discards.Length; i++)
             {
                 UpdateFlights(0.04);
+                if (_activeFlight != null && i < departures.Length - 1) CheckHand(i + 1);
                 if (size.X == 1440 && _activeFlight?.Event != discards[i])
                     throw new Exception("Falta un vuelo de descarte de Destiny en el tablero de escritorio.");
                 if (_activeFlight != null)
@@ -655,6 +671,7 @@ public partial class OnlineArena
                 CheckPiles(i + 1);
             }
             if (IsAnimating) throw new Exception("Destiny deja vuelos de descarte pendientes.");
+            await Layout(); CheckHand(departures.Length);
 
             Animate(cues, origins);
             UpdateFlights(0); UpdateFlights(0); UpdateFlights(0.04);
