@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck, Area, LightEquipment, GalacticShield, ShieldCharge }
+public enum CardZone { Hand, Equipment, Attached, Exchange, Bonus, Memory, Corrupted, Activation, Skill, EquipmentCover, OutOfGame, Zahira, Deck, Area, LightEquipment, GalacticShield, ShieldCharge, TomeCard }
 /// <summary>Owner is the player the card leaves; MemoryOwner is the memory that receives it.</summary>
 /// <summary>SourceIndex locates the source when Index names the destination slot, such as the shield a charge leaves.</summary>
 public sealed record PileMovement(int Owner, string CardId, CardZone Source, int Index, CardZone Destination, int MemoryOwner = -1, int? DestinationPlayer = null,
@@ -37,6 +37,7 @@ public sealed partial class GameEngine
     /// <summary>Returns where the card landed, or null when a trap leaves the game.</summary>
     private MemorySelection? SendHandToMemory(PlayerState p, int index, bool deferCorruption = false)
     {
+        if (PlayableTomeCard(p, index) is { } tome) { InvertTomeCard(tome); return null; }
         var id = p.Hand[index];
         var landed = SendToMemory(p, id, CardZone.Hand, index, deferCorruption: deferCorruption);
         p.RemoveHandCard(index);
@@ -57,30 +58,44 @@ public sealed partial class GameEngine
             CardZone.Area => p.AreaIsBorrowed,
             CardZone.LightEquipment => p.LightEquipment![index].Borrowed,
             CardZone.GalacticShield => p.GalacticShields![index].Borrowed,
-            CardZone.ShieldCharge or CardZone.Deck => false,
+            CardZone.ShieldCharge or CardZone.Deck or CardZone.TomeCard or CardZone.Activation => false,
             CardZone.Bonus or CardZone.Exchange => ReleaseMovedFieldCard(p, index) ?? p.ReleaseForeignFieldCard(id),
             _ => p.ReleaseForeignFieldCard(id)
         };
         var owner = foreign ? 1 - holder : holder;
-        var trap = CardCatalog.Get(id).CodeType == CodeType.Trap;
+        var physical = CardCatalog.PhysicalId(id);
+        var trap = physical == null || CardCatalog.Get(physical).CodeType == CodeType.Trap;
         var corrupt = !trap && !deferCorruption && (marked || p.CorruptsOnMemory(source, corruptionIndex ?? index));
         var destination = trap ? CardZone.OutOfGame : corrupt ? CardZone.Corrupted : CardZone.Memory;
         if (notify) NotifyPileMove(p, id, source, index, destination, trap ? -1 : owner);
+        SendTomeChildrenToMemory(id);
         if (trap) return null;
         if (corrupt)
         {
-            State.Players[owner].CorruptedMemory.Add(id);
+            State.Players[owner].CorruptedMemory.Add(physical!);
             Log($"Una carta de {State.Players[owner].Name} se corrompe al ir a la memoria por el efecto de Osamu.");
             return null;
         }
         var memory = State.Players[owner].Memory;
-        memory.Add(id);
+        memory.Add(physical!);
         return new(owner, memory.Count - 1);
     }
 
     /// <summary>Moves a hand card onto its holder's field, keeping track of a borrowed copy.</summary>
     private string MoveHandCardToField(PlayerState p, int index, CardZone zone, int slot)
     {
+        if (PlayableTomeCard(p, index) is { } tome)
+        {
+            RemoveTomeChild(tome.Slot);
+            if (tome.Marked) p.MarkForCorruption(zone, slot);
+            if (tome.OriginalOwner != Seat(p))
+            {
+                if (zone == CardZone.Area) p.AreaIsBorrowed = true;
+                else MarkBorrowedFieldCard(p, tome.CardId);
+            }
+            NotifyPileMove(p, tome.CardId, CardZone.TomeCard, tome.Slot, zone);
+            return tome.CardId;
+        }
         var id = p.Hand[index];
         if (p.CorruptsOnMemory(CardZone.Hand, index)) p.MarkForCorruption(zone, slot);
         var borrowed = p.RemoveHandCard(index);
@@ -111,6 +126,16 @@ public sealed partial class GameEngine
     private int ReturnHandCardToDeck(int actor, int index)
     {
         var p = State.Players[actor];
+        if (PlayableTomeCard(p, index) is { } tome)
+        {
+            RemoveTomeChild(tome.Slot);
+            ChangeZahiraHosts(actor, FieldZone.TomeCard, tome.Slot);
+            var deckOwner = State.Players[tome.OriginalOwner];
+            if (tome.Marked) deckOwner.MarkForCorruption(CardZone.Deck, deckOwner.Deck.Count);
+            deckOwner.Deck.Add(tome.CardId);
+            NotifyPileMove(p, tome.CardId, CardZone.TomeCard, tome.Slot, CardZone.Deck, destinationPlayer: tome.OriginalOwner);
+            return tome.OriginalOwner;
+        }
         var id = p.Hand[index];
         if (CardCatalog.Get(id).CodeType == CodeType.Trap)
         {

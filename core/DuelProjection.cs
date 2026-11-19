@@ -1,5 +1,9 @@
 namespace Relick.Core;
 
+public sealed record TomeCardView(int Slot, string CardId, bool Inverted, FieldZone HostZone, int HostIndex,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? HandIndex = null);
+
 public sealed class DuelPlayerView
 {
     public string Name { get; set; } = "";
@@ -50,6 +54,8 @@ public sealed class DuelPlayerView
     public string? AreaSide { get; set; }
     public string[] Attached { get; set; } = [];
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public TomeCardView[]? TomeCards { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int[]? GalacticShieldCharges { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<int, int>? MovedShieldCharges { get; set; }
@@ -99,6 +105,8 @@ public sealed class DuelSnapshot
     public string? EndReason { get; set; }
     public int Die { get; set; }
     public string DieCaption { get; set; } = "";
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool DieIsD10 { get; set; }
     public string LastCombat { get; set; } = "";
     public List<DuelVisualEvent> Visuals { get; set; } = [];
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -116,6 +124,7 @@ public sealed class DuelSnapshot
 
     private static bool HandSlotVisible(GameState s, PlayerState p, int slot, int ownerSeat, int viewerSeat)
         => ownerSeat == viewerSeat || p.IsHandCardRevealed(slot) ||
+           (s.Phase == Phase.Decision && s.PendingDecision is { Source: "fantasma-ladron" } ghost && ghost.Decider == ownerSeat) ||
            (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == viewerSeat) ||
            (s.Phase == Phase.Decision && s.PendingDecision is { } decision && decision.Decider == viewerSeat && decision.ShowsHandOf == ownerSeat) ||
            // Legacy: a duel saved while Resetear la Mente had its own phase.
@@ -176,7 +185,7 @@ public sealed class DuelSnapshot
             ActivationDiscardsRemaining = s.PendingTurnBuff is { Completed: false } cost ? cost.RequiredDiscards - cost.DiscardsPaid : 0,
             Turn = s.Turn, Phase = s.Phase, Winner = s.Winner, Die = s.PendingAttackRoll?.Die ?? s.PendingDieRoll?.Die ?? s.PendingTurnBuff?.AttackRoll?.Die ?? s.PendingTurnBuff?.DieRoll?.Die ?? s.LastDie,
             Stage = StageOf(game),
-            DieCaption = game.CurrentDieCaption,
+            DieCaption = game.CurrentDieCaption, DieIsD10 = game.CurrentDieIsD10,
             LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(),
             ErrorAfterDie = s.ErrorAfterDie && s.Phase == Phase.ErrorResponse,
             Decision = s.Phase == Phase.Decision && s.PendingDecision is { } decision ? new DecisionView { Source = decision.Source, Decider = decision.Decider,
@@ -196,7 +205,7 @@ public sealed class DuelSnapshot
                 Skills = p.Skills.ToArray(), SkillPositions = Enumerable.Range(0, p.Skills.Count).Select(p.SkillPosition).ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
                 BonusEffectUsed = p.BonusEffectUsed, ExchangeEffectsUsed = p.ExchangeEffectsUsed?.ToArray(),
                 ZahiraHost = p.ZahiraHost, ZahiraHost2 = p.ZahiraHost2,
-                Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, EquipmentStackedCopies = p.EquipmentStackedCopies, EquipmentCovers = p.EquipmentCovers?.ToArray(), StarEffects = p.StarEffects, Bonus = p.Bonus, Attached = p.AttachedCards.ToArray(), Exchange = p.Exchange.ToArray(),
+                Equipment = p.Equipment, EquipmentDie = p.EquipmentDie, EquipmentCounters = p.EquipmentCounters, EquipmentStackedCopies = p.EquipmentStackedCopies, EquipmentCovers = p.EquipmentCovers?.Select(CardCatalog.TextId).ToArray(), StarEffects = p.StarEffects, Bonus = p.Bonus == null ? null : CardCatalog.TextId(p.Bonus), Attached = p.AttachedCards.Select(CardCatalog.TextId).ToArray(), Exchange = p.Exchange.Select(CardCatalog.TextId).ToArray(), TomeCards = game.TomeViews(index, seat),
                 LightEquipment = p.LightEquipment?.Select(c => c.CardId).ToArray(),
                 GalacticShieldCharges = p.GalacticShields?.Select(shield => shield.Cards.Count).ToArray(),
                 MovedShieldCharges = p.MovedFieldCards?.Where(entry => entry.Value.ShieldCharges != null).ToDictionary(

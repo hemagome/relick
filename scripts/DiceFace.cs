@@ -14,7 +14,7 @@ public partial class DiceFace : Control
     private const float HalfSize = 0.68f;
     private static readonly Vector3[] FaceNormals =
         { Vector3.Zero, Vector3.Back, Vector3.Up, Vector3.Right, Vector3.Left, Vector3.Down, Vector3.Forward };
-    private readonly Queue<(int Value, string Caption, bool Adjusted, string? Style, Action? OnStart)> _queuedRolls = new();
+    private readonly Queue<(int Value, string Caption, bool Adjusted, string? Style, Action? OnStart, bool IsD10)> _queuedRolls = new();
     private StandardMaterial3D? _bodyMaterial, _pipMaterial;
     /// <summary>The cosmetic die on show (CosmeticCatalog id); each roll may bring its roller's.</summary>
     public string Style { get; private set; } = CosmeticCatalog.DefaultDice;
@@ -33,13 +33,17 @@ public partial class DiceFace : Control
     private double _resultRemaining;
     private int _launchCount;
     private SubViewport _viewport = null!;
-    private Node3D _cube = null!;
+    private Node3D _dieBody = null!;
+    private Node3D _d6 = null!;
+    internal bool IsD10 { get; private set; }
+    private double RollDuration => IsD10 && _reducedMotion ? 0.22 : RollSeconds;
     private MeshInstance3D _shadow = null!;
     private StandardMaterial3D _shadowMaterial = null!;
     private Quaternion _start = Quaternion.Identity;
     private Quaternion _landing = Quaternion.Identity;
     private int _renderedValue = -1;
     private bool _renderedRolling;
+    private bool _renderedD10;
     private Color? _highlight;
     private double _highlightClock;
 
@@ -56,43 +60,49 @@ public partial class DiceFace : Control
     public bool IsPresented => IsRolling || IsTurning || _resultRemaining > 0;
     public float PresentationOpacity => IsRolling || IsTurning ? 1 : (float)Math.Clamp(_resultRemaining / 0.2, 0, 1);
     internal float HeightAboveTable { get; private set; }
-    public bool Is3DReady => _viewport != null && _cube != null;
+    public bool Is3DReady => _viewport != null && _dieBody != null;
     public int Value
     {
         get => _value;
-        set
-        {
-            _queuedRolls.Clear();
-            RollCaption = "";
-            _value = Math.Clamp(value, 0, 6);
-            IsRolling = false; IsTurning = false;
-            _elapsed = 0;
-            _glow = 0;
-            _resultRemaining = 0;
-            _landing = LandingRotation(Math.Max(1, _value));
-            UpdatePose();
-        }
+        set => SetResult(value);
     }
+
+    internal void SetResult(int value, bool d10 = false)
+    {
+        _queuedRolls.Clear();
+        RollCaption = "";
+        IsD10 = d10 || value > 6;
+        _value = Math.Clamp(value, 0, IsD10 ? D10Sides : 6);
+        IsRolling = false; IsTurning = false;
+        _elapsed = 0;
+        _glow = 0;
+        _resultRemaining = 0;
+        _landing = ResultRotation(Math.Max(1, _value));
+        UpdatePose();
+    }
+
     public int TopFaceValue
     {
         get
         {
-            var rotation = Is3DReady ? _cube.Quaternion : _landing;
-            return Enumerable.Range(1, 6).MaxBy(face => (rotation * FaceNormals[face]).Dot(Vector3.Up));
+            var rotation = Is3DReady ? _dieBody.Quaternion : _landing;
+            Vector3 NormalFor(int face) => IsD10 ? D10Faces[face - 1].Normal : FaceNormals[face];
+            return Enumerable.Range(1, IsD10 ? D10Sides : 6)
+                .MaxBy(face => (rotation * NormalFor(face)).Dot(Vector3.Up));
         }
     }
     internal void ShowAdjustedResult(int value, string caption)
     {
-        if (IsBusy) { _queuedRolls.Enqueue((value, caption, true, null, null)); return; }
+        if (IsBusy) { _queuedRolls.Enqueue((value, caption, true, null, null, false)); return; }
         ApplyAdjustedResult(value, caption);
     }
     private void ApplyAdjustedResult(int value, string caption)
     {
         // The turn starts from the face on show, so the change is seen as the same die being turned.
-        _turnFrom = Is3DReady ? _cube.Quaternion : _landing;
-        _value = Math.Clamp(value, 0, 6);
+        _turnFrom = Is3DReady ? _dieBody.Quaternion : _landing;
+        _value = Math.Clamp(value, 0, IsD10 ? D10Sides : 6);
         IsRolling = false; _elapsed = 0; _glow = 0;
-        _landing = LandingRotation(Math.Max(1, _value));
+        _landing = ResultRotation(Math.Max(1, _value));
         RollCaption = caption;
         if (_reducedMotion) { IsTurning = false; _resultRemaining = ResultSeconds; _glow = 0.35; UpdatePose(); RollFinished?.Invoke(); return; }
         IsTurning = true; _turnElapsed = 0; _resultRemaining = 0;
@@ -163,9 +173,11 @@ public partial class DiceFace : Control
             MaterialOverride = _shadowMaterial
         };
         world.AddChild(_shadow);
-        _cube = new Node3D { Name = "Die" };
-        world.AddChild(_cube);
-        _cube.AddChild(new MeshInstance3D
+        _dieBody = new Node3D { Name = "Die" };
+        world.AddChild(_dieBody);
+        _d6 = new Node3D { Name = "D6" };
+        _dieBody.AddChild(_d6);
+        _d6.AddChild(new MeshInstance3D
         {
             Mesh = RoundedCube(),
             MaterialOverride = _bodyMaterial = new StandardMaterial3D
@@ -180,7 +192,6 @@ public partial class DiceFace : Control
             AlbedoColor = new Color("172438"), Roughness = 0.8f,
             SpecularMode = BaseMaterial3D.SpecularModeEnum.Disabled
         };
-        ApplyStyle(Style);
         for (var face = 1; face <= 6; face++)
         {
             var normal = FaceNormals[face];
@@ -191,13 +202,15 @@ public partial class DiceFace : Control
             if (face >= 4) { points.Add(new(-0.27f, 0.27f)); points.Add(new(0.27f, -0.27f)); }
             if (face == 6) { points.Add(new(-0.27f, 0)); points.Add(new(0.27f, 0)); }
             foreach (var point in points)
-                _cube.AddChild(new MeshInstance3D
+                _d6.AddChild(new MeshInstance3D
                 {
                     Mesh = pipMesh, MaterialOverride = pipMaterial,
                     // Mostly embedded spheres form small curved ink inlays on each physical face.
                     Position = normal * (HalfSize - 0.04f) + u * point.X + v * point.Y
                 });
         }
+        BuildD10();
+        ApplyStyle(Style);
     }
 
     private static (Vector3 U, Vector3 V) FaceAxes(Vector3 normal)
@@ -235,6 +248,8 @@ public partial class DiceFace : Control
         return mesh;
     }
 
+    private Quaternion ResultRotation(int face) => IsD10 ? D10LandingRotation(face) : LandingRotation(face);
+
     // First orient the chosen physical face forwards, then rotate it onto the tabletop's up axis.
     private static Quaternion LandingRotation(int face) => new Quaternion(Vector3.Right, -Mathf.Pi / 2) * (face switch
     {
@@ -247,11 +262,11 @@ public partial class DiceFace : Control
     });
 
     /// <param name="style">The roller's cosmetic die; null keeps the one on show.</param>
-    public void QueueRoll(int result, string caption = "", string? style = null, Action? onStart = null)
+    public void QueueRoll(int result, string caption = "", string? style = null, Action? onStart = null, bool d10 = false)
     {
-        if (result is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(result));
-        if (IsBusy) _queuedRolls.Enqueue((result, caption, false, style, onStart));
-        else StartRoll(result, caption, style, onStart);
+        if (result is < 1 or > 10) throw new ArgumentOutOfRangeException(nameof(result));
+        if (IsBusy) _queuedRolls.Enqueue((result, caption, false, style, onStart, d10));
+        else StartRoll(result, caption, style, onStart, d10);
     }
 
     /// <summary>Recolours the die's body and pips; an unknown id shows the classic die.</summary>
@@ -261,6 +276,7 @@ public partial class DiceFace : Control
         Style = chosen.Id;
         if (_bodyMaterial != null) _bodyMaterial.AlbedoColor = new Color(chosen.Body);
         if (_pipMaterial != null) _pipMaterial.AlbedoColor = new Color(chosen.Pips);
+        foreach (var label in _d10Labels) label.Modulate = new Color(chosen.Pips);
     }
 
     public void RollTo(int result)
@@ -269,14 +285,15 @@ public partial class DiceFace : Control
         StartRoll(result);
     }
 
-    private void StartRoll(int result, string caption = "", string? style = null, Action? onStart = null)
+    private void StartRoll(int result, string caption = "", string? style = null, Action? onStart = null, bool d10 = false)
     {
-        if (result < 1 || result > 6) throw new ArgumentOutOfRangeException(nameof(result));
+        if (result < 1 || result > 10) throw new ArgumentOutOfRangeException(nameof(result));
         if (style != null) ApplyStyle(style);
         RollCaption = caption;
         _launchCount++;
         _start = Quaternion.FromEuler(new Vector3(0.7f, _launchCount * 0.83f, -0.4f));
-        _landing = LandingRotation(result);
+        IsD10 = d10 || result > 6;
+        _landing = ResultRotation(result);
         _value = result;
         _elapsed = 0;
         _glow = 0;
@@ -296,7 +313,7 @@ public partial class DiceFace : Control
         {
             var next = _queuedRolls.Dequeue();
             if (next.Adjusted) ApplyAdjustedResult(next.Value, next.Caption);
-            else StartRoll(next.Value, next.Caption, next.Style, next.OnStart);
+            else StartRoll(next.Value, next.Caption, next.Style, next.OnStart, next.IsD10);
         }
         if (!IsRolling && !IsTurning && _resultRemaining <= 0 && _glow <= 0) return;
         delta = Math.Max(0, delta);
@@ -313,10 +330,10 @@ public partial class DiceFace : Control
         else if (IsRolling)
         {
             _elapsed += delta;
-            if (_elapsed + 1e-9 >= RollSeconds)
+            if (_elapsed + 1e-9 >= RollDuration)
             {
                 IsRolling = false; _glow = 0.35; finished = true;
-                _resultRemaining = Math.Max(0, ResultSeconds - Math.Max(0, _elapsed - RollSeconds));
+                _resultRemaining = Math.Max(0, ResultSeconds - Math.Max(0, _elapsed - RollDuration));
             }
         }
         else
@@ -334,40 +351,44 @@ public partial class DiceFace : Control
         if (Is3DReady)
         {
             var moving = IsRolling || IsTurning;
-            if (moving || _renderedRolling || _renderedValue != _value)
+            if (moving || _renderedRolling || _renderedValue != _value || _renderedD10 != IsD10)
                 _viewport.RenderTargetUpdateMode = moving ? SubViewport.UpdateMode.WhenVisible : SubViewport.UpdateMode.Once;
-            _renderedValue = _value; _renderedRolling = moving;
+            _renderedValue = _value; _renderedRolling = moving; _renderedD10 = IsD10;
+            _d6.Visible = !IsD10;
+            _d10.Visible = IsD10;
             var seconds = (float)Math.Clamp(_elapsed, 0, RollSeconds);
             var t = seconds / (float)RollSeconds;
             var spin = Math.Clamp(seconds / 1.18f, 0, 1);
             var blend = spin * spin * (3 - 2 * spin);
             var axis = new Vector3(1, 0.6f + _launchCount % 3 * 0.2f, 0.4f).Normalized();
-            _cube.Quaternion = IsRolling
-                ? (_start.Slerp(_landing, blend) * new Quaternion(axis, Mathf.Tau * 3 * (1 - (1 - spin) * (1 - spin)))).Normalized()
+            var tumbles = IsRolling && !(IsD10 && _reducedMotion);
+            var revolutions = IsD10 ? 2 : 3;
+            _dieBody.Quaternion = tumbles
+                ? (_start.Slerp(_landing, blend) * new Quaternion(axis, Mathf.Tau * revolutions * (1 - (1 - spin) * (1 - spin)))).Normalized()
                 : _landing;
-            if (IsRolling && seconds > 1.18f)
+            if (tumbles && seconds > 1.18f)
             {
                 var settle = (seconds - 1.18f) / ((float)RollSeconds - 1.18f);
-                _cube.Quaternion = (new Quaternion(Vector3.Right, Mathf.Sin(settle * Mathf.Tau * 2) * 0.09f * (1 - settle) * (1 - settle)) * _landing).Normalized();
+                _dieBody.Quaternion = (new Quaternion(Vector3.Right, Mathf.Sin(settle * Mathf.Tau * 2) * 0.09f * (1 - settle) * (1 - settle)) * _landing).Normalized();
             }
-            HeightAboveTable = IsRolling ? BounceHeight(seconds) : 0;
+            HeightAboveTable = tumbles ? BounceHeight(seconds) * (IsD10 ? 0.82f : 1) : 0;
             if (IsTurning)
             {
                 // Lift off the table, turn onto the new face, then settle with a small wobble.
                 var turn = (float)Math.Clamp(_turnElapsed / TurnSeconds, 0, 1);
                 var rotate = Math.Min(1, turn / 0.75f);
-                _cube.Quaternion = _turnFrom.Slerp(_landing, rotate * rotate * (3 - 2 * rotate)).Normalized();
+                _dieBody.Quaternion = _turnFrom.Slerp(_landing, rotate * rotate * (3 - 2 * rotate)).Normalized();
                 if (turn > 0.75f)
                 {
                     var settle = (turn - 0.75f) / 0.25f;
-                    _cube.Quaternion = (new Quaternion(Vector3.Right, Mathf.Sin(settle * Mathf.Tau) * 0.08f * (1 - settle)) * _landing).Normalized();
+                    _dieBody.Quaternion = (new Quaternion(Vector3.Right, Mathf.Sin(settle * Mathf.Tau) * 0.08f * (1 - settle)) * _landing).Normalized();
                 }
                 HeightAboveTable = 0.7f * Mathf.Sin(Mathf.Pi * rotate);
             }
-            var x = IsRolling ? -0.85f * (1 - t) * (1 - t) : 0;
-            var z = IsRolling ? 0.3f * (1 - t) : 0;
-            // Support of the rounded cube keeps corners above the tabletop while tumbling.
-            _cube.Position = new Vector3(x, FloorHeight + SupportHeight(_cube.Quaternion) + HeightAboveTable, z);
+            var x = tumbles ? (IsD10 ? -1.12f : -0.85f) * (1 - t) * (1 - t) : 0;
+            var z = tumbles ? 0.3f * (1 - t) : 0;
+            var support = IsD10 ? D10SupportHeight(_dieBody.Quaternion) : SupportHeight(_dieBody.Quaternion);
+            _dieBody.Position = new Vector3(x, FloorHeight + support + HeightAboveTable, z);
             _shadow.Position = new Vector3(x, FloorHeight + 0.015f, z);
             _shadow.Scale = new Vector3(1 + HeightAboveTable * 0.2f, 1, 0.8f + HeightAboveTable * 0.16f);
             _shadowMaterial.AlbedoColor = new Color(0, 0, 0, 0.3f / (1 + HeightAboveTable * 1.5f));

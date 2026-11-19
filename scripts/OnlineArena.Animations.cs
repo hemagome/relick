@@ -123,12 +123,13 @@ public partial class OnlineArena
             }
             if (source == CardZone.Activation && cue.Destination == CardZone.Attached)
             {
-                // Robotizar lands on the Relikario: straight from the hand when nobody answered it, or from the activation after a response.
+                var attached = current.Players[cue.Player].Attached;
+                var face = attached.ElementAtOrDefault(cue.Value) ?? attached.LastOrDefault();
                 result[cue] = previous.Phase == Phase.Actions && previous.CurrentPlayer == cue.Player &&
                     player.HandCount == current.Players[cue.Player].HandCount + 1
-                    ? CaptureHandPlacement(current, previous, cue.Player, CardCatalog.Robotize.Id, CardZone.Attached) with
+                    ? CaptureHandPlacement(current, previous, cue.Player, face, CardZone.Attached) with
                         { Event = cue, StartsFaceUp = cue.Player == current.MySeat }
-                    : new Flight(cue, origin, CardCatalog.Robotize.Id, Duration: 0.60, IsPlacement: true);
+                    : new Flight(cue, origin, face, Duration: 0.60, IsPlacement: true);
                 continue;
             }
             if (cue.Kind == DuelVisualKind.HandSteal)
@@ -487,17 +488,21 @@ public partial class OnlineArena
         return (ordered, paired);
     }
 
+    private static bool IsD10Caption(string caption) => caption.StartsWith("Era Futurista · D10", StringComparison.Ordinal);
+
+    private static bool IsD10Snapshot(DuelSnapshot snapshot) => snapshot.DieIsD10 || IsD10Caption(snapshot.DieCaption);
+
     private void PresentDieCue(DuelVisualEvent cue)
     {
         // Each roll shows the roller's cosmetic die; older servers do not say who rolled, so the turn's player's is shown.
         if (cue.Kind == DuelVisualKind.Die)
         {
             var style = _snapshot?.Players.ElementAtOrDefault(cue.Player is 0 or 1 ? cue.Player : _snapshot.CurrentPlayer)?.Dice;
-            _die.QueueRoll(cue.Value, cue.Caption, style, cue.SecondDie is >= 1 and <= 6 ? () =>
+            _die.QueueRoll(cue.Value, cue.Caption, style, cue.SecondDie is >= 1 and <= 10 ? () =>
             {
                 _secondDie.Show();
-                _secondDie.QueueRoll(cue.SecondDie, style: style);
-            } : null);
+                _secondDie.QueueRoll(cue.SecondDie, style: style, d10: cue.SecondDieIsD10);
+            } : null, d10: cue.DieIsD10 || !cue.SecondDieIsD10 && IsD10Caption(cue.Caption));
         }
         else _die.ShowAdjustedResult(cue.Value, cue.Caption);
     }

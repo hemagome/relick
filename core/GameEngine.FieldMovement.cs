@@ -140,10 +140,15 @@ public sealed partial class GameEngine
         else if (completed != null) Continue(completed);
     }
 
-    private (MovedFieldCardState? State, bool Borrowed, bool Marked) DetachFieldCard(PlayerState p, FieldTarget source, FieldTarget destination)
+    private (MovedFieldCardState? State, bool Borrowed, bool Marked) DetachFieldCard(PlayerState p, FieldTarget source, FieldTarget? destination)
     {
         var (owner, zone, slot, id) = source;
         var cardZone = MovementCardZone(zone);
+        if (zone == FieldZone.TomeCard && RemoveTomeChild(slot) is { } child)
+        {
+            ChangeZahiraHosts(owner, zone, slot, movedTo: destination);
+            return (null, child.OriginalOwner != owner, child.Marked);
+        }
         var parked = zone is FieldZone.Exchange or FieldZone.Bonus ? RemoveMovedFieldCard(p, slot) : null;
         var borrowed = zone switch
         {
@@ -166,8 +171,8 @@ public sealed partial class GameEngine
             _ => null
         };
 
-        var host = destination.Zone == FieldZone.Skill ? destination with { Index = p.Skills.Count } : destination;
-        if (zone == FieldZone.Skill) RemoveLearnedSkill(owner, slot, host);
+        var host = destination?.Zone == FieldZone.Skill ? destination with { Index = p.Skills.Count } : destination;
+        if (zone == FieldZone.Skill) RemoveLearnedSkill(owner, slot, host, toMemory: false);
         else if (zone == FieldZone.LightEquipment) RemoveLightEquipment(p, slot, host);
         else
         {
@@ -208,7 +213,7 @@ public sealed partial class GameEngine
         FieldZone.Bonus => CardZone.Bonus, FieldZone.Exchange => CardZone.Exchange, FieldZone.Skill => CardZone.Skill,
         FieldZone.Equipment => CardZone.Equipment, FieldZone.LightEquipment => CardZone.LightEquipment,
         FieldZone.EquipmentCover => CardZone.EquipmentCover, FieldZone.Area => CardZone.Area, FieldZone.Attached => CardZone.Attached,
-        FieldZone.GalacticShield => CardZone.GalacticShield, _ => throw new ArgumentOutOfRangeException(nameof(zone))
+        FieldZone.GalacticShield => CardZone.GalacticShield, FieldZone.TomeCard => CardZone.TomeCard, _ => throw new ArgumentOutOfRangeException(nameof(zone))
     };
 
     private static MovedFieldCardState? RemoveMovedFieldCard(PlayerState p, int index)

@@ -9,7 +9,7 @@ public sealed partial class GameEngine
     ];
 
     public bool CanActivateArea(int actor, int index) => ValidateAction(actor) == null &&
-        State.Players[actor] is { Area: null } p && InHand(p, index) && IsArea(p.Hand[index]);
+        State.Players[actor] is { Area: null } p && IsArea(PlayableHandCard(p, index));
 
     public CommandResult ActivateArea(int actor, int index)
     {
@@ -17,7 +17,7 @@ public sealed partial class GameEngine
         if (error != null) return CommandResult.Fail(error);
         var p = State.Players[actor];
         if (p.Area != null) return CommandResult.Fail("Retira primero tu Área activa.");
-        if (!InHand(p, index) || !IsArea(p.Hand[index])) return CommandResult.Fail("Elige un Área de tu mano.");
+        if (!IsArea(PlayableHandCard(p, index))) return CommandResult.Fail("Elige un Área de tu mano.");
         p.Area = MoveHandCardToField(p, index, CardZone.Area, -1);
         State.ActionsLeft--;
         NotifyPileMove(p, p.Area, CardZone.Hand, index, CardZone.Area);

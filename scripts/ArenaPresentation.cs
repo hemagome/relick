@@ -188,6 +188,7 @@ public static class ArenaPresentation
         if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W, canvas.TableView) is { } lights)
             Put(lights, 1150, top, W, H);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
+            TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
             SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0 };
         attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, bottom, W, H);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
@@ -385,6 +386,7 @@ public static class ArenaPresentation
             SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.Fill };
         permanent.AddThemeConstantOverride("separation", 6);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
+            TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
             ShieldCount = owner.GalacticShieldCharges?.Length ?? 0 };
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
         if (owner.EquipmentCovers is { Length: > 0 } covers)

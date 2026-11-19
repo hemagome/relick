@@ -13,9 +13,25 @@ public static class DuelOptions
                 Move = new DuelMove { Kind = kind, Index = index, Value = value, Target = target, Flag = flag } });
         string Card(string id) => CardCatalog.Get(id).Name;
         // COMBO may be legal during the other player's turn.
-        for (var i = 0; i < p.Hand.Count; i++)
-            if (game.CodeUnavailableReason(actor, i) == null)
-                Add(DuelMoveKind.PlayCode, $"Jugar {Card(p.Hand[i])} · carta {i + 1}", i);
+        var playable = game.PlayableCards(actor).ToArray();
+        foreach (var entry in playable)
+            if (game.CodeUnavailableReason(actor, entry.Index) == null)
+            {
+                Add(DuelMoveKind.PlayCode, entry.Field == null ? $"Jugar {Card(entry.Id)} · carta {entry.Index + 1}" : $"Jugar {Card(entry.Id)} desde el Tomo", entry.Index);
+                if (entry.Field != null) SetTomeOption(entry.Field);
+            }
+        if (game.CanPrepareD10(actor))
+        {
+            var prepare = p.FutureDie == FutureDieState.Ready;
+            Add(DuelMoveKind.PrepareD10, prepare ? "Era Futurista · usar D10 en la próxima tirada" :
+                "Era Futurista · volver a D6 para la próxima tirada", flag: prepare);
+        }
+
+        void SetTomeOption(FieldTarget field)
+        {
+            result[^1].Field = field;
+            result[^1].CardId = field.CardId;
+        }
         if (game.CanEvolve(actor) && RelikarioCatalog.EvolutionFor(p.Relikario) is { } next)
             Add(DuelMoveKind.Evolve, $"Evolucionar a {next.DisplayName} Lv {next.Level} · {next.EvolutionCost} PR");
         if (s.DecisionPlayer == actor)
@@ -62,7 +78,7 @@ public static class DuelOptions
                     }
                     break;
                 case Phase.GoldenTotemChoice:
-                    var maxTotems = Math.Min(2, p.Hand.Count(id => id == CardCatalog.Totem.Id));
+                    var maxTotems = Math.Min(2, game.PlayableTotems(actor).Count());
                     for (var count = p.Equipment == null ? 1 : 0; count <= maxTotems; count++)
                         Add(DuelMoveKind.GoldenTotem, count == 0 ? "Colocar Tótem de Oro sin mostrar Tótems" : $"Mostrar y colocar {count} Tótem(s) de Salvación", discards: count);
                     break;
@@ -74,8 +90,12 @@ public static class DuelOptions
                     Add(DuelMoveKind.Advance, s.ExtraDrawStages > 0 ? "Repetir etapa de robo" : "Ir a combate");
                     break;
                 case Phase.TurnBuffDiscard:
-                    for (var i = 0; i < p.Hand.Count; i++)
-                        Add(DuelMoveKind.TurnBuffDiscard, $"Descartar {Card(p.Hand[i])} para {Card(s.PendingTurnBuff!.CardId)} · carta {i + 1}", i);
+                    foreach (var entry in playable)
+                    {
+                        var location = entry.Field == null ? $"carta {entry.Index + 1}" : "Tomo de Magia";
+                        Add(DuelMoveKind.TurnBuffDiscard, $"Descartar {Card(entry.Id)} para {Card(s.PendingTurnBuff!.CardId)} · {location}", entry.Index);
+                        if (entry.Field != null) SetTomeOption(entry.Field);
+                    }
                     break;
                 case Phase.EffectDamageChoice:
                     Add(DuelMoveKind.EffectDamage, "Resolver el daño de Jessica Lee");
@@ -92,15 +112,23 @@ public static class DuelOptions
                 case Phase.Combat:
                     foreach (var source in game.FieldCombatTargets(actor))
                         Add(DuelMoveKind.FieldCode, $"Activar {Card(source.CardId)} · {(source.Zone == FieldZone.Bonus ? "Bonus" : $"canje {source.Index + 1}")} · sin acciones", source.Index, (int)source.Zone);
-                    for (var i = 0; i < p.Hand.Count; i++)
+                    foreach (var entry in playable)
                     {
-                        var card = CardCatalog.Get(p.Hand[i]);
+                        var i = entry.Index;
+                        var card = CardCatalog.Get(entry.Id);
+                        var location = entry.Field == null ? $"carta {i + 1}" : "Tomo de Magia";
                         if (GameEngine.CanLearnSkill(p, card) && !s.LearnedThisTurn && p.Skills.Count < GameEngine.MaxSkills && p.Relikia >= game.SkillCost(p))
-                            Add(DuelMoveKind.Learn, $"Enseñar {card.Name} · {game.SkillCost(p)} PR · carta {i + 1}", i);
+                        {
+                            Add(DuelMoveKind.Learn, $"Enseñar {card.Name} · {game.SkillCost(p)} PR · {location}", i);
+                            if (entry.Field != null) SetTomeOption(entry.Field);
+                        }
                         if (card.Kind == CardKind.Attack && game.CanAttack(actor))
                             for (var skill = 0; skill < p.Skills.Count; skill++)
                                 if (GameEngine.CanAttackWithTaughtSkill(p, p.Skills[skill]))
-                                    Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {p.SkillPosition(skill) + 1} · carta {i + 1}", i, skill);
+                                {
+                                    Add(DuelMoveKind.Attack, $"Atacar con {Card(p.Skills[skill])} · espacio {p.SkillPosition(skill) + 1} · {location}", i, skill);
+                                    if (entry.Field != null) SetTomeOption(entry.Field);
+                                }
                     }
                     Add(DuelMoveKind.Advance, s.ExtraCombatStages > 0 ? "Repetir etapa de combate" : "Ir a acciones");
                     break;
@@ -109,16 +137,26 @@ public static class DuelOptions
                     foreach (var i in game.DestinyPickMemorySlots(actor))
                         Add(DuelMoveKind.DestinyPickMemory, $"Activar Púa del Destino · memoria {i + 1}", i);
                     if (game.AvailableActions(actor) > 0)
-                        for (var i = 0; i < p.Hand.Count; i++)
+                        foreach (var entry in playable)
                         {
-                            if (CardCatalog.Get(p.Hand[i]).Kind == CardKind.Equipment)
+                            var i = entry.Index;
+                            var id = entry.Id;
+                            var place = entry.Field == null ? $"carta {i + 1}" : "Tomo de Magia";
+                            void AddPlayable(DuelMoveKind kind, string label, bool flag = false)
                             {
-                                Add(DuelMoveKind.Equip, $"Equipar {Card(p.Hand[i])} · carta {i + 1}", i);
-                                if (p.Hand[i] == CardCatalog.MetalHood.Id)
-                                    Add(DuelMoveKind.Equip, $"Equipar {Card(p.Hand[i])} al rival · carta {i + 1}", i, flag: true);
+                                Add(kind, label, i, flag: flag);
+                                if (entry.Field != null) SetTomeOption(entry.Field);
                             }
-                            if (game.CanActivateArea(actor, i)) Add(DuelMoveKind.ActivateArea, $"Activar {Card(p.Hand[i])} · carta {i + 1}", i);
-                            if (p.Bonus != null) Add(DuelMoveKind.Exchange, $"Canjear {Card(p.Hand[i])} · carta {i + 1}", i);
+                            if (CardCatalog.Get(id).Kind == CardKind.Equipment)
+                            {
+                                AddPlayable(DuelMoveKind.Equip, id == CardCatalog.ThiefGhost.Id
+                                    ? $"Equipar {Card(id)} al rival · {place}" : $"Equipar {Card(id)} · {place}", flag: id == CardCatalog.ThiefGhost.Id);
+                                if (id == CardCatalog.MetalHood.Id)
+                                    AddPlayable(DuelMoveKind.Equip, $"Equipar {Card(id)} al rival · {place}", flag: true);
+                            }
+                            if (game.CanActivateArea(actor, i)) AddPlayable(DuelMoveKind.ActivateArea, $"Activar {Card(id)} · {place}");
+                            if (p.Bonus != null) AddPlayable(DuelMoveKind.Exchange, $"Canjear {Card(id)} · {place}");
+                            if (game.CanRevealGhostDog(actor, i)) Add(DuelMoveKind.RevealGhostDog, "Revelar Perro Fantasma", i);
                         }
                     foreach (var effect in RelikiaEffects.All)
                     {
@@ -191,6 +229,7 @@ public static class DuelOptions
                 case Phase.DieRerollChoice:
                     var kind = s.Phase == Phase.AttackRerollChoice ? DuelMoveKind.AttackDie : DuelMoveKind.EffectDie;
                     Add(kind, "Conservar el dado");
+                    if (game.CanConvertD10(actor)) Add(DuelMoveKind.ConvertD10, "Era Futurista · convertir en 6");
                     if (game.CanRerollLearningDie(actor)) Add(DuelMoveKind.LearningDie, $"Relanzar por Reverse Shuffle · {2 - s.PendingDieRoll!.LearningRerolls} restantes");
                     if (game.CanUseDexterity(actor)) Add(DuelMoveKind.Dexterity, "Usar destreza · +1 al dado · 1 ficha");
                     for (var count = 1; count <= game.IronwingDieCostLimit(actor); count++)
@@ -264,7 +303,8 @@ public static class DuelOptions
                     for (var i = 0; i < choices.Count; i++)
                     {
                         Add(DuelMoveKind.Choose, choices[i].Label, i);
-                        result[^1].CardId = choices[i].CardId; result[^1].Field = choices[i].Field;
+                        result[^1].CardId = choices[i].CardId is { } choiceCard ? CardCatalog.TextId(choiceCard) : null;
+                        result[^1].Field = choices[i].Field is { } field ? field with { CardId = CardCatalog.TextId(field.CardId) } : null;
                         result[^1].Button = choices[i].Button; result[^1].Primary = choices[i].Primary; result[^1].Owner = choices[i].Owner;
                     }
                     break;
@@ -275,10 +315,16 @@ public static class DuelOptions
                     break;
                 case Phase.RelikiaChoice:
                     if (s.PendingRelikia == RelikiaChoice.PlaceHandCard)
-                        for (var i = 0; i < p.Hand.Count; i++)
+                        foreach (var entry in playable)
                         {
-                            Add(DuelMoveKind.Placement, $"Al fondo del mazo: {Card(p.Hand[i])} · carta {i + 1}", i, (int)CardDestination.DeckBottom);
-                            if (p.Bonus != null) Add(DuelMoveKind.Placement, $"A canje: {Card(p.Hand[i])} · carta {i + 1}", i, (int)CardDestination.Exchange);
+                            var location = entry.Field == null ? $"carta {entry.Index + 1}" : "Tomo de Magia";
+                            Add(DuelMoveKind.Placement, $"Al fondo del mazo: {Card(entry.Id)} · {location}", entry.Index, (int)CardDestination.DeckBottom);
+                            if (entry.Field != null) SetTomeOption(entry.Field);
+                            if (p.Bonus != null)
+                            {
+                                Add(DuelMoveKind.Placement, $"A canje: {Card(entry.Id)} · {location}", entry.Index, (int)CardDestination.Exchange);
+                                if (entry.Field != null) SetTomeOption(entry.Field);
+                            }
                         }
                     else if (s.PendingRelikia == RelikiaChoice.BonusReward)
                     {

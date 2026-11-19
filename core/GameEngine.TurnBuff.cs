@@ -35,10 +35,10 @@ public sealed partial class GameEngine
 {
     // Countering must not spend a card needed to complete the pending activation.
     private bool HandReservedForActivation(int actor) => State.PendingTurnBuff is { } pending && pending.Actor == actor &&
-        pending.DiscardsPaid < pending.RequiredDiscards && State.Players[actor].Hand.Count <= pending.RequiredDiscards - pending.DiscardsPaid;
+        pending.DiscardsPaid < pending.RequiredDiscards && PlayableCards(actor).Count() <= pending.RequiredDiscards - pending.DiscardsPaid;
 
     private bool HasTurnBuffInHand(int actor) => ComboResponsesEnabled(actor) && State.PendingTurnBuff == null && AvailableActions(actor) > 0 &&
-        State.Players[actor].Hand.Count >= 2 && State.Players[actor].Hand.Any(id => CardCatalog.Get(id).DiscardForTurnBuff);
+        PlayableCards(actor).Any(card => CardCatalog.Get(card.Id).DiscardForTurnBuff && CodeUnavailableReason(actor, card.Index) == null);
 
     private void BeginTurnBuff(EngineActivation frame)
     {
@@ -64,10 +64,10 @@ public sealed partial class GameEngine
     public CommandResult ResolveTurnBuffDiscard(int actor, int handIndex)
     {
         if (State.Phase != Phase.TurnBuffDiscard || State.PendingTurnBuff?.Actor != actor ||
-            _activeActivation is not { Kind: ActivationKind.TurnBuff } frame || !InHand(State.Players[actor], handIndex))
+            _activeActivation is not { Kind: ActivationKind.TurnBuff } frame || PlayableHandCard(State.Players[actor], handIndex) == null)
             return CommandResult.Fail("Elige una carta de tu mano para pagar la activación pendiente.");
         var p = State.Players[actor]; var pending = State.PendingTurnBuff;
-        var paid = p.Hand[handIndex]; var landed = SendHandToMemory(p, handIndex);
+        var paid = PlayableHandCard(p, handIndex)!; var landed = SendHandToMemory(p, handIndex);
         var discarded = new ActivationDiscard(paid, landed?.Index ?? -1, landed == null || landed.Owner == actor ? null : landed.Owner);
         pending.PaidDiscards ??= []; pending.PaidDiscards.Add(discarded);
         if (pending.DiscardIndex < 0) { pending.DiscardId = discarded.CardId; pending.DiscardIndex = discarded.MemoryIndex; }
@@ -110,6 +110,7 @@ public sealed partial class GameEngine
         var pending = State.PendingTurnBuff!; var frame = _activeActivation;
         while (frame != null && frame.Kind != ActivationKind.TurnBuff) frame = frame.Parent;
         if (frame == null) throw new InvalidOperationException("Falta la activación con coste de descarte.");
+        FinishHeldCard(frame);
         _activeActivation = frame.Parent;
         State.PendingTurnBuff = null; State.Phase = pending.ResumePhase;
         State.PendingAttackRoll = pending.AttackRoll; State.PendingDieRoll = pending.DieRoll; _pendingDieEffect = pending.DieEffect;

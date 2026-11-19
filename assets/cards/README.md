@@ -809,3 +809,15 @@ Un ataque declarado conserva su daño aunque su
 habilidad salga del campo. La carta sacrificada va a memoria, sin activar descartes.
 Los daños y premios esperan las elecciones pendientes. Una copia se añade a cada
 mazo nuevo de desarrollo, que ahora contiene 33 cartas, incluidos doce Ataques.
+
+## Tomo de Magia, Moto-Ratón, Era Futurista, Casco de Copias, Flauta de Vidrio, Fantasma Ladrón y Perro Fantasma
+
+Las siete cartas se restauraron con `image_gen` y se guardaron con el sufijo `-clean.png`.
+El Tomo conserva sus anexos al moverse por el campo. La galería de la zona muestra las cartas invertidas a 180°. Casco de Copias conserva el texto copiado mientras esté en el campo y recupera su identidad al salir. [Reglamento oficial, §§ 4.8 y 6.7](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración aplicado a cada carta</summary>
+
+> Precise object edit of the attached complete Spanish Relick card (card filename stem). Remove ONLY the repeated translucent diagonal RELICK overlay from the artwork/background. Reconstruct the exact underlying colors and linework, preserving the complete portrait card, original framing, proportions, illustration and layout. Preserve all original lettering exactly as provided, including type banners, name, rules, collector number and bottom artist/copyright credits. No redraw, new details, cropping, padding, or changes to the printed card. Return the complete cleaned card.
+
+</details>

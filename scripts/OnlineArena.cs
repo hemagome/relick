@@ -216,11 +216,11 @@ public partial class OnlineArena : Control
         var recipe = animate ? CaptureTrapRecipe(previous!, snapshot) : null;
         var placement = animate ? CaptureExchangePlacement(snapshot, previous!, origins) ??
             CaptureSkillLesson(snapshot, previous!) ?? CaptureEquipmentInstall(snapshot, previous!, recipe) : null;
-        if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.Value = snapshot.Die; }
+        if (animate && IsAnimating) { ResetAnimations(preserveStageAnnouncements: true); _die.SetResult(snapshot.Die, IsD10Snapshot(snapshot)); }
         if (animate && snapshot.Visuals.FirstOrDefault(cue => cue.Kind is DuelVisualKind.Die or DuelVisualKind.DieAdjustment) is { } nextDie)
         {
             // A modifier turns from the value of the pending die, which may be the second die of a pair.
-            if (nextDie.Kind == DuelVisualKind.DieAdjustment) _die.Value = previous!.Die;
+            if (nextDie.Kind == DuelVisualKind.DieAdjustment) _die.SetResult(previous!.Die, IsD10Snapshot(previous));
             _secondDie.Value = 0;
         }
         if (animate) PresentEvolution(previous!, snapshot);
@@ -229,7 +229,7 @@ public partial class OnlineArena : Control
         if (!animate)
         {
             _pendingTrapRecipe = null;
-            ResetAnimations(); _die.Value = snapshot.Die;
+            ResetAnimations(); _die.SetResult(snapshot.Die, IsD10Snapshot(snapshot));
             for (var relative = 0; relative < 2; relative++)
             {
                 var p = snapshot.Players[relative == 0 ? snapshot.MySeat : 1 - snapshot.MySeat];
@@ -698,6 +698,11 @@ public partial class OnlineArena : Control
         if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == _snapshot.MySeat && o.Move.Value == (int)FieldZone.Hand ||
             o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } own && own.Owner == _snapshot.MySeat))
         { SelectField(_snapshot.MySeat, FieldZone.Hand, -1); return; }
+        ToggleHandSelection(index);
+    }
+
+    private void ToggleHandSelection(int index)
+    {
         _choosingAttackSkill = false;
         _fieldSelection = null;
         _skillContext = _skillContext && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.DestinyDefense && o.Move.Index == _selectedSkill);
@@ -740,7 +745,8 @@ public partial class OnlineArena : Control
         {
             var gold = (bool)button.GetMeta("golden_totem", false);
             button.Disabled = disabled || ((int)button.GetMeta("discards") > 0 || gold) && (int)button.GetMeta("discards") != _selected.Count ||
-                gold && _selected.Any(i => _snapshot!.Players[_snapshot.MySeat].Hand[i] != CardCatalog.Totem.Id);
+                gold && _selected.Any(i => SelectableCards.ElementAtOrDefault(i) != CardCatalog.Totem.Id &&
+                    _snapshot!.Players[_snapshot.MySeat].TomeCards?.Any(child => child.HandIndex == i && child.CardId == CardCatalog.Totem.Id) != true);
         }
         foreach (var menu in _actionMenus)
         {
@@ -792,13 +798,13 @@ public partial class OnlineArena : Control
     }
 
     private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null,
-        Func<int, string?>? relikarioOf = null, DuelSnapshot? memoryActivation = null)
+        Func<int, string?>? relikarioOf = null, DuelSnapshot? memoryActivation = null, Func<int, bool>? inverted = null)
     {
         if (GetChildren().OfType<Window>().Any(w => w.Visible)) return;
         var dialog = new AcceptDialog { Name = "CardCollectionDialog", Title = title, OkButtonText = "Volver al duelo" };
         if (ids is { Count: > 0 })
         {
-            var view = new CardCollectionView { Cards = ids.ToArray(), ShortScreen = Short, RelikarioOf = relikarioOf,
+            var view = new CardCollectionView { Cards = ids.ToArray(), ShortScreen = Short, RelikarioOf = relikarioOf, Inverted = inverted,
                 InspectorWidth = Short ? 260 : Math.Clamp(Size.X * 0.3f, 320, 380),
                 CustomMinimumSize = new(Math.Min(960, Size.X - 72), Math.Min(480, Size.Y - 140)) };
             if (select != null) view.CardPressed += index => { select(index); dialog.QueueFree(); };

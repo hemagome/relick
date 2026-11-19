@@ -1,5 +1,5 @@
 namespace Relick.Core;
-public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover, Relikario, Zahira, Area, LightEquipment, GalacticShield }
+public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, EquipmentCover, Relikario, Zahira, Area, LightEquipment, GalacticShield, TomeCard }
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
@@ -27,6 +27,8 @@ public sealed partial class GameEngine
                 if (ZahiraRootZone(owner, slot) is FieldZone.Equipment or FieldZone.EquipmentCover or FieldZone.LightEquipment or FieldZone.Bonus or FieldZone.Area)
                     yield return new(owner, FieldZone.Zahira, ZahiraIndex(slot), CardCatalog.ZahiraFlair.Id);
             if (p.Bonus != null) yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
+            foreach (var child in TomeFieldTargets(owner).Where(child => TomeHostZone(owner, child.Index) == FieldZone.Bonus))
+                yield return child;
             if (p.Area != null) yield return new(owner, FieldZone.Area, -1, p.Area);
             if (p.Hand.Count > (owner == excludedOwner && excludedHand >= 0 ? 1 : 0))
                 yield return new(owner, FieldZone.Hand, -1, "");
@@ -55,6 +57,8 @@ public sealed partial class GameEngine
             for (var i = 0; i < p.AttachedCards.Count; i++)
                 if (CardCatalog.Get(p.AttachedCards[i]).Kind != CardKind.Skill) yield return new(owner, FieldZone.Attached, i, p.AttachedCards[i]);
             foreach (var shield in GalacticShieldTargets(owner)) yield return shield;
+            foreach (var child in TomeFieldTargets(owner))
+                if (CardCatalog.Get(child.CardId).Kind != CardKind.Skill) yield return child;
             if (p.Bonus != null && CardCatalog.Get(p.Bonus).Kind != CardKind.Skill)
                 yield return new(owner, FieldZone.Bonus, -1, p.Bonus);
             if (p.Area != null) yield return new(owner, FieldZone.Area, -1, p.Area);
@@ -68,12 +72,14 @@ public sealed partial class GameEngine
     private string? CodeEffectUnavailable(PlayerState p, CardDefinition card, int extraCost = 0, int excludedHand = -1)
     {
         if (card.CodeType == CodeType.Trap) return "Este Código Trampa se crea mediante un canje.";
+        if (card.Id == CardCatalog.CopyHelmet.Id && !CanCopyInRam(Array.IndexOf(State.Players, p)))
+            return "Casco de Copias requiere un Objeto o Personaje que se esté activando.";
         if (State.PendingTotemDamage != null) return "Decide primero si cancelas el daño con Tótem de Salvación.";
         if (State.PendingGoldenTotem != null && !card.CancelActivation) return "Completa la colocación de Tótem de Oro.";
         if (card.FieldCombatDie) return "Activa Jessica Lee desde tu zona de canje o Bonus durante tu etapa de combate.";
         if (State.PendingReload != null && !card.CancelActivation && !card.RerollOwnDie && card.SetOwnDie <= 0)
             return "Completa la resolución de Cartucho de Re-carga.";
-        if (State.PendingTurnBuff != null && !card.CancelActivation) return $"Completa la activación de {CardCatalog.Get(State.PendingTurnBuff.CardId).Name}.";
+        if (State.PendingTurnBuff != null && !card.CancelActivation && card.Id != CardCatalog.CopyHelmet.Id) return $"Completa la activación de {CardCatalog.Get(State.PendingTurnBuff.CardId).Name}.";
         if (card.RepeatStage && RepeatableStage(Array.IndexOf(State.Players, p)) == null)
             return "Doblador de Tiempo requiere una etapa de tu propio turno sin otra elección pendiente.";
         if (card.DiscardForTurnBuff)
@@ -81,7 +87,7 @@ public sealed partial class GameEngine
             if (State.Phase is Phase.ErrorResponse or Phase.DestructionResponse or Phase.SniperChoice or Phase.RecycleChoice or Phase.Discard)
                 return "Completa la decisión pendiente antes de activar Estrella del Fontanero.";
         }
-        if (card.DiscardCost > 0 && p.Hand.Count < card.DiscardCost + (excludedHand < 0 ? 0 : 1))
+        if (card.DiscardCost > 0 && PlayableCards(Seat(p)).Count(entry => entry.Index != excludedHand) < card.DiscardCost)
             return $"Necesitas {card.DiscardCost} carta(s) adicionales para pagar el descarte.";
         if (card.CancelActivation && HandReservedForActivation(Array.IndexOf(State.Players, p)))
             return "Las cartas restantes están reservadas para el descarte de la activación pendiente.";
@@ -98,8 +104,8 @@ public sealed partial class GameEngine
     {
         if (actor < 0 || actor >= 2 || State.IsOver || State.Phase == Phase.Preparation) return "No puedes jugar ahora.";
         var p = State.Players[actor];
-        if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Code) return "Elige un código.";
-        var card = CardCatalog.Get(p.Hand[handIndex]);
+        if (PlayableHandCard(p, handIndex) is not { } id || CardCatalog.Get(id).Kind != CardKind.Code) return "Elige un código que puedas usar.";
+        var card = CardCatalog.Get(id);
         if (State.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return "Completa la decisión del Código Trampa antes de jugar.";
         if (State.Phase == Phase.BlueEggDrawChoice) return "Decide primero si robas con Huevo Azul Explosivo.";
         if (State.Phase == Phase.Decision && State.PendingDecision is { AllowsCombos: false } decision)
@@ -168,10 +174,10 @@ public sealed partial class GameEngine
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
         : State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor;
-    private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => { var c = CardCatalog.Get(id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && AvailableActions(actor) >= c.ActionCost; });
+    private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && PlayableCards(actor).Any(entry => { var c = CardCatalog.Get(entry.Id); return c.IsCombo && (c.RerollOwnDie || c.SetOwnDie > 0) && AvailableActions(actor) >= c.ActionCost; });
     private CommandResult PlayRerollCombo(int actor, int index)
     {
-        var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
+        var p = State.Players[actor]; var card = CardCatalog.Get(PlayableHandCard(p, index)!);
         SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
         var frame = new EngineActivation(actor, card.Id, card.ActionCost, card.PrCost, State.Phase)
         { Kind = ActivationKind.Reroll, Parent = _activeActivation };

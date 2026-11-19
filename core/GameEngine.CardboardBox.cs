@@ -75,7 +75,8 @@ public sealed partial class GameEngine
         // Shown like a resolved Error de Carga chain: the Object Code canceled, then the Box that answered it.
         ChainResolved?.Invoke([new() { Actor = pending.Actor, CardId = card.Id, Canceled = true },
             new() { Actor = actor, CardId = CardCatalog.CardboardBox.Id }]);
-        RefundActivation(pending.Actor, pending.FromMemory ? 2 : card.ActionCost, CodePrCost(card) + (pending.FromMemory ? 400 : 0));
+        if (_activeActivation is { } activation) RefundActivation(activation.Actor, activation.Actions, activation.Pr);
+        else RefundActivation(pending.Actor, pending.FromMemory ? 2 : card.ActionCost, CodePrCost(card) + (pending.FromMemory ? 400 : 0));
         if (_activeActivation is { Kind: ActivationKind.TurnBuff } star)
         {
             Log($"{State.Players[actor].Name} cancela {card.Name} con Caja de Cartón; el descarte no vuelve a la mano.");

@@ -3,7 +3,7 @@ namespace Relick.Core;
 public sealed partial class GameEngine
 {
     private bool HasDestinyPickResponse(int actor) => ComboResponsesEnabled(actor) && _activeActivation == null &&
-        AvailableActions(actor) >= CardCatalog.DestinyPick.ActionCost && State.Players[actor].Hand.Contains(CardCatalog.DestinyPick.Id);
+        AvailableActions(actor) >= CardCatalog.DestinyPick.ActionCost && PlayableCards(actor).Any(card => card.Id == CardCatalog.DestinyPick.Id);
 
     private bool CanPlayDestinyPick(int actor) => State.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final ||
         _activeActivation == null && State.DecisionPlayer == actor &&

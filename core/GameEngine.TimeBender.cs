@@ -65,7 +65,7 @@ public sealed partial class GameEngine
         }
         State.Phase = stage;
         State.LastCombat = $"{p.Name} repite su etapa de {StageName(stage)} sin cambiar de turno."; Log(State.LastCombat);
-        if (stage == Phase.Actions) ResolveRobotizeAtActionStart(State.CurrentPlayer);
+        if (stage == Phase.Actions) BeginActionStartEffects(State.CurrentPlayer);
         return true;
     }
 

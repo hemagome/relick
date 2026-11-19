@@ -16,7 +16,7 @@ public sealed partial class GameEngine
         return null;
     }
     private bool HasLoadError(int actor) => ComboResponsesEnabled(actor) && AvailableActions(actor) > 0 && !HandReservedForActivation(actor) &&
-        State.Players[actor].Hand.Any(id => CardCatalog.Get(id).CancelActivation);
+        PlayableCards(actor).Any(card => CardCatalog.Get(card.Id).CancelActivation);
     public bool CanPlayLoadError(int actor)
     {
         if (actor < 0 || actor >= 2) return false;
@@ -28,7 +28,7 @@ public sealed partial class GameEngine
     private void BeginActivation(EngineActivation frame)
     {
         _activeActivation = frame;
-        if (frame.CanInterrupt && (HasLoadError(1 - frame.Actor) || HasComboParry(1 - frame.Actor))) OpenErrorChain(frame, frame.ResumePhase);
+        if (frame.CanInterrupt && (HasLoadError(1 - frame.Actor) || HasComboParry(1 - frame.Actor) || HasInitialCopyResponse(frame))) OpenErrorChain(frame, frame.ResumePhase);
         else { ResumeActivation(frame); CompleteActivationIfFinished(); }
     }
     private void OpenErrorChain(EngineActivation frame, Phase resume)
@@ -40,13 +40,12 @@ public sealed partial class GameEngine
     private CommandResult PlayLoadError(int actor, int index)
     {
         if (!CanPlayLoadError(actor)) return CommandResult.Fail("No hay una activación enemiga que anular.");
-        var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
+        var p = State.Players[actor]; var card = CardCatalog.Get(PlayableHandCard(p, index)!);
         SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost; p.Relikia -= card.PrCost;
         var frame = new EngineActivation(actor, card.Id, card.ActionCost, card.PrCost, State.Phase) { Kind = ActivationKind.Counter };
         _activationChain.Add(frame); State.ActivationChain.Add(new(actor, card.Id, card.ActionCost, card.PrCost));
         Log($"{p.Name} responde con Error de Carga (1 acción).");
-        State.ErrorResponder = 1 - actor;
-        if (!HasLoadError(State.ErrorResponder)) ResolveErrorChain();
+        GiveRamPriority(1 - actor);
         return CommandResult.Ok();
     }
     public CommandResult PassErrorResponse(int actor)
@@ -60,16 +59,25 @@ public sealed partial class GameEngine
         {
             var frame = _activationChain[i];
             if (frame.Canceled) { RefundActivation(frame.Actor, frame.Actions, frame.Pr); continue; }
-            if (i > 0) _activationChain[i - 1].Canceled = true;
+            if (i > 0 && frame.Kind == ActivationKind.Counter) _activationChain[i - 1].Canceled = true;
         }
         if (ChainResolved != null)
         {
             var links = new List<PublicChainLink>();
             if (ChainAttack() is { } attack) links.Add(attack);
-            links.AddRange(_activationChain.Select(f => new PublicChainLink { Actor = f.Actor, CardId = f.CardId, Canceled = f.Canceled }));
+            links.AddRange(_activationChain.Select(f => new PublicChainLink { Actor = f.Actor, CardId = IsCopyHelmetFrame(f) ? CardCatalog.CopyHelmet.Id : f.CardId, Canceled = f.Canceled }));
             ChainResolved(links);
         }
-        var root = _activationChain[0]; _activationChain.Clear(); State.ActivationChain.Clear(); State.Phase = _errorResumePhase;
+        var frames = _activationChain.ToArray();
+        _activationChain.Clear(); State.ActivationChain.Clear(); State.Phase = _errorResumePhase;
+        if (frames.Skip(1).Any(frame => frame.Kind != ActivationKind.Counter)) ResolveRamWithCopies(frames);
+        else ResolveRamRoot(frames[0]);
+
+        static bool IsCopyHelmetFrame(EngineActivation frame) => frame.FieldCardId is { } id && CardCatalog.PhysicalId(id) == CardCatalog.CopyHelmet.Id;
+    }
+
+    private void ResolveRamRoot(EngineActivation root)
+    {
         if (State.ErrorAfterDie) { ResolveErrorAfterDie(root); return; }
         if (root.Canceled) { CancelActivation(root); _activeActivation = root.Parent; State.LastCombat = $"{CardCatalog.Get(root.CardId).Name} · Activación anulada · Costes devueltos"; }
         else { ResumeActivation(root); CompleteActivationIfFinished(); }
@@ -86,7 +94,7 @@ public sealed partial class GameEngine
     private bool TryOpenErrorAfterDie(DieEffect effect, int die)
     {
         if (_activeActivation is not { Kind: ActivationKind.Code, CanInterrupt: true } frame || effect.SkillId != frame.CardId ||
-            effect.Actor != frame.Actor || !HasLoadError(1 - frame.Actor)) return false;
+            effect.Actor != frame.Actor || (!HasLoadError(1 - frame.Actor) && !HasInitialCopyResponse(frame))) return false;
         _pendingDieEffect = effect;
         State.PendingDieRoll = new(effect.Actor, effect.Purpose, die, State.Phase);
         State.ErrorAfterDie = true;
@@ -153,6 +161,16 @@ public sealed partial class GameEngine
         if (_activeActivation != null) _activeActivation.ReplayCorrupted = true;
         Corrupt(actor, actor, index);
     }
+    private void ReleaseActiveActivation()
+    {
+        if (_activeActivation is { } frame && !State.IsOver)
+        {
+            if (frame.HeldCard != null) FinishHeldCard(frame);
+            else CorruptWaitingFieldCard(frame);
+        }
+        _activeActivation = null;
+    }
+
     private void CompleteActivationIfFinished()
     {
         if (State.Phase == Phase.ReloadResolving && State.PendingReload != null) { ContinueReloadHands(); return; }
@@ -160,10 +178,11 @@ public sealed partial class GameEngine
         {
             CompleteTurnBuff(); return;
         }
-        if (State.Phase is Phase.Draw or Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished)
+        if (State.Phase is Phase.Draw or Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished ||
+            _activeActivation?.FieldCardId is { } id && CardCatalog.PhysicalId(id) == CardCatalog.CopyHelmet.Id &&
+            _ramResolutions.LastOrDefault()?.PlayPhase == State.Phase)
         {
-            if (_activeActivation is { } frame && !State.IsOver) CorruptWaitingFieldCard(frame);
-            _activeActivation = null;
+            ReleaseActiveActivation();
         }
         CompletePendingPlay();
     }

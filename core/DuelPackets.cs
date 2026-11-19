@@ -14,6 +14,8 @@ public sealed class DuelPrivateData
     public string?[] OwnHand { get; set; } = [];
     public string?[] OpponentHand { get; set; } = [];
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<int, int>? TomeHandIndices { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int?[]? OwnHandOwners { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int?[]? OpponentHandOwners { get; set; }
@@ -25,10 +27,14 @@ public static class DuelPackets
         var board = packet.Board;
         board.MySeat = hand.MySeat;
         board.AutoPassCombos = hand.AutoPassCombos;
-        board.Players[hand.MySeat].Hand = hand.OwnHand;
+        var player = board.Players[hand.MySeat];
+        player.Hand = hand.OwnHand;
+        if (player.TomeCards is { } tomes && hand.TomeHandIndices is { } indices)
+            player.TomeCards = tomes.Select(card => indices.TryGetValue(card.Slot, out var index) ?
+                card with { HandIndex = index } : card).ToArray();
         // The private hand replaces the whole slot array, so its owners must replace it too:
         // keeping the public array would assign owners to the wrong cards (or to hidden ones).
-        board.Players[hand.MySeat].HandOwners = hand.OwnHandOwners;
+        player.HandOwners = hand.OwnHandOwners;
         var opponent = board.Players[1 - hand.MySeat];
         if (hand.OpponentHand.Length > 0)
         {

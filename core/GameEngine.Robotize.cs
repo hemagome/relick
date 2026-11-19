@@ -6,11 +6,9 @@ public sealed partial class GameEngine
     {
         var player = State.Players[actor];
         var frame = _activeActivation!;
-        if (frame.CorruptOnMemory) player.MarkForCorruption(CardZone.Attached, player.AttachedCards.Count);
-        frame.CorruptOnMemory = false;
+        var id = InstallActivationCard(frame, player, CardZone.Attached, player.AttachedCards.Count);
         NotifyPileMove(player, CardCatalog.Robotize.Id, CardZone.Activation, destination: CardZone.Attached);
-        MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), player);
-        player.AttachedCards.Add(CardCatalog.Robotize.Id);
+        player.AttachedCards.Add(id);
         State.LastCombat = $"{player.Name} coloca Robotizar encima de su Relikario.";
         Log(State.LastCombat);
     }
@@ -19,8 +17,8 @@ public sealed partial class GameEngine
     {
         var attached = State.Players[actor].AttachedCards;
         for (var slot = 0; slot < attached.Count; slot++)
-            if (attached[slot] == CardCatalog.Robotize.Id && !EffectsSuppressed(actor, FieldZone.Attached, slot))
-                yield return new(actor, FieldZone.Attached, slot, CardCatalog.Robotize.Id);
+            if (CardCatalog.TextId(attached[slot]) == CardCatalog.Robotize.Id && !EffectsSuppressed(actor, FieldZone.Attached, slot))
+                yield return new(actor, FieldZone.Attached, slot, attached[slot]);
     }
 
     private int ReduceDamageWithRobotize(int target, int amount, int attackDie)

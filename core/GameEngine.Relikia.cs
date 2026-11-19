@@ -96,9 +96,8 @@ public sealed partial class GameEngine
         var error = ValidateRelikiaChoice(actor, RelikiaChoice.PlaceHandCard);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Active;
-        if (!InHand(p, handIndex) || !Enum.IsDefined(destination)) return CommandResult.Fail("Elige una carta y su destino.");
+        if (PlayableHandCard(p, handIndex) is not { } id || !Enum.IsDefined(destination)) return CommandResult.Fail("Elige una carta y su destino.");
         if (destination == CardDestination.Exchange && p.Bonus == null) return CommandResult.Fail("No hay Bonus disponible para canjear.");
-        var id = p.Hand[handIndex];
         EndRelikiaChoice();
         if (destination == CardDestination.Exchange)
         {
@@ -159,17 +158,28 @@ public sealed partial class GameEngine
     private void TakeBonus(PlayerState source, PlayerState recipient)
     {
         var id = source.Bonus!;
-        var borrowed = ReleaseMovedFieldCard(source, -1) ?? source.ReleaseForeignFieldCard(id);
+        var moved = RemoveMovedFieldCard(source, -1);
+        var borrowed = moved?.Borrowed ?? source.ReleaseForeignFieldCard(id);
         ChangeZahiraHosts(Array.IndexOf(State.Players, source), FieldZone.Bonus, -1);
         ForgetFieldCodeSource(source, FieldZone.Bonus);
         source.Bonus = null;
         source.InitialAreaWaitingInBonus = false;
         var owner = borrowed ? 1 - Seat(source) : Seat(source);
-        if (source.CorruptsOnMemory(CardZone.Bonus, -1)) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count);
+        var marked = source.CorruptsOnMemory(CardZone.Bonus, -1);
         source.ClearCorruptionMarks(CardZone.Bonus);
-        recipient.Hand.Add(id);
-        if (owner != Seat(recipient)) MarkBorrowedHandCard(recipient, recipient.Hand.Count - 1);
-        BonusClaimed?.Invoke(Array.IndexOf(State.Players, source), Array.IndexOf(State.Players, recipient), recipient.Hand.Count - 1, id);
+        var physical = CardCatalog.PhysicalId(id);
+        if (physical != null)
+        {
+            if (marked) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count);
+            recipient.Hand.Add(physical);
+            if (owner != Seat(recipient)) MarkBorrowedHandCard(recipient, recipient.Hand.Count - 1);
+            BonusClaimed?.Invoke(Seat(source), Seat(recipient), recipient.Hand.Count - 1, physical);
+        }
+        else NotifyPileMove(source, id, CardZone.Bonus, destination: CardZone.OutOfGame);
+        if (moved?.ShieldCharges is { } charges)
+            foreach (var charge in charges)
+                ReturnFieldInstance(source, charge.CardId, CardZone.ShieldCharge, -1, false, charge.CorruptOnMemory);
+        ReturnTomeAttachments(id);
     }
 
     private void TakeArea(PlayerState source, PlayerState recipient)
@@ -201,7 +211,7 @@ public sealed partial class GameEngine
     }
     private void BeginRelikiaChoice(RelikiaChoice choice)
     {
-        if (choice == RelikiaChoice.PlaceHandCard && State.Active.Hand.Count == 0)
+        if (choice == RelikiaChoice.PlaceHandCard && !PlayableCards(State.CurrentPlayer).Any())
         {
             Log($"{State.Active.Name} no tiene cartas en la mano para colocar por Relikia.");
             State.Phase = Phase.Actions;

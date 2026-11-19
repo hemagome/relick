@@ -50,7 +50,9 @@ public sealed partial class GameEngine
         State.Phase = Phase.Combat;
         pending = pending with { Die = die, WasRerolled = rerolled };
         if (die == 1 && TryBreakCardsOnOwnOne(pending.Attacker,
-            new EngineContinuation { Kind = ContinuationKind.ConfirmedAttackDie, Actor = pending.Attacker, Attack = pending })) return;
+            new EngineContinuation { Kind = ContinuationKind.GhostAttackDie, Actor = pending.Attacker, Attack = pending })) return;
+        if (die is >= 1 and <= 3 && OfferGhostGift(pending.Attacker, new EngineContinuation
+            { Kind = ContinuationKind.GhostAttackDie, Actor = pending.Attacker, Attack = pending, Flag = true })) return;
         ResolveConfirmedAttackDie(pending);
     }
 
@@ -79,13 +81,13 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var converted = die < 4 && HasStackedTotem(actor);
         var damage = DamageFor(converted ? 5 : die, normal, skill.CriticalDamage);
-        if (die >= 4 || converted) damage = DamageWithEquipmentBonus(actor, damage + attackDamageBonus);
-        var outcome = converted ? "Normal por Tótem de Salvación" : die < 4 ? "Fallido" : die == 4 ? "Reducido" : die == 5 ? "Normal" : "Crítico";
+        if (die is >= 4 and <= 6 || converted) damage = DamageWithEquipmentBonus(actor, damage + attackDamageBonus);
+        var outcome = converted ? "Normal por Tótem de Salvación" : die is < 4 or > 6 ? "Fallido" : die == 4 ? "Reducido" : die == 5 ? "Normal" : "Crítico";
         State.LastCombat = $"{p.Name} · {outcome} · {damage} de daño" +
             (attackDamageBonus > 0 ? " · Súper Ataque" : "") +
             (rerolled ? $" · Dado final: {die}" : "");
         Log($"{p.Name} usa {skill.Name} contra {State.Players[1 - actor].Name}: dado {die}, {outcome.ToLowerInvariant()}, {damage} de daño.");
-        if (die < 4 && !converted) return;
+        if (die is < 4 or > 6 && !converted) return;
         State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true, NormalFromMiss: converted, EffectsSuppressed: effectsSuppressed);
         if (!OfferFireDamage(actor)) PresentResolvedAttack();
     }

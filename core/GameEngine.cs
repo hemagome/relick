@@ -116,7 +116,7 @@ public sealed partial class GameEngine
             return actor == State.DecisionPlayer;
         if (ValidateTurn(actor) != null) return false;
         var p = State.Active;
-        if (p.Hand.Select((id, index) => (id, index)).Any(card => CardCatalog.Get(card.id).IsCombo && CodeUnavailableReason(actor, card.index) == null)) return true;
+        if (PlayableCards(actor).Any(card => CardCatalog.Get(card.Id).IsCombo && CodeUnavailableReason(actor, card.Index) == null)) return true;
         if (CanEvolve(actor)) return true;
         if (AvailablePurpleRings(actor).Any(c => CanUsePurpleRing(actor, c.Index))) return true;
         if (IronwingFireDestructions(actor).Any()) return true;
@@ -125,9 +125,9 @@ public sealed partial class GameEngine
             Phase.Combat => FieldCombatTargets(actor).Any() ||
                 CanAttack(actor) ||
                 (!State.LearnedThisTurn && p.Skills.Count < MaxSkills && p.Relikia >= SkillCost(p) &&
-                 p.Hand.Any(id => CanLearnSkill(p, CardCatalog.Get(id)))),
-            Phase.Actions => (AvailableActions(actor) > 0 && p.Hand.Select((id, i) => (id, i)).Any(c => p.Bonus != null || CardCatalog.Get(c.id).Kind == CardKind.Equipment ||
-                CanActivateArea(actor, c.i) || CodeUnavailableReason(actor, c.i) == null)) ||
+                 PlayableCards(actor).Any(entry => CanLearnSkill(p, CardCatalog.Get(entry.Id)))),
+            Phase.Actions => (AvailableActions(actor) > 0 && PlayableCards(actor).Any(c => p.Bonus != null || CardCatalog.Get(c.Id).Kind == CardKind.Equipment ||
+                CanActivateArea(actor, c.Index) || CodeUnavailableReason(actor, c.Index) == null || CanRevealGhostDog(actor, c.Index))) ||
                 CanUseOsamuSearch(actor) || DestinyPickMemorySlots(actor).Any() || RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
             Phase.Discard => State.DiscardsRemaining > 0 && p.Hand.Count > 0,
             Phase.Final => p.Hand.Count > MaxHandSize,
@@ -141,8 +141,7 @@ public sealed partial class GameEngine
         var error = ValidateTurn(actor, Phase.Combat);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Active;
-        if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
-        var id = p.Hand[handIndex];
+        if (PlayableHandCard(p, handIndex) is not { } id) return CommandResult.Fail("Elige una carta que puedas usar.");
         if (!CanLearnSkill(p, CardCatalog.Get(id))) return CommandResult.Fail("Elige una habilidad compatible con tu Relikario.");
         if (State.LearnedThisTurn)
             return CommandResult.Fail("Solo puedes enseñar una habilidad por turno.");
@@ -181,14 +180,14 @@ public sealed partial class GameEngine
 
     public bool CanAttack(int actor) => AttackUnavailableReason(actor) == null &&
         State.Active.Skills.Any(id => CanAttackWithTaughtSkill(State.Active, id)) &&
-        State.Active.Hand.Any(id => CardCatalog.Get(id).Kind == CardKind.Attack);
+        PlayableCards(actor).Any(card => CardCatalog.Get(card.Id).Kind == CardKind.Attack);
 
     public CommandResult Attack(int actor, int handIndex, int skillIndex)
     {
         var error = AttackUnavailableReason(actor);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Active;
-        if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Attack)
+        if (PlayableHandCard(p, handIndex) is not { } id || CardCatalog.Get(id).Kind != CardKind.Attack)
             return CommandResult.Fail("Selecciona una carta de ataque.");
         if (skillIndex < 0 || skillIndex >= p.Skills.Count)
             return CommandResult.Fail("Primero enseña y selecciona una habilidad.");
@@ -196,7 +195,7 @@ public sealed partial class GameEngine
             return CommandResult.Fail("Selecciona una habilidad compatible con tu Relikario.");
         var skill = CardCatalog.Get(p.Skills[skillIndex]);
         var suppressed = EffectsSuppressed(actor, FieldZone.Skill, skillIndex);
-        var superAttack = p.Hand[handIndex] == CardCatalog.SuperAttack.Id;
+        var superAttack = id == CardCatalog.SuperAttack.Id;
         SendHandToMemory(p, handIndex);
         State.AttackedThisTurn = true;
         var die = RollAttack(out var modified, superAttack: superAttack);
@@ -227,7 +226,19 @@ public sealed partial class GameEngine
         var error = CodeUnavailableReason(actor, handIndex);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Players[actor];
-        var card = CardCatalog.Get(p.Hand[handIndex]);
+        var card = CardCatalog.Get(PlayableHandCard(p, handIndex)!);
+        if (card.Id == CardCatalog.CopyHelmet.Id) return PlayCopyHelmet(actor, handIndex);
+        if (card.Id == CardCatalog.MagicTome.Id || handIndex >= TomeHandBase &&
+            (card.Id == CardCatalog.Robotize.Id || card.Id == CardCatalog.GalacticShield.Id || card.Id == CardCatalog.GoldenTotem.Id))
+        {
+            var frame = new EngineActivation(actor, card.Id, card.ActionCost, CodePrCost(card), State.Phase);
+            HoldActivationCard(frame, handIndex);
+            p.ActionsLeft -= frame.Actions;
+            p.Relikia -= frame.Pr;
+            Log($"{p.Name} juega {card.Name}.");
+            BeginActivation(frame);
+            return CommandResult.Ok();
+        }
         // Resetear la Mente keeps its own activation: no PR cost and no "juega" line, as before it became a module.
         if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
@@ -272,7 +283,7 @@ public sealed partial class GameEngine
         var error = ValidateAction(actor);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Active;
-        if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
+        if (PlayableHandCard(p, handIndex) == null) return CommandResult.Fail("Elige una carta que puedas usar.");
         if (p.Bonus == null) return CommandResult.Fail("No hay una carta de Bonus disponible.");
         var id = MoveHandCardToField(p, handIndex, CardZone.Exchange, p.Exchange.Count);
         State.ActionsLeft--;
@@ -333,7 +344,7 @@ public sealed partial class GameEngine
             if (ConsumeRepeatedStage(Phase.Combat)) return CommandResult.Ok();
             State.Phase = Phase.Actions;
             Log($"{State.Active.Name} entra en acciones ({AvailableActions(actor)} disponibles).");
-            ResolveRobotizeAtActionStart(actor);
+            BeginActionStartEffects(actor);
         }
         else if (State.Phase == Phase.Actions)
         {
@@ -355,8 +366,7 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         if (handLimit ? p.Hand.Count <= MaxHandSize : State.DiscardsRemaining <= 0)
             return CommandResult.Fail("No tienes descartes pendientes.");
-        if (!InHand(p, handIndex)) return CommandResult.Fail("Elige una carta de tu mano.");
-        var id = p.Hand[handIndex];
+        if (PlayableHandCard(p, handIndex) is not { } id) return CommandResult.Fail("Elige una carta que puedas usar.");
         var discarded = SendHandToMemory(p, handIndex);
         Log($"{p.Name} descarta {CardCatalog.Get(id).Name}.");
         if (!handLimit)
@@ -381,6 +391,7 @@ public sealed partial class GameEngine
         State.RepeatedFinalAwaitingAdvance = false;
         foreach (var player in State.Players)
         {
+            player.LockedGhostCards = null;
             player.AttackRerollUsedThisTurn = false;
             player.RelikarioSearchUsedThisTurn = false;
             player.BonusEffectUsed = false; player.ExchangeEffectsUsed = null; player.IronwingFireUsed = null;
@@ -394,17 +405,17 @@ public sealed partial class GameEngine
             State.Active.EquipmentExpiresAtTurnStart = false;
             if (ActiveEquipment(State.CurrentPlayer) != null)
             {
-                DestroyEquipment(State.Active, new EngineContinuation { Kind = ContinuationKind.TurnStartDraw, Actor = State.CurrentPlayer });
+                DestroyEquipment(State.Active, new EngineContinuation { Kind = ContinuationKind.BikeTurnStart, Actor = State.CurrentPlayer });
                 return;
             }
         }
-        DrawAtTurnStart();
+        BeginBikeTurnStart();
     }
 
-    private void DrawAtTurnStart(bool explicitStage = false)
+    private void DrawAtTurnStart(bool explicitStage = false, int extraCards = 0)
     {
         if (explicitStage) State.Phase = Phase.Draw;
-        var count = State.Active.Hand.Count == 0 ? 3 : 1;
+        var count = (State.Active.Hand.Count == 0 ? 3 : 1) + extraCards;
         Log($"Turno {State.Turn} · {State.Active.Name}: roba {count} carta(s).");
         DrawCards(State.Active, count, new EngineContinuation { Kind = ContinuationKind.DrawStageReady, Actor = State.CurrentPlayer, Flag = explicitStage });
     }
@@ -421,6 +432,17 @@ public sealed partial class GameEngine
 
     private void CompletePendingPlay()
     {
+        if (_activeActivation == null && _ramResolutions.LastOrDefault() is { } ram &&
+            State.Phase == ram.PlayPhase)
+        {
+            ResumeRamResolution();
+            return;
+        }
+        if (_activeActivation == null && State is { Phase: Phase.Actions, ActionStartActor: int actor })
+        {
+            ResolveGhostDogsAtActionStart(actor);
+            return;
+        }
         CompleteAttackIfReady();
         if (!PresentPendingArea() && !TryPresentTrapCraft()) CompleteEndTurnIfReady();
     }
@@ -641,13 +663,23 @@ public sealed partial class GameEngine
     /// <summary>Whose die the latest roll was, for presentation only: the roller's cosmetic die is shown.</summary>
     public int CurrentDieRoller { get; private set; } = -1;
     internal bool CompletesDiePair { get; private set; }
+    internal bool CurrentDieIsD10 { get; private set; }
     private int Roll(string caption = "", bool convertSix = false, int roller = -1, bool completesPair = false)
     {
         CurrentDieRoller = roller >= 0 ? roller : State.CurrentPlayer;
         CompletesDiePair = completesPair;
-        var value = _random.Next(6) + 1;
+        CurrentDieIsD10 = State.Phase != Phase.Preparation && !State.IsOver && UsesD10(CurrentDieRoller);
+        var value = _random.Next(CurrentDieIsD10 ? 10 : 6) + 1;
+        if (CurrentDieIsD10)
+        {
+            State.Players[CurrentDieRoller].FutureDie = FutureDieState.Used;
+            caption = $"Era Futurista · D10 = {value}" + (caption.Length > 0 ? $" · {caption}" : "");
+            Log($"{State.Players[CurrentDieRoller].Name} lanza D10 con Era Futurista: {value}.");
+        }
         State.LastDie = value;
-        CurrentDieCaption = convertSix && value == 6 ? $"{State.Players[CurrentDieRoller].Relikario.DisplayName} · 6 se convierte en 5" : caption;
+        CurrentDieCaption = convertSix && value == 6
+            ? (CurrentDieIsD10 ? caption + " · " : "") + $"{State.Players[CurrentDieRoller].Relikario.DisplayName} · 6 se convierte en 5"
+            : caption;
         DieRolled?.Invoke(value);
         return value;
     }

@@ -370,8 +370,8 @@ internal sealed class PublicDuelObservation : IDisposable
         if (actor is not (0 or 1)) return null;
         var p = g.State.Players[actor];
         // Only these hand plays announce their identity to everybody on acceptance.
-        if (m.Kind is DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Exchange)
-            return p.Hand.ElementAtOrDefault(m.Index);
+        if (m.Kind is DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Exchange or DuelMoveKind.RevealGhostDog)
+            return g.PlayableCards(actor).FirstOrDefault(c => c.Index == m.Index).Id;
         return m.Kind switch
         {
             DuelMoveKind.Attack or DuelMoveKind.DestinyDefense or DuelMoveKind.IronwingRoll or DuelMoveKind.IronwingFire =>
@@ -401,6 +401,9 @@ internal sealed class PublicDuelObservation : IDisposable
                 => $"{name} usa Súper Ataque con {card}.",
             DuelMoveKind.Attack => $"{name} ataca con {card}.",
             DuelMoveKind.Learn => $"{name} enseña {card}.",
+            DuelMoveKind.RevealGhostDog => $"{name} revela {card}.",
+            DuelMoveKind.ConvertD10 => $"{name} convierte su D10 en 6 con Era Futurista.",
+            DuelMoveKind.PrepareD10 => m.Flag ? $"{name} prepara D10 con Era Futurista." : $"{name} conserva D6 para su próxima tirada.",
             DuelMoveKind.Equip when m.Flag => $"{name} juega {card} como equipo para {g.State.Players[1 - actor].Name}.",
             DuelMoveKind.Equip => $"{name} juega {card} como equipo.",
             DuelMoveKind.Exchange => $"{name} coloca {card} en canje.", DuelMoveKind.FieldCode => $"{name} activa {card} desde {(m.Value == (int)FieldZone.Bonus ? "Bonus" : "canje")}.",

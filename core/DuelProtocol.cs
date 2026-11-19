@@ -33,7 +33,7 @@ public enum DuelMoveKind
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
     Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch, ActivateArea, UsePurpleRing, DestinyPickMemory,
-    IronwingDie, IronwingRoll, IronwingFire
+    IronwingDie, IronwingRoll, IronwingFire, RevealGhostDog, PrepareD10, ConvertD10
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -62,6 +62,9 @@ public sealed class DuelMove
 
     private CommandResult ApplyRules(GameEngine game, int actor) => Kind switch
     {
+        DuelMoveKind.RevealGhostDog => game.RevealGhostDog(actor, Index),
+        DuelMoveKind.PrepareD10 => game.PrepareD10(actor, Flag),
+        DuelMoveKind.ConvertD10 => game.ConvertD10(actor),
         DuelMoveKind.Learn => game.Learn(actor, Index),
         DuelMoveKind.Attack => game.Attack(actor, Index, Value),
         DuelMoveKind.PlayCode => game.PlayCode(actor, Index),

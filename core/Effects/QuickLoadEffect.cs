@@ -16,6 +16,7 @@ internal sealed class QuickLoadEffect : ICardEffect
         if (step == Roll) { ctx.Roll(DiePurpose.QuickLoad, Result); return; }
         var die = next.Value;
         ctx.CloseErrorWindow();
+        if (die > 6) return;
         if (die >= 5)
         {
             var count = die == 5 ? 1 : 2;

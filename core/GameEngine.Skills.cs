@@ -37,16 +37,16 @@ public sealed partial class GameEngine
     {
         if (actor < 0 || actor >= State.Players.Length) return Array.Empty<int>();
         var p = State.Players[actor];
-        if (p.Hand.Count < DefenseDiscardCost) return Array.Empty<int>();
+        if (PlayableCards(actor).Count() < DefenseDiscardCost) return Array.Empty<int>();
         return Enumerable.Range(0, p.Skills.Count)
             .Where(i => p.Skills[i] == CardCatalog.Destiny.Id && p.CountersOnSkill(i) < 2 && !EffectsSuppressed(actor, FieldZone.Skill, i));
     }
 
     private bool CanDefend(int actor, bool critical) =>
         HasTurnBuffInHand(actor) || HasComboParry(actor) || HasDestinyPickResponse(actor) ||
-        ComboResponsesEnabled(actor) && State.Players[actor].Hand.Any(id => id == CardCatalog.Dodge.Id && AvailableActions(actor) >= CardCatalog.Dodge.ActionCost) || ActiveEquipment(actor)?.Id == CardCatalog.CardboardBox.Id ||
+        ComboResponsesEnabled(actor) && PlayableCards(actor).Any(card => card.Id == CardCatalog.Dodge.Id && AvailableActions(actor) >= CardCatalog.Dodge.ActionCost) || ActiveEquipment(actor)?.Id == CardCatalog.CardboardBox.Id ||
         IronwingRollDefenses(actor).Any() ||
-        (State.Players[actor].Hand.Count >= (critical ? 4 : 3) && AvailableDefenses(actor).Any());
+        (PlayableCards(actor).Count() >= (critical ? 4 : 3) && AvailableDefenses(actor).Any());
 
     public CommandResult PassDefense(int actor)
     {
@@ -63,12 +63,12 @@ public sealed partial class GameEngine
         var indices = discards.ToArray();
         var p = State.Players[actor];
         if (!AvailableDefenses(actor).Contains(skillSlot) || indices.Length != DefenseDiscardCost ||
-            indices.Distinct().Count() != indices.Length || indices.Any(i => !InHand(p, i)))
+            indices.Distinct().Count() != indices.Length || indices.Any(i => PlayableHandCard(p, i) == null))
             return CommandResult.Fail($"Elige una copia disponible de Destiny y exactamente {DefenseDiscardCost} cartas para descartar.");
         var sniperIndices = new List<MemorySelection>();
         foreach (var index in indices.OrderDescending())
         {
-            var sniper = CardCatalog.Get(p.Hand[index]).EquipOnDiscard;
+            var sniper = CardCatalog.Get(PlayableHandCard(p, index)!).EquipOnDiscard;
             var discarded = SendHandToMemory(p, index);
             if (sniper && discarded != null) sniperIndices.Add(discarded);
         }

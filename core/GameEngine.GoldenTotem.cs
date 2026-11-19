@@ -33,9 +33,12 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
+    internal IEnumerable<int> PlayableTotems(int actor) =>
+        PlayableCards(actor).Where(card => card.Id == CardCatalog.Totem.Id).Select(card => card.Index);
+
     private bool ValidGoldenTotemSelection(PlayerState p, int[] selected) =>
         selected.Length <= 2 && selected.Distinct().Count() == selected.Length &&
-        selected.All(i => InHand(p, i) && p.Hand[i] == CardCatalog.Totem.Id) && (p.Equipment != null || selected.Length > 0);
+        selected.All(i => PlayableHandCard(p, i) == CardCatalog.Totem.Id) && (p.Equipment != null || selected.Length > 0);
 
     /// <summary>Shows the chosen Tótems, then places them and Tótem de Oro; destroying the previous equipment may pause it.</summary>
     private void DeployGoldenTotem(int actor, int[] selected)
@@ -64,7 +67,7 @@ public sealed partial class GameEngine
                 Log($"{p.Name} conserva su equipo protegido; el Tótem de Salvación mostrado queda en memoria.");
                 continue;
             }
-            NotifyPileMove(p, CardCatalog.Totem.Id, CardZone.Hand, index, CardZone.Equipment);
+            if (InHand(p, index)) NotifyPileMove(p, CardCatalog.Totem.Id, CardZone.Hand, index, CardZone.Equipment);
             MoveHandCardToField(p, index, CardZone.Equipment, p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1);
             if (p.Equipment == null)
             {
@@ -75,14 +78,9 @@ public sealed partial class GameEngine
         }
         var frame = _activeActivation!;
         NotifyPileMove(p, frame.CardId, CardZone.Memory, frame.MemoryIndex, CardZone.EquipmentCover);
-        MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p);
         p.EquipmentCovers ??= [];
-        if (frame.CorruptOnMemory)
-        {
-            p.MarkForCorruption(CardZone.EquipmentCover, p.EquipmentCovers.Count);
-            frame.CorruptOnMemory = false;
-        }
-        p.EquipmentCovers.Add(frame.CardId);
+        var cover = InstallActivationCard(frame, p, CardZone.EquipmentCover, p.EquipmentCovers.Count);
+        p.EquipmentCovers.Add(cover);
         Log($"{p.Name} coloca Tótem de Oro encima de su equipo.");
         State.PendingGoldenTotem = null; State.Phase = frame.ResumePhase;
         CompleteActivationIfFinished();

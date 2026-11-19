@@ -105,7 +105,7 @@ internal static class CardEffects
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
-            new DestinyPickEffect() }.ToDictionary(e => e.CardId);
+            new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect() }.ToDictionary(e => e.CardId);
 
     public static ICardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
@@ -175,6 +175,17 @@ public sealed partial class GameEngine
         public bool CanPlayDestinyPick() => _engine.CanPlayDestinyPick(Actor);
         public IReadOnlyList<DecisionChoice> GalacticShieldChoices(PendingDecision decision) => _engine.GalacticShieldChoices(decision);
         public void ResolveGalacticShieldChoice(PendingDecision decision, DecisionChoice choice) => _engine.ResolveGalacticShieldChoice(decision, choice);
+        public IEnumerable<int> PlayableTotems() => _engine.PlayableTotems(Actor);
+        public void ResolveGhostDog() => _engine.ResolveGhostDog(Actor);
+        public IReadOnlyList<DecisionChoice> GhostDogChoices(PendingDecision d) => _engine.GhostDogChoices(d);
+        public void ResolveGhostDogChoice(PendingDecision d, DecisionChoice c) => _engine.ResolveGhostDogChoice(d, c);
+        public void ResolveGhostDogResult(int die) => _engine.ResolveGhostDogResult(Actor, die);
+        public IEnumerable<FieldTarget> ReturnableFieldCards() => _engine.ReturnableFieldCards();
+        public string FieldName(FieldTarget target) => _engine.FieldCardName(target);
+        public string FieldPlace(FieldTarget target) => FieldCardPlace(State, target);
+        public void ReturnFieldCard(FieldTarget target) => _engine.ReturnFieldCard(Actor, target);
+        public void DeployMagicTome() => _engine.DeployMagicTome(Actor);
+
         public IEnumerable<FieldTarget> MovableFieldCards() => _engine.MovableFieldCards(Actor);
         public IEnumerable<FieldTarget> CompatibleFieldDestinations(FieldTarget source) => _engine.CompatibleFieldDestinations(source);
         public void AskFieldDestination(FieldTarget source) => _engine.AskFieldDestination(source);
@@ -229,7 +240,7 @@ public sealed partial class GameEngine
         public void MoveDeckCardToHand(int deckIndex, EngineContinuation? then = null) => _engine.MoveDeckCard(Player, deckIndex, false, then);
         public int Random(int exclusiveMax) => _engine._random.Next(exclusiveMax);
         /// <summary>Ends the activation before the effect's last move, as a search does before taking its card.</summary>
-        public void EndActivation() => _engine._activeActivation = null;
+        public void EndActivation() => _engine.ReleaseActiveActivation();
 
         /// <summary>Every non-skill card on the field, as Huevo Azul Explosivo may destroy.</summary>
         public IEnumerable<FieldTarget> NonSkillFieldCards() => _engine.NonSkillFieldCards();
@@ -264,6 +275,10 @@ public sealed partial class GameEngine
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor) return [];
         if (CardEffects.For(decision.Source) is { } effect)
             return effect.Choices(EffectFor(actor, decision.Source), decision);
+        if (decision.Source == CardCatalog.CopyHelmet.Id) return CopyHelmetChoices(decision);
+        if (decision.Source == CardCatalog.FutureEra.Id) return AreaSideChoices(decision.Decider);
+        if (decision.Source == CardCatalog.MouseBike.Id) return BikeChoices();
+        if (decision.Source == CardCatalog.ThiefGhost.Id) return GhostGiftChoices(decision.Decider);
         if (decision.Source == CardCatalog.EquipmentRaid.Id) return EquipmentRaidChoices(decision);
         if (decision.Source == CardCatalog.BlackHole.Id) return BlackHoleChoices(decision);
         if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||
@@ -288,6 +303,10 @@ public sealed partial class GameEngine
         State.Phase = decision.ResumePhase;
         if (CardEffects.For(decision.Source) is { } effect)
             effect.Choose(EffectFor(decision.Decider, decision.Source), decision, choice);
+        else if (decision.Source == CardCatalog.CopyHelmet.Id) AddCopyHelmetToRam(decision, choice);
+        else if (decision.Source == CardCatalog.FutureEra.Id) OrientFutureEra(decision, choice);
+        else if (decision.Source == CardCatalog.MouseBike.Id) ResolveBikeTurnStart(choice);
+        else if (decision.Source == CardCatalog.ThiefGhost.Id) ResolveGhostGift(decision, choice);
         else if (decision.Source == CardCatalog.EquipmentRaid.Id) ResolveEquipmentRaidChoice(decision, choice);
         else if (decision.Source == CardCatalog.BlackHole.Id) ResolveBlackHoleChoice(decision, choice);
         else if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||

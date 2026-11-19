@@ -78,17 +78,29 @@ public sealed partial class GameEngine
             DiePurpose.TurboSwordDamage => "Turbo Sword · Daño",
             DiePurpose.TurboOverlapDamage => $"Turbo Overlap · Dado de daño {(effect.Slot == 0 ? 1 : 2)}",
             DiePurpose.BlackHole => "Agujero Negro · Dado de Área",
+            DiePurpose.GhostDog => "Perro Fantasma · Recuperación",
             _ => ""
         };
         var die = rolledDie ?? Roll(caption, roller: actor);
         if (purpose == DiePurpose.TurboOverlapDamage && effect.Slot == 0 && !ReplaySequentialOverlap)
+        {
+            var firstIsD10 = CurrentDieIsD10;
+            var firstCaption = CurrentDieCaption;
             effect.OverlapSecondDie = Roll("Turbo Overlap · Dados de daño", roller: actor, completesPair: true);
-        if (rolledDie.HasValue) CurrentDieCaption = caption;
+            effect.OverlapSecondDieIsD10 = CurrentDieIsD10;
+            CurrentDieIsD10 = firstIsD10;
+            if (firstIsD10) CurrentDieCaption = firstCaption;
+        }
+        if (rolledDie.HasValue)
+        {
+            CurrentDieIsD10 = effect.OverlapSecondDieIsD10 || die > 6;
+            CurrentDieCaption = CurrentDieIsD10 ? $"Era Futurista · D10 = {die} · {caption}" : caption;
+        }
         var rolled = die;
         die = AdjustBlackHoleDie(actor, purpose, rolled);
         var modified = die != rolled;
         State.LastDie = die;
-        if (purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || HasComboParry(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)) || CanBoostIronwingEffect(actor, die))
+        if (die > 6 || purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) || HasComboParry(actor) || (p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1) || equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || (equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0) || (p.Dexterity > 0 && CanBoostWithDexterity(die)) || CanBoostIronwingEffect(actor, die))
         {
             _pendingDieEffect = effect;
             State.PendingDieRoll = new(actor, purpose, die, State.Phase, Modified: modified);
@@ -97,7 +109,7 @@ public sealed partial class GameEngine
         else
         {
             if (!modified) RegisterNaturalSix(p, die);
-            if (!TryOpenErrorAfterDie(effect, die)) ResolveDieEffect(effect, die);
+            FinishEffectDieWithGhost(effect, die);
         }
     }
 
@@ -126,7 +138,7 @@ public sealed partial class GameEngine
         _pendingDieEffect = null;
         State.PendingDieRoll = null;
         State.Phase = pending.ResumePhase;
-        if (!TryOpenErrorAfterDie(effect, die)) ResolveDieEffect(effect, die);
+        FinishEffectDieWithGhost(effect, die);
         CompleteActivationIfFinished();
         return CommandResult.Ok();
     }

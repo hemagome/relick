@@ -43,7 +43,7 @@ public sealed partial class GameEngine
 
     private CommandResult PlayMindReset(int actor, int index)
     {
-        var p = State.Players[actor]; var card = CardCatalog.Get(p.Hand[index]);
+        var p = State.Players[actor]; var card = CardCatalog.Get(PlayableHandCard(p, index)!);
         SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost;
         BeginActivation(new EngineActivation(actor, card.Id, card.ActionCost, 0, State.Phase)
             { Kind = ActivationKind.MindReset, Parent = _activeActivation });

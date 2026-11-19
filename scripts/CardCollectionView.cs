@@ -9,6 +9,7 @@ public partial class CardCollectionView : HBoxContainer
     public IReadOnlyList<string?> Cards { get; init; } = [];
     public Func<int, string?>? RelikarioOf { get; init; }
     public bool ShortScreen { get; init; }
+    public Func<int, bool>? Inverted { get; init; }
     public float InspectorWidth { get; init; } = 340;
     public event Action<int>? CardPressed;
     public event Action<int>? SelectionChanged;
@@ -63,7 +64,13 @@ public partial class CardCollectionView : HBoxContainer
             item.FocusEntered += () => Inspect(slot);
             item.MouseEntered += () => Inspect(slot);
             _cards.Add(item); _grid.AddChild(item);
-            if (Cards[index] is string visibleId) item.TooltipText = CardCatalog.Get(visibleId).Name;
+            if (Cards[index] is string visibleId)
+                item.TooltipText = CardCatalog.Get(visibleId).Name + (Inverted?.Invoke(index) == true ? " · Invertida" : "");
+            if (Inverted?.Invoke(index) == true)
+            {
+                item.Resized += () => item.PivotOffset = item.Size / 2;
+                item.RotationDegrees = 180;
+            }
         }
         Gallery.Resized += () => CallDeferred(nameof(UpdateColumns));
         UpdateColumns();
@@ -98,7 +105,8 @@ public partial class CardCollectionView : HBoxContainer
         if (Cards[index] is string id)
         {
             var card = CardCatalog.Get(id);
-            Inspector.Present(card, card.Name, ArenaActionText.CardCost(card));
+            Inspector.Present(card, card.Name, ArenaActionText.CardCost(card),
+                hint: Inverted?.Invoke(index) == true ? "Invertida sobre Tomo de Magia." : "");
             Showcase?.Present(card, RelikarioOf?.Invoke(index));
         }
         else

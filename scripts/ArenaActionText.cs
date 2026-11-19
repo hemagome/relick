@@ -8,7 +8,11 @@ internal static class ArenaActionText
     public static string Label(DuelOption option, DuelSnapshot s) => option.Move.Kind switch
     {
         DuelMoveKind.Learn => "Enseñar",
+        DuelMoveKind.RevealGhostDog => "Revelar para la próxima etapa de acciones",
+        DuelMoveKind.Attack when option.Field?.Zone == FieldZone.TomeCard =>
+            $"Atacar con {CardCatalog.Get(s.Players[s.MySeat].Skills[option.Move.Value]).Name}",
         DuelMoveKind.Attack => "Atacar",
+        DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id => "Casco de Copias",
         DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.ComboParry.Id => "Combo Parry",
         DuelMoveKind.PlayCode => HandCard(option, s)?.CancelActivation == true ? "Anular" : HandCard(option, s)?.IsCombo == true ? "Activar" : "Jugar",
         DuelMoveKind.Equip when option.Move.Flag => "Equipar al rival",
@@ -63,8 +67,12 @@ internal static class ArenaActionText
         _ => option.Label
     };
 
-    public static CardDefinition? HandCard(DuelOption option, DuelSnapshot s) => option.Move.Index >= 0 &&
-        option.Move.Index < s.Players[s.MySeat].Hand.Length && s.Players[s.MySeat].Hand[option.Move.Index] is { } id ? CardCatalog.Get(id) : null;
+    public static CardDefinition? HandCard(DuelOption option, DuelSnapshot s)
+    {
+        var id = option.Field?.Zone == FieldZone.TomeCard ? option.CardId :
+            s.Players[s.MySeat].Hand.ElementAtOrDefault(option.Move.Index);
+        return id == null ? null : CardCatalog.Get(id);
+    }
 
     public static string CardCost(CardDefinition card) => card.Kind switch
     {
@@ -87,7 +95,7 @@ internal static class ArenaActionText
                 if (card.Id == CardCatalog.VictoriousManualControl.Id) return CardCost(card);
                 return Resources(card.ActionCost, GameEngine.CodePrCost(card, s.LegacyBlueEgg), card.DiscardCost);
             case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch:
-            case DuelMoveKind.DestinyPickMemory: return "1 acción";
+            case DuelMoveKind.DestinyPickMemory: case DuelMoveKind.RevealGhostDog: return "1 acción";
             case DuelMoveKind.UsePurpleRing:
             case DuelMoveKind.Choose when s.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field != null:
                 return "Destruye Anillo Morado";

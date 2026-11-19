@@ -5,6 +5,8 @@ public sealed record ShieldCharge(string CardId, bool CorruptOnMemory);
 public sealed class GalacticShield
 {
     public bool Borrowed { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Instance { get; init; }
     public List<ShieldCharge> Cards { get; init; } = [];
 }
 
@@ -15,7 +17,7 @@ public sealed partial class GameEngine
 
     private IEnumerable<FieldTarget> GalacticShieldTargets(int owner) =>
         Enumerable.Range(0, State.Players[owner].GalacticShields?.Count ?? 0)
-            .Select(index => new FieldTarget(owner, FieldZone.GalacticShield, index, CardCatalog.GalacticShield.Id));
+            .Select(index => new FieldTarget(owner, FieldZone.GalacticShield, index, State.Players[owner].GalacticShields![index].Instance ?? CardCatalog.GalacticShield.Id));
 
     private void DeployGalacticShield(int actor)
     {
@@ -23,12 +25,14 @@ public sealed partial class GameEngine
         var player = State.Players[actor];
         var shields = player.GalacticShields ??= [];
         var slot = shields.Count;
-        RemoveMemoryCard(new(frame.MemorySeat, frame.MemoryIndex));
+        var id = frame.FieldCardId ?? frame.CardId;
+        if (frame.HeldCard == null) RemoveMemoryCard(new(frame.MemorySeat, frame.MemoryIndex));
+        else id = InstallActivationCard(frame, player, CardZone.GalacticShield, slot);
         if (frame.CorruptOnMemory)
             player.MarkForCorruption(CardZone.GalacticShield, slot);
         frame.CorruptOnMemory = false;
         frame.CanInterrupt = false;
-        shields.Add(new GalacticShield { Borrowed = frame.MemorySeat != actor });
+        shields.Add(new GalacticShield { Borrowed = frame.MemorySeat != actor, Instance = frame.FieldCardId == null ? null : id });
         Log($"{player.Name} coloca Escudo Galáctico encima de su Relikario.");
         LoadGalacticShield(new EngineContinuation { Kind = ContinuationKind.LoadGalacticShield, Actor = actor, Value = slot });
     }
@@ -58,7 +62,7 @@ public sealed partial class GameEngine
     {
         var player = State.Players[owner];
         var shields = player.GalacticShields!;
-        SendToMemory(player, CardCatalog.GalacticShield.Id, CardZone.GalacticShield, slot);
+        SendToMemory(player, shields[slot].Instance ?? CardCatalog.GalacticShield.Id, CardZone.GalacticShield, slot);
         foreach (var card in shields[slot].Cards)
             SendToMemory(player, card.CardId, CardZone.ShieldCharge, slot, marked: card.CorruptOnMemory);
         ChangeZahiraHosts(owner, FieldZone.GalacticShield, slot);
@@ -90,6 +94,7 @@ public sealed partial class GameEngine
     private int? AboveRelikarioOwner(FieldTarget target) => target.Zone switch
     {
         FieldZone.Relikario or FieldZone.GalacticShield => target.Owner,
+        FieldZone.TomeCard when TomeHostZone(target.Owner, target.Index) == FieldZone.Attached => target.Owner,
         FieldZone.Attached when !DeckRules.IsAttack(CardCatalog.Get(target.CardId)) => target.Owner,
         FieldZone.Zahira when State.Players[target.Owner].Zahira(ZahiraSlot(target.Index)) is { } host => AboveRelikarioOwner(host),
         _ => null
@@ -142,7 +147,12 @@ public sealed partial class GameEngine
         var pending = decision.Continuation!;
         if (choice.Value < 0)
         {
-            RequestDestruction(pending.Target!, pending.Next, checkShield: false);
+            if (pending.Next is { Kind: ContinuationKind.FieldReturned } returned)
+            {
+                ReturnFieldCardNow(pending.Target!);
+                Continue(returned);
+            }
+            else RequestDestruction(pending.Target!, pending.Next, checkShield: false);
             return;
         }
         var player = State.Players[pending.Actor];

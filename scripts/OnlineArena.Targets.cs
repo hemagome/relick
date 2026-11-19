@@ -34,6 +34,10 @@ public partial class OnlineArena
             popup.SetItemTooltip(popup.GetItemIndex(TableViewMenuId), "Marcada: mesa con profundidad. Desmarcada: vista clásica.");
         }
         if (!_preparing) popup.AddItem("Historial de jugadas", 3);
+        var futureDice = s.Options.Select((option, index) => (option, index))
+            .Where(entry => entry.option.Move.Kind == DuelMoveKind.PrepareD10)
+            .ToDictionary(entry => 100 + entry.index);
+        foreach (var (id, entry) in futureDice) popup.AddItem(entry.option.Label, id);
         if (s.Winner != null || _preparing) popup.AddItem(s.Winner != null ? "Volver al lobby" : "Cerrar sala", 2);
         if (s.Winner != null) popup.AddItem("Ver resultado", 4);
         popup.IdPressed += id =>
@@ -42,6 +46,7 @@ public partial class OnlineArena
             if (id == 3) ShowDuelHistory();
             if (id == 2) { if (s.Winner != null) RequestResultExit(); else Connection.Leave(RoomCode); }
             if (id == 4) { _resultDismissed = false; UpdateResultPresentation(); }
+            if (futureDice.TryGetValue((int)id, out var die)) PlayOption(die.index, s);
         };
     }
 
@@ -57,9 +62,11 @@ public partial class OnlineArena
             DuelMoveKind.Destroy => move.Target == field.Owner && move.Value == (int)field.Zone &&
                 (move.Index == field.Index || field.Zone == FieldZone.Hand && move.Index < 0),
             // A card decision names its board target; a hand is one zone, its card drawn at random.
+            _ when option?.Field is { Zone: FieldZone.TomeCard } tome && IsHandAction(move.Kind) =>
+                field == (tome.Owner, tome.Zone, tome.Index),
             DuelMoveKind.Choose or DuelMoveKind.UsePurpleRing => option?.Field is { } t && t.Owner == field.Owner && t.Zone == field.Zone &&
                 (t.Index == field.Index || field.Zone == FieldZone.Hand && t.Index < 0 ||
-                 field.Zone == FieldZone.Equipment && field.Index < 0 && s.Decision?.Source == CardCatalog.VictoriousManualControl.Id),
+                 field.Zone == FieldZone.Equipment && field.Index < 0 && s.Decision?.Source is "control-manual-victorioso" or "flauta-de-vidrio"),
             DuelMoveKind.FieldCode => field.Owner == s.MySeat && move.Value == (int)field.Zone && move.Index == field.Index,
             DuelMoveKind.Magnet => field.Owner != s.MySeat && (move.Flag
                 ? field.Zone == (move.Value == (int)FieldZone.Area ? FieldZone.Area : FieldZone.Bonus)
@@ -73,6 +80,7 @@ public partial class OnlineArena
     private bool IsFieldActivation(DuelOption option) => option.Move.Kind switch
     {
         DuelMoveKind.FieldCode or DuelMoveKind.UsePurpleRing or DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => true,
+        _ when option.Field?.Zone == FieldZone.TomeCard && IsHandAction(option.Move.Kind) => true,
         DuelMoveKind.CodeResponse or DuelMoveKind.Totem => option.Move.Flag,
         DuelMoveKind.Choose => _snapshot!.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field?.Zone == FieldZone.LightEquipment,
         _ => false
@@ -88,14 +96,22 @@ public partial class OnlineArena
             FieldZone.Bonus => p.Bonus, FieldZone.Area => p.Area, FieldZone.Exchange => p.Exchange.ElementAtOrDefault(field.Index),
             FieldZone.Hand => p.Hand.ElementAtOrDefault(field.Index), FieldZone.Skill => p.Skills.ElementAtOrDefault(field.Index),
             FieldZone.Attached => p.Attached.ElementAtOrDefault(field.Index),
+            FieldZone.TomeCard => p.TomeCards?.FirstOrDefault(card => card.Slot == field.Index)?.CardId,
             FieldZone.GalacticShield when field.Index >= 0 && field.Index < p.GalacticShieldCharges?.Length => CardCatalog.GalacticShield.Id,
             FieldZone.Zahira when p.Zahira(GameEngine.ZahiraSlot(field.Index)) != null => CardCatalog.ZahiraFlair.Id, _ => null
         };
     }
 
-    private void SelectField(int owner, FieldZone zone, int index)
+    private void SelectField(int owner, FieldZone zone, int index, bool inspectTome = true)
     {
         if (IsAnimating) return;
+        if (inspectTome && zone is FieldZone.Bonus or FieldZone.Exchange &&
+            _snapshot!.Players[owner].TomeCards?.Any(child => child.HostZone == zone && child.HostIndex == index) == true)
+        {
+            var id = FieldCardId((owner, zone, index))!;
+            ShowTomePile(owner, zone, [id], index);
+            return;
+        }
         if (zone == FieldZone.Hand && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)FieldZone.Hand && o.Move.Index < 0 ||
             o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand, Index: < 0 } hand && hand.Owner == owner)) index = -1;
         var field = (owner, zone, index);
@@ -117,6 +133,11 @@ public partial class OnlineArena
             FieldZone.LightEquipment => player.LightEquipment ?? [],
             _ => player.Attached
         };
+        if (zone == FieldZone.Attached && player.TomeCards?.Any(card => card.HostZone == zone) == true)
+        {
+            ShowTomePile(owner, zone, ids);
+            return;
+        }
         var targetable = _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)zone ||
             o.Move.Kind is DuelMoveKind.Choose or DuelMoveKind.UsePurpleRing && o.Field is { } t && t.Owner == owner && t.Zone == zone);
         if (ids.Length == 1 && (targetable || zone == FieldZone.LightEquipment)) { SelectField(owner, zone, 0); return; }
@@ -128,6 +149,29 @@ public partial class OnlineArena
             _ => AttachmentStack.Location(ids, RelikarioCatalog.DisplayNameOf(relikario))
         };
         ShowCards(title, ids, select: targetable ? index => SelectField(owner, zone, index) : null, relikarioOf: _ => relikario);
+    }
+
+    private void ShowTomePile(int owner, FieldZone zone, string[] hosts, int? hostSlot = null)
+    {
+        var player = _snapshot!.Players[owner];
+        var children = player.TomeCards!.Where(card => card.HostZone == zone &&
+            (!hostSlot.HasValue || card.HostIndex == hostSlot)).ToArray();
+        ShowCards("Tomo de Magia y cartas anexadas", hosts.Concat(children.Select(card => card.CardId)).ToArray(),
+            select: index =>
+            {
+                if (index < hosts.Length) SelectField(owner, zone, hostSlot ?? index, inspectTome: false);
+                else
+                {
+                    var child = children[index - hosts.Length];
+                    var snapshot = _snapshot!;
+                    var cost = snapshot.MySeat == owner && snapshot.Options.Any(option =>
+                        option.Move.Kind == DuelMoveKind.DestinyDefense ||
+                        option.Move.Kind == DuelMoveKind.GoldenTotem && child.CardId == CardCatalog.Totem.Id);
+                    if (cost && child.HandIndex is int handIndex) ToggleHandSelection(handIndex);
+                    else SelectField(owner, FieldZone.TomeCard, child.Slot);
+                }
+            }, relikarioOf: _ => player.RelikarioId,
+            inverted: index => index >= hosts.Length && children[index - hosts.Length].Inverted);
     }
 
     private void SelectSkill(int index)

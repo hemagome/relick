@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, RobotizeActionStart, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, RobotizeActionStart, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -41,6 +41,8 @@ public sealed class DieEffect
     // Turbo Overlap rolls both dice up front, then resolves any modifiers in order.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? OverlapSecondDie { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool OverlapSecondDieIsD10 { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public PendingAttackRoll? SkillAttack { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
@@ -73,6 +75,14 @@ public sealed class EngineActivation
     [System.Text.Json.Serialization.JsonIgnore] public int MemorySeat => MemoryOwner ?? Actor;
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public FieldTarget? FieldSource { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? FieldCardId { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? HeldCard { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public TomeCard? TomeSource { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ChooseDieResult { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public EngineActivation? Parent { get; set; }
     public EngineActivation() { }
     public EngineActivation(int actor, string id, int actions, int pr, Phase phase)
@@ -142,6 +152,15 @@ public sealed partial class GameEngine
             case ContinuationKind.ResolveSkillAttack: ResolveSkillAttack(next.Attack!); break;
             case ContinuationKind.RerollDraw: FinishRerollDraw(next); break;
             case ContinuationKind.TurnStartDraw: DrawAtTurnStart(); break;
+            case ContinuationKind.LoadMagicTome: LoadMagicTome(next); break;
+            case ContinuationKind.FieldReturned: FinishFieldReturn(next); break;
+            case ContinuationKind.BikeTurnStart: BeginBikeTurnStart(); break;
+            case ContinuationKind.GhostAttackDie:
+                if (next.Flag || !OfferGhostGift(next.Actor, new EngineContinuation
+                    { Kind = ContinuationKind.GhostAttackDie, Actor = next.Actor, Attack = next.Attack, Flag = true }))
+                    ResolveConfirmedAttackDie(next.Attack!);
+                break;
+            case ContinuationKind.GhostEffectDie: ResolveDieAfterGhost(next.SavedDieEffect!, next.Value); break;
             case ContinuationKind.DrawStageReady: FinishDrawStage(next.Flag); break;
             case ContinuationKind.ReloadHandsResume: ContinueReloadHands(); break;
             case ContinuationKind.QuickLoadDie:
@@ -245,8 +264,8 @@ public sealed partial class GameEngine
                 break;
             case DiePurpose.Relikia:
                 State.LastCombat = $"{p.Name} · Relikia: robar el Bonus · D6 = {die}";
-                Log($"{p.Name} lanza D6 por Relikia: {die}." + (die >= 5 ? " Elige un efecto adicional." : " Sin efecto adicional."));
-                if (die >= 5) BeginRelikiaChoice(RelikiaChoice.BonusReward); break;
+                Log($"{p.Name} lanza D6 por Relikia: {die}." + (die is 5 or 6 ? " Elige un efecto adicional." : " Sin efecto adicional."));
+                if (die is 5 or 6) BeginRelikiaChoice(RelikiaChoice.BonusReward); break;
         }
     }
 
@@ -276,6 +295,7 @@ public sealed partial class GameEngine
     private void CancelActivation(EngineActivation frame)
     {
         if (frame.Kind == ActivationKind.TurnBuff) { CompleteTurnBuff(); return; }
+        if (frame.HeldCard != null) { FinishHeldCard(frame); State.Phase = frame.ResumePhase; return; }
         if (frame.Kind == ActivationKind.FieldCode)
         {
             if (frame.FieldSource is { } source) DestroyCardNow(source);

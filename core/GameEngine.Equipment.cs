@@ -15,18 +15,24 @@ public sealed partial class GameEngine
         var error = ValidateAction(actor);
         if (error != null) return CommandResult.Fail(error);
         var p = State.Players[actor];
-        if (!InHand(p, handIndex) || CardCatalog.Get(p.Hand[handIndex]).Kind != CardKind.Equipment)
-            return CommandResult.Fail("Selecciona un equipo de tu mano.");
-        var id = p.Hand[handIndex];
-        if (onOpponent && id != CardCatalog.MetalHood.Id)
+        if (PlayableHandCard(p, handIndex) is not { } id || CardCatalog.Get(id).Kind != CardKind.Equipment)
+            return CommandResult.Fail("Selecciona un equipo que puedas usar.");
+        if (onOpponent && id != CardCatalog.MetalHood.Id && id != CardCatalog.ThiefGhost.Id)
             return CommandResult.Fail("Este equipo no se puede colocar en el campo rival.");
-        // The card waits in its owner's memory while the activation can still be answered.
-        var corruptOnMemory = p.CorruptsOnMemory(CardZone.Hand, handIndex);
-        var waiting = SendToMemory(p, id, CardZone.Hand, handIndex, notify: false, deferCorruption: true)!;
-        p.RemoveHandCard(handIndex); State.ActionsLeft--;
         var frame = new EngineActivation(actor, id, 1, 0, State.Phase)
-            { Kind = ActivationKind.Equipment, MemoryIndex = waiting.Index, MemoryOwner = waiting.Owner == actor ? null : waiting.Owner,
-                CorruptOnMemory = corruptOnMemory, EquipOpponent = onOpponent };
+        {
+            Kind = ActivationKind.Equipment, EquipOpponent = onOpponent || id == CardCatalog.ThiefGhost.Id
+        };
+        if (handIndex >= TomeHandBase) HoldActivationCard(frame, handIndex);
+        else
+        {
+            frame.CorruptOnMemory = p.CorruptsOnMemory(CardZone.Hand, handIndex);
+            var waiting = SendToMemory(p, id, CardZone.Hand, handIndex, notify: false, deferCorruption: true)!;
+            p.RemoveHandCard(handIndex);
+            frame.MemoryIndex = waiting.Index;
+            frame.MemoryOwner = waiting.Owner == actor ? null : waiting.Owner;
+        }
+        State.ActionsLeft--;
         BeginActivation(frame);
         return CommandResult.Ok();
     }
@@ -38,28 +44,21 @@ public sealed partial class GameEngine
         if (card.LightEquipment)
         {
             var slot = p.LightEquipment?.Count ?? 0;
-            MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p, lightEquipment: true);
-            if (frame.CorruptOnMemory) p.MarkForCorruption(CardZone.LightEquipment, slot);
-            frame.CorruptOnMemory = false;
+            InstallActivationCard(frame, p, CardZone.LightEquipment, slot, light: true);
             Log($"{p.Name} se equipa {card.Name} como equipo ligero (1 acción).");
             CompleteActivationIfFinished();
             return;
         }
         if (CanInstallEquipment(p, card))
         {
-            MoveMemoryCardToField(new(frame.MemorySeat, frame.MemoryIndex), p);
-            if (frame.CorruptOnMemory)
-            {
-                p.MarkForCorruption(CardZone.Equipment, p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1);
-                frame.CorruptOnMemory = false;
-            }
+            var id = InstallActivationCard(frame, p, CardZone.Equipment, p.Equipment == null ? 0 : p.EquipmentStackedCopies + 1);
             if (p.Equipment != null)
             {
                 p.EquipmentStackedCopies++;
                 Log($"{p.Name} apila {CardCatalog.Get(frame.CardId).Name}: {p.EquipmentStackedCopies + 1} copias equipadas.");
                 CompleteActivationIfFinished(); return;
             }
-            p.Equipment = frame.CardId; p.EquipmentDie = 0; p.EquipmentCounters = 0;
+            p.Equipment = id; p.EquipmentDie = 0; p.EquipmentCounters = 0;
             p.EquipmentStackedCopies = 0;
             p.EquipmentExpiresAtTurnStart = card.DestroyAtNextTurnStart;
             if (frame.EquipOpponent)
@@ -71,6 +70,7 @@ public sealed partial class GameEngine
             if (card.Heal > 0) Heal(p, card.Heal);
             if (frame.FinishSniperExchange) CompleteExchange(p);
             if (card.StoreDie) RollEquipmentStorage(p);
+            if (OfferGhostGift(Seat(p), null)) return;
         }
         else
         {
@@ -195,7 +195,7 @@ public sealed partial class GameEngine
             p.EquipmentDie = 0;
             RollEquipmentStorage(p, completed);
         }
-        else Continue(completed);
+        else if (!OfferGhostGift(actor, completed)) Continue(completed);
         return true;
     }
 
@@ -224,11 +224,11 @@ public sealed partial class GameEngine
         return false;
     }
 
-    private bool CanRespondToAttackDie() => HasTurnBuffInHand(State.CurrentPlayer) || HasComboParry(State.CurrentPlayer) ||
+    private bool CanRespondToAttackDie() => CanConvertD10(State.CurrentPlayer) || HasTurnBuffInHand(State.CurrentPlayer) || HasComboParry(State.CurrentPlayer) ||
         HasDestinyPickResponse(State.CurrentPlayer) || CanUseRelikarioOnPendingDie(State.CurrentPlayer) ||
         ActiveEquipment(State.CurrentPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer) ||
         IronwingDieCostLimit(State.CurrentPlayer) > 0;
-    private bool CanRespondToEffectDie() => HasTurnBuffInHand(State.DecisionPlayer) || HasComboParry(State.DecisionPlayer) || CanUseRelikarioOnPendingDie(State.DecisionPlayer) ||
+    private bool CanRespondToEffectDie() => CanConvertD10(State.DecisionPlayer) || HasTurnBuffInHand(State.DecisionPlayer) || HasComboParry(State.DecisionPlayer) || CanUseRelikarioOnPendingDie(State.DecisionPlayer) ||
         ActiveEquipment(State.DecisionPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer) ||
         IronwingDieCostLimit(State.DecisionPlayer) > 0;
 

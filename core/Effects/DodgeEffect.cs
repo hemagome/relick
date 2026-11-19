@@ -25,6 +25,7 @@ internal sealed class DodgeEffect : ICardEffect
             ctx.Draw(1);
             return;
         }
+        if (die > 6) return;
         ctx.NegatePendingAttack();
         ctx.Announce($"{ctx.Player.Name} niega el ataque con Esquivar (dado {die}).");
     }

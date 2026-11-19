@@ -937,13 +937,14 @@ public partial class AttachmentStack : Button
 {
     public IReadOnlyList<string> Cards { get; init; } = [];
     internal int ShieldCount { get; init; }
+    internal int TomeCardCount { get; init; }
     public string? RelikarioId { get; init; }
     /// <summary>Board rows widen the slot so the fanned copies keep the row's full height.</summary>
     public float SlotWidth { get; init; }
     /// <summary>On the desktop board the top card fills the zone; the count tells how many lie under it.</summary>
     public bool Board { get; init; }
     internal bool RaisedPile { get; init; }
-    private int Amount => Cards.Count;
+    private int Amount => Cards.Count + TomeCardCount;
     private float PileWidth => Size.X / (Amount == 0 ? 1 : ShieldCount + 1);
     private Texture2D[] _previews = [];
     internal string? TopCardId { get; private set; }

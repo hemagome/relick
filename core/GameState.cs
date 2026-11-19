@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace Relick.Core;
 
+public enum FutureDieState { Ready, Prepared, Used }
+
 public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse, MemoryRecoveryChoice, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, TotemChoice, GoldenTotemChoice, GoldenTotemResolving, TrapCraftChoice, ZahiraTarget, BlueEggDrawChoice, Decision }
 
 public sealed record LightEquipmentCopy(string CardId, bool Borrowed = false);
@@ -28,6 +30,8 @@ public sealed class PlayerState
     public RelikarioDefinition Relikario { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int EquipmentDie { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public FutureDieState FutureDie { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int EquipmentCounters { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -109,6 +113,10 @@ public sealed class PlayerState
     public List<string> Deck { get; internal set; } = new();
     [JsonInclude]
     public List<string> Hand { get; internal set; } = new();
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HashSet<int>? GhostDogReveals { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HashSet<int>? LockedGhostCards { get; internal set; }
     private readonly HashSet<int> _revealedHandSlots = new();
     [JsonInclude]
     public IReadOnlyCollection<int> RevealedHandSlots
@@ -127,6 +135,8 @@ public sealed class PlayerState
     internal bool RemoveHandCard(int index)
     {
         Hand.RemoveAt(index);
+        GhostDogReveals = ShiftHandSlots(GhostDogReveals, index);
+        LockedGhostCards = ShiftHandSlots(LockedGhostCards, index);
         RemoveCorruptionSlots(CardZone.Hand, index);
         var remaining = _revealedHandSlots.Where(slot => slot != index).Select(slot => slot > index ? slot - 1 : slot).ToArray();
         _revealedHandSlots.Clear();
@@ -136,6 +146,13 @@ public sealed class PlayerState
         _foreignHandSlots.Clear();
         _foreignHandSlots.UnionWith(borrowed);
         return foreign;
+    }
+
+    private static HashSet<int>? ShiftHandSlots(HashSet<int>? slots, int removed)
+    {
+        if (slots == null) return null;
+        var shifted = slots.Where(slot => slot != removed).Select(slot => slot > removed ? slot - 1 : slot).ToHashSet();
+        return shifted.Count == 0 ? null : shifted;
     }
 
     // Cards are plain identifiers, so ownership is tracked beside them. A hand slot listed
@@ -229,11 +246,17 @@ public sealed class GameState
     [JsonInclude]
     public int Turn { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int FieldInstanceSequence { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<TomeCard>? TomeCards { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ExtraDrawStages { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ExtraCombatStages { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ExtraActionStages { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ActionStartActor { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ExtraFinalStages { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -334,7 +357,7 @@ public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, in
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool IronwingPaid = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole, GhostDog }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, [property: JsonPropertyName("YunoStopped")] bool RerollStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 

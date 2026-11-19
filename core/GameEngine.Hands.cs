@@ -10,8 +10,10 @@ public sealed partial class GameEngine
         var id = source.Hand[index];
         var slot = receiver.Hand.Count;
         if (source.CorruptsOnMemory(CardZone.Hand, index)) receiver.MarkForCorruption(CardZone.Hand, slot);
+        var locked = HandCardLocked(source, index);
         var returning = source.RemoveHandCard(index);
         receiver.Hand.Add(id);
+        if (locked) (receiver.LockedGhostCards ??= []).Add(slot);
         if (!returning) MarkBorrowedHandCard(receiver, slot);
         HandCardTaken?.Invoke(Seat(source), Seat(receiver), index, slot);
     }
@@ -23,6 +25,8 @@ public sealed partial class GameEngine
         // The code and any countereffects have already left the hands. Revelations
         // travel with those exact copies, not with the slots on their old owner.
         (p.Hand, rival.Hand) = (rival.Hand, p.Hand);
+        (p.LockedGhostCards, rival.LockedGhostCards) = (rival.LockedGhostCards, p.LockedGhostCards);
+        p.GhostDogReveals = null; rival.GhostDogReveals = null;
         // Ownership stays with each copy: what was the rival's own is now borrowed, and vice versa.
         var borrowed = p.ForeignHandSlots ?? []; var rivalBorrowed = rival.ForeignHandSlots ?? [];
         p.ForeignHandSlots = Enumerable.Range(0, p.Hand.Count).Except(rivalBorrowed).ToArray();

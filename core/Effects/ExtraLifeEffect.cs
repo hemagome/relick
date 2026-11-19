@@ -14,7 +14,7 @@ internal sealed class ExtraLifeEffect : ICardEffect
     public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         var die = next.Value;
-        var amount = die switch { 1 => 1, 2 => 2, 6 => 4, _ => 3 };
+        var amount = die switch { 1 => 1, 2 => 2, 3 or 4 or 5 => 3, 6 => 4, _ => 0 };
         var healed = ctx.Heal(amount);
         ctx.State.LastCombat = $"{ctx.Player.Name} · Vida Extra · D6 = {die} · Recupera {healed} vida(s)";
         ctx.Log($"{ctx.Player.Name} resuelve Vida Extra: D6 = {die}, gana {amount} vida(s); recupera {healed} hasta su máximo de {ctx.Player.MaxHealth}.");

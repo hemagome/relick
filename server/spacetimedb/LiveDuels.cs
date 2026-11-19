@@ -96,7 +96,10 @@ public static partial class Module
             var seesOpponentHand = game.State.Phase == Phase.MagnetChoice && game.State.CurrentPlayer == member.Seat ||
                 game.State.Phase == Phase.Decision && game.State.PendingDecision is { } decision &&
                 decision.Decider == member.Seat && decision.ShowsHandOf == 1 - member.Seat;
+            var tomeHandIndices = own.TomeCards?.Where(card => card.HandIndex.HasValue)
+                .ToDictionary(card => card.Slot, card => card.HandIndex!.Value);
             var privateJson = JsonSerializer.Serialize(new DuelPrivateData { MySeat = member.Seat,
+                TomeHandIndices = tomeHandIndices is { Count: > 0 } ? tomeHandIndices : null,
                 AutoPassCombos = view.AutoPassCombos,
                 OwnHand = own.Hand, OwnHandOwners = own.HandOwners,
                 OpponentHand = seesOpponentHand ? rival.Hand : [], OpponentHandOwners = seesOpponentHand ? rival.HandOwners : null }, DuelJson.Default.DuelPrivateData);
@@ -191,8 +194,14 @@ public static partial class Module
         var options = DuelOptions.For(game, me.Seat);
         if (option < 0 || option >= options.Count) { WriteMoveResult(ctx, commandId, false, "Esa jugada no está disponible."); return; }
         var choice = options[option];
-        var selectionCount = choice.Move.Kind == DuelMoveKind.Recycle ? game.State.Players[me.Seat].Memory.Count : game.State.Players[me.Seat].Hand.Count;
-        if (selected.Count != choice.RequiredDiscards || selected.Any(i => i >= selectionCount)) { WriteMoveResult(ctx, commandId, false, $"Selecciona exactamente {choice.RequiredDiscards} carta(s) válidas."); return; }
+        var validSlots = choice.Move.Kind switch
+        {
+            DuelMoveKind.Recycle => Enumerable.Range(0, game.State.Players[me.Seat].Memory.Count),
+            DuelMoveKind.GoldenTotem => game.PlayableTotems(me.Seat),
+            DuelMoveKind.DestinyDefense => game.PlayableCards(me.Seat).Select(card => card.Index),
+            _ => Enumerable.Empty<int>()
+        };
+        if (selected.Count != choice.RequiredDiscards || selected.Except(validSlots).Any()) { WriteMoveResult(ctx, commandId, false, $"Selecciona exactamente {choice.RequiredDiscards} carta(s) válidas."); return; }
         choice.Move.Discards = selected.ToArray(); random.Record(max => ctx.Rng.Next(max));
         var visuals = DuelVisualEvents.Capture(game);
         var result = choice.Move.Apply(game, me.Seat);

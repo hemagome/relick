@@ -8,6 +8,8 @@ public sealed class EngineFrameSnapshot
     public EngineActivation Frame { get; set; } = new();
     public int Parent { get; set; } = -1;
 }
+public sealed record RamBatchSnapshot(RamResolution Resolution, int[] Links);
+
 public sealed class EngineSnapshot
 {
     public int FormatVersion { get; set; } = 1;
@@ -17,7 +19,11 @@ public sealed class EngineSnapshot
     public int Active { get; set; } = -1;
     public int[] Chain { get; set; } = [];
     public Phase ErrorResume { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<RamBatchSnapshot>? Ram { get; set; }
     public string DieCaption { get; set; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool DieIsD10 { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DuelHistory? PublicHistory { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -45,7 +51,9 @@ public sealed partial class GameEngine
         }
         // Version 1 duels keep the original cost and decisions so cached option indices stay valid.
         var snapshot = new EngineSnapshot { FormatVersion = LegacyBlueEgg ? 1 : 2, State = State, PendingDie = _pendingDieEffect, ErrorResume = _errorResumePhase,
-            DieCaption = CurrentDieCaption, PublicHistory = PublicHistory, EndReason = PublicEndReason, Active = Register(_activeActivation), Chain = _activationChain.Select(Register).ToArray(), Frames = frames };
+            DieCaption = CurrentDieCaption, DieIsD10 = CurrentDieIsD10, PublicHistory = PublicHistory, EndReason = PublicEndReason, Active = Register(_activeActivation), Chain = _activationChain.Select(Register).ToArray(), Frames = frames };
+        if (_ramResolutions.Count > 0)
+            snapshot.Ram = _ramResolutions.Select(batch => new RamBatchSnapshot(batch, batch.Links.Select(Register).ToArray())).ToList();
         // Online snapshots never retain an ever-growing log. The private audit has its own retention.
         var log = State.Log;
         if (!keepLog) State.Log = [];
@@ -75,8 +83,14 @@ public sealed partial class GameEngine
             throw new InvalidOperationException("Activación persistida inválida.");
         for (var i = 0; i < saved.Frames.Count; i++) saved.Frames[i].Frame.Parent = Frame(saved.Frames[i].Parent);
         var game = new GameEngine(saved.State, random) { LegacyBlueEgg = saved.FormatVersion == 1, _pendingDieEffect = saved.PendingDie, _errorResumePhase = saved.ErrorResume,
-            _activeActivation = Frame(saved.Active), CurrentDieCaption = saved.DieCaption, PublicHistory = saved.PublicHistory, PublicEndReason = saved.EndReason };
+            _activeActivation = Frame(saved.Active), CurrentDieCaption = saved.DieCaption,
+            CurrentDieIsD10 = saved.DieIsD10 || saved.State.LastDie > 6 || saved.DieCaption.StartsWith("Era Futurista · D10", StringComparison.Ordinal), PublicHistory = saved.PublicHistory, PublicEndReason = saved.EndReason };
         game._activationChain.AddRange(saved.Chain.Select(i => Frame(i) ?? throw new InvalidOperationException("Cadena persistida inválida.")));
+        foreach (var batch in saved.Ram ?? [])
+        {
+            batch.Resolution.Links.AddRange(batch.Links.Select(i => Frame(i)!));
+            game._ramResolutions.Add(batch.Resolution);
+        }
         return game;
     }
 }

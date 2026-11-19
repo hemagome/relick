@@ -33,6 +33,7 @@ public sealed partial class GameEngine
                 pending.SniperIndices[owner].Add(landed.Index); sniperOwners[owner].Add(landed.Owner);
             }
             p.Hand.Clear(); p.HideHandCards(); p.ForeignHandSlots = null;
+            p.GhostDogReveals = null; p.LockedGhostCards = null;
             p.ClearCorruptionMarks(CardZone.Hand);
         }
         if (Enumerable.Range(0, 2).Any(owner => sniperOwners[owner].Any(seat => seat != owner))) pending.SniperOwners = sniperOwners;

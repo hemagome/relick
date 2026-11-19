@@ -12,7 +12,8 @@ internal sealed class PointsIncreaseEffect : ICardEffect
     public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         var die = next.Value;
-        var points = die switch { 1 => 300, 2 => 400, 3 or 4 => 500, 5 => 1000, _ => 1500 };
+        var points = die switch { 1 => 300, 2 => 400, 3 or 4 => 500, 5 => 1000, 6 => 1500, _ => 0 };
+        if (points == 0) return;
         ctx.Announce($"{ctx.Player.Name} · Aumento de Relick Points · D6 = {die} · Elige destino de {points} PR");
         ctx.Ask(Target, DecisionKind.Confirm, $"Elige a quién sumar o restar {points} PR", allowsCombos: true, announce: false, value: points);
     }

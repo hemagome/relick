@@ -190,6 +190,11 @@ public partial class OnlineLobby
                 await online.CheckEllieLayout(); online.QueueFree(); await Layout();
                 QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--new-cards-only"))
+            {
+                await online.CheckNewCardsLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--robotize-only"))
             {
                 await online.CheckRobotizeLayout(); online.QueueFree(); await Layout();
@@ -388,6 +393,7 @@ public partial class OnlineLobby
             await online.CheckVictoriousManualControlLayout();
             await online.CheckEllieLayout();
             await online.CheckRobotizeLayout();
+            await online.CheckNewCardsLayout();
             await online.CheckComboParryLayout();
             await online.CheckMetalHoodLayout();
             await online.CheckDestinyPickLayout();

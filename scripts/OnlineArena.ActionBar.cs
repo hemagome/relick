@@ -61,7 +61,7 @@ public partial class OnlineArena
     }
 
     private static bool IsHandAction(DuelMoveKind kind) => kind is DuelMoveKind.Learn or DuelMoveKind.Attack or DuelMoveKind.PlayCode or
-        DuelMoveKind.Equip or DuelMoveKind.ActivateArea or DuelMoveKind.Exchange or DuelMoveKind.Discard or DuelMoveKind.Placement or DuelMoveKind.TurnBuffDiscard;
+        DuelMoveKind.Equip or DuelMoveKind.ActivateArea or DuelMoveKind.Exchange or DuelMoveKind.RevealGhostDog or DuelMoveKind.Discard or DuelMoveKind.Placement or DuelMoveKind.TurnBuffDiscard;
 
     private string? OptionCardId(DuelOption option)
     {
@@ -159,7 +159,7 @@ public partial class OnlineArena
     {
         var s = _snapshot!;
         var indices = Enumerable.Range(0, s.Options.Count).Where(i => s.Options[i].Move.Kind is not
-            (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve or DuelMoveKind.DestinyPickMemory)).ToList();
+            (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve or DuelMoveKind.DestinyPickMemory or DuelMoveKind.PrepareD10)).ToList();
         // Responses must remain visible even with no hand card (or another card) selected.
         if (s.Phase == Phase.ErrorResponse)
             indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
@@ -399,9 +399,16 @@ public partial class OnlineArena
     private static bool OffersParryResponse(DuelSnapshot s) => s.Options.Any(option =>
         option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.Id == CardCatalog.ComboParry.Id);
 
-    private static string ActivationResponseCard(DuelSnapshot s) =>
-        OffersParryResponse(s) && !s.Options.Any(option => option.Move.Kind == DuelMoveKind.PlayCode &&
-            ArenaActionText.HandCard(option, s)?.CancelActivation == true) ? CardCatalog.ComboParry.Id : CardCatalog.LoadError.Id;
+    private static bool OffersCopyResponse(DuelSnapshot s) => s.Options.Any(option =>
+        option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id);
+
+    private static string ActivationResponseCard(DuelSnapshot s)
+    {
+        if (s.Options.Any(option => option.Move.Kind == DuelMoveKind.PlayCode &&
+            ArenaActionText.HandCard(option, s)?.CancelActivation == true)) return CardCatalog.LoadError.Id;
+        if (OffersCopyResponse(s)) return CardCatalog.CopyHelmet.Id;
+        return OffersParryResponse(s) ? CardCatalog.ComboParry.Id : CardCatalog.LoadError.Id;
+    }
 
     private string? InspectorActivationId() =>
         !_preparing && _snapshot is { } s && s.DecisionPlayer == s.MySeat
@@ -536,7 +543,7 @@ public partial class OnlineArena
     {
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
-        if (s.Phase == Phase.ErrorResponse && myTurn && OffersParryResponse(s))
+        if (s.Phase == Phase.ErrorResponse && myTurn && (OffersParryResponse(s) || OffersCopyResponse(s)))
             return "Elige cómo responder a la activación o deja que se resuelva.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return s.ErrorAfterDie
             ? $"Dado final: {s.Die}. Anula el código ahora o deja que termine su efecto." : "Anula la activación o deja que se resuelva.";

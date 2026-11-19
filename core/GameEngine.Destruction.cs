@@ -26,7 +26,7 @@ public sealed partial class GameEngine
         if (checkShield && TryProtectWithGalacticShield(target, completed)) return;
         var p = State.Players[target.Owner];
         var cover = Enumerable.Range(0, p.EquipmentCovers?.Count ?? 0).LastOrDefault(index =>
-            p.EquipmentCovers![index] == CardCatalog.GoldenTotem.Id && !EffectsSuppressed(target.Owner, FieldZone.EquipmentCover, index), -1);
+            CardCatalog.TextId(p.EquipmentCovers![index]) == CardCatalog.GoldenTotem.Id && !EffectsSuppressed(target.Owner, FieldZone.EquipmentCover, index), -1);
         if (target.Zone == FieldZone.Equipment && target.CardId == CardCatalog.Totem.Id &&
             cover >= 0)
         {
@@ -72,6 +72,19 @@ public sealed partial class GameEngine
         var p = State.Players[target.Owner];
         switch (target.Zone)
         {
+            case FieldZone.TomeCard:
+                if (State.TomeCards?.Find(card => card.Slot == target.Index) is { } child)
+                {
+                    if (TomeProtects(p, child))
+                    {
+                        if (!child.Inverted) InvertTomeCard(child);
+                        return;
+                    }
+                    RemoveTomeChild(child.Slot);
+                    ChangeZahiraHosts(target.Owner, target.Zone, target.Index);
+                    SendToMemory(State.Players[child.OriginalOwner], child.CardId, CardZone.TomeCard, child.Slot, marked: child.Marked);
+                }
+                return;
             case FieldZone.Equipment: DestroyEquipmentNow(p, target.Index); return;
             case FieldZone.LightEquipment:
                 SendToMemory(p, target.CardId, CardZone.LightEquipment, target.Index);

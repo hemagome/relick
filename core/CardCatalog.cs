@@ -192,10 +192,42 @@ public static class CardCatalog
     public static readonly CardDefinition LoadError = new("load-error", "Error de Carga", CardKind.Code,
         "COMBO. Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria.", CodeType: CodeType.Play, IsCombo: true, CancelActivation: true);
 
-    public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick }.ToDictionary(c => c.Id);
+    public static readonly CardDefinition MagicTome = new("tomo-de-magia", "Tomo de Magia", CardKind.Code,
+        "Coloca esta carta encima de tu Relikario y endereza 2 cartas del tope de tu mazo encima de esta carta. Puedes usar esas cartas enderezadas como si estuvieran en tu mano. Si alguna fuera a ir a la memoria, inviértela en su lugar.",
+        CodeType: CodeType.Object);
+    public static readonly CardDefinition MouseBike = new("vehiculo-moto-raton", "Vehículo: Moto-Ratón", CardKind.Equipment,
+        "Al inicio de tu turno, elige robar una carta extra en tu etapa de robo o ganar una acción extra en tu turno.");
+    public static readonly CardDefinition FutureEra = new("era-futurista", "Era Futurista", CardKind.Area,
+        "Lado A: activa un Robotizar de fuera de la partida. Lado B: una vez por partida, cada jugador puede lanzar 1D10 en vez de 1D6 y considerar como 6 un resultado mayor que 6.");
+    public static readonly CardDefinition CopyHelmet = new("casco-de-copias", "Casco de Copias", CardKind.Code,
+        "COMBO. Selecciona un Objeto o Personaje que se esté activando. Esta carta se vuelve un clon de la carta objetivo y se activa sin gastar otra acción.",
+        CodeType: CodeType.Object, IsCombo: true);
+    public static readonly CardDefinition GlassFlute = new("flauta-de-vidrio", "Flauta de Vidrio", CardKind.Code,
+        "Envía una carta del campo a la mano de su dueño.", CodeType: CodeType.Object);
+    public static readonly CardDefinition ThiefGhost = new("fantasma-ladron", "Fantasma Ladrón", CardKind.Equipment,
+        "Equipa esta carta a tu adversario. Al equipar o cuando quien la lleva saca 1, 2 o 3 en un dado, revela su mano y entrega un Objeto al adversario.");
+    public static readonly CardDefinition GhostDog = new("perro-fantasma", "Perro Fantasma", CardKind.Code,
+        "Lanza 1D6 y añade una carta a tu mano. 2: cualquier Bonus. 3–4: cualquier memoria. 5–6: las cartas corruptas, sin poder usarla este turno. Como una acción, revela esta carta en tu mano. Al inicio de tu siguiente etapa de acciones, si sigue en tu mano, actívala gratis y escoge el resultado.",
+        CodeType: CodeType.Character);
 
-    public static CardDefinition Get(string id) => All[id];
+    public static readonly IReadOnlyDictionary<string, CardDefinition> All =
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, ThiefGhost, GhostDog }.ToDictionary(c => c.Id);
+
+    // A field instance can carry copied text and a different physical card.
+    internal static string TextId(string id)
+    {
+        var separator = id.IndexOf('~');
+        return separator < 0 ? id : id[..separator];
+    }
+
+    internal static string? PhysicalId(string id)
+    {
+        var separator = id.IndexOf('~');
+        if (separator < 0) return id;
+        var end = id.IndexOf('~', separator + 1);
+        return end == separator + 1 ? null : id[(separator + 1)..end];
+    }
+    public static CardDefinition Get(string id) => All[TextId(id)];
 
     public static List<string> TrainingDeck() =>
         Enumerable.Repeat(Attack.Id, 12)

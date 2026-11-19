@@ -159,7 +159,7 @@ public sealed partial class GameEngine
             if (card.Heal > 0) Heal(p, card.Heal);
             if (card.StoreDie) { RollEquipmentStorage(p, after); return; }
         }
-        Continue(after);
+        if (!OfferGhostGift(next.Actor, after)) Continue(after);
     }
 
     private void PresentEquipmentRaidReward(int holder)

@@ -3,7 +3,7 @@ namespace Relick.Core;
 public sealed partial class GameEngine
 {
     private bool HasComboParry(int actor) => ComboResponsesEnabled(actor) &&
-        State.Players[actor].Hand.IndexOf(CardCatalog.ComboParry.Id) is var slot && slot >= 0 && CodeUnavailableReason(actor, slot) == null;
+        PlayableCards(actor).Any(card => card.Id == CardCatalog.ComboParry.Id && CodeUnavailableReason(actor, card.Index) == null);
 
     private bool CanParryActivation(int actor) => !State.ErrorAfterDie &&
         State.ErrorResponder == actor && _activationChain.Count == 1;

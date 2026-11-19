@@ -48,6 +48,7 @@ public sealed partial class GameEngine
             for (var i = 0; i < p.Skills.Count; i++) yield return new(owner, FieldZone.Skill, i, p.Skills[i]);
             for (var i = 0; i < p.AttachedCards.Count; i++) yield return new(owner, FieldZone.Attached, i, p.AttachedCards[i]);
             foreach (var shield in GalacticShieldTargets(owner)) yield return shield;
+            foreach (var child in TomeFieldTargets(owner)) yield return child;
             if (p.Bonus is { } bonus) yield return new(owner, FieldZone.Bonus, -1, bonus);
             if (p.Area is { } area) yield return new(owner, FieldZone.Area, -1, area);
             for (var i = 0; i < p.Exchange.Count; i++) yield return new(owner, FieldZone.Exchange, i, p.Exchange[i]);
@@ -73,6 +74,8 @@ public sealed partial class GameEngine
     {
         { Zone: FieldZone.Zahira } host => ZahiraRootZone(host.Owner, ZahiraSlot(host.Index)),
         { Zone: FieldZone.Attached or FieldZone.GalacticShield } => FieldZone.Relikario,
+        { Zone: FieldZone.TomeCard } host => TomeHostZone(host.Owner, host.Index) is FieldZone.Attached ? FieldZone.Relikario :
+            TomeHostZone(host.Owner, host.Index),
         { } host => host.Zone,
         _ => null
     };
@@ -134,6 +137,7 @@ public sealed partial class GameEngine
         if (State.Players[actor].Zahira(slot) is not { } host) { CompletePendingPlay(); return; }
         State.LastCombat = $"{State.Players[actor].Name} · Zahira Flair · D6 = {die}";
         Log(State.LastCombat);
+        if (die > 6) { CompletePendingPlay(); return; }
         if (die <= 2) RequestDestruction(new(actor, FieldZone.Zahira, ZahiraIndex(slot), CardCatalog.ZahiraFlair.Id));
         else if (die <= 4) BeginZahiraPlacement(actor, creating: false, slot);
         else if (host.Zone == FieldZone.Relikario) DealDamage(host.Owner, 2, source: actor);
@@ -159,7 +163,13 @@ public sealed partial class GameEngine
             var p = State.Players[trapOwner];
             // Removing one Zahira Flair can already have taken away another that rested on it.
             if (p.Zahira(slot) != host || host.Owner != owner || host.Zone != zone || host.Index < index) continue;
-            if (zone == FieldZone.Zahira)
+            if (zone == FieldZone.TomeCard)
+            {
+                if (host.Index != index) continue;
+                if (movedTo != null) p.SetZahira(slot, movedTo);
+                else RemoveZahira(trapOwner, slot);
+            }
+            else if (zone == FieldZone.Zahira)
             {
                 // The two copies keep their own places, so nothing shifts when one of them leaves.
                 if (host.Index == index) RemoveZahira(trapOwner, slot);
