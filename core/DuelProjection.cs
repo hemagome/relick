@@ -160,7 +160,7 @@ public sealed class DuelSnapshot
             stagePhase = stageDecision.ResumePhase;
             stageDecision = stageDecision.Suspended;
         }
-        return stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
+        return stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
             stagePhase == Phase.Decision ? stageDecision!.ResumePhase :
             stagePhase == Phase.MemoryRecoveryChoice ? Phase.Actions :
             stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :

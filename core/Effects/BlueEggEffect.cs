@@ -8,13 +8,22 @@ internal sealed class BlueEggEffect : CardEffect
 
     public override string CardId => CardCatalog.BlueEgg.Id;
 
+    private const string TargetInstruction = "Elige una no-habilidad del campo para destruir";
+
+    /// <summary>The target choice as <c>Resolve</c> opens it; duels saved in the former destruction phase become this decision.</summary>
+    internal static PendingDecision TargetDecision(int actor, Phase resumePhase) => new()
+    {
+        Source = CardCatalog.BlueEgg.Id, Step = FieldDestruction.Target, Decider = actor, Kind = DecisionKind.ChooseTarget,
+        Instruction = TargetInstruction, AllowsCombos = true, ResumePhase = resumePhase
+    };
+
     public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         ctx.NonSkillFieldCards().Any() ? null : "No hay no-habilidades en el campo para destruir.";
 
     public override void Resolve(GameEngine.EffectContext ctx)
     {
         if (!ctx.NonSkillFieldCards().Any()) { ctx.Log($"{ctx.Card.Name} se resuelve sin objetivos disponibles."); return; }
-        ctx.Ask(FieldDestruction.Target, DecisionKind.ChooseTarget, "Elige una no-habilidad del campo para destruir", allowsCombos: true, announce: false);
+        ctx.Ask(FieldDestruction.Target, DecisionKind.ChooseTarget, TargetInstruction, allowsCombos: true, announce: false);
     }
 
     public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => decision.Step switch

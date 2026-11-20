@@ -579,8 +579,6 @@ public partial class OnlineArena
             var defense = s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.DestinyDefense && o.Move.Index == _selectedSkill);
             if (defense != null) return $"Descartes {_selected.Count}/{defense.RequiredDiscards} · confirma para defender.";
         }
-        if (s.Phase == Phase.DestroyChoice && myTurn && _fieldSelection == null) return "Elige un objetivo en el tablero.";
-        if (s.Phase == Phase.DestroyChoice && myTurn && _fieldSelection?.Zone == FieldZone.Hand) return "Se destruirá una carta al azar de esa mano.";
         if (s.Phase == Phase.MagnetChoice && myTurn && _fieldSelection == null) return "Elige una carta de la mano rival o su Bonus.";
         if (_selected.Count == 1 && !ChoosingEffectCards && !ChoosingRecycling && !_skillContext && _fieldSelection == null)
         {

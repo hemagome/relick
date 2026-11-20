@@ -5,13 +5,22 @@ internal sealed class TimeBombEffect : CardEffect
 {
     public override string CardId => CardCatalog.TimeBomb.Id;
 
+    private const string TargetInstruction = "Elige una zona: se destruye una carta de ella";
+
+    /// <summary>The zone choice as <c>Resolve</c> opens it; duels saved in the former destruction phase become this decision.</summary>
+    internal static PendingDecision TargetDecision(int actor, Phase resumePhase) => new()
+    {
+        Source = CardCatalog.TimeBomb.Id, Step = FieldDestruction.Target, Decider = actor, Kind = DecisionKind.ChooseTarget,
+        Instruction = TargetInstruction, AllowsCombos = true, ResumePhase = resumePhase
+    };
+
     public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         ctx.ZoneTargets(ctx.Actor, excludedHand).Any() ? null : "No hay cartas en equipos, manos o Bonus para destruir.";
 
     public override void Resolve(GameEngine.EffectContext ctx)
     {
         if (!ctx.ZoneTargets().Any()) { ctx.Log($"{ctx.Card.Name} se resuelve sin objetivos disponibles."); return; }
-        ctx.Ask(FieldDestruction.Target, DecisionKind.ChooseTarget, "Elige una zona: se destruye una carta de ella", allowsCombos: true, announce: false);
+        ctx.Ask(FieldDestruction.Target, DecisionKind.ChooseTarget, TargetInstruction, allowsCombos: true, announce: false);
     }
 
     public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) =>

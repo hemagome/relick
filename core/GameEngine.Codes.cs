@@ -11,9 +11,6 @@ public sealed partial class GameEngine
 
     private int CodePrCost(CardDefinition card) => CodePrCost(card, LegacyBlueEgg);
 
-    public bool IsZoneDestruction => State.Phase == Phase.DestroyChoice && _activeActivation is { Kind: ActivationKind.Code } frame &&
-        frame.CardId == CardCatalog.TimeBomb.Id;
-
     private IEnumerable<FieldTarget> TimeBombTargets(int excludedOwner = -1, int excludedHand = -1)
     {
         for (var owner = 0; owner < State.Players.Length; owner++)
@@ -35,15 +32,8 @@ public sealed partial class GameEngine
         }
     }
 
-    public IEnumerable<FieldTarget> DestructionTargets()
-    {
-        if (State.Phase == Phase.DestroyChoice && IsZoneDestruction)
-        {
-            foreach (var target in TimeBombTargets()) yield return target;
-            yield break;
-        }
-        foreach (var target in NonSkillFieldCards()) yield return target;
-    }
+    /// <summary>The non-skill cards on the field that Huevo Azul Explosivo may destroy.</summary>
+    public IEnumerable<FieldTarget> DestructionTargets() => NonSkillFieldCards();
 
     private IEnumerable<FieldTarget> NonSkillFieldCards()
     {
@@ -121,29 +111,12 @@ public sealed partial class GameEngine
 
     public CommandResult ResolveDestruction(int actor, int owner, FieldZone zone, int index = -1)
     {
-        // Huevo Azul and Bomba de Tiempo now ask through a decision; this command still answers it.
+        // Huevo Azul and Bomba de Tiempo ask through a decision; this command from recorded duels still answers it.
         if (State.PendingDecision is { Step: FieldDestruction.Target } pending &&
             ResolveDecisionWhere(actor, pending.Source, c => c.Field is { } t && t.Owner == owner && t.Zone == zone &&
                 // Bomba chooses zones: a hand card is drawn at random, so naming its position is refused.
                 (t.Index == index || pending.Source != CardCatalog.TimeBomb.Id && zone is FieldZone.Equipment or FieldZone.Bonus)) is { } answered) return answered;
-        // Legacy: a duel saved while the destruction phase was pending.
-        if (State.Phase != Phase.DestroyChoice || State.DestroyActor != actor) return CommandResult.Fail("No te corresponde elegir objetivo.");
-        if (IsZoneDestruction && index != -1 && zone is not (FieldZone.EquipmentCover or FieldZone.LightEquipment))
-            return CommandResult.Fail("Elige una zona; la carta de la mano se escoge al azar.");
-        var target = DestructionTargets().FirstOrDefault(t => t.Owner == owner && t.Zone == zone && (zone is FieldZone.Equipment or FieldZone.Bonus || t.Index == index));
-        if (target == null) return CommandResult.Fail("Elige un objetivo válido para esta destrucción.");
-        var p = State.Players[owner];
-        var codeName = _activeActivation is { } frame ? CardCatalog.Get(frame.CardId).Name : CardCatalog.BlueEgg.Name;
-        var id = target.CardId;
-        if (zone == FieldZone.Hand)
-        {
-            index = _random.Next(p.Hand.Count);
-            id = p.Hand[index];
-        }
-        var chosen = target with { Index = index, CardId = id };
-        var completed = new EngineContinuation { Kind = ContinuationKind.FinishCodeDestruction, Actor = actor, Target = chosen, Text = codeName };
-        if (!TryReplaceOpponentFieldEffect(actor, chosen, completed)) RequestDestruction(chosen, completed);
-        return CommandResult.Ok();
+        return CommandResult.Fail("No te corresponde elegir objetivo.");
     }
 
     private void OfferBlueEggDraw(int actor)

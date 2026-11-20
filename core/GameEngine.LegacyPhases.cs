@@ -11,16 +11,17 @@ public sealed partial class GameEngine
     {
         // The former Tótem de Oro phase kept an empty placement record; the decision opens the placement itself.
         var formerGoldenTotem = State.Phase == Phase.GoldenTotemChoice || State.PendingTurnBuff?.ResumePhase == Phase.GoldenTotemChoice;
-        if (LegacyDecision(State.Phase, _activeActivation) is { } decision)
+        if (LegacyDecision(State.Phase, _activeActivation, State.DestroyActor) is { } decision)
         {
             State.PendingDecision = decision;
             State.Phase = Phase.Decision;
-            State.PendingTotemDamage = null;
+            State.PendingTotemDamage = null; State.DestroyActor = null;
         }
-        if (State.PendingTurnBuff is { } buff && LegacyDecision(buff.ResumePhase, TurnBuffParentFrame()) is { } stashed)
+        if (State.PendingTurnBuff is { } buff && LegacyDecision(buff.ResumePhase, TurnBuffParentFrame(), buff.DestroyActor) is { } stashed)
         {
             buff.Decision = stashed;
             buff.ResumePhase = Phase.Decision;
+            buff.DestroyActor = null;
         }
         if (formerGoldenTotem) State.PendingGoldenTotem = null;
     }
@@ -34,13 +35,17 @@ public sealed partial class GameEngine
     }
 
     /// <summary>The decision that replaced <paramref name="phase"/>, for the activation that was waiting in it; null for any other phase.</summary>
-    private PendingDecision? LegacyDecision(Phase phase, EngineActivation? frame) => phase switch
+    private PendingDecision? LegacyDecision(Phase phase, EngineActivation? frame, int? destroyActor) => phase switch
     {
         Phase.TotemChoice when State.PendingTotemDamage is { } totem => SalvationTotemEffect.LethalDecision(totem),
         Phase.DeckSearchChoice when frame is { Kind: ActivationKind.Code } search && search.CardId == CardCatalog.KonamyCode.Id =>
             KonamyCodeEffect.SearchDecision(search.Actor, search.ResumePhase),
         Phase.GoldenTotemChoice when frame is { Kind: ActivationKind.Code } gold && gold.CardId == CardCatalog.GoldenTotem.Id =>
             GoldenTotemEffect.ShowDecision(gold.Actor, gold.ResumePhase),
+        Phase.DestroyChoice when destroyActor is int actor && frame is { Kind: ActivationKind.Code } code && code.CardId == CardCatalog.BlueEgg.Id =>
+            BlueEggEffect.TargetDecision(actor, code.ResumePhase),
+        Phase.DestroyChoice when destroyActor is int actor && frame is { Kind: ActivationKind.Code } code && code.CardId == CardCatalog.TimeBomb.Id =>
+            TimeBombEffect.TargetDecision(actor, code.ResumePhase),
         _ => null
     };
 }

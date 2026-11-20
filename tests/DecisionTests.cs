@@ -50,7 +50,7 @@ static class DecisionTests
             Check(g.State.Phase == Phase.Decision && g.State.PendingDecision is { Source: "blue-egg", Step: "target" } restored && restored.ResumePhase == pending.ResumePhase);
             Check(g.ResolveDestruction(0, 1, FieldZone.Bonus).Success && rival.Memory.Contains(CardCatalog.Senshuni.Id) && g.State.Phase == Phase.Actions);
         }),
-        ("Decisión: un duelo guardado con la fase anterior de Huevo se termina con sus jugadas de entonces", () =>
+        ("Decisión: un duelo guardado con la fase anterior de Huevo se abre como decisión y acepta sus jugadas de entonces", () =>
         {
             var g = Fixture(CardCatalog.BlueEgg.Id); var p = g.State.Active; var rival = g.State.Players[1];
             p.Relikia = 200; rival.Equipment = CardCatalog.Pendant.Id; p.Bonus = CardCatalog.Senshuni.Id;
@@ -59,10 +59,10 @@ static class DecisionTests
             var json = JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
             state["Phase"] = (int)Phase.DestroyChoice; state["DestroyActor"] = 0; state.Remove("PendingDecision");
             var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom()); p = legacy.State.Active; rival = legacy.State.Players[1];
-            var destroy = DuelOptions.For(legacy, 0).Single(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == 1);
-            Check(destroy.Move.Kind == DuelMoveKind.Destroy && destroy.Move.Apply(legacy, 0).Success && rival.Equipment == null);
-            Check(legacy.State.Phase == Phase.BlueEggDrawChoice && DuelOptions.For(legacy, 0).Count(o => o.Move.Kind == DuelMoveKind.BlueEggDraw) == 2);
-            Check(legacy.ResolveBlueEggDraw(0, false).Success && legacy.State.Phase == Phase.Actions && p.Relikia == 200);
+            Check(legacy.State.PendingDecision is { Source: "blue-egg", Step: "target", AllowsCombos: true, Decider: 0 } && legacy.State.DestroyActor == null);
+            Check(new DuelMove { Kind = DuelMoveKind.Destroy, Target = 1, Value = (int)FieldZone.Equipment, Index = -1 }.Apply(legacy, 0).Success && rival.Equipment == null);
+            Check(legacy.State.PendingDecision is { Source: "blue-egg", Step: "draw" } && legacy.ResolveBlueEggDraw(0, false).Success &&
+                legacy.State.Phase == Phase.Actions && p.Relikia == 200);
         }),
         ("Decisión: una tirada guardada antes de mover Vida Extra a su módulo termina con la regla anterior", () =>
         {

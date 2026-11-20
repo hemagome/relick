@@ -43,11 +43,6 @@ static class SimulationDriver
             return error >= 0 && game.CodeUnavailableReason(actor, error) == null ? game.PlayCode(actor, error) : game.PassErrorResponse(actor);
         }
         if (game.CanEvolve(actor)) return game.Evolve(actor);
-        if (s.Phase == Phase.DestroyChoice)
-        {
-            var target = game.DestructionTargets().OrderBy(t => t.Owner == actor).First();
-            return game.ResolveDestruction(actor, target.Owner, target.Zone, target.Index);
-        }
         if (s.Phase is Phase.DieRerollChoice or Phase.AttackRerollChoice)
         {
             var attack = s.Phase == Phase.AttackRerollChoice;

@@ -258,30 +258,6 @@ public static class DuelOptions
                         Add(DuelMoveKind.Points, "Disminuir PR de " + s.Players[owner].Name, target: owner);
                     }
                     break;
-                case Phase.DestroyChoice:
-                    foreach (var t in game.DestructionTargets())
-                    {
-                        if (game.IsZoneDestruction)
-                        {
-                            var own = t.Owner == actor;
-                            var place = t.Zone switch
-                            {
-                                FieldZone.Hand => own ? "Tu mano al azar" : "Mano rival al azar",
-                                FieldZone.Equipment => own ? "Tu equipo" : "Equipo rival",
-                                FieldZone.EquipmentCover => $"{(own ? "Tu" : "Rival")} Tótem de Oro · copia {t.Index + 1}",
-                                FieldZone.Zahira => $"{(own ? "Tu" : "Rival")} Zahira Flair{(GameEngine.ZahiraSlot(t.Index) > 0 ? " · segunda copia" : "")}",
-                                FieldZone.Area => own ? "Tu Área" : "Área rival",
-                                FieldZone.LightEquipment => GameEngine.FieldPlace(s, t, actor),
-                                _ => own ? "Tu Bonus" : "Bonus rival"
-                            };
-                            Add(DuelMoveKind.Destroy, place, t.Index, (int)t.Zone, t.Owner);
-                            continue;
-                        }
-                        var zone = t.Zone switch { FieldZone.Equipment or FieldZone.EquipmentCover => "equipo", FieldZone.LightEquipment => "equipo ligero",
-                            FieldZone.Attached => $"sobre {s.Players[t.Owner].Relikario.DisplayName}", FieldZone.Bonus => "Bonus", _ => "canje" };
-                        Add(DuelMoveKind.Destroy, $"Destruir {Card(t.CardId)} de {s.Players[t.Owner].Name} · {zone}" + (t.Index >= 0 ? $" {t.Index + 1}" : ""), t.Index, (int)t.Zone, t.Owner);
-                    }
-                    break;
                 case Phase.Decision:
                     var choices = game.DecisionChoices(actor);
                     for (var i = 0; i < choices.Count; i++)
