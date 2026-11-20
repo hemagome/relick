@@ -116,22 +116,6 @@ public sealed partial class GameEngine
     }
 
     // Each Zahira Flair of the waiting player rolls once per final stage, in the order they were created.
-    private bool TryRollZahiraAtFinal()
-    {
-        var owner = 1 - State.CurrentPlayer;
-        var p = State.Players[owner];
-        // Snapshots taken before a second copy existed only recorded that the single roll was done.
-        for (var slot = Math.Max(State.ZahiraFinalSlot, State.ZahiraRolledThisFinal ? 1 : 0); slot < PlayerState.ZahiraSlots; slot++)
-        {
-            if (p.Zahira(slot) == null || EffectsSuppressed(owner, FieldZone.Zahira, ZahiraIndex(slot))) continue;
-            State.ZahiraRolledThisFinal = true;
-            State.ZahiraFinalSlot = slot + 1;
-            RollWithRelikario(p, DiePurpose.Zahira, new DieEffect { Actor = owner, Purpose = DiePurpose.Zahira, Slot = slot });
-            return true;
-        }
-        return false;
-    }
-
     private void ResolveZahiraDie(int actor, int die, int slot)
     {
         if (State.Players[actor].Zahira(slot) is not { } host) { CompletePendingPlay(); return; }

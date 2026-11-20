@@ -10,6 +10,13 @@ static class TurnTriggerTests
 
     public static (string Name, Action Run)[] Cases =>
     [
+        ("Disparadores: cada momento del turno reúne sus cartas en el orden de las reglas", () =>
+        {
+            string[] Ids(TurnMoment moment) => CardEffects.TurnTriggers(moment).Select(t => t.CardId).ToArray();
+            Check(Ids(TurnMoment.TurnStart).SequenceEqual([CardCatalog.MouseBike.Id]), "Inicio de turno: Moto-Ratón.");
+            Check(Ids(TurnMoment.ActionStart).SequenceEqual([Dog, Robotize]), "Inicio de Acciones: Perro Fantasma y después Robotizar.");
+            Check(Ids(TurnMoment.FinalStage).SequenceEqual([CardCatalog.ZahiraFlair.Id]), "Etapa final: Zahira Flair.");
+        }),
         ("Disparadores: al abrir Acciones, Perro Fantasma se resuelve antes que Robotizar y la cadena termina limpia", () =>
         {
             var (game, random) = Fixture(Ellie, Attack, Attack);

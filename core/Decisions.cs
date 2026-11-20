@@ -110,7 +110,7 @@ internal abstract class CardEffect : CardRules
 }
 
 /// <summary>Moments of the turn when a card in play may act. Each moment's triggers run in their <c>Order</c>.</summary>
-internal enum TurnMoment { ActionStart }
+internal enum TurnMoment { TurnStart, ActionStart, FinalStage }
 
 /// <summary>
 /// A card that acts at a moment of the turn without being activated (see docs/CARD_TRIGGERS.md). The engine fires the
@@ -135,7 +135,7 @@ internal static class CardEffects
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect(),
-            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect() }.ToDictionary(e => e.CardId);
+            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect() }.ToDictionary(e => e.CardId);
 
     public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 
@@ -226,6 +226,14 @@ public sealed partial class GameEngine
         public void FinishTurnTrigger(TurnMoment moment) => _engine.ContinueTurnTriggers(moment, Actor, Card.Id);
         /// <summary>How many copies of this card sit on top of this player's Relikario with their effects active.</summary>
         public int ActiveAttachedCopies() => _engine.ActiveAttachedCopies(Actor, Card.Id).Count();
+        /// <summary>This player's equipment, when its effects are active.</summary>
+        public CardDefinition? ActiveEquipment() => _engine.ActiveEquipment(Actor);
+        /// <summary>
+        /// Rolls for <paramref name="seat"/> through the shared die window; the engine resolves the result by its purpose,
+        /// for cards whose die outcome is still in the engine.
+        /// </summary>
+        public void RollResolvedByEngine(int seat, DiePurpose purpose, int slot = 0) =>
+            _engine.RollWithRelikario(State.Players[seat], purpose, new DieEffect { Actor = seat, Purpose = purpose, Slot = slot });
         public string? PlayableHandCard(int handIndex) => _engine.PlayableHandCard(Player, handIndex);
         /// <summary>Sends this card from the hand to memory and activates it there without paying actions or PR.</summary>
         public void ActivateFromHandForFree(int handIndex, bool choosesDieResult)

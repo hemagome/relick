@@ -155,7 +155,8 @@ public sealed partial class GameEngine
             case ContinuationKind.TurnStartDraw: DrawAtTurnStart(); break;
             case ContinuationKind.LoadMagicTome: LoadMagicTome(next); break;
             case ContinuationKind.FieldReturned: FinishFieldReturn(next); break;
-            case ContinuationKind.BikeTurnStart: BeginBikeTurnStart(); break;
+            // The turn-start triggers after an expiring equipment; the name predates the trigger modules.
+            case ContinuationKind.BikeTurnStart: BeginTurnStartTriggers(); break;
             case ContinuationKind.GhostAttackDie:
                 if (next.Flag || !OfferGhostGift(next.Actor, new EngineContinuation
                     { Kind = ContinuationKind.GhostAttackDie, Actor = next.Actor, Attack = next.Attack, Flag = true }))

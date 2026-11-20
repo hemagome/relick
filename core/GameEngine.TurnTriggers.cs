@@ -14,6 +14,12 @@ public sealed partial class GameEngine
         RunTurnTriggers(TurnMoment.ActionStart, actor);
     }
 
+    /// <summary>The start of the active player's turn: its triggers, then the draw.</summary>
+    private void BeginTurnStartTriggers()
+    {
+        if (!RunTurnTriggers(TurnMoment.TurnStart, State.CurrentPlayer)) DrawAtTurnStart();
+    }
+
     /// <summary>
     /// Fires the moment's triggers from <paramref name="from"/>; true when one started work that comes back later.
     /// Re-entry always starts from the first trigger, so a trigger that finished must return false when fired again.
@@ -35,6 +41,8 @@ public sealed partial class GameEngine
     {
         var triggers = CardEffects.TurnTriggers(moment);
         var index = triggers.Select(t => t.CardId).ToList().IndexOf(finishedCardId);
-        if (!RunTurnTriggers(moment, seat, index + 1)) CompletePendingPlay();
+        if (RunTurnTriggers(moment, seat, index + 1)) return;
+        if (moment == TurnMoment.TurnStart) DrawAtTurnStart();
+        else CompletePendingPlay();
     }
 }

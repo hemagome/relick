@@ -409,7 +409,7 @@ public sealed partial class GameEngine
                 return;
             }
         }
-        BeginBikeTurnStart();
+        BeginTurnStartTriggers();
     }
 
     private void DrawAtTurnStart(bool explicitStage = false, int extraCards = 0)
@@ -452,7 +452,7 @@ public sealed partial class GameEngine
         // Discard triggers, responses and their draws finish before checking the limit again.
         if (State.Phase != Phase.Final || State.RepeatedFinalAwaitingAdvance || _activeActivation != null || State.PendingSniper != null || State.PendingTurnBuff != null ||
             State.Active.Hand.Count > MaxHandSize) return;
-        if (TryRollZahiraAtFinal()) return;
+        if (RunTurnTriggers(TurnMoment.FinalStage, State.CurrentPlayer)) return;
         if (ConsumeRepeatedStage(Phase.Final))
         {
             State.ZahiraRolledThisFinal = false; State.ZahiraFinalSlot = 0;
