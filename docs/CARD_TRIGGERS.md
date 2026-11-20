@@ -67,13 +67,13 @@ internal interface IDamageTrigger
     bool TryReplace(GameEngine.EffectContext ctx, FieldTarget source, DamageEvent damage, EngineContinuation then) => false;
 }
 
-internal enum DestructionStep { Protect, Cover, Sacrifice }
+internal enum FieldLeave { Destroy, Return }
+internal enum LeaveStep { Protect, Cover }             // Reverse Shuffle sigue en el motor (fase B2)
 
-internal interface IDestructionReplacement
+internal interface IFieldLeaveReplacement
 {
-    DestructionStep Step { get; }
-    IReadOnlyList<FieldZone> Zones { get; }
-    bool TryReplace(GameEngine.EffectContext ctx, FieldTarget source, FieldTarget target, EngineContinuation? then);
+    LeaveStep Step { get; }
+    bool TryReplace(GameEngine.EffectContext ctx, FieldTarget target, FieldLeave leave, EngineContinuation? then);
 }
 ```
 
@@ -151,7 +151,7 @@ El daño y la destrucción usan el mismo ejecutor, pero sin instantánea entre p
 
 Los pasos 4 y 6 caen en `Reduce` pero en momentos distintos, con Turbo Sword entre ellos. Por eso cada paso necesita además un orden secundario explícito (`int Order`), en lugar de depender del orden de registro. La prueba de orden del punto 4 lo fija.
 
-**Destrucción:** Escudo Galáctico (`Protect`) → Tótem de Oro sobre un Tótem de Salvación (`Cover`) → Reverse Shuffle (`Sacrifice`, decisión del dueño). Súper Imán actúa antes, al sustituir un efecto rival (`TryReplaceOpponentFieldEffect`), y se queda como un punto aparte: no es una destrucción, sino un efecto rival sustituido.
+**Salida del campo** (implementado como `IFieldLeaveReplacement` con `LeaveStep`): Escudo Galáctico (`Protect`, también cuando la carta vuelve a la mano) → Tótem de Oro sobre un Tótem de Salvación (`Cover`, solo destrucción) → Reverse Shuffle (decisión del dueño, todavía en el motor). Súper Imán actúa antes, al sustituir un efecto rival (`TryReplaceOpponentFieldEffect`), y se queda como un punto aparte: no es una destrucción, sino un efecto rival sustituido.
 
 ## Plan de migración
 
@@ -169,7 +169,12 @@ Cada paso es un commit propio, con compilación del juego y del servidor, los te
    - **Zahira Flair** (`CardRules`, sin activación) dispara en `FinalStage` con el mismo modelo de reentrada que Perro Fantasma, usando `ZahiraFinalSlot` como su avance. El resultado del dado se sigue resolviendo en el motor por su propósito (`RollResolvedByEngine`).
    - `BikeTurnStart` queda como adaptador hacia el inicio de turno y desaparece `GameEngine.MouseBike.cs`.
    - **Mira de Sniper no es un momento del turno**, sino un evento («carta descartada») con su lote de cartas, lanzado desde cuatro caminos de descarte y con su propia fase (`SniperChoice`). Irá en una familia propia (`IDiscardTrigger`) cuando se retire esa fase en la fase B2.
-5. **Destrucción.** Escudo Galáctico, Tótem de Oro y Reverse Shuffle. Requiere antes la suite de UI en verde: cambia lo que la UI recibe durante una destrucción protegida.
+5. ~~**Destrucción.**~~ Hecho, como familia de **salida del campo** en lugar de solo destrucción:
+   - Escudo Galáctico protege tanto si la carta se destruye como si vuelve a la mano (Flauta de Vidrio), así que la interfaz es `IFieldLeaveReplacement`, con el tipo de salida (`FieldLeave`) y el orden (`LeaveStep`, que sustituye a `DestructionStep`).
+   - `RequestDestruction` y `ReturnFieldCard` consultan la misma cadena (`TryReplaceFieldLeave`). El antiguo `checkShield: false` pasa a `after: LeaveStep.Protect`: si el escudo declina, la destrucción sigue desde el paso siguiente.
+   - Tótem de Oro sustituye la destrucción de un Tótem desde su módulo; `GoldenTotemReplacement` queda como adaptador.
+   - Las opciones de Escudo Galáctico (proteger y absorber daño comparten `Choices` y `Choose`) siguen en el motor hasta el paso 6, que migra la mitad del daño.
+   - Reverse Shuffle se queda en el motor: es una habilidad con su propia fase (`DestructionResponse`) y su propio comando (`ResolveDestructionProtection`), así que irá con la fase B2.
 6. **Daño.** Estrella del Fontanero, Turbo Sword, Robotizar, Anillo Morado, Escudo Galáctico y Tótem. Los indicadores `PreventDamage`, `DamageReduction` y `DamageCounterLimit` de `CardDefinition` pasan a los efectos de sus equipos, lo que cierra el punto 5 de la revisión DRY para esta familia. Es el paso de más riesgo y va el último.
 
 Al terminar, una carta nueva con disparador será un archivo en `core/Effects/` y una línea en `CardEffects`. `EffectContext` perderá los métodos propios de Escudo Galáctico, Tótem de Oro, Combo Parry y la carta del tope de Robotizar.

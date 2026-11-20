@@ -126,6 +126,23 @@ internal interface ITurnTrigger
     bool Fire(GameEngine.EffectContext ctx);
 }
 
+/// <summary>How a card would leave the field.</summary>
+internal enum FieldLeave { Destroy, Return }
+
+/// <summary>Order of the replacements when a card would leave the field; the rules fix it.</summary>
+internal enum LeaveStep { Protect, Cover }
+
+/// <summary>
+/// A card that may replace another card leaving the field (see docs/CARD_TRIGGERS.md): Escudo Galáctico protects what
+/// sits on the Relikario, Tótem de Oro takes a Tótem de Salvación's place. Reverse Shuffle still answers in the engine.
+/// </summary>
+internal interface IFieldLeaveReplacement
+{
+    LeaveStep Step { get; }
+    /// <summary>True when it took over: it continues <paramref name="then"/> itself, or asks the engine to go on from its step.</summary>
+    bool TryReplace(GameEngine.EffectContext ctx, FieldTarget target, FieldLeave leave, EngineContinuation? then);
+}
+
 internal static class CardEffects
 {
     private static readonly IReadOnlyDictionary<string, CardRules> Registered =
@@ -142,6 +159,10 @@ internal static class CardEffects
     private static readonly IReadOnlyDictionary<TurnMoment, CardRules[]> TurnTriggerTable = Registered.Values
         .OfType<ITurnTrigger>().GroupBy(t => t.Moment)
         .ToDictionary(g => g.Key, g => g.OrderBy(t => t.Order).Cast<CardRules>().ToArray());
+
+    /// <summary>The cards that may replace a card leaving the field, in the order the rules fix.</summary>
+    public static IReadOnlyList<CardRules> LeaveReplacements { get; } = Registered.Values
+        .OfType<IFieldLeaveReplacement>().OrderBy(r => r.Step).Cast<CardRules>().ToArray();
 
     /// <summary>The cards that act at <paramref name="moment"/>, in the order the rules fix.</summary>
     public static IReadOnlyList<CardRules> TurnTriggers(TurnMoment moment) => TurnTriggerTable.GetValueOrDefault(moment) ?? [];
@@ -169,11 +190,11 @@ public sealed partial class GameEngine
         public void Log(string text) => _engine.Log(text);
         public void Announce(string text) { State.LastCombat = text; _engine.Log(text); }
 
-        /// <summary>Opens a decision for <see cref="Actor"/>; the card's <c>Choices</c> and <c>Choose</c> handle <paramref name="step"/>.</summary>
+        /// <summary>Opens a decision for <see cref="Actor"/> (or <paramref name="decider"/>); the card's <c>Choices</c> and <c>Choose</c> handle <paramref name="step"/>.</summary>
         public void Ask(string step, DecisionKind kind, string instruction, bool allowsCombos = false, bool announce = true, int value = 0,
-            List<int>? picks = null, int? showsHandOf = null, EngineContinuation? continuation = null)
+            List<int>? picks = null, int? showsHandOf = null, EngineContinuation? continuation = null, int? decider = null)
         {
-            _engine.AskDecision(new PendingDecision { Source = Card.Id, Step = step, Decider = Actor, Kind = kind,
+            _engine.AskDecision(new PendingDecision { Source = Card.Id, Step = step, Decider = decider ?? Actor, Kind = kind,
                 Instruction = instruction, AllowsCombos = allowsCombos, Value = value, Picks = picks, ShowsHandOf = showsHandOf,
                 Continuation = continuation }, announce);
         }
@@ -228,6 +249,10 @@ public sealed partial class GameEngine
         public int ActiveAttachedCopies() => _engine.ActiveAttachedCopies(Actor, Card.Id).Count();
         /// <summary>This player's equipment, when its effects are active.</summary>
         public CardDefinition? ActiveEquipment() => _engine.ActiveEquipment(Actor);
+        /// <summary>The player whose Relikario this card sits on top of, directly or under a Zahira Flair; null elsewhere.</summary>
+        public int? RelikarioOwnerBelow(FieldTarget target) => _engine.AboveRelikarioOwner(target);
+        /// <summary>Destroys through the field-leave replacements and Reverse Shuffle, without Súper Imán's substitution.</summary>
+        public void RequestDestruction(FieldTarget target, EngineContinuation? then) => _engine.RequestDestruction(target, then);
         /// <summary>
         /// Rolls for <paramref name="seat"/> through the shared die window; the engine resolves the result by its purpose,
         /// for cards whose die outcome is still in the engine.

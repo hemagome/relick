@@ -144,10 +144,8 @@ public sealed partial class GameEngine
             case ContinuationKind.PlaceZahira: FinishZahiraPlacement(next); break;
             case ContinuationKind.FinishZahiraDestruction: FinishZahiraDestruction(next); break;
             case ContinuationKind.GoldenTotemPlacement: ContinueGoldenTotemPlacement(next); break;
-            case ContinuationKind.GoldenTotemReplacement:
-                if (next.Next != null) next.Next.Prevented = true;
-                Log($"{p.Name} conserva su Tótem de Salvación gracias a la sustitución de Tótem de Oro.");
-                Continue(next.Next); break;
+            // Duels saved before Tótem de Oro's cover moved to its module resume it there.
+            case ContinuationKind.GoldenTotemReplacement: ContinueLegacyCardStep(next, CardCatalog.GoldenTotem.Id, GoldenTotemEffect.Covered); break;
             case ContinuationKind.ApplyDamage: ApplyHealthDamage(next.Actor, next.Count, next.Value, next.Next); break;
             case ContinuationKind.FinishAttackDamage: FinishAttackDamage(next.Flag); break;
             case ContinuationKind.ResolveSkillAttack: ResolveSkillAttack(next.Attack!); break;

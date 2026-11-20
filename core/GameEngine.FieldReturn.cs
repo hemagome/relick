@@ -9,7 +9,7 @@ public sealed partial class GameEngine
     {
         var rest = new EngineContinuation { Kind = ContinuationKind.FieldReturned, Actor = actor, Target = target };
         if (TryReplaceOpponentFieldEffect(actor, target, rest)) return;
-        if (!TryProtectWithGalacticShield(target, rest))
+        if (!TryReplaceFieldLeave(target, FieldLeave.Return, rest))
         {
             ReturnFieldCardNow(target);
             Continue(rest);

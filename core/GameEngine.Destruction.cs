@@ -20,20 +20,12 @@ public sealed partial class GameEngine
             CardCatalog.Get(State.Players[target.Owner].Skills[slot]).ProtectOwnCard &&
             !EffectsSuppressed(target.Owner, FieldZone.Skill, slot) && !(target.Zone == FieldZone.Skill && target.Index == slot));
 
-    private void RequestDestruction(FieldTarget target, EngineContinuation? completed = null, bool checkShield = true)
+    /// <param name="after">Skips the field-leave replacements up to this step, as when one declined to act.</param>
+    private void RequestDestruction(FieldTarget target, EngineContinuation? completed = null, LeaveStep? after = null)
     {
         if (State.IsOver) return;
-        if (checkShield && TryProtectWithGalacticShield(target, completed)) return;
+        if (TryReplaceFieldLeave(target, FieldLeave.Destroy, completed, after)) return;
         var p = State.Players[target.Owner];
-        var cover = Enumerable.Range(0, p.EquipmentCovers?.Count ?? 0).LastOrDefault(index =>
-            CardCatalog.TextId(p.EquipmentCovers![index]) == CardCatalog.GoldenTotem.Id && !EffectsSuppressed(target.Owner, FieldZone.EquipmentCover, index), -1);
-        if (target.Zone == FieldZone.Equipment && target.CardId == CardCatalog.Totem.Id &&
-            cover >= 0)
-        {
-            RequestDestruction(new(target.Owner, FieldZone.EquipmentCover, cover, CardCatalog.GoldenTotem.Id),
-                new EngineContinuation { Kind = ContinuationKind.GoldenTotemReplacement, Actor = target.Owner, Next = completed });
-            return;
-        }
         if (EligibleDestructionProtectors(target).Any())
         {
             State.PendingDestruction = new() { Target = target, ResumePhase = State.Phase, Completed = completed };
@@ -44,6 +36,16 @@ public sealed partial class GameEngine
         }
         DestroyCardNow(target);
         Continue(completed);
+    }
+
+    /// <summary>Offers a card's leaving to the replacements after <paramref name="after"/>, in step order; true when one took over.</summary>
+    private bool TryReplaceFieldLeave(FieldTarget target, FieldLeave leave, EngineContinuation? then, LeaveStep? after = null)
+    {
+        foreach (var replacement in CardEffects.LeaveReplacements)
+            if ((after == null || ((IFieldLeaveReplacement)replacement).Step > after) &&
+                ((IFieldLeaveReplacement)replacement).TryReplace(EffectFor(target.Owner, replacement.CardId), target, leave, then))
+                return true;
+        return false;
     }
 
     public CommandResult ResolveDestructionProtection(int actor, int skillSlot = -1)

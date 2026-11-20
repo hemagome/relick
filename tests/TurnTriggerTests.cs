@@ -17,6 +17,11 @@ static class TurnTriggerTests
             Check(Ids(TurnMoment.ActionStart).SequenceEqual([Dog, Robotize]), "Inicio de Acciones: Perro Fantasma y después Robotizar.");
             Check(Ids(TurnMoment.FinalStage).SequenceEqual([CardCatalog.ZahiraFlair.Id]), "Etapa final: Zahira Flair.");
         }),
+        ("Disparadores: al salir una carta del campo, Escudo Galáctico responde antes que Tótem de Oro", () =>
+        {
+            Check(CardEffects.LeaveReplacements.Select(r => r.CardId).SequenceEqual([CardCatalog.GalacticShield.Id, CardCatalog.GoldenTotem.Id]),
+                "Orden de las sustituciones: Escudo Galáctico y después Tótem de Oro.");
+        }),
         ("Disparadores: al abrir Acciones, Perro Fantasma se resuelve antes que Robotizar y la cadena termina limpia", () =>
         {
             var (game, random) = Fixture(Ellie, Attack, Attack);

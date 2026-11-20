@@ -15,9 +15,7 @@ public sealed partial class GameEngine
     private const int GalacticShieldCapacity = 3;
     private const int GalacticShieldReduction = 2;
 
-    private IEnumerable<FieldTarget> GalacticShieldTargets(int owner) =>
-        Enumerable.Range(0, State.Players[owner].GalacticShields?.Count ?? 0)
-            .Select(index => new FieldTarget(owner, FieldZone.GalacticShield, index, State.Players[owner].GalacticShields![index].Instance ?? CardCatalog.GalacticShield.Id));
+    private IEnumerable<FieldTarget> GalacticShieldTargets(int owner) => GalacticShieldEffect.Shields(State, owner);
 
     private void DeployGalacticShield(int actor)
     {
@@ -74,8 +72,7 @@ public sealed partial class GameEngine
         if (shields.Count == 0) player.GalacticShields = null;
     }
 
-    private IEnumerable<FieldTarget> ChargedGalacticShields(int owner) => GalacticShieldTargets(owner).Where(shield =>
-        State.Players[owner].GalacticShields![shield.Index].Cards.Count > 0 && !EffectsSuppressed(owner, shield.Zone, shield.Index));
+    private IEnumerable<FieldTarget> ChargedGalacticShields(int owner) => GalacticShieldEffect.ChargedShields(State, owner, EffectsSuppressed);
 
     private void OfferGalacticShieldDamage(int actor, int amount, int attackDie, EngineContinuation? completed, int start = 0)
     {
@@ -102,19 +99,6 @@ public sealed partial class GameEngine
         FieldZone.Zahira when State.Players[target.Owner].Zahira(ZahiraSlot(target.Index)) is { } host => AboveRelikarioOwner(host),
         _ => null
     };
-
-    private bool TryProtectWithGalacticShield(FieldTarget target, EngineContinuation? completed)
-    {
-        if (AboveRelikarioOwner(target) is not int owner || !ChargedGalacticShields(owner).Any(shield => shield != target))
-            return false;
-        AskDecision(new PendingDecision
-        {
-            Source = CardCatalog.GalacticShield.Id, Step = "protect", Decider = owner, Kind = DecisionKind.Confirm,
-            Instruction = $"Puedes enviar una carta boca abajo a tu memoria para evitar que {FieldCardName(target)} salga del campo.",
-            Continuation = new EngineContinuation { Actor = owner, Target = target, Next = completed }
-        });
-        return true;
-    }
 
     private IReadOnlyList<DecisionChoice> GalacticShieldChoices(PendingDecision decision)
     {
@@ -155,7 +139,7 @@ public sealed partial class GameEngine
                 ReturnFieldCardNow(pending.Target!);
                 Continue(returned);
             }
-            else RequestDestruction(pending.Target!, pending.Next, checkShield: false);
+            else RequestDestruction(pending.Target!, pending.Next, after: LeaveStep.Protect);
             return;
         }
         var player = State.Players[pending.Actor];

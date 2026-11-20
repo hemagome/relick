@@ -171,6 +171,17 @@ static class GoldenTotemTests
                 Check(g.State.PendingAttack == null && g.State.Active.Relikia == 600);
             }
         }),
+        ("Oro: un duelo guardado con la continuación anterior de la sustitución la completa desde el módulo", () =>
+        {
+            var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, 2, 1); target.Skills.Add(CardCatalog.Reverse.Id);
+            Attack(g, rng); Check(g.State.Phase == Phase.DestructionResponse && g.State.PendingDestruction!.Completed is { Step: GoldenTotemEffect.Covered });
+            // The shape the engine saved before the cover moved to Tótem de Oro's module.
+            var legacy = g.State.PendingDestruction!.Completed!;
+            legacy.Kind = ContinuationKind.GoldenTotemReplacement; legacy.Text = ""; legacy.Step = null;
+            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); target = g.State.Players[1];
+            Check(g.ResolveDestructionProtection(1, -1).Success && target.Health == 5 && target.EquipmentStackedCopies == 1 &&
+                target.EquipmentCovers == null && g.State.Log.Any(line => line.Contains("gracias a la sustitución de Tótem de Oro")));
+        }),
         ("Oro: pasar Error impide cancelar Huevo durante la protección; Reverse sigue protegiendo la cobertura", () =>
         {
             var (g, rng) = Fixture(); var target = g.State.Players[1]; var p = g.State.Active; Stack(target, 2, 1);
