@@ -692,7 +692,7 @@ public partial class OnlineArena : Control
             SyncOpeningSelection(); RefreshSelection(); return;
         }
         if (IsAnimating || index < 0 || index >= SelectableCards.Count) return;
-        if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == _snapshot.MySeat && o.Move.Value == (int)FieldZone.Hand ||
+        if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o =>
             o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } own && own.Owner == _snapshot.MySeat))
         { SelectField(_snapshot.MySeat, FieldZone.Hand, -1); return; }
         ToggleHandSelection(index);

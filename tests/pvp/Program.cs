@@ -461,7 +461,7 @@ try
         {
             var other = actor == fighterA ? b : fighterA;
             if (actor.Duel!.Players[before.MySeat].Hand.Last() != choice.Option.CardId || other.Duel!.Players[before.MySeat].Hand.Last() != null ||
-                other.Duel.Options.Any(o => o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.Choose || o.CardId != null))
+                other.Duel.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose || o.CardId != null))
                 throw new Exception("La búsqueda revela opciones o la carta añadida a otro jugador.");
             verifiedSearches++;
         }
@@ -484,7 +484,7 @@ finally
 }
 
 // A deck search answered through the generic card decision, or the earlier search command.
-static bool IsDeckSearch(DuelSnapshot snapshot, DuelOption option) => option.Move.Kind == DuelMoveKind.SearchDeck ||
+static bool IsDeckSearch(DuelSnapshot snapshot, DuelOption option) =>
     // Other galleries (Disquete, Resetear la Mente) pick from memories or a hand, not from the deck.
     option.Move.Kind == DuelMoveKind.Choose && snapshot.Decision is { Kind: DecisionKind.ChooseCard } decision && decision.Source == CardCatalog.KonamyCode.Id;
 

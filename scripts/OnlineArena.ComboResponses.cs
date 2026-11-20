@@ -10,7 +10,6 @@ public partial class OnlineArena
     private void RefreshEffectCardOptions()
     {
         _deckSearchOptions = _snapshot!.Options.Where(o => o.CardId != null && Deciding == DecisionKind.ChooseCard && o.Move.Kind == DuelMoveKind.Choose ||
-            o.CardId != null && o.Move.Kind is DuelMoveKind.SearchDeck or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand or DuelMoveKind.RecoverMemory ||
             ChoosingCorruption && o.Move.Kind == DuelMoveKind.Corrupt || _showReplayMemory && o.Move.Kind == DuelMoveKind.Relikia && o.Move.Value == (int)RelikiaEffect.ReplayCode).ToArray();
     }
 
@@ -19,8 +18,7 @@ public partial class OnlineArena
         if (_showReplayMemory && option.Move.Kind == DuelMoveKind.Relikia && option.Move.Value == (int)RelikiaEffect.ReplayCode)
             return _snapshot!.MySeat;
         if (option.Move.Kind == DuelMoveKind.Choose) return option.Owner;
-        return option.Move.Kind is DuelMoveKind.RecoverMemory or DuelMoveKind.MindResetMemory or DuelMoveKind.Corrupt
-            ? option.Move.Target : null;
+        return option.Move.Kind == DuelMoveKind.Corrupt ? option.Move.Target : null;
     }
 
     // Memory choices keep their flat option index for selection; the gallery only groups them.

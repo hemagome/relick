@@ -1,6 +1,5 @@
 namespace Relick.Core;
 
-
 public sealed partial class GameEngine
 {
     // A player's first Zahira Flair keeps the index -1 it always had; the second copy uses index 1.
@@ -75,11 +74,6 @@ public sealed partial class GameEngine
 
     private void BeginZahiraPlacement(int actor, bool creating, int slot) =>
         AskDecision(ZahiraFlairEffect.PlacementDecision(actor, creating, slot));
-
-    /// <summary>The command from before the placement used a decision; recorded duels still send it.</summary>
-    public CommandResult ResolveZahiraTarget(int actor, int owner, FieldZone zone, int index) =>
-        ResolveDecisionWhere(actor, CardCatalog.ZahiraFlair.Id, c => c.Field is { } t && t.Owner == owner && t.Zone == zone && t.Index == index)
-        ?? CommandResult.Fail("No te corresponde elegir dónde colocar Zahira Flair.");
 
     private void FinishZahiraPlacement(EngineContinuation next)
     {

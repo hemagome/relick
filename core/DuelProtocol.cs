@@ -31,9 +31,10 @@ public sealed class DuelOpening
 public enum DuelMoveKind
 {
     Learn, Attack, PlayCode, Equip, Exchange, Advance, Discard, Evolve, AttackDie, EffectDie,
-    Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError,
-    Points, Destroy, Relikia, Placement, Reward, Corrupt, Concede, Recycle, SearchDeck, MindResetTarget, MindResetMemory, MindResetHand, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, RecoverMemory, TurnBuffDiscard, FieldCode, EffectDamage, Totem, GoldenTotem, ComboResponses, TrapCraft, ZahiraTarget, BlueEggDraw, Choose, RelikarioSearch, ActivateArea, UsePurpleRing, DestinyPickMemory,
-    IronwingDie, IronwingRoll, IronwingFire, RevealGhostDog, PrepareD10, ConvertD10
+    Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError, Relikia, Placement,
+    Reward, Corrupt, Concede, Recycle, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, TurnBuffDiscard,
+    FieldCode, EffectDamage, ComboResponses, TrapCraft, Choose, RelikarioSearch, ActivateArea, UsePurpleRing, DestinyPickMemory, IronwingDie,
+    IronwingRoll, IronwingFire, RevealGhostDog, PrepareD10, ConvertD10
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -86,32 +87,21 @@ public sealed class DuelMove
         DuelMoveKind.SkipMagnet => game.SkipMagnet(actor),
         DuelMoveKind.CodeResponse => game.ResolveCodeResponse(actor, Flag),
         DuelMoveKind.PassError => game.PassErrorResponse(actor),
-        DuelMoveKind.Points => game.ResolvePointsChange(actor, Target, Flag),
-        DuelMoveKind.Destroy => game.ResolveDestruction(actor, Target, (FieldZone)Value, Index),
-        DuelMoveKind.BlueEggDraw => game.ResolveBlueEggDraw(actor, Flag),
         DuelMoveKind.Relikia => game.UseRelikiaEffect(actor, (RelikiaEffect)Value, Index),
         DuelMoveKind.Placement => game.ResolveRelikiaPlacement(actor, Index, (CardDestination)Value),
         DuelMoveKind.Reward => game.ChooseRelikiaReward(actor, (RelikiaReward)Value),
         DuelMoveKind.Corrupt => game.ResolveRelikiaCorruption(actor, Target, Index),
         DuelMoveKind.Concede => game.Concede(actor),
         DuelMoveKind.Recycle => game.ResolveRecycling(actor, Discards),
-        DuelMoveKind.SearchDeck => game.ResolveDeckSearch(actor, Index),
-        DuelMoveKind.MindResetTarget => game.ChooseMindResetTarget(actor, Target),
-        DuelMoveKind.MindResetMemory => game.ChooseMindResetMemory(actor, Target, Index),
-        DuelMoveKind.MindResetHand => game.ResolveMindReset(actor, Index),
         DuelMoveKind.Pc => game.UsePc(actor),
         DuelMoveKind.Sniper => game.ResolveSniper(actor, Flag),
         DuelMoveKind.Dexterity => game.UseDexterity(actor),
         DuelMoveKind.LearningDie => game.RerollLearningDie(actor),
         DuelMoveKind.ProtectDestruction => game.ResolveDestructionProtection(actor, Index),
-        DuelMoveKind.RecoverMemory => game.ResolveMemoryRecovery(actor, Target, Index),
         DuelMoveKind.TurnBuffDiscard => game.ResolveTurnBuffDiscard(actor, Index),
         DuelMoveKind.FieldCode => game.UseFieldCode(actor, (FieldZone)Value, Index),
         DuelMoveKind.EffectDamage => game.ResolveEffectDamage(actor),
-        DuelMoveKind.Totem => game.ResolveTotem(actor, Flag),
-        DuelMoveKind.GoldenTotem => game.ResolveGoldenTotem(actor, Discards),
         DuelMoveKind.TrapCraft => game.ResolveTrapCraft(actor, Flag, Flag ? Math.Max(0, Value) : 0),
-        DuelMoveKind.ZahiraTarget => game.ResolveZahiraTarget(actor, Target, (FieldZone)Value, Index),
         DuelMoveKind.ComboResponses => game.SetComboResponses(actor, Flag),
         DuelMoveKind.Choose => game.ResolveDecision(actor, Index),
         DuelMoveKind.RelikarioSearch => game.UseOsamuSearch(actor),

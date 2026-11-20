@@ -20,7 +20,7 @@ static class GoldenTotemTests
                 Check(g.PlayCode(actor, 0).Success && g.State.PendingDecision?.Source == CardCatalog.GoldenTotem.Id && p.ActionsLeft == 1);
                 Check(p.EquipmentCovers == null && p.Hand.Count == 3 && p.Memory.Single() == CardCatalog.GoldenTotem.Id);
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active;
-                Check(new DuelMove { Kind = DuelMoveKind.GoldenTotem, Discards = Enumerable.Range(0, amount).ToArray() }.Apply(g, actor).Success);
+                Check(g.ResolveGoldenTotem(actor, Enumerable.Range(0, amount)).Success);
                 Check(p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id && p.Hand.Count == 3 - amount && p.ActionsLeft == 1 && Count(g) == count);
                 Check(amount == 0 ? p.Equipment == CardCatalog.Pc.Id && p.EquipmentDie == 4 :
                     p.Equipment == CardCatalog.Totem.Id && p.EquipmentStackedCopies == amount - 1 && p.Memory.Single() == CardCatalog.Pc.Id);

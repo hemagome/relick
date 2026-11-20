@@ -3,10 +3,8 @@ public enum FieldZone { Equipment, Attached, Bonus, Exchange, Hand, Skill, Equip
 public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string CardId);
 public sealed partial class GameEngine
 {
-    public const int BlueEggDrawCost = 200;
 
     internal static int CodePrCost(CardDefinition card) => card.PrCost;
-
 
     private IEnumerable<FieldTarget> TimeBombTargets(int excludedOwner = -1, int excludedHand = -1)
     {
@@ -102,24 +100,7 @@ public sealed partial class GameEngine
         if (AvailableActions(actor) < card.ActionCost) return "No quedan acciones disponibles.";
         return CodeEffectUnavailable(p, card, excludedHand: handIndex);
     }
-    public CommandResult ResolveDestruction(int actor, int owner, bool equipment, int index = -1)
-        => ResolveDestruction(actor, owner, equipment ? FieldZone.Equipment : FieldZone.Attached, index);
 
-    public CommandResult ResolveDestruction(int actor, int owner, FieldZone zone, int index = -1)
-    {
-        // Huevo Azul and Bomba de Tiempo ask through a decision; this command from recorded duels still answers it.
-        if (State.PendingDecision is { Step: FieldDestruction.Target } pending &&
-            ResolveDecisionWhere(actor, pending.Source, c => c.Field is { } t && t.Owner == owner && t.Zone == zone &&
-                // Bomba chooses zones: a hand card is drawn at random, so naming its position is refused.
-                (t.Index == index || pending.Source != CardCatalog.TimeBomb.Id && zone is FieldZone.Equipment or FieldZone.Bonus)) is { } answered) return answered;
-        return CommandResult.Fail("No te corresponde elegir objetivo.");
-    }
-
-    public CommandResult ResolveBlueEggDraw(int actor, bool pay)
-    {
-        if (ResolveDecisionWhere(actor, CardCatalog.BlueEgg.Id, c => c.Field == null && c.Value == (pay ? 1 : 0)) is { } answered) return answered;
-        return CommandResult.Fail("No te corresponde decidir el robo de Huevo Azul Explosivo.");
-    }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
         : State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor;
     private bool HasRerollCombo(int actor) => ComboResponsesEnabled(actor) && PlayableCards(actor).Any(entry =>

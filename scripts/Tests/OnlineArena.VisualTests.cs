@@ -1215,7 +1215,8 @@ public partial class OnlineArena
                 for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 _selected.Clear(); ResetAnimations(); var before = DuelSnapshot.For(game, seat, 100); PresentTestSnapshot(before);
                 for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                var recovery = new DuelMove { Kind = DuelMoveKind.RecoverMemory, Target = 1 - actor, Index = targetSlot };
+                var recovery = new DuelMove { Kind = DuelMoveKind.Choose,
+                    Index = game.DecisionChoices(actor).ToList().FindIndex(c => c.Owner == 1 - actor && c.Value == targetSlot) };
                 if (seat == actor)
                 {
                     if (_handCards.Count != 2 + rivalMemory.Count || _deckSearchOptions.Count(o => o.CardId == CardCatalog.FloppyDisk.Id) != 2 ||

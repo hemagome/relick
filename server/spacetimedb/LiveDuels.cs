@@ -184,7 +184,6 @@ public static partial class Module
         var validSlots = choice.Move.Kind switch
         {
             DuelMoveKind.Recycle => Enumerable.Range(0, game.State.Players[me.Seat].Memory.Count),
-            DuelMoveKind.GoldenTotem => game.PlayableTotems(me.Seat),
             DuelMoveKind.DestinyDefense => game.PlayableCards(me.Seat).Select(card => card.Index),
             _ => Enumerable.Empty<int>()
         };

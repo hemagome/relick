@@ -62,9 +62,7 @@ static class DuelTests
                 var choices = DuelOptions.For(game, actor).Where(o => o.Move.Kind != DuelMoveKind.Concede).ToList();
                 if (choices.Count == 0) throw new Exception($"Sin decisión en {game.State.Phase}, seed {seed}.");
                 var choice = choices[0];
-                choice.Move.Discards = choice.Move.Kind == DuelMoveKind.GoldenTotem
-                    ? game.State.Players[actor].Hand.Select((id, index) => (id, index)).Where(c => c.id == CardCatalog.Totem.Id).Take(choice.RequiredDiscards).Select(c => c.index).ToArray()
-                    : Enumerable.Range(0, choice.RequiredDiscards).ToArray();
+                choice.Move.Discards = Enumerable.Range(0, choice.RequiredDiscards).ToArray();
                 resumed.Random.Record(live.Next);
                 var result = choice.Move.Apply(game, actor);
                 if (!result.Success) throw new Exception($"{choice.Label}: {result.Message}");

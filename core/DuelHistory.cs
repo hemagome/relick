@@ -324,8 +324,7 @@ internal sealed class PublicDuelObservation : IDisposable
             if (_draws[i] > 0) Add(DuelHistoryEventKind.Draw, i, _draws[i]);
             if (p.Equipment != null && (p.Equipment != old.Equipment || p.EquipmentStackedCopies > old.Copies))
                 Add(DuelHistoryEventKind.Equipped, i, card: p.Equipment);
-            // The placement answers through a decision now; recorded duels still name it with their former move.
-            if (_move.Kind is DuelMoveKind.ZahiraTarget or DuelMoveKind.Choose && _card == CardCatalog.ZahiraFlair.Id &&
+            if (_move.Kind == DuelMoveKind.Choose && _card == CardCatalog.ZahiraFlair.Id &&
                 (p.ZahiraHost != old.ZahiraHost ? p.ZahiraHost : p.ZahiraHost2 != old.ZahiraHost2 ? p.ZahiraHost2 : null) is { } host)
                 Add(DuelHistoryEventKind.ZahiraCover, i, other: host.Owner,
                     otherCard: host.Zone == FieldZone.Relikario ? state.Players[host.Owner].Relikario.Id : host.CardId);
@@ -353,8 +352,7 @@ internal sealed class PublicDuelObservation : IDisposable
     {
         DuelMoveKind.Advance or DuelMoveKind.PassError or DuelMoveKind.PassDefense or DuelMoveKind.EffectDamage or DuelMoveKind.ComboResponses
             or DuelMoveKind.SkipMagnet => true,
-        DuelMoveKind.CodeResponse or DuelMoveKind.AttackDie or DuelMoveKind.EffectDie or DuelMoveKind.Totem or DuelMoveKind.TrapCraft
-            or DuelMoveKind.BlueEggDraw => !m.Flag,
+        DuelMoveKind.CodeResponse or DuelMoveKind.AttackDie or DuelMoveKind.EffectDie or DuelMoveKind.TrapCraft => !m.Flag,
         DuelMoveKind.ProtectDestruction => m.Index < 0,
         _ => false
     };
@@ -377,7 +375,6 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.UsePurpleRing => CardCatalog.PurpleRing.Id,
             DuelMoveKind.TrapCraft when m.Flag => g.State.TrapCraftQueue?.FirstOrDefault() is { } craft
                 ? craft.Options.ElementAtOrDefault(m.Value) ?? craft.CardId : null,
-            DuelMoveKind.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
             DuelMoveKind.Choose when g.State.PendingDecision is { } decision && CardCatalog.All.ContainsKey(decision.Source) => decision.Source,
             _ => null
         };
@@ -412,27 +409,17 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.UsePurpleRing => $"{name} usa {card} para ganar 500 PR.",
             DuelMoveKind.Dexterity => $"{name} usa una ficha de destreza.", DuelMoveKind.LearningDie => $"{name} relanza por Reverse Shuffle.",
             DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => $"{name} descarta una carta.",
-            DuelMoveKind.Points => $"{name} {(m.Flag ? "aumenta" : "reduce")} los PR de {Target()}.",
-            DuelMoveKind.Destroy => $"{name} elige destruir una carta de {Target()} ({(FieldZone)m.Value switch { FieldZone.Hand => "mano al azar", FieldZone.Bonus => "Bonus", FieldZone.Equipment => "equipo", _ => "campo" }}).",
             DuelMoveKind.Choose => g.DecisionChoices(actor).ElementAtOrDefault(m.Index) is { } choice ? $"{name} {choice.Public}" : $"{name} decide.",
-            DuelMoveKind.BlueEggDraw => m.Flag ? $"{name} paga {GameEngine.BlueEggDrawCost} PR para robar con Huevo Azul Explosivo." : $"{name} continúa sin robar con Huevo Azul Explosivo.",
             DuelMoveKind.Magnet => $"{name} elige tomar una carta {(m.Value == (int)FieldZone.Area ? "del Área rival" : m.Flag ? "del Bonus rival" : "de la mano rival")} por Magnet Shuffle.",
             DuelMoveKind.SkipMagnet => $"{name} decide no tomar una carta por Magnet Shuffle.",
             DuelMoveKind.Placement => $"{name} coloca una carta {(m.Value == (int)CardDestination.Exchange ? "en canje" : "al fondo del mazo")}.",
             DuelMoveKind.Relikia => $"{name} activa Relikia: {RelikiaEffects.All.FirstOrDefault(e => e.Id == (RelikiaEffect)m.Value)?.Name ?? "efecto"}.",
             DuelMoveKind.DestinyPickMemory => $"{name} usa Púa del Destino desde su memoria.",
             DuelMoveKind.Recycle => $"{name} recicla {m.Discards.Length} carta(s) de memoria.",
-            DuelMoveKind.SearchDeck => $"{name} añade una carta del mazo a su mano.",
-            DuelMoveKind.MindResetTarget => $"{name} revisa la mano de {Target()}.", DuelMoveKind.MindResetMemory => $"{name} elige una carta de memoria para Resetear la Mente.",
-            DuelMoveKind.MindResetHand => $"{name} devuelve una carta al mazo por Resetear la Mente.",
-            DuelMoveKind.RecoverMemory => $"{name} recupera una carta de la memoria de {Target()}.",
             DuelMoveKind.Corrupt => $"{name} corrompe una carta de memoria de {Target()}.",
             DuelMoveKind.ProtectDestruction => m.Index >= 0 ? $"{name} sacrifica Reverse Shuffle para proteger su carta." : $"{name} permite la destrucción.",
             DuelMoveKind.Sniper => $"{name} coloca Mira de Sniper {(m.Flag ? "como equipo" : "en canje")}.",
-            DuelMoveKind.Totem => m.Flag ? $"{name} usa un Tótem para cancelar el daño." : $"{name} recibe el daño sin usar un Tótem.",
-            DuelMoveKind.GoldenTotem => $"{name} coloca Tótem de Oro con {m.Discards.Length} Tótem(s) de Salvación.",
             DuelMoveKind.TrapCraft => m.Flag ? $"{name} elige crear {card}." : $"{name} pasa sin crear un Código Trampa.",
-            DuelMoveKind.ZahiraTarget => $"{name} elige dónde colocar Zahira Flair.",
             DuelMoveKind.Evolve => $"{name} evoluciona su Relikario.", DuelMoveKind.Advance => $"{name} avanza de fase.",
             DuelMoveKind.RelikarioSearch => $"{name} activa la búsqueda de Osamu Lv 2.",
             DuelMoveKind.Concede => $"{name} abandona el duelo.", DuelMoveKind.ComboResponses => "Continúa la resolución de la jugada.",

@@ -41,23 +41,14 @@ internal static class ArenaActionText
         DuelMoveKind.SkipMagnet => "No tomar carta",
         DuelMoveKind.CodeResponse => option.Move.Flag ? "Anular con Caja" : "Dejar resolver",
         DuelMoveKind.PassError => "Dejar resolver",
-        DuelMoveKind.Points => option.Move.Flag ? "Aumentar PR" : "Restar PR",
-        DuelMoveKind.Destroy => "Destruir",
         DuelMoveKind.Choose => option.Button ?? option.Label,
-        DuelMoveKind.BlueEggDraw => option.Move.Flag ? $"Robar 1 carta · {GameEngine.BlueEggDrawCost} PR" : "Continuar sin robar",
         DuelMoveKind.Placement => option.Move.Value == (int)CardDestination.Exchange ? "Canjear" : "Al mazo",
         DuelMoveKind.Reward => option.Move.Value == (int)RelikiaReward.OpponentDiscards ? "Provocar descartes" : "Corromper códigos",
         DuelMoveKind.Corrupt => "Corromper",
         DuelMoveKind.DestinyPickMemory => "Activar Púa del Destino",
         DuelMoveKind.Recycle => "Reciclar",
-        DuelMoveKind.SearchDeck => "Añadir a mano",
-        DuelMoveKind.MindResetTarget => option.Move.Target == s.MySeat ? "Mi mano" : "Mano rival",
-        DuelMoveKind.MindResetMemory => "Elegir",
-        DuelMoveKind.MindResetHand => "Devolver al mazo",
-        DuelMoveKind.RecoverMemory => "Recuperar",
         DuelMoveKind.FieldCode => "Activar",
         DuelMoveKind.Sniper => option.Move.Flag ? "Equipar" : "Canjear",
-        DuelMoveKind.Totem => option.Move.Flag ? "Cancelar daño" : "Recibir daño",
         DuelMoveKind.TrapCraft => option.Label,
         DuelMoveKind.Relikia => option.Move.Value == (int)RelikiaEffect.ReplayCode ? "Activar" : RelikiaEffects.Get((RelikiaEffect)option.Move.Value).Name,
         DuelMoveKind.Evolve => "Evolucionar",
@@ -115,7 +106,6 @@ internal static class ArenaActionText
             case DuelMoveKind.Pc: case DuelMoveKind.Pendant: case DuelMoveKind.BoxDefense: return "Destruye el equipo";
             case DuelMoveKind.CodeResponse when m.Flag: return "Destruye Caja de Cartón";
             case DuelMoveKind.ProtectDestruction when m.Index >= 0: return "Destruye la habilidad elegida";
-            case DuelMoveKind.Totem when m.Flag:
             case DuelMoveKind.Choose when s.Decision?.Source == CardCatalog.Totem.Id && option.Field != null:
                 return s.Players[s.MySeat].EquipmentCovers?.Contains(CardCatalog.GoldenTotem.Id) == true ? "Destruye Tótem de Oro" : "Destruye 1 Tótem";
             case DuelMoveKind.DestinyDefense: return $"{option.RequiredDiscards} descartes · +1 contador";

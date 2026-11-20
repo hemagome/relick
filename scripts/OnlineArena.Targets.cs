@@ -59,8 +59,6 @@ public partial class OnlineArena
         {
             DuelMoveKind.IronwingFire or DuelMoveKind.IronwingRoll =>
                 field.Owner == s.MySeat && field.Zone == FieldZone.Skill && field.Index == move.Index,
-            DuelMoveKind.Destroy => move.Target == field.Owner && move.Value == (int)field.Zone &&
-                (move.Index == field.Index || field.Zone == FieldZone.Hand && move.Index < 0),
             // A card decision names its board target; a hand is one zone, its card drawn at random.
             _ when option?.Field is { Zone: FieldZone.TomeCard } tome && IsHandAction(move.Kind) =>
                 field == (tome.Owner, tome.Zone, tome.Index),
@@ -72,7 +70,7 @@ public partial class OnlineArena
                 ? field.Zone == (move.Value == (int)FieldZone.Area ? FieldZone.Area : FieldZone.Bonus)
                 : field.Zone == FieldZone.Hand && move.Index == field.Index),
             DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
-            DuelMoveKind.CodeResponse or DuelMoveKind.Totem => move.Flag && field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
+            DuelMoveKind.CodeResponse => move.Flag && field.Owner == s.MySeat && field.Zone == FieldZone.Equipment,
             _ => false
         };
     }
@@ -81,7 +79,7 @@ public partial class OnlineArena
     {
         DuelMoveKind.FieldCode or DuelMoveKind.UsePurpleRing or DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => true,
         _ when option.Field?.Zone == FieldZone.TomeCard && IsHandAction(option.Move.Kind) => true,
-        DuelMoveKind.CodeResponse or DuelMoveKind.Totem => option.Move.Flag,
+        DuelMoveKind.CodeResponse => option.Move.Flag,
         // Choices that spend one of the decider's own cards light it up as an activation, not as a target.
         DuelMoveKind.Choose => _snapshot!.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field?.Zone == FieldZone.LightEquipment ||
             _snapshot.Decision?.Source == CardCatalog.Totem.Id && option.Field?.Zone == FieldZone.Equipment,
@@ -114,7 +112,7 @@ public partial class OnlineArena
             ShowTomePile(owner, zone, [id], index);
             return;
         }
-        if (zone == FieldZone.Hand && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)FieldZone.Hand && o.Move.Index < 0 ||
+        if (zone == FieldZone.Hand && _snapshot!.Options.Any(o =>
             o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand, Index: < 0 } hand && hand.Owner == owner)) index = -1;
         var field = (owner, zone, index);
         if (_snapshot!.Options.Any(o => MatchesField(o, field)) || FieldCardId(field) != null)
@@ -140,7 +138,7 @@ public partial class OnlineArena
             ShowTomePile(owner, zone, ids);
             return;
         }
-        var targetable = _snapshot.Options.Any(o => o.Move.Kind == DuelMoveKind.Destroy && o.Move.Target == owner && o.Move.Value == (int)zone ||
+        var targetable = _snapshot.Options.Any(o =>
             o.Move.Kind is DuelMoveKind.Choose or DuelMoveKind.UsePurpleRing && o.Field is { } t && t.Owner == owner && t.Zone == zone);
         if (ids.Length == 1 && (targetable || zone == FieldZone.LightEquipment)) { SelectField(owner, zone, 0); return; }
         var relikario = player.RelikarioId;

@@ -10,6 +10,7 @@
     <Compile Remove="server/**/*.cs" />
     <None Update="fixtures/**/*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
+    <Compile Include="../scripts/Tests/DecisionCommands.cs" Link="DecisionCommands.cs" />
   </ItemGroup>
 </Project>
 

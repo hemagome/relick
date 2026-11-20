@@ -510,16 +510,6 @@ public sealed partial class GameEngine
         CompleteActivationIfFinished();
     }
 
-    /// <summary>Answers the pending decision with the choice that matches, for commands that predate decisions.</summary>
-    private CommandResult? ResolveDecisionWhere(int actor, string source, Func<DecisionChoice, bool> matches)
-    {
-        if (State.Phase != Phase.Decision || State.PendingDecision?.Source != source) return null;
-        var choices = DecisionChoices(actor);
-        for (var i = 0; i < choices.Count; i++)
-            if (matches(choices[i])) return ResolveDecision(actor, i);
-        return CommandResult.Fail(choices.Count == 0 ? "No te corresponde decidir." : "Elige una opción válida.");
-    }
-
     private bool TryResolveWithEffect(PlayerState p, CardDefinition card)
     {
         if (CardEffects.For(card.Id) is not CardEffect effect) return false;

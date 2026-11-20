@@ -14,13 +14,6 @@ public sealed partial class GameEngine
             }
     }
 
-    public CommandResult ResolveMemoryRecovery(int actor, int owner, int memoryIndex)
-    {
-        // Disquete now asks through a decision; this command still answers it.
-        if (ResolveDecisionWhere(actor, CardCatalog.FloppyDisk.Id, c => c.Owner == owner && c.Value == memoryIndex) is { } answered) return answered;
-        return CommandResult.Fail("No te corresponde recuperar una carta de memoria.");
-    }
-
     private string TakeFromMemory(int actor, int owner, int memoryIndex, string effectName = "Disquete", bool mark = false)
     {
         var source = State.Players[owner]; var recipient = State.Players[actor]; var id = source.Memory[memoryIndex];

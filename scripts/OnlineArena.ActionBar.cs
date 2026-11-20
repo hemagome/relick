@@ -184,7 +184,7 @@ public partial class OnlineArena
             indices = indices.Where(i => MatchesField(s.Options[i], field)).ToList();
         else
         {
-            indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.Relikia or DuelMoveKind.FieldCode or DuelMoveKind.Destroy or DuelMoveKind.Magnet or DuelMoveKind.UsePurpleRing ||
+            indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.Relikia or DuelMoveKind.FieldCode or DuelMoveKind.Magnet or DuelMoveKind.UsePurpleRing ||
                 s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].Field != null);
             indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind) && !_selected.Contains(s.Options[i].Move.Index));
             if (_selected.Count > 1 || _skillContext) indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind));
@@ -208,9 +208,9 @@ public partial class OnlineArena
         // A pending die has one principal action and one menu of real modifiers.
         var die = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && !s.Options[i].Move.Flag).ToArray();
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
-            DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
+            DuelMoveKind.Recycle or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
             s.Options[i].Move.Kind == DuelMoveKind.RelikarioSearch ||
-            s.Options[i].Move.Kind is DuelMoveKind.TrapCraft or DuelMoveKind.BlueEggDraw && s.Options[i].Move.Flag ||
+            s.Options[i].Move.Kind is DuelMoveKind.TrapCraft && s.Options[i].Move.Flag ||
             s.Options[i].Move.Kind == DuelMoveKind.Choose && (s.Options[i].Primary || Deciding == DecisionKind.ChooseCard && s.Options[i].CardId != null), -1);
         if (main < 0 && die.Length > 0) main = die[0];
         if (ChoosingDeckGallery || _showcase != null && ChoosingMemoryRecovery)
@@ -611,7 +611,7 @@ public partial class OnlineArena
 
     private string ChoiceOrigin(DuelOption option) => option.Move.Kind switch
     {
-        DuelMoveKind.RecoverMemory or DuelMoveKind.MindResetMemory or DuelMoveKind.Corrupt => "Memoria de " + _snapshot!.Players[option.Move.Target].Name,
+        DuelMoveKind.Corrupt => "Memoria de " + _snapshot!.Players[option.Move.Target].Name,
         DuelMoveKind.Choose when option.Owner is int owner => "Memoria de " + _snapshot!.Players[owner].Name,
         DuelMoveKind.Relikia => "Tu memoria · la copia se corromperá",
         _ => "Confirma la carta seleccionada."

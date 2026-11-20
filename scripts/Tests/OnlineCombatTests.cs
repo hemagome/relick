@@ -53,9 +53,7 @@ public partial class OnlineLobby
                     _arena!.PrepareTestOption(choice.index);
                     if (!_arena.PressTestOption(choice.index)) throw new Exception("No hay control activo para " + choice.option.Label);
                 }
-                else rival.Play(choice.index, choice.option.Move.Kind == DuelMoveKind.GoldenTotem
-                    ? snapshot.Players[snapshot.MySeat].Hand.Select((id, i) => (id, i)).Where(c => c.id == CardCatalog.Totem.Id).Take(choice.option.RequiredDiscards).Select(c => c.i)
-                    : Enumerable.Range(0, choice.option.RequiredDiscards));
+                else rival.Play(choice.index, Enumerable.Range(0, choice.option.RequiredDiscards));
                 await Until(() => _lobby.Duel?.Revision == current.Revision + 1 && rival.Duel?.Revision == current.Revision + 1 && !_lobby.PlayPending && !rival.PlayPending);
                 if (!recoveryChecked && _lobby.Duel!.Visuals.Any(v => v.Kind == DuelVisualKind.Die))
                 {

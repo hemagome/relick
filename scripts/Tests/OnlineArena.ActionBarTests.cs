@@ -23,7 +23,6 @@ public partial class OnlineArena
         { _showReplayMemory = true; Render(); }
         if (ChoosingEffectCards && _deckSearchOptions.Contains(o)) SelectCard(Array.IndexOf(_deckSearchOptions, o));
         else if (m.Kind == DuelMoveKind.FieldCode) SelectField(s.MySeat, (FieldZone)m.Value, m.Index);
-        else if (m.Kind == DuelMoveKind.Destroy) SelectField(m.Target, (FieldZone)m.Value, m.Index);
         else if (m.Kind == DuelMoveKind.Choose && o.Field is { } field) SelectField(field.Owner, field.Zone, field.Index);
         else if (m.Kind == DuelMoveKind.UsePurpleRing) SelectField(s.MySeat, FieldZone.LightEquipment, m.Index);
         else if (m.Kind == DuelMoveKind.Magnet) SelectField(1 - s.MySeat,

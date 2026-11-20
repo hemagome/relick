@@ -43,35 +43,6 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    // Resetear la Mente asks through a decision (MindResetEffect). The commands below, from recorded duels, still answer it.
-    private CommandResult? AnswerMindReset(int actor, string step, Func<DecisionChoice, bool> matches, string error)
-    {
-        if (State.Phase != Phase.Decision || State.PendingDecision?.Source != CardCatalog.MindReset.Id) return null;
-        if (State.PendingDecision.Decider != actor) return CommandResult.Fail("No te corresponde resolver Resetear la Mente.");
-        return State.PendingDecision.Step == step ? ResolveDecisionWhere(actor, CardCatalog.MindReset.Id, matches) : CommandResult.Fail(error);
-    }
-
-    public CommandResult ChooseMindResetTarget(int actor, int target)
-    {
-        const string error = "Elige un jugador con cartas en la mano.";
-        return AnswerMindReset(actor, MindResetEffect.Target, c => target >= 0 && c.Value == target, error) ?? CommandResult.Fail(error);
-    }
-
-    public CommandResult ChooseMindResetMemory(int actor, int owner, int index)
-    {
-        const string error = "Elige dos cartas distintas de cualquier memoria.";
-        return AnswerMindReset(actor, MindResetEffect.Memory, c => c.Owner == owner && c.Value == index, error) ?? CommandResult.Fail(error);
-    }
-
-    public CommandResult ResolveMindReset(int actor, int handIndex)
-    {
-        // The hand card, or finishing without one when no target hand or no non-skill is left.
-        if (State.Phase == Phase.Decision && State.PendingDecision is { Source: "mind-reset" } reset &&
-            AnswerMindReset(actor, reset.Step, c => c.Owner == null && c.Value == handIndex && (reset.Step == MindResetEffect.Hand || handIndex == -1),
-                "Elige una no-habilidad de la mano objetivo después de seleccionar dos cartas de memoria.") is { } answered) return answered;
-        return CommandResult.Fail("No te corresponde resolver Resetear la Mente.");
-    }
-
     /// <summary>
     /// Sends the two memory cards and the hand card to their owners' decks, shuffles them and lets the target draw. The
     /// draw may start recycling, so a die the reset interrupted waits until it finishes (<see cref="ContinuationKind.ResumeMindReset"/>).

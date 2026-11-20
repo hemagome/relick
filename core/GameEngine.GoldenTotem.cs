@@ -8,31 +8,9 @@ public sealed class PendingGoldenTotem
 
 public sealed partial class GameEngine
 {
-    /// <summary>
-    /// Tótem de Oro asks how many Tótems to show through a decision (GoldenTotemEffect). This command from recorded duels,
-    /// which names the exact copies, still answers it.
-    /// </summary>
-    public CommandResult ResolveGoldenTotem(int actor, IEnumerable<int> handIndices)
-    {
-        var selected = handIndices.ToArray();
-        if (State.Phase == Phase.Decision && State.PendingDecision is { } decision && decision.Source == CardCatalog.GoldenTotem.Id)
-        {
-            if (decision.Decider != actor) return CommandResult.Fail("No te corresponde colocar Tótem de Oro.");
-            if (!ValidGoldenTotemSelection(State.Players[actor], selected))
-                return CommandResult.Fail("Muestra hasta dos Tótems de Salvación distintos de tu mano; Tótem de Oro necesita un equipo debajo.");
-            State.PendingDecision = decision.Suspended; State.Phase = decision.ResumePhase;
-            DeployGoldenTotem(actor, selected);
-            return CommandResult.Ok();
-        }
-        return CommandResult.Fail("No te corresponde colocar Tótem de Oro.");
-    }
 
     internal IEnumerable<int> PlayableTotems(int actor) =>
         PlayableCards(actor).Where(card => card.Id == CardCatalog.Totem.Id).Select(card => card.Index);
-
-    private bool ValidGoldenTotemSelection(PlayerState p, int[] selected) =>
-        selected.Length <= 2 && selected.Distinct().Count() == selected.Length &&
-        selected.All(i => PlayableHandCard(p, i) == CardCatalog.Totem.Id) && (p.Equipment != null || selected.Length > 0);
 
     /// <summary>Shows the chosen Tótems, then places them and Tótem de Oro; destroying the previous equipment may pause it.</summary>
     private void DeployGoldenTotem(int actor, int[] selected)

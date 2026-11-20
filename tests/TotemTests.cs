@@ -125,7 +125,7 @@ static class TotemTests
                 Hit(g, rng, 5); Check(TotemDecision(g) && target.Health == 4 && g.State.Active.Relikia == 0);
                 Check(g.State.PendingDecision!.Continuation!.Count == 6 && DuelOptions.For(g, 1).Count(o => o.Move.Kind == DuelMoveKind.Choose) == 2);
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); target = g.State.Players[1];
-                Check(new DuelMove { Kind = DuelMoveKind.Totem, Flag = true }.Apply(g, 1).Success);
+                Check(g.ResolveTotem(1, true).Success);
                 Check(target.Health == 4 && !target.HasReachedZero && target.Memory.Count == 1 && g.State.Active.Relikia == 600);
                 Check(copies == 1 ? target.Equipment == null : target.Equipment == CardCatalog.Totem.Id && target.EquipmentStackedCopies == copies - 2);
                 Check(!TotemDecision(g) && g.State.PendingAttack == null && g.State.Phase == Phase.Combat);
