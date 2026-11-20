@@ -442,7 +442,7 @@ public sealed partial class GameEngine
         if (!LegacyBlueEgg && ResolveUnopposedDie()) return;
         if (_activeActivation == null && State is { Phase: Phase.Actions, ActionStartActor: int actor })
         {
-            ResolveGhostDogsAtActionStart(actor);
+            RunTurnTriggers(TurnMoment.ActionStart, actor);
             return;
         }
         CompleteAttackIfReady();

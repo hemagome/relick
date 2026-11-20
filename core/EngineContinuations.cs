@@ -101,7 +101,8 @@ public sealed partial class GameEngine
             case ContinuationKind.AttackDieReady: ContinueAttackDie(); break;
             case ContinuationKind.ConfirmedAttackDie: ResolveConfirmedAttackDie(next.Attack!); break;
             case ContinuationKind.ConfirmedEffectDie: ApplyDieEffect(next.SavedDieEffect!, next.Value); break;
-            case ContinuationKind.RobotizeActionStart: ContinueRobotizeActionStart(next); break;
+            // Duels saved before Robotizar moved to its module resume its chain there.
+            case ContinuationKind.RobotizeActionStart: ContinueLegacyCardStep(next, CardCatalog.Robotize.Id, RobotizeEffect.TopCards); break;
             case ContinuationKind.BreakRobotize:
             case ContinuationKind.BreakMetalHood:
                 Log($"{p.Name} saca 1 en su D6 y debe destruir {FieldCardName(next.Target!)}.");

@@ -1,12 +1,34 @@
 namespace Relick.Core;
 
 /// <summary>
-/// Robotizar: placed on top of the Relikario. Each copy reduces damage by 1 and, at the start of the action stage,
-/// shows the top card of the deck; a code may go to the hand or the exchange. Those triggers live in the engine.
+/// Robotizar: placed on top of the Relikario. At the start of the action stage, each active copy shows the top card of
+/// the deck; a code may go to the hand or the exchange, anything else goes to the exchange. Its damage reduction is
+/// still in the engine's damage chain.
 /// </summary>
-internal sealed class RobotizeEffect : CardEffect
+internal sealed class RobotizeEffect : CardEffect, ITurnTrigger
 {
+    private const string Top = "top";
+    /// <summary>The step that handles the next copy; duels saved with the old continuation kind resume here too.</summary>
+    internal const string TopCards = "top-cards";
+
     public override string CardId => CardCatalog.Robotize.Id;
+
+    public TurnMoment Moment => TurnMoment.ActionStart;
+    // After Perro Fantasma.
+    public int Order => 1;
+
+    /// <summary>Counts the active copies once, at the start; a copy destroyed meanwhile still shows its card.</summary>
+    public bool Fire(GameEngine.EffectContext ctx)
+    {
+        var count = ctx.ActiveAttachedCopies();
+        if (count == 0) return false;
+        var next = ctx.Then(TopCards);
+        next.Count = count;
+        NextTopCard(ctx, next);
+        return true;
+    }
+
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) => NextTopCard(ctx, next);
 
     public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         excludedHand < 0 ? "Robotizar necesita colocarse encima del Relikario y no puede activarse con Relikia." : null;
@@ -37,5 +59,33 @@ internal sealed class RobotizeEffect : CardEffect
     }
 
     public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) =>
-        ctx.ResolveRobotizeTopCard(decision.Continuation!, choice.Value == 1);
+        ResolveTopCard(ctx, decision.Continuation!, toHand: choice.Value == 1);
+
+    private static void NextTopCard(GameEngine.EffectContext ctx, EngineContinuation next)
+    {
+        if (next.Count == 0) { ctx.FinishTurnTrigger(TurnMoment.ActionStart); return; }
+        if (ctx.Player.Deck.Count == 0) { ctx.Exhaust(next); return; }
+        next.Count--;
+        if (CardCatalog.Get(ctx.Player.Deck[0]).Kind == CardKind.Code)
+            ctx.Ask(Top, DecisionKind.Confirm, "Elige el destino de la carta del tope de tu mazo.", continuation: next);
+        else ResolveTopCard(ctx, next, toHand: false);
+    }
+
+    private static void ResolveTopCard(GameEngine.EffectContext ctx, EngineContinuation next, bool toHand)
+    {
+        if (toHand)
+        {
+            ctx.Log($"{ctx.Player.Name} añade la carta del tope de su mazo a su mano con Robotizar.");
+            ctx.MoveTopCardToHand(next);
+            return;
+        }
+        if (ctx.Player.Exchange.Count >= 2)
+        {
+            // As before the module: with the exchange full, the remaining copies show no card this stage.
+            ctx.Log($"{ctx.Player.Name} tiene ambos espacios de canje ocupados.");
+            ctx.FinishTurnTrigger(TurnMoment.ActionStart);
+            return;
+        }
+        ctx.SendTopCardToExchange(next);
+    }
 }

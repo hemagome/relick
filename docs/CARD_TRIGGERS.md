@@ -99,23 +99,35 @@ Es la misma regla que hoy aplica cada carta por su cuenta (`ActiveRobotizeCopies
 
 ### 3. Ejecución de una cadena
 
-El motor resuelve un momento con un único ejecutor:
+> **Cambio al implementarlo (paso 3).** La instantánea de fuentes que proponía la primera versión no sirve para el inicio de acciones. Las copias reveladas de Perro Fantasma son índices de la mano, que se desplazan cuando una carta sale de ella; `PlayerState.GhostDogReveals` ya los desplaza con `ShiftHandSlots`, y una lista aparte de `FieldTarget` no lo haría. Por eso cada disparador guarda su propio avance, como ya hacían las dos cartas, y el ejecutor solo decide el orden entre ellas.
 
-1. Al llegar al momento, toma una **instantánea** de las fuentes que aplican y la guarda en el estado:
-   ```csharp
-   public sealed class PendingTriggers { public TurnMoment Moment; public int Seat; public List<FieldTarget> Sources = []; }
-   ```
-   La instantánea respeta lo que ya hace Robotizar: cuenta sus copias al empezar y no las vuelve a contar a mitad.
-2. Dispara la primera fuente y le pasa `then = new EngineContinuation { Kind = ContinuationKind.NextTrigger }`.
-3. `NextTrigger` quita la fuente resuelta y dispara la siguiente. Una fuente que ya no está en su espacio, porque se destruyó a mitad de la cadena, se salta sin disparar, igual que hoy Perro Fantasma comprueba `PlayableHandCard` antes de resolver.
-4. Con la lista vacía, el motor sigue con su flujo normal: `CompletePendingPlay` en el inicio de acciones, el robo en el inicio de turno.
+La interfaz implementada es más simple que la del apartado 1:
+
+```csharp
+internal enum TurnMoment { ActionStart }               // se añade un valor por momento migrado
+internal interface ITurnTrigger
+{
+    TurnMoment Moment { get; }
+    int Order { get; }                                  // fijado por las reglas
+    bool Fire(GameEngine.EffectContext ctx);            // false si no tiene nada que hacer ahora
+}
+```
+
+`GameEngine.TurnTriggers.cs` resuelve un momento así:
+
+1. `RunTurnTriggers(moment, seat, from)` dispara los disparadores del momento, en su `Order`, hasta que uno devuelve `true`: ha empezado algo que volverá más tarde.
+2. **Vuelta por continuación** (Robotizar): el disparador encadena sus pasos con `ctx.Then(...)`. Al terminar, llama a `ctx.FinishTurnTrigger(moment)`, que dispara los siguientes y, si ninguno empieza nada, vuelve a `CompletePendingPlay`.
+3. **Vuelta por activación** (Perro Fantasma): cada copia se resuelve como una activación completa, que vuelve por `CompletePendingPlay`, no por una continuación. Para eso existe `State.ActionStartActor`: mientras está puesto, `CompletePendingPlay` vuelve a ejecutar el momento desde el primer disparador. El ejecutor lo borra en cuanto un disparador no tiene nada que hacer, igual que antes lo borraba Perro Fantasma.
+4. **Límite:** la reentrada empieza siempre por el primer disparador. Por eso un disparador que ya terminó debe devolver `false` si lo vuelven a disparar. Hoy solo el primero (Perro Fantasma) depende de la reentrada. Si otro disparador posterior la necesitara, habría que guardar también su posición.
+
+No hizo falta estado nuevo en la partida: `ActionStartActor` ya existía, y el avance de Robotizar viaja en su continuación (`Count`).
 
 El daño y la destrucción usan el mismo ejecutor, pero sin instantánea entre pasos. Cada paso de `DamageStep` consulta sus fuentes en el momento, porque un paso anterior puede haber cambiado el campo (un Tótem destruido por contadores). Es lo que hacen hoy las llamadas encadenadas.
 
 ### 4. Compatibilidad
 
 - **Continuaciones antiguas.** `RobotizeActionStart`, `GoldenTotemReplacement`, `BikeTurnStart` y las demás siguen en el `switch` de `EngineContinuations.cs` como adaptadores que reanudan la cadena nueva desde el punto equivalente. No se borran ni se reordenan valores de `ContinuationKind` ni de `Phase`, porque los duelos guardados los serializan.
-- **Estado nuevo opcional.** `PendingTriggers` se omite al serializar cuando es `null`, igual que `Sleeve` o `Dice` en `PlayerState`. Así un duelo sin disparadores pendientes guarda exactamente el mismo JSON que antes.
+- **Estado nuevo opcional.** Si un paso necesita estado nuevo en la partida, se omite al serializar cuando está vacío, igual que `Sleeve` o `Dice` en `PlayerState`. Así un duelo sin disparadores pendientes guarda exactamente el mismo JSON que antes. El paso 3 no necesitó ninguno.
 - **Orden actual como especificación.** Antes de migrar cada familia se añade una prueba que fija el orden actual con varias cartas a la vez: el registro y el estado tras cada paso. La migración debe pasarla sin cambiarla.
 
 ## Orden actual que el diseño conserva
@@ -151,7 +163,7 @@ Cada paso es un commit propio, con compilación del juego y del servidor, los te
    - Casco de Copias: la secuencia de RAM, fuera de alcance.
    - Ironwing y Osamu: son Relikarios, no cartas, y necesitan un registro equivalente para Relikarios.
 2. ~~**Títulos de dado.**~~ Hecho con `DiePurposes`, una tabla por propósito en lugar de un miembro de cada efecto (ver arriba). Los títulos y la carta mostrada no cambian. Agujero Negro y Perro Fantasma siguen sin nombrar carta desde el propósito, como antes.
-3. **Infraestructura y `ActionStart`.** `ActiveSources`, `PendingTriggers`, `ContinuationKind.NextTrigger` y la interfaz `ITurnTrigger`. Migrar Perro Fantasma y Robotizar, con `RobotizeActionStart` como adaptador. Son dos cartas ya parcialmente en su efecto, y validan el ejecutor completo, incluidas la pausa y la reanudación.
+3. ~~**Infraestructura y `ActionStart`.**~~ Hecho: `ITurnTrigger`, `CardEffects.TurnTriggers` y el ejecutor de `GameEngine.TurnTriggers.cs` (ver el apartado 3). Perro Fantasma (`Order = 0`) y Robotizar (`Order = 1`) disparan desde su módulo, y toda la cadena de la carta del tope de Robotizar vive ya en `RobotizeEffect`. `RobotizeActionStart` queda como adaptador hacia el módulo. `TurnTriggerTests` fija el orden y comprueba que un duelo guardado con la continuación anterior se reanuda. `ActiveSources` se pospone: de momento basta `ActiveAttachedCopies`, que sustituye a la búsqueda propia de Robotizar.
 4. **`TurnStart` y `FinalStage`.** Moto-Ratón (con `BikeTurnStart` como adaptador) y Zahira Flair. Mira de Sniper dispara al descartar, no en un momento del turno. Se decide aquí si entra como un momento más de `TurnMoment` o como una familia propia, según lo que muestre su prueba de orden.
 5. **Destrucción.** Escudo Galáctico, Tótem de Oro y Reverse Shuffle. Requiere antes la suite de UI en verde: cambia lo que la UI recibe durante una destrucción protegida.
 6. **Daño.** Estrella del Fontanero, Turbo Sword, Robotizar, Anillo Morado, Escudo Galáctico y Tótem. Los indicadores `PreventDamage`, `DamageReduction` y `DamageCounterLimit` de `CardDefinition` pasan a los efectos de sus equipos, lo que cierra el punto 5 de la revisión DRY para esta familia. Es el paso de más riesgo y va el último.

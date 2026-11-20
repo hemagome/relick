@@ -109,6 +109,23 @@ internal abstract class CardEffect : CardRules
     public abstract void Resolve(GameEngine.EffectContext ctx);
 }
 
+/// <summary>Moments of the turn when a card in play may act. Each moment's triggers run in their <c>Order</c>.</summary>
+internal enum TurnMoment { ActionStart }
+
+/// <summary>
+/// A card that acts at a moment of the turn without being activated (see docs/CARD_TRIGGERS.md). The engine fires the
+/// moment's triggers in <see cref="Order"/>; one that starts work which comes back later returns true and, when it
+/// ends, hands off with <c>EffectContext.FinishTurnTrigger</c>.
+/// </summary>
+internal interface ITurnTrigger
+{
+    TurnMoment Moment { get; }
+    /// <summary>Position within the moment; the rules fix it, never the registration order.</summary>
+    int Order { get; }
+    /// <summary>Starts or resumes this card's work for the context's player; false when it has nothing to do now.</summary>
+    bool Fire(GameEngine.EffectContext ctx);
+}
+
 internal static class CardEffects
 {
     private static readonly IReadOnlyDictionary<string, CardRules> Registered =
@@ -121,6 +138,13 @@ internal static class CardEffects
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect() }.ToDictionary(e => e.CardId);
 
     public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
+
+    private static readonly IReadOnlyDictionary<TurnMoment, CardRules[]> TurnTriggerTable = Registered.Values
+        .OfType<ITurnTrigger>().GroupBy(t => t.Moment)
+        .ToDictionary(g => g.Key, g => g.OrderBy(t => t.Order).Cast<CardRules>().ToArray());
+
+    /// <summary>The cards that act at <paramref name="moment"/>, in the order the rules fix.</summary>
+    public static IReadOnlyList<CardRules> TurnTriggers(TurnMoment moment) => TurnTriggerTable.GetValueOrDefault(moment) ?? [];
 }
 
 public sealed partial class GameEngine
@@ -147,10 +171,11 @@ public sealed partial class GameEngine
 
         /// <summary>Opens a decision for <see cref="Actor"/>; the card's <c>Choices</c> and <c>Choose</c> handle <paramref name="step"/>.</summary>
         public void Ask(string step, DecisionKind kind, string instruction, bool allowsCombos = false, bool announce = true, int value = 0,
-            List<int>? picks = null, int? showsHandOf = null)
+            List<int>? picks = null, int? showsHandOf = null, EngineContinuation? continuation = null)
         {
             _engine.AskDecision(new PendingDecision { Source = Card.Id, Step = step, Decider = Actor, Kind = kind,
-                Instruction = instruction, AllowsCombos = allowsCombos, Value = value, Picks = picks, ShowsHandOf = showsHandOf }, announce);
+                Instruction = instruction, AllowsCombos = allowsCombos, Value = value, Picks = picks, ShowsHandOf = showsHandOf,
+                Continuation = continuation }, announce);
         }
 
         /// <summary>Continues the card at <paramref name="step"/> after the operation finishes, or right away.</summary>
@@ -197,7 +222,38 @@ public sealed partial class GameEngine
         /// <summary>Tells the presentation that a card of this player moved between piles; it does not move the card.</summary>
         public void NotifyPileMove(string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory) =>
             _engine.NotifyPileMove(Player, id, source, index, destination);
-        public void ResolveRobotizeTopCard(EngineContinuation next, bool toHand) => _engine.ResolveRobotizeTopCard(Actor, next, toHand);
+        /// <summary>Ends this card's work at <paramref name="moment"/>: the moment's later triggers run, then the engine's pending play.</summary>
+        public void FinishTurnTrigger(TurnMoment moment) => _engine.ContinueTurnTriggers(moment, Actor, Card.Id);
+        /// <summary>How many copies of this card sit on top of this player's Relikario with their effects active.</summary>
+        public int ActiveAttachedCopies() => _engine.ActiveAttachedCopies(Actor, Card.Id).Count();
+        public string? PlayableHandCard(int handIndex) => _engine.PlayableHandCard(Player, handIndex);
+        /// <summary>Sends this card from the hand to memory and activates it there without paying actions or PR.</summary>
+        public void ActivateFromHandForFree(int handIndex, bool choosesDieResult)
+        {
+            var memory = _engine.SendHandToMemory(Player, handIndex);
+            _engine.BeginActivation(new EngineActivation(Actor, Card.Id, 0, 0, State.Phase)
+            {
+                MemoryIndex = memory?.Index ?? -1, MemoryOwner = memory?.Owner, ChooseDieResult = choosesDieResult
+            });
+        }
+        /// <summary>The player's deck ran out: the shared recycling, then <paramref name="then"/>.</summary>
+        public void Exhaust(EngineContinuation? then) => _engine.Exhaust(Player, then);
+        public void MoveTopCardToHand(EngineContinuation? then) => _engine.MoveTopCard(Player, bonus: false, then);
+        /// <summary>Moves the top card of the deck to the next exchange slot, keeping its corruption mark; the exchange may then complete.</summary>
+        public void SendTopCardToExchange(EngineContinuation? then)
+        {
+            var player = Player;
+            var slot = player.Exchange.Count;
+            var id = player.Deck[0];
+            if (player.CorruptsOnMemory(CardZone.Deck, 0)) player.MarkForCorruption(CardZone.Exchange, slot);
+            player.Deck.RemoveAt(0);
+            player.RemoveCorruptionSlots(CardZone.Deck, 0);
+            _engine.NotifyPileMove(player, id, CardZone.Deck, slot, CardZone.Exchange);
+            _engine.AddToExchange(player, id);
+            var after = new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = Actor, Next = then };
+            if (player.Deck.Count == 0) _engine.Exhaust(player, after);
+            else _engine.Continue(after);
+        }
         public void FinishComboParry() => _engine.FinishComboParry(Actor);
         public bool CanParryActivation() => _engine.CanParryActivation(Actor);
         public bool CanPlayDestinyPick() => _engine.CanPlayDestinyPick(Actor);
@@ -380,6 +436,10 @@ public sealed partial class GameEngine
         State.PendingDecision = decision.Suspended; State.Phase = decision.ResumePhase;
         CompleteActivationIfFinished();
     }
+
+    /// <summary>Resumes a card module from a continuation kind saved before the card had a module.</summary>
+    private void ContinueLegacyCardStep(EngineContinuation next, string cardId, string step) =>
+        CardEffects.For(cardId)!.Continue(EffectFor(next.Actor, cardId), step, next);
 
     private void ContinueCardEffect(EngineContinuation next)
     {

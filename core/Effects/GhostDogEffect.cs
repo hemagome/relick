@@ -4,13 +4,35 @@ namespace Relick.Core;
 /// Perro Fantasma: revealed in hand, it activates at the start of its owner's next action stage. Roll 1D6 (or choose the
 /// result, when the activation allows it). 2: take a Bonus; 3–4: a memory card; 5–6: a corrupted card, locked for the turn.
 /// </summary>
-internal sealed class GhostDogEffect : CardEffect
+internal sealed class GhostDogEffect : CardEffect, ITurnTrigger
 {
     private const string Result = "result";
     private const string Rolled = "rolled";
     private const string Recover = "recover";
 
     public override string CardId => CardCatalog.GhostDog.Id;
+
+    public TurnMoment Moment => TurnMoment.ActionStart;
+    // Before Robotizar: the revealed copies resolve first, from the lowest hand slot.
+    public int Order => 0;
+
+    /// <summary>Activates the next revealed copy still in hand; each one comes back through the pending play.</summary>
+    public bool Fire(GameEngine.EffectContext ctx)
+    {
+        var reveals = ctx.Player.GhostDogReveals;
+        while (reveals is { Count: > 0 })
+        {
+            var index = reveals.Min();
+            if (ctx.PlayableHandCard(index) != CardId)
+            {
+                reveals.Remove(index);
+                continue;
+            }
+            ctx.ActivateFromHandForFree(index, choosesDieResult: true);
+            return true;
+        }
+        return false;
+    }
 
     public override void Resolve(GameEngine.EffectContext ctx)
     {

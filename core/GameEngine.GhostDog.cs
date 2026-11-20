@@ -16,34 +16,4 @@ public sealed partial class GameEngine
         Log($"{p.Name} revela Perro Fantasma para activarlo en su siguiente etapa de acciones.");
         return CommandResult.Ok();
     }
-
-    private void BeginActionStartEffects(int actor)
-    {
-        State.ActionStartActor = actor;
-        ResolveGhostDogsAtActionStart(actor);
-    }
-
-    private void ResolveGhostDogsAtActionStart(int actor)
-    {
-        var p = State.Players[actor];
-        if (p.GhostDogReveals is not { Count: > 0 })
-        {
-            State.ActionStartActor = null;
-            ResolveRobotizeAtActionStart(actor);
-            return;
-        }
-        var index = p.GhostDogReveals.Min();
-        if (PlayableHandCard(p, index) != CardCatalog.GhostDog.Id)
-        {
-            p.GhostDogReveals.Remove(index);
-            ResolveGhostDogsAtActionStart(actor);
-            return;
-        }
-        var memory = SendHandToMemory(p, index);
-        BeginActivation(new EngineActivation(actor, CardCatalog.GhostDog.Id, 0, 0, Phase.Actions)
-        {
-            MemoryIndex = memory?.Index ?? -1, MemoryOwner = memory?.Owner,
-            ChooseDieResult = true
-        });
-    }
 }
