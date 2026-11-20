@@ -61,6 +61,8 @@ public sealed partial class GameEngine
         Log(State.LastCombat);
         if (source.Zone == FieldZone.Skill && destination.Zone == FieldZone.Skill)
         {
+            // The skill keeps its learned slot and only changes the space it is shown in.
+            NotifyFieldMove(p, source, destination, source.Index);
             (p.SkillPositions ??= [])[source.Index] = destination.Index;
             TryFinishWithGameOver();
             return;
@@ -77,6 +79,7 @@ public sealed partial class GameEngine
         var (state, borrowed, marked) = DetachFieldCard(p, source, destination);
         var destinationZone = MovementCardZone(destination.Zone);
         var destinationIndex = destination.Zone == FieldZone.Skill ? p.Skills.Count : destination.Index;
+        NotifyFieldMove(p, source, destination, destinationIndex);
         if (marked) p.MarkForCorruption(destinationZone, destinationIndex);
         if (borrowed && destination.Zone is FieldZone.Skill or FieldZone.Equipment)
             p.MarkForeignFieldCard(id);
@@ -115,6 +118,12 @@ public sealed partial class GameEngine
 
         CompleteFieldMovement(p, source, destination, orient, used, placedTurn);
     }
+
+    // Announced before the destination's own follow-ups (a completed exchange, a Bonus refill), so the card is seen
+    // arriving first. Skills are addressed by learned slot; the client finds their space through SkillPositions.
+    private void NotifyFieldMove(PlayerState p, FieldTarget source, FieldTarget destination, int destinationIndex) =>
+        NotifyPileMove(p, CardCatalog.TextId(source.CardId), MovementCardZone(source.Zone), Math.Max(0, destinationIndex),
+            MovementCardZone(destination.Zone), sourceIndex: source.Index, fieldMove: true);
 
     private void CompleteFieldMovement(PlayerState p, FieldTarget source, FieldTarget destination, EngineContinuation? orient, bool used, int placedTurn)
     {

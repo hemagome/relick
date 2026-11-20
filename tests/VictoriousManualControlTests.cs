@@ -185,6 +185,40 @@ static class VictoriousManualControlTests
             Check(p.Equipment == CardCatalog.Pc.Id && p.Exchange.Single() == CardCatalog.Pendant.Id && p.Health == 7 &&
                 p.Relikia == 0 && p.ActionsLeft == 0 && p.CorruptedMemory.Single() == Control, "Relikia corrompe la copia y el equipo ocupado queda intacto.");
         }),
+        ("Control Manual: anuncia el traslado de campo con su casilla de origen y de destino", () =>
+        {
+            // Bonus → Equipo: the move comes before the Bonus refill it triggers.
+            var (game, _) = Fixture();
+            var p = game.State.Active;
+            p.Bonus = CardCatalog.Bonfire.Id;
+            Check(game.PlayCode(0, 0).Success, "El Código puede mover la Hoguera.");
+            var cues = DuelVisualEvents.Capture(game);
+            Destination(game, "Equipo");
+            var move = cues.Single(cue => cue.FieldMove);
+            Check(move is { Kind: DuelVisualKind.Pile, Player: 0, Source: CardZone.Bonus, Destination: CardZone.Equipment, Value: 0 } &&
+                cues.IndexOf(move) < cues.FindIndex(cue => cue.Kind == DuelVisualKind.BonusPlace),
+                "Mover la Hoguera debe anunciarse de Bonus a Equipo antes de reponer el Bonus.");
+
+            // Habilidad → Habilidad: the learned slot stays, so both ends name it.
+            (game, _) = Fixture();
+            p = game.State.Active;
+            p.Skills.AddRange([CardCatalog.Reverse.Id, CardCatalog.Destiny.Id]);
+            p.SkillPositions = new() { [1] = 3 };
+            Check(game.PlayCode(0, 0).Success, "El Código puede mover una habilidad.");
+            Source(game, FieldZone.Skill, 1);
+            cues = DuelVisualEvents.Capture(game);
+            Destination(game, "Habilidad 300 PR");
+            Check(cues.Single(cue => cue.FieldMove) is { Source: CardZone.Skill, SourceIndex: 1, Destination: CardZone.Skill, Value: 1 } &&
+                p.SkillPosition(1) == 1, "Reordenar una habilidad conserva su casilla aprendida en ambos extremos.");
+
+            // Bonus → Canje: with one movable card and one free zone the code moves it at once, into the first exchange slot.
+            (game, _) = Fixture();
+            p = game.State.Active;
+            cues = DuelVisualEvents.Capture(game);
+            Check(game.PlayCode(0, 0).Success && p.Exchange.Single() == Bonus, "El Bonus pasa directamente al canje.");
+            Check(cues.Single(cue => cue.FieldMove) is { Source: CardZone.Bonus, Destination: CardZone.Exchange, Value: 0 },
+                "Mover el Bonus al canje debe anunciar la primera casilla libre.");
+        }),
         ("Control Manual: pagar y volver a 0 vidas termina el duelo antes del traslado", () =>
         {
             var (game, _) = Fixture();

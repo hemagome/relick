@@ -453,3 +453,11 @@ se resuelve en la misma jugada en vez de esperar «Recibir daño». Se comprueba
 ventana abierta. Se publicó en `relick-dev` local y en `relick-pvp-dev-c2006ee7` con
 `--delete-data=never`, sin partidas abiertas y sin cambios de esquema. Es compatible
 con el cliente de la publicación anterior.
+
+El 20 de noviembre Control Manual Victorioso pasó a anunciar su traslado: el motor emite
+una señal `Pile` con `FieldMove`, la casilla de origen en `SourceIndex` y la de destino en
+`Value`, antes de los efectos que provoca el traslado (reponer el Bonus, completar el
+canje). El cliente anima la carta boca arriba de una casilla a otra. `FieldMove` es
+opcional y un cliente anterior lo ignora. Se publicó en `relick-dev` local y en
+`relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin partidas abiertas y sin cambios
+de esquema.

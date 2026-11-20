@@ -30,6 +30,10 @@ public sealed class DuelVisualEvent
     public bool ToRivalMemory { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? DestinationPlayer { get; set; }
+    // Pile cues only: the card moves within Player's field (Control Manual Victorioso); SourceIndex is the slot it
+    // leaves and Value the slot it reaches. Both cards are public, so the cue reveals nothing new.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool FieldMove { get; set; }
     // Chain cues only: the resolved Error de Carga chain, in activation order. Every card in it was already announced
     // publicly (DuelResolutionView), so this repeats no hidden identity; it only adds which links ended canceled.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -90,6 +94,7 @@ public static class DuelVisualEvents
             { Kind = DuelVisualKind.HandSteal, Player = owner, Target = recipient, SourceIndex = sourceIndex, Value = slot, Source = CardZone.Hand, Destination = CardZone.Hand });
         game.CardMovedToPile += movement => events.Add(new() { Kind = DuelVisualKind.Pile, Player = movement.Owner,
             Source = movement.Source, Destination = movement.Destination, Value = movement.Index, SourceIndex = movement.SourceIndex, ToRivalMemory = movement.ToRivalMemory,
+            FieldMove = movement.FieldMove,
             DestinationPlayer = movement.DestinationPlayer ?? (movement.Destination == CardZone.Corrupted &&
                 movement.MemoryOwner >= 0 && movement.MemoryOwner != movement.Owner ? movement.MemoryOwner : null) });
         game.DamageGuarded += guard => events.Add(new()

@@ -16,7 +16,12 @@ public partial class OnlineArena
         public bool IsSkillLesson => IsPlacement && Event.Destination == CardZone.Skill;
         public bool IsExchangePlacement => IsPlacement && Event.Destination == CardZone.Exchange;
         public bool LeavesExchange => Event.Kind == DuelVisualKind.Pile && Event.Source == CardZone.Exchange;
-        public bool TurnsSideways => IsSkillLesson || IsExchangePlacement;
+        // Control Manual Victorioso: a card moving between two zones of its owner's field.
+        public bool IsFieldMove => Event is { Kind: DuelVisualKind.Pile, FieldMove: true };
+        public bool TurnsSideways => IsSkillLesson || IsExchangePlacement || IsFieldMove && SidewaysZone(Event.Destination);
+        public bool LeavesSideways => Event.Kind == DuelVisualKind.Pile && (Event.Source == CardZone.Exchange || IsFieldMove && SidewaysZone(Event.Source));
+        // Exchange slots and skill tiles show their card lying down.
+        public static bool SidewaysZone(CardZone zone) => zone is CardZone.Exchange or CardZone.Skill;
         public bool LoadsAttachment => Event is { Kind: DuelVisualKind.Pile, Source: CardZone.Deck,
             Destination: CardZone.TomeCard or CardZone.ShieldCharge };
     }
@@ -69,7 +74,7 @@ public partial class OnlineArena
             var child = _snapshot.Players[owner].TomeCards?.FirstOrDefault(card => card.Slot == cue.Value);
             return child is { HostZone: FieldZone.Attached } ? ZoneNode(relative, CardZone.Attached, child.HostIndex) : null;
         }
-        return ZoneNode(relative, cue.Destination, flight.IsPlacement || flight.LoadsAttachment || cue.Destination == CardZone.Hand ? cue.Value : -1);
+        return ZoneNode(relative, cue.Destination, flight.IsPlacement || flight.LoadsAttachment || flight.IsFieldMove || cue.Destination == CardZone.Hand ? cue.Value : -1);
     }
 
     private static Rect2 ZoneRect(Control control) => control switch
@@ -108,7 +113,7 @@ public partial class OnlineArena
             var relative = cue.Player == current.MySeat ? 0 : 1;
             var source = cue.Kind is DuelVisualKind.Return or DuelVisualKind.HandTransfer ? CardZone.Hand : cue.Kind == DuelVisualKind.BonusClaim ? CardZone.Bonus : cue.Source;
             var slot = cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard ? 0 :
-                cue.Kind is DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal || source == CardZone.ShieldCharge ? cue.SourceIndex : cue.Value;
+                cue.Kind is DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal || cue.FieldMove || source == CardZone.ShieldCharge ? cue.SourceIndex : cue.Value;
             var node = ZoneNode(relative, source, slot);
             var player = previous.Players[cue.Player];
             string? id = source switch
@@ -198,6 +203,19 @@ public partial class OnlineArena
                 result[cue] = new Flight(cue, origin, face, OriginRotation: rotation, StartsFaceUp: false, EndsFaceUp: face != null);
                 continue;
             }
+            if (cue.FieldMove)
+            {
+                // The card stays face up the whole way: it leaves one public zone of the field for another.
+                var face = source switch
+                {
+                    CardZone.Skill => player.Skills.ElementAtOrDefault(slot), CardZone.Exchange => player.Exchange.ElementAtOrDefault(slot),
+                    CardZone.LightEquipment => player.LightEquipment?.ElementAtOrDefault(slot),
+                    CardZone.EquipmentCover => player.EquipmentCovers?.ElementAtOrDefault(slot), _ => id
+                };
+                result[cue] = new Flight(cue, origin, face, Duration: 0.55,
+                    OriginRotation: (node?.Rotation ?? 0) + (Flight.SidewaysZone(source) ? Mathf.Pi / 2 : 0), StartsFaceUp: true, EndsFaceUp: true);
+                continue;
+            }
             if (source == CardZone.Hand && cue.Destination == CardZone.Area)
             {
                 result[cue] = new Flight(cue, origin, current.Players[cue.Player].Area, OriginRotation: rotation, StartsFaceUp: id != null);
@@ -267,7 +285,7 @@ public partial class OnlineArena
     {
         for (var actor = 0; actor < current.Players.Length; actor++)
         {
-            if (origins.Keys.Any(cue => cue.Player == actor && cue.Source == CardZone.Deck && cue.Destination == CardZone.Exchange))
+            if (origins.Keys.Any(cue => cue.Player == actor && cue.Destination == CardZone.Exchange && (cue.Source == CardZone.Deck || cue.FieldMove)))
                 continue;
             var before = previous.Players[actor];
             var after = current.Players[actor];
@@ -674,8 +692,8 @@ public partial class OnlineArena
                 if (source == null || destination == null || !OnScreen(source.Value) || !OnScreen(destination.Value) ||
                     (!fromPrevious || returning) && !RectVisible(deck, deckRect) || target != null && !RectVisible(target, destination.Value))
                 { SetDestinationPending(next, target, false); FinishHandDeparture(); return; }
-                _flightSource = next.Event.Source == CardZone.Exchange ? PortraitFootprint(source.Value) : source.Value;
-                _flightDestination = destination.Value;
+                _flightSource = next.LeavesSideways ? PortraitFootprint(source.Value) : source.Value;
+                _flightDestination = next.IsFieldMove && next.TurnsSideways ? PortraitFootprint(destination.Value) : destination.Value;
             }
             _activeFlight = next; _flightTarget = target;
             SetDestinationPending(next, target, true);

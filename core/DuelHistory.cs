@@ -286,7 +286,7 @@ internal sealed class PublicDuelObservation : IDisposable
             Add(DuelHistoryEventKind.OutOfGame, move.Owner, card: move.CardId);
         if (move.Source == CardZone.Deck && move.Destination == CardZone.Attached)
             Add(DuelHistoryEventKind.AttackPlaced, move.Owner);
-        if (move.Destination == CardZone.LightEquipment)
+        if (move.Destination == CardZone.LightEquipment && !move.FieldMove)
             Add(DuelHistoryEventKind.LightEquipped, move.DestinationPlayer ?? move.Owner, card: move.CardId);
     }
     public void Complete()

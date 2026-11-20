@@ -37,16 +37,44 @@ public partial class OnlineArena
             if (!tile.Chosen || !PresentsOption(source) || !source.Move.Apply(game, seat).Success)
                 throw new Exception("La habilidad debe seleccionarse desde el tablero.");
 
-            PresentTestSnapshot(DuelSnapshot.For(game, seat, 62));
+            var before = DuelSnapshot.For(game, seat, 62);
+            PresentTestSnapshot(before);
+            for (var frame = 0; frame < 4; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var destinations = _snapshot!.Options.Where(option => option.Move.Kind == DuelMoveKind.Choose).ToArray();
+            var cues = DuelVisualEvents.Capture(game);
             if (destinations.Length != 4 || destinations.Any(option => !PresentsOption(option)) ||
                 !destinations.Single(option => option.Label == "Habilidad 500 PR").Move.Apply(game, seat).Success)
                 throw new Exception("La arena debe mostrar el canje y las tres casillas de habilidad libres.");
 
-            PresentTestSnapshot(DuelSnapshot.For(game, seat, 63));
-            if ((ZoneNode(0, CardZone.Skill, 0) as SkillTile)?.Name != "Skill0_2" || _snapshot!.Players[seat].Health != 7)
+            // The skill flies from its old space to the new one, face up, and the new space waits for it.
+            var after = DuelSnapshot.For(game, seat, 63); after.Visuals = cues;
+            var move = cues.Single(cue => cue.FieldMove);
+            var origins = CaptureOrigins(after, before);
+            // On the compact board the skill row is off screen: the flight is skipped there, as for any hidden zone.
+            var visible = size.X >= 1024;
+            if (!origins.TryGetValue(move, out var flight) || visible && flight.Origin == null || flight.Face != CardCatalog.Reverse.Id)
+                throw new Exception("El traslado debe salir de la casilla anterior mostrando la habilidad.");
+            PresentTestSnapshot(after); Animate(cues, origins);
+            for (var frame = 0; frame < 4; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var landing = ZoneNode(0, CardZone.Skill, 0) as SkillTile;
+            if (landing?.Name != "Skill0_2" || _snapshot!.Players[seat].Health != 7)
                 throw new Exception("La habilidad debe quedar en su nueva casilla y el pago debe reflejarse en el tablero.");
+            if (visible && !landing.AwaitingLesson) throw new Exception("La casilla nueva muestra la habilidad antes de que llegue.");
+            var flew = false;
+            for (var frame = 0; IsAnimating && frame < 100; frame++)
+            {
+                UpdateFlights(0.1);
+                if (_activeFlight?.IsFieldMove == true)
+                {
+                    flew = true;
+                    if (_flightTarget != landing || _flightFront?.Card.Id != CardCatalog.Reverse.Id)
+                        throw new Exception("El vuelo debe llevar la habilidad visible hasta su nueva casilla.");
+                }
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+            if (flew != visible || IsAnimating || landing.AwaitingLesson)
+                throw new Exception("El traslado debe animarse y dejar la habilidad visible al aterrizar.");
         }
-        GD.Print("PVP_VICTORIOUS_MANUAL_CONTROL_PASS");
+        GD.Print("PVP_VICTORIOUS_MANUAL_CONTROL_PASS · selección desde el tablero, casillas libres y vuelo de la habilidad a su nueva casilla; dos tamaños y ambos asientos.");
     }
 }
