@@ -228,7 +228,7 @@ public sealed partial class GameEngine
             card = DiePurposes.CardId(die.Purpose);
         }
         return new DuelResolutionView { Actor = actor, DecisionPlayer = state.DecisionPlayer, CardId = card ?? "",
-            Status = state.Phase is Phase.ErrorResponse or Phase.CodeResponse or Phase.DefenseChoice or Phase.DestructionResponse or Phase.EffectDamageChoice or Phase.TotemChoice
+            Status = state.Phase is Phase.ErrorResponse or Phase.CodeResponse or Phase.DefenseChoice or Phase.DestructionResponse or Phase.EffectDamageChoice
                 ? DuelResolutionStatus.Response : DuelResolutionStatus.Resolving,
             Responses = _activationChain.Skip(1).Select(f => new PublicActivation { Actor = f.Actor, CardId = f.CardId }).ToList(),
             Attack = _activationChain.Count > 0 && ChainAttack() is { } attack ? new PublicActivation { Actor = attack.Actor, CardId = attack.CardId } : null };

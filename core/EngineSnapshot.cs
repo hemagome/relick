@@ -61,6 +61,21 @@ public sealed partial class GameEngine
         finally { State.Log = log; }
     }
 
+    /// <summary>A duel saved while waiting on the old Tótem phase waits on the same choice as a decision.</summary>
+    private static void ConvertLegacyTotemChoice(GameState state)
+    {
+        if (state.Phase != Phase.TotemChoice || state.PendingTotemDamage is not { } pending) return;
+        state.PendingDecision = new PendingDecision
+        {
+            Source = CardCatalog.Totem.Id, Step = "lethal", Decider = pending.Target, Kind = DecisionKind.Confirm,
+            Instruction = $"Vas a recibir {pending.Amount} de daño. Decide si destruyes un Tótem de Salvación para cancelarlo.",
+            ResumePhase = pending.ResumePhase,
+            Continuation = new EngineContinuation { Actor = pending.Target, Count = pending.Amount, Value = pending.AttackDie, Next = pending.Completed }
+        };
+        state.PendingTotemDamage = null;
+        state.Phase = Phase.Decision;
+    }
+
     public static GameEngine FromSnapshot(string json, IGameRandom random)
     {
         var saved = JsonSerializer.Deserialize(json, EngineJson.Default.EngineSnapshot) ?? throw new InvalidOperationException("Estado de partida vacío.");
@@ -70,6 +85,7 @@ public sealed partial class GameEngine
             saved.State.TrapCraftQueue ??= oldCrafts.Select(actor => new TrapCraft(actor, CardCatalog.SuperMagnet.Id)).ToList();
             saved.State.PendingTrapCrafts = null;
         }
+        ConvertLegacyTotemChoice(saved.State);
         // The saved Relikario is only an Id plus a copy of its numbers: take the catalog's current definition, which
         // also carries what is never saved (evolution, display name). Earlier saves stored Yuno Lv 2 with ten maximum
         // lives; the catalog restores its corrected cap.

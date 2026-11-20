@@ -116,7 +116,9 @@ internal static class ArenaActionText
             case DuelMoveKind.Pc: case DuelMoveKind.Pendant: case DuelMoveKind.BoxDefense: return "Destruye el equipo";
             case DuelMoveKind.CodeResponse when m.Flag: return "Destruye Caja de Cartón";
             case DuelMoveKind.ProtectDestruction when m.Index >= 0: return "Destruye la habilidad elegida";
-            case DuelMoveKind.Totem when m.Flag: return s.Players[s.MySeat].EquipmentCovers?.Contains(CardCatalog.GoldenTotem.Id) == true ? "Destruye Tótem de Oro" : "Destruye 1 Tótem";
+            case DuelMoveKind.Totem when m.Flag:
+            case DuelMoveKind.Choose when s.Decision?.Source == CardCatalog.Totem.Id && option.Field != null:
+                return s.Players[s.MySeat].EquipmentCovers?.Contains(CardCatalog.GoldenTotem.Id) == true ? "Destruye Tótem de Oro" : "Destruye 1 Tótem";
             case DuelMoveKind.DestinyDefense: return $"{option.RequiredDiscards} descartes · +1 contador";
             default: return "";
         }

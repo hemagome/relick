@@ -153,7 +153,6 @@ public sealed class DuelSnapshot
         if (s.Phase == Phase.ErrorResponse && game.IsFieldCodeActivation) stagePhase = Phase.Combat;
         if (s.PendingTurnBuff != null) stagePhase = s.PendingTurnBuff.ResumePhase;
         if (s.PendingReload != null && !s.IsOver) stagePhase = Phase.Actions;
-        if (s.PendingTotemDamage != null && !s.IsOver) stagePhase = s.PendingTotemDamage.ResumePhase;
         if (s.PendingGoldenTotem != null && !s.IsOver) stagePhase = Phase.Actions;
         var stageDecision = s.PendingDecision ?? s.PendingTurnBuff?.Decision;
         if (stagePhase == Phase.Decision && stageDecision?.Source == CardCatalog.ComboParry.Id)

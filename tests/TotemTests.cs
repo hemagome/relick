@@ -105,7 +105,7 @@ static class TotemTests
         {
             var (g, rng) = Fixture(); var p = g.State.Active; var target = g.State.Players[1];
             p.Skills[0] = CardCatalog.Magnet.Id; Stack(target, 1); target.Health = 5;
-            Hit(g, rng, 6); Check(g.State.Phase == Phase.TotemChoice && g.ResolveTotem(1, true).Success);
+            Hit(g, rng, 6); Check(TotemDecision(g) && g.ResolveTotem(1, true).Success);
             Check(g.State.Phase == Phase.MagnetChoice && p.Relikia == 0 && target.Health == 5);
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng);
             Check(g.ResolveMagnet(0, false, 0).Success && g.State.Active.Relikia == 500 && g.State.Players[1].Hand.Count == 0);
@@ -122,13 +122,13 @@ static class TotemTests
             foreach (var copies in new[] { 1, 2, 3 })
             {
                 var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, copies); target.Health = 4; g.State.Active.StarEffects = 1;
-                Hit(g, rng, 5); Check(g.State.Phase == Phase.TotemChoice && target.Health == 4 && g.State.Active.Relikia == 0);
-                Check(g.State.PendingTotemDamage!.Amount == 6 && DuelOptions.For(g, 1).Count(o => o.Move.Kind == DuelMoveKind.Totem) == 2);
+                Hit(g, rng, 5); Check(TotemDecision(g) && target.Health == 4 && g.State.Active.Relikia == 0);
+                Check(g.State.PendingDecision!.Continuation!.Count == 6 && DuelOptions.For(g, 1).Count(o => o.Move.Kind == DuelMoveKind.Choose) == 2);
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); target = g.State.Players[1];
                 Check(new DuelMove { Kind = DuelMoveKind.Totem, Flag = true }.Apply(g, 1).Success);
                 Check(target.Health == 4 && !target.HasReachedZero && target.Memory.Count == 1 && g.State.Active.Relikia == 600);
                 Check(copies == 1 ? target.Equipment == null : target.Equipment == CardCatalog.Totem.Id && target.EquipmentStackedCopies == copies - 2);
-                Check(g.State.PendingTotemDamage == null && g.State.PendingAttack == null && g.State.Phase == Phase.Combat);
+                Check(!TotemDecision(g) && g.State.PendingAttack == null && g.State.Phase == Phase.Combat);
             }
         }),
         ("Tótem: rechazar protección aplica daño y consume una copia solo si estaba apilado", () =>
@@ -158,7 +158,7 @@ static class TotemTests
                 if (star) target.StarEffects = 1;
                 else { target.Skills.Add(CardCatalog.Destiny.Id); target.Hand.AddRange(Enumerable.Repeat(CardCatalog.Attack.Id, 2)); }
                 Hit(g, rng, 5); if (!star) Check(g.ResolveDefense(1, 0, [0, 1, 2]).Success);
-                Check(target.Health == 8 && target.EquipmentStackedCopies == 1 && g.State.PendingTotemDamage == null && g.State.Active.Relikia == 600);
+                Check(target.Health == 8 && target.EquipmentStackedCopies == 1 && !TotemDecision(g) && g.State.Active.Relikia == 600);
             }
         }),
         ("Tótem: Reverse sustituye la destrucción del coste o del daño sin cambiar su resultado", () =>
@@ -180,10 +180,10 @@ static class TotemTests
             {
                 var (g, rng) = Fixture(actor); var p = g.State.Active; var target = g.State.Players[1 - actor];
                 p.Bonus = CardCatalog.Jessica.Id; Stack(target, 2); target.Health = 3; var deck = p.Deck.Count;
-                rng.EnqueueDie(6); Check(g.UseFieldCode(actor, FieldZone.Bonus).Success && g.State.Phase == Phase.TotemChoice && p.Deck.Count == deck);
+                rng.EnqueueDie(6); Check(g.UseFieldCode(actor, FieldZone.Bonus).Success && TotemDecision(g) && p.Deck.Count == deck);
                 g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Active; target = g.State.Players[1 - actor];
                 Check(g.ResolveTotem(1 - actor, true).Success && target.Health == 3 && target.EquipmentStackedCopies == 0 && p.Deck.Count == deck - 1);
-                Check(g.State.PendingTotemDamage == null && g.State.Phase == Phase.Combat && g.FieldCombatTargets(actor).Count() == 0);
+                Check(!TotemDecision(g) && g.State.Phase == Phase.Combat && g.FieldCombatTargets(actor).Count() == 0);
                 Check(g.Attack(actor, 0, 0).Success);
             }
         }),
@@ -191,7 +191,7 @@ static class TotemTests
         {
             var (g, _) = Fixture(); var target = g.State.Players[1]; Stack(target, 2); target.Deck.Clear(); target.Recycled = true; target.Health = 1;
             g.State.Phase = Phase.Actions; Check(g.Advance(0).Success);
-            Check(g.State.IsOver && g.State.Winner == 0 && target.Health == 0 && target.EquipmentStackedCopies == 1 && g.State.PendingTotemDamage == null);
+            Check(g.State.IsOver && g.State.Winner == 0 && target.Health == 0 && target.EquipmentStackedCopies == 1 && !TotemDecision(g));
         }),
         ("Tótem: abandonar durante la decisión conserva el resultado final y no consume copias", () =>
         {
@@ -201,18 +201,41 @@ static class TotemTests
             Check(DuelSnapshot.For(g, 1, 1).Stage == Phase.Finished && DuelOptions.For(g, 1).Count == 0 && g.State.Players[1].EquipmentStackedCopies == 1);
             Reject(g, () => g.ResolveTotem(1, true));
         }),
+        ("Tótem: un duelo guardado en la fase anterior se abre como decisión y se resuelve igual", () =>
+        {
+            foreach (var cancel in new[] { true, false })
+            {
+                var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, 1); target.Health = 3;
+                Hit(g, rng, 5); Check(TotemDecision(g));
+                // The shape the engine saved before Tótem de Salvación used decisions.
+                var json = System.Text.Json.Nodes.JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
+                var decision = state["PendingDecision"]!.AsObject();
+                var hit = decision["Continuation"]!.AsObject();
+                state["PendingTotemDamage"] = new System.Text.Json.Nodes.JsonObject
+                {
+                    ["Target"] = 1, ["Amount"] = hit["Count"]!.GetValue<int>(), ["AttackDie"] = hit["Value"]!.GetValue<int>(),
+                    ["ResumePhase"] = decision["ResumePhase"]!.GetValue<int>(), ["Completed"] = hit["Next"]?.DeepClone()
+                };
+                state.Remove("PendingDecision"); state["Phase"] = (int)Phase.TotemChoice;
+                var legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng); target = legacy.State.Players[1];
+                Check(TotemDecision(legacy) && legacy.State.PendingTotemDamage == null && legacy.DecisionChoices(1).Count == 2);
+                Check(legacy.ResolveTotem(1, cancel).Success && !TotemDecision(legacy) &&
+                    (cancel ? target.Health == 3 && target.Equipment == null : target.Health == 0));
+            }
+        }),
         ("Tótem: valida actor, etapa y exclusión de otros códigos mientras se elige protección", () =>
         {
             var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, 1); target.Health = 3;
             Reject(g, () => g.ResolveTotem(1, true)); target.Hand.Add(CardCatalog.PlumberStar.Id); target.Hand.Add(CardCatalog.LoadError.Id);
             // Star's defense window precedes the Tótem decision.
-            Hit(g, rng, 5); Check(g.PassDefense(1).Success && g.State.Phase == Phase.TotemChoice);
+            Hit(g, rng, 5); Check(g.PassDefense(1).Success && TotemDecision(g));
             Reject(g, () => g.ResolveTotem(0, true)); Reject(g, () => g.Advance(0)); Reject(g, () => g.PlayCode(1, 1));
-            Check(!g.CanPlayLoadError(1) && !DuelOptions.For(g, 0).Any(o => o.Move.Kind == DuelMoveKind.Totem));
+            Check(!g.CanPlayLoadError(1) && !DuelOptions.For(g, 0).Any(o => o.Move.Kind == DuelMoveKind.Choose));
             Check(g.ResolveTotem(1, true).Success); Reject(g, () => g.ResolveTotem(1, true));
         })
     };
 
+    static bool TotemDecision(GameEngine g) => g.State.Phase == Phase.Decision && g.State.PendingDecision?.Source == CardCatalog.Totem.Id;
     static (GameEngine, ScriptedRandom) Fixture(int actor = 0)
     {
         var rng = new ScriptedRandom();

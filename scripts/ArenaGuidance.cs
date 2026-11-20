@@ -26,7 +26,7 @@ internal static class ArenaGuidance
         {
             var waiting = s.Phase switch
             {
-                Phase.DefenseChoice or Phase.TotemChoice or Phase.EffectDamageChoice => "El rival está decidiendo cómo recibir el daño.",
+                Phase.DefenseChoice or Phase.EffectDamageChoice => "El rival está decidiendo cómo recibir el daño.",
                 Phase.ErrorResponse or Phase.CodeResponse or Phase.DestructionResponse => "Esperando la respuesta del rival.",
                 Phase.AttackRerollChoice or Phase.DieRerollChoice => "El rival está resolviendo su dado.",
                 Phase.Discard or Phase.TurnBuffDiscard or Phase.Final => "El rival está resolviendo sus descartes.",
@@ -49,7 +49,6 @@ internal static class ArenaGuidance
             Phase.DestructionResponse => "Elige una protección o permite la destrucción.",
             Phase.BlueEggDrawChoice => $"Decide si pagas {GameEngine.BlueEggDrawCost} PR para robar una carta.",
             Phase.Decision when s.Decision is { } decision => decision.Decider == s.MySeat ? decision.Instruction.TrimEnd('.') + "." : $"{decision.Title}: decide el rival.",
-            Phase.TotemChoice => "Decide si destruyes un Tótem para cancelar el daño.",
             Phase.SniperChoice => "Elige si equipas Mira de Sniper o la colocas en canje.",
             Phase.TrapCraftChoice when s.TrapCardId == CardCatalog.ZahiraFlair.Id => "Tu canje permite crear Zahira Flair.",
             Phase.TrapCraftChoice when s.TrapCardId == CardCatalog.SuperAttack.Id => "Tu canje permite añadir Súper Ataque a tu mano.",

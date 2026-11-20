@@ -548,7 +548,7 @@ public partial class OnlineArena
         {
             Phase.AttackRerollChoice or Phase.DieRerollChoice => $"Tu dado · {s.Die}",
             Phase.GoldenTotemChoice => "Tótem de Oro", Phase.TurnBuffDiscard => CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name,
-            Phase.TotemChoice => "Tótem de Salvación", Phase.SniperChoice => "Mira de Sniper",
+            Phase.SniperChoice => "Mira de Sniper",
             Phase.DefenseChoice or Phase.EffectDamageChoice => "Defensa", Phase.DestructionResponse => "Proteger carta",
             Phase.CodeResponse or Phase.ErrorResponse => "Respuesta", Phase.RecycleChoice => "Reciclar memoria",
             Phase.PointsChoice => _pointsTarget is int target ? s.Players[target].Name : "Relick Points",

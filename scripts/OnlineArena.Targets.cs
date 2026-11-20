@@ -82,7 +82,9 @@ public partial class OnlineArena
         DuelMoveKind.FieldCode or DuelMoveKind.UsePurpleRing or DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => true,
         _ when option.Field?.Zone == FieldZone.TomeCard && IsHandAction(option.Move.Kind) => true,
         DuelMoveKind.CodeResponse or DuelMoveKind.Totem => option.Move.Flag,
-        DuelMoveKind.Choose => _snapshot!.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field?.Zone == FieldZone.LightEquipment,
+        // Choices that spend one of the decider's own cards light it up as an activation, not as a target.
+        DuelMoveKind.Choose => _snapshot!.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field?.Zone == FieldZone.LightEquipment ||
+            _snapshot.Decision?.Source == CardCatalog.Totem.Id && option.Field?.Zone == FieldZone.Equipment,
         _ => false
     };
 

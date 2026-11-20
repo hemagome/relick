@@ -74,7 +74,6 @@ public sealed partial class GameEngine
         if (card.CodeType == CodeType.Trap) return "Este Código Trampa se crea mediante un canje.";
         if (card.Id == CardCatalog.CopyHelmet.Id && !CanCopyInRam(Array.IndexOf(State.Players, p)))
             return "Casco de Copias requiere un Objeto o Personaje que se esté activando.";
-        if (State.PendingTotemDamage != null) return "Decide primero si cancelas el daño con Tótem de Salvación.";
         if (State.PendingGoldenTotem != null && !card.CancelActivation) return "Completa la colocación de Tótem de Oro.";
         if (card.FieldCombatDie) return "Activa Jessica Lee desde tu zona de canje o Bonus durante tu etapa de combate.";
         if (State.PendingReload != null && !card.CancelActivation && !card.RerollOwnDie && card.SetOwnDie <= 0)

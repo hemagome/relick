@@ -82,10 +82,6 @@ public static class DuelOptions
                     for (var count = p.Equipment == null ? 1 : 0; count <= maxTotems; count++)
                         Add(DuelMoveKind.GoldenTotem, count == 0 ? "Colocar Tótem de Oro sin mostrar Tótems" : $"Mostrar y colocar {count} Tótem(s) de Salvación", discards: count);
                     break;
-                case Phase.TotemChoice:
-                    Add(DuelMoveKind.Totem, $"Destruir un Tótem · cancelar {s.PendingTotemDamage!.Amount} de daño", flag: true);
-                    Add(DuelMoveKind.Totem, $"Recibir {s.PendingTotemDamage.Amount} de daño sin protección del Tótem");
-                    break;
                 case Phase.Draw:
                     Add(DuelMoveKind.Advance, s.ExtraDrawStages > 0 ? "Repetir etapa de robo" : "Ir a combate");
                     break;

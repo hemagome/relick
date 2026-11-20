@@ -147,7 +147,7 @@ El daño y la destrucción usan el mismo ejecutor, pero sin instantánea entre p
 | 6 | Anillo Morado: decisión | `Absorb` (`PurpleRingEffect`) |
 | 7 | Escudo Galáctico: carta a mano, −2 | `Shield` (`GalacticShieldEffect`) |
 | 8 | Límite no letal; Mira de Sniper: contadores | `Counters` (motor y `SniperScopeEffect`) |
-| 9 | Tótem de Salvación: cancelar daño letal | `Lethal` (motor, fase `TotemChoice`) |
+| 9 | Tótem de Salvación: cancelar daño letal | `Lethal` (`SalvationTotemEffect`, decisión) |
 | 10 | Vidas del Relikario | (motor, al terminar) |
 
 Cada carta tiene un paso propio, así que no hizo falta el orden secundario (`int Order`) que proponía la primera versión. Desde `Respond`, si no queda daño, el ejecutor termina la cadena antes del paso; antes esa comprobación estaba repetida en cada tramo.
@@ -182,7 +182,6 @@ Cada paso es un commit propio, con compilación del juego y del servidor, los te
    - **Turbo Sword:** dispara en `Respond`.
    - **Lo que queda en el motor:**
      - Estrella del Fontanero, porque es un estado del jugador y no una carta en juego.
-     - Tótem de Salvación, con la fase `TotemChoice`, que va a B2.
      - Los resultados de los dados de Turbo Sword, que se resuelven por su propósito.
 
 Al terminar, una carta nueva con disparador será un archivo en `core/Effects/` y una línea en `CardEffects`. `EffectContext` perderá los métodos propios de Escudo Galáctico, Tótem de Oro, Combo Parry y la carta del tope de Robotizar.

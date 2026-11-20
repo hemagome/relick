@@ -124,7 +124,7 @@ static class GoldenTotemTests
         {
             var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, 1, 1); target.Health = 3; var count = Count(g);
             var visuals = DuelVisualEvents.Capture(g); Attack(g, rng);
-            Check(g.State.Phase == Phase.TotemChoice && g.ResolveTotem(1, true).Success);
+            Check(TotemDecision(g) && g.ResolveTotem(1, true).Success);
             Check(target.Health == 3 && target.Equipment == CardCatalog.Totem.Id && target.EquipmentCovers == null && target.Memory.Single() == CardCatalog.GoldenTotem.Id);
             Check(!target.HasReachedZero && Count(g) == count && visuals.Count(c => c.Kind == DuelVisualKind.Hit) == 0);
             Check(visuals.Single(c => c.Kind == DuelVisualKind.Pile && c.Source == CardZone.EquipmentCover).Destination == CardZone.Memory);
@@ -215,6 +215,7 @@ static class GoldenTotemTests
         })
     };
 
+    static bool TotemDecision(GameEngine g) => g.State.Phase == Phase.Decision && g.State.PendingDecision?.Source == CardCatalog.Totem.Id;
     static (GameEngine, ScriptedRandom) Fixture(int actor = 0)
     {
         var hands = new List<string>[] { [CardCatalog.Attack.Id], [CardCatalog.Attack.Id] };

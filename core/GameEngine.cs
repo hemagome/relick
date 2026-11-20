@@ -109,7 +109,7 @@ public sealed partial class GameEngine
     /// <summary>Read-only query for plays other than advancing; never consumes cards or randomness.</summary>
     public bool HasAvailablePlay(int actor)
     {
-        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TotemChoice or Phase.GoldenTotemChoice or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice or Phase.Decision) return actor == State.DecisionPlayer;
+        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.GoldenTotemChoice or Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice or Phase.Decision) return actor == State.DecisionPlayer;
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
         if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.ErrorResponse or Phase.MindResetChoice or Phase.SniperChoice or Phase.MemoryRecoveryChoice)
@@ -498,9 +498,6 @@ public sealed partial class GameEngine
                 case DamageStep.Counters:
                     amount = LimitNonlethalDamage(target, amount, completed);
                     if (amount == 0) { Continue(completed); return; }
-                    break;
-                case DamageStep.Lethal:
-                    if (TryTotemDamage(target, amount, attackDie, completed)) return;
                     break;
             }
             foreach (var card in CardEffects.DamageTriggers(step))

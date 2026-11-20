@@ -335,7 +335,7 @@ public partial class OnlineArena
                         throw new Exception("Tótem debe brillar solo mientras su dueño puede cancelar el daño.");
                     if (step == 1)
                     {
-                        var options = snapshot.Options.Where(o => o.Move.Kind == DuelMoveKind.Totem).ToArray();
+                        var options = snapshot.Options.Where(o => o.Move.Kind == DuelMoveKind.Choose).ToArray();
                         if (snapshot.DecisionPlayer != owner || options.Length != (owner == seat ? 2 : 0) ||
                             options.Any(o => _moveButtons.Count(b => ReferenceEquals(PresentedOption(b), o)) != 1))
                             throw new Exception("Tótem no presenta la decisión opcional al dueño correcto.");

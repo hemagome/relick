@@ -199,7 +199,7 @@ internal static class CardEffects
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect(),
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
-            GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect() }.ToDictionary(e => e.CardId);
+            GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect(), new SalvationTotemEffect() }.ToDictionary(e => e.CardId);
 
     public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 
@@ -316,7 +316,7 @@ public sealed partial class GameEngine
         /// <summary>Sends a card of this player from <paramref name="source"/> to memory, keeping its corruption mark.</summary>
         public void SendToMemory(string id, CardZone source, int index, bool marked) => _engine.SendToMemory(Player, id, source, index, marked: marked);
         /// <summary>Destroys this player's equipment through the replacements, then <paramref name="then"/>.</summary>
-        public void DestroyEquipment(EngineContinuation? then) => _engine.DestroyEquipment(Player, then);
+        public void DestroyEquipment(EngineContinuation? then, int stackIndex = -1) => _engine.DestroyEquipment(Player, then, stackIndex);
         /// <summary>A continuation that applies the damage straight to this player's health, past the remaining steps.</summary>
         public EngineContinuation HealthDamage(DamageEvent damage, EngineContinuation? completed) => new()
             { Kind = ContinuationKind.ApplyDamage, Actor = damage.Target, Count = damage.Amount, Value = damage.AttackDie, Next = completed };
