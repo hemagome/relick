@@ -126,9 +126,7 @@ public sealed class DuelSnapshot
         => ownerSeat == viewerSeat || p.IsHandCardRevealed(slot) ||
            (s.Phase == Phase.Decision && s.PendingDecision is { Source: "fantasma-ladron" } ghost && ghost.Decider == ownerSeat) ||
            (s.Phase == Phase.MagnetChoice && s.CurrentPlayer == viewerSeat) ||
-           (s.Phase == Phase.Decision && s.PendingDecision is { } decision && decision.Decider == viewerSeat && decision.ShowsHandOf == ownerSeat) ||
-           // Legacy: a duel saved while Resetear la Mente had its own phase.
-           (s.Phase == Phase.MindResetChoice && s.PendingMindReset?.Actor == viewerSeat && s.PendingMindReset.Target == ownerSeat);
+           (s.Phase == Phase.Decision && s.PendingDecision is { } decision && decision.Decider == viewerSeat && decision.ShowsHandOf == ownerSeat);
 
     private static int?[]? VisibleHandOwners(GameState s, PlayerState p, int ownerSeat, int viewerSeat)
     {
@@ -160,7 +158,7 @@ public sealed class DuelSnapshot
             stagePhase = stageDecision.ResumePhase;
             stageDecision = stageDecision.Suspended;
         }
-        return stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase == Phase.MindResetChoice ? (s.PendingMindReset ?? s.PendingTurnBuff?.MindReset)!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
+        return stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.PointsChoice or Phase.ErrorResponse or Phase.RelikiaChoice or Phase.BlueEggDrawChoice ? Phase.Actions :
             stagePhase == Phase.Decision ? stageDecision!.ResumePhase :
             stagePhase == Phase.MemoryRecoveryChoice ? Phase.Actions :
             stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :

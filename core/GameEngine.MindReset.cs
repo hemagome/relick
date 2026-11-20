@@ -23,12 +23,12 @@ public sealed partial class GameEngine
             }
     }
 
-    /// <summary>A Resetear la Mente is choosing, as a decision (also one a COMBO interrupted) or in a duel saved in its former phase.</summary>
+    /// <summary>A Resetear la Mente is choosing, as a decision, also one a COMBO interrupted.</summary>
     private bool MindResetPending()
     {
         for (var decision = State.PendingDecision; decision != null; decision = decision.Suspended)
             if (decision.Source == CardCatalog.MindReset.Id) return true;
-        return State.PendingMindReset != null;
+        return false;
     }
 
     private string? MindResetUnavailable(int actor, int excludedHand)
@@ -50,8 +50,7 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    // Resetear la Mente now asks through a decision (MindResetEffect). The commands below still answer it, and finish
-    // duels saved while its former phase, MindResetChoice, was pending.
+    // Resetear la Mente asks through a decision (MindResetEffect). The commands below, from recorded duels, still answer it.
     private CommandResult? AnswerMindReset(int actor, string step, Func<DecisionChoice, bool> matches, string error)
     {
         if (State.Phase != Phase.Decision || State.PendingDecision?.Source != CardCatalog.MindReset.Id) return null;
@@ -61,27 +60,14 @@ public sealed partial class GameEngine
 
     public CommandResult ChooseMindResetTarget(int actor, int target)
     {
-        if (AnswerMindReset(actor, MindResetEffect.Target, c => target >= 0 && c.Value == target, "Elige un jugador con cartas en la mano.") is { } answered) return answered;
-        var pending = State.PendingMindReset;
-        if (State.Phase != Phase.MindResetChoice || pending?.Actor != actor || pending.Target != -1 ||
-            target < 0 || target > 1 || State.Players[target].Hand.Count == 0)
-            return CommandResult.Fail("Elige un jugador con cartas en la mano.");
-        pending.Target = target;
-        // Only the activating player may see the chosen hand. Do not mark it publicly revealed.
-        State.LastCombat = $"{State.Players[actor].Name} mira la mano de {State.Players[target].Name} con Resetear la Mente.";
-        return CommandResult.Ok();
+        const string error = "Elige un jugador con cartas en la mano.";
+        return AnswerMindReset(actor, MindResetEffect.Target, c => target >= 0 && c.Value == target, error) ?? CommandResult.Fail(error);
     }
 
     public CommandResult ChooseMindResetMemory(int actor, int owner, int index)
     {
-        if (AnswerMindReset(actor, MindResetEffect.Memory, c => c.Owner == owner && c.Value == index, "Elige dos cartas distintas de cualquier memoria.") is { } answered) return answered;
-        var pending = State.PendingMindReset;
-        if (State.Phase != Phase.MindResetChoice || pending?.Actor != actor || pending.Target < 0 ||
-            pending.Memories.Count >= 2 || owner < 0 || owner > 1 || index < 0 || index >= State.Players[owner].Memory.Count ||
-            pending.Memories.Contains(new(owner, index)) || !MindResetMemories().Contains(new(owner, index)))
-            return CommandResult.Fail("Elige dos cartas distintas de cualquier memoria.");
-        pending.Memories.Add(new(owner, index));
-        return CommandResult.Ok();
+        const string error = "Elige dos cartas distintas de cualquier memoria.";
+        return AnswerMindReset(actor, MindResetEffect.Memory, c => c.Owner == owner && c.Value == index, error) ?? CommandResult.Fail(error);
     }
 
     public CommandResult ResolveMindReset(int actor, int handIndex)
@@ -90,26 +76,7 @@ public sealed partial class GameEngine
         if (State.Phase == Phase.Decision && State.PendingDecision is { Source: "mind-reset" } reset &&
             AnswerMindReset(actor, reset.Step, c => c.Owner == null && c.Value == handIndex && (reset.Step == MindResetEffect.Hand || handIndex == -1),
                 "Elige una no-habilidad de la mano objetivo después de seleccionar dos cartas de memoria.") is { } answered) return answered;
-        var pending = State.PendingMindReset;
-        if (State.Phase != Phase.MindResetChoice || pending?.Actor != actor)
-            return CommandResult.Fail("No te corresponde resolver Resetear la Mente.");
-        if (pending.Target < 0)
-        {
-            if (handIndex != -1 || State.Players.Any(p => p.Hand.Count > 0))
-                return CommandResult.Fail("Elige un jugador objetivo.");
-            FinishMindReset(); CompleteEndTurnIfReady(); return CommandResult.Ok();
-        }
-        var target = State.Players[pending.Target];
-        var hasTarget = target.Hand.Any(id => CardCatalog.Get(id).Kind != CardKind.Skill);
-        if (!hasTarget)
-        {
-            if (handIndex != -1) return CommandResult.Fail("No hay no-habilidades en esa mano.");
-            FinishMindReset(); CompleteEndTurnIfReady(); return CommandResult.Ok();
-        }
-        if (pending.Memories.Count != 2 || !InHand(target, handIndex) || CardCatalog.Get(target.Hand[handIndex]).Kind == CardKind.Skill)
-            return CommandResult.Fail("Elige una no-habilidad de la mano objetivo después de seleccionar dos cartas de memoria.");
-        ReturnMindResetCards(actor, pending.Target, pending.Memories, handIndex, pending.ResumePhase, FinishMindReset);
-        return CommandResult.Ok();
+        return CommandResult.Fail("No te corresponde resolver Resetear la Mente.");
     }
 
     /// <summary>
@@ -156,11 +123,4 @@ public sealed partial class GameEngine
 
     /// <summary>Resetear la Mente has finished choosing: its activation is over.</summary>
     private void EndMindResetActivation() => _activeActivation = _activeActivation?.Parent;
-
-    private void FinishMindReset()
-    {
-        var pending = State.PendingMindReset!;
-        State.PendingMindReset = null; State.Phase = pending.ResumePhase;
-        _activeActivation = _activeActivation?.Parent;
-    }
 }

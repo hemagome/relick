@@ -55,7 +55,6 @@ internal static class ArenaGuidance
             Phase.TrapCraftChoice => "Tu canje permite crear Súper Imán en la zona de equipos.",
             Phase.ZahiraTarget => "Elige una carta del campo para colocar a Zahira Flair encima.",
             Phase.PointsChoice => "Elige de quién modificar los PR y después aumenta o resta.",
-            Phase.MindResetChoice => "Elige la mano que quieres revisar.",
             Phase.RelikiaChoice => Has(DuelMoveKind.Placement) ? "Elige una carta y su destino: canje o fondo del mazo." : "Elige cómo resolver la Relikia.",
             Phase.Combat when Has(DuelMoveKind.Learn) && Has(DuelMoveKind.Attack) => "Enseña una habilidad o elige un Ataque.",
             Phase.Combat when Has(DuelMoveKind.Attack) => "Elige un Ataque y la habilidad que usarás.",

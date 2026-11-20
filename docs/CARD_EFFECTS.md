@@ -82,8 +82,15 @@ Misión: Robo de Equipos y Anillo Morado, del mismo commit, usan decisiones gen�
 
 ## Compatibilidad
 
-- **Duelos guardados con una fase anterior** (`DestroyChoice`, `DeckSearchChoice`, `BlueEggDrawChoice`, `PointsChoice`, `MemoryRecoveryChoice`, `MindResetChoice`, `GoldenTotemChoice`). Se cargan y se terminan con sus jugadas de entonces: el código anterior se conserva solo para ellos, incluida la mano visible de Resetear la Mente. Pruebas: Huevo, Aumento de PR, Resetear la Mente y Tótem de Oro guardados en su fase anterior. Senshuni, Cambio de Mentes, Cartucho y Triple Ataque no tenían fase propia; Cartucho conserva `ReloadResolving`, que es su secuencia de resolución y no una decisión.
-- **Fases convertidas al cargar (fase B2).** A partir de Tótem de Salvación, una fase propia de carta ya no conserva su código anterior. `EngineSnapshot.FromSnapshot` convierte el estado guardado en esa fase (`TotemChoice` con `PendingTotemDamage`) en la decisión equivalente, y el comando anterior (`ResolveTotem`) responde a la decisión, así que las jugadas grabadas se siguen reproduciendo. Prueba: el Tótem guardado en su fase anterior, cancelando y sin cancelar.
+- **Duelos guardados con una fase anterior.** Al cargarse, `GameEngine.LegacyPhases` convierte cada fase propia de carta ya sustituida en la decisión equivalente. Lo hace tanto en el nivel principal como en el estado que aparta un Estrella del Fontanero o un Doblador de Tiempo (`PendingTurnBuff`), así que esas fases ya no tienen código propio:
+  - `TotemChoice` → decisión de Tótem de Salvación;
+  - `DeckSearchChoice` → búsqueda de Código Konamy;
+  - `GoldenTotemChoice` → cuántos Tótems mostrar;
+  - `DestroyChoice` → objetivo de Huevo Azul o Bomba de Tiempo;
+  - `MindResetChoice` → el paso pendiente de Resetear la Mente, con la mano mirada y las memorias ya elegidas.
+  
+  Pruebas: cada una guardada en su fase anterior, más Konamy apartado por Estrella y Resetear la Mente a mitad de sus elecciones.
+- **Fases a las que solo llega una partida antigua.** `BlueEggDrawChoice`, `PointsChoice` y `MemoryRecoveryChoice` ya no se abren en partidas nuevas. Se llega a ellas desde una continuación (`OfferBlueEggDraw`, `FinishCodeDestruction`) o un dado (`PointsChange` sin paso) guardados a medias, así que conservan su código hasta que esas continuaciones se adapten igual que `RobotizeActionStart`.
 - **Tiradas guardadas a medias.** Una tirada de Vida Extra, Aumento de PR, Carga Rápida o Esquivar guardada antes de esta versión no conoce su módulo y se termina con el código anterior. Pruebas: las tiradas guardadas antes de mover Vida Extra y Esquivar.
 - **Registros de jugadas antiguos.** `ResolveDestruction`, `ResolveDeckSearch`, `ResolveBlueEggDraw`, `ResolvePointsChange`, `ResolveMemoryRecovery`, `ChooseMindResetTarget`, `ChooseMindResetMemory`, `ResolveMindReset` y `ResolveGoldenTotem` responden a la decisión nueva (esta última con las copias exactas que nombra), así que esas jugadas siguen reproduciéndose. La prueba de duelos grabados compara el estado completo antes y después de cada decisión.
 - **Clientes anteriores con el servidor nuevo.** Las fases y jugadas viajan como números. Un cliente compilado desde `main` lee la vista sin errores; recibe una fase desconocida y opciones como «Equipo rival» o «Añadir Hoguera · mazo 3», que su interfaz muestra como botones con ese texto. Queda jugable, pero sin el tablero iluminado ni la galería: conviene publicar el cliente antes que el servidor.

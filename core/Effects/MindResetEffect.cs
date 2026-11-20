@@ -8,6 +8,7 @@ namespace Relick.Core;
 internal sealed class MindResetEffect : CardEffect
 {
     public const string Target = "target", Memory = "memory", Hand = "hand", Finish = "finish";
+    private const string TargetInstruction = "Elige un jugador para mirar su mano";
     private const int Memories = 2;
 
     public override string CardId => CardCatalog.MindReset.Id;
@@ -22,7 +23,7 @@ internal sealed class MindResetEffect : CardEffect
             ctx.EndMindReset();
             return;
         }
-        ctx.Ask(Target, DecisionKind.Confirm, "Elige un jugador para mirar su mano", allowsCombos: true);
+        ctx.Ask(Target, DecisionKind.Confirm, TargetInstruction, allowsCombos: true);
     }
 
     // A pick is packed as memory index × 2 + owner.
@@ -84,11 +85,31 @@ internal sealed class MindResetEffect : CardEffect
 
     private static void AskNext(GameEngine.EffectContext ctx, int target, List<int> picks)
     {
-        if (!HasNonSkill(ctx.State.Players[target]))
-            ctx.Ask(Finish, DecisionKind.Confirm, $"No hay no-habilidades en la mano de {ctx.PlayerName(target)}", allowsCombos: true, announce: false, picks: picks, showsHandOf: target);
-        else if (picks.Count < Memories)
-            ctx.Ask(Memory, DecisionKind.ChooseCard, $"Elige una carta de cualquier memoria ({picks.Count + 1}/{Memories})", allowsCombos: true, announce: false, picks: picks, showsHandOf: target);
-        else
-            ctx.Ask(Hand, DecisionKind.ChooseCard, $"Elige una no-habilidad de la mano de {ctx.PlayerName(target)}", allowsCombos: true, announce: false, picks: picks, showsHandOf: target);
+        var (step, kind, instruction) = Next(ctx.State, target, picks);
+        ctx.Ask(step, kind, instruction, allowsCombos: true, announce: false, picks: picks, showsHandOf: target);
+    }
+
+    /// <summary>The pick that follows once <paramref name="target"/>'s hand is chosen and <paramref name="picks"/> are made.</summary>
+    private static (string Step, DecisionKind Kind, string Instruction) Next(GameState state, int target, List<int> picks) =>
+        !HasNonSkill(state.Players[target]) ? (Finish, DecisionKind.Confirm, $"No hay no-habilidades en la mano de {state.Players[target].Name}")
+        : picks.Count < Memories ? (Memory, DecisionKind.ChooseCard, $"Elige una carta de cualquier memoria ({picks.Count + 1}/{Memories})")
+        : (Hand, DecisionKind.ChooseCard, $"Elige una no-habilidad de la mano de {state.Players[target].Name}");
+
+    /// <summary>
+    /// The decision a duel saved in the former Resetear la Mente phase was waiting on: the target, or the next pick with
+    /// the memories already chosen.
+    /// </summary>
+    internal static PendingDecision LegacyDecision(GameState state, PendingMindReset pending)
+    {
+        var decision = new PendingDecision
+        {
+            Source = CardCatalog.MindReset.Id, Step = Target, Decider = pending.Actor, Kind = DecisionKind.Confirm,
+            Instruction = TargetInstruction, AllowsCombos = true, ResumePhase = pending.ResumePhase
+        };
+        if (pending.Target < 0) return decision;
+        var picks = pending.Memories.Select(m => m.Index * 2 + m.Owner).ToList();
+        (decision.Step, decision.Kind, decision.Instruction) = Next(state, pending.Target, picks);
+        decision.Picks = picks; decision.ShowsHandOf = pending.Target;
+        return decision;
     }
 }
