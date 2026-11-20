@@ -55,6 +55,7 @@ public sealed class DuelMove
         var result = ApplyRules(game, actor);
         if (result.Success)
         {
+            game.SettleDefenseWindow();
             game.PresentPendingArea();
             observation.Complete();
         }

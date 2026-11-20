@@ -48,6 +48,20 @@ public sealed partial class GameEngine
         IronwingRollDefenses(actor).Any() ||
         (PlayableCards(actor).Count() >= (critical ? 4 : 3) && AvailableDefenses(actor).Any());
 
+    /// <summary>
+    /// Closes a defense window that no longer offers anything: after a response resolves without ending the
+    /// attack (Esquivar 1–3, a response canceled by Error de Carga), the defender would otherwise have to
+    /// confirm damage they can no longer avoid. Runs once the whole move has resolved, so a card drawn by
+    /// the response (another Esquivar) still keeps the window open.
+    /// </summary>
+    internal bool SettleDefenseWindow()
+    {
+        if (State.IsOver || State.Phase != Phase.DefenseChoice || _activeActivation != null || State.PendingAttack is not { } attack ||
+            CanDefend(1 - attack.Attacker, attack.Critical)) return false;
+        ResolveAttackDamage(false);
+        return true;
+    }
+
     public CommandResult PassDefense(int actor)
     {
         if (State.Phase != Phase.DefenseChoice || State.DecisionPlayer != actor)

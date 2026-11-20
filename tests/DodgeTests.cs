@@ -40,6 +40,27 @@ static class DodgeTests
             Check(g.PlayCode(0, attacker.Hand.IndexOf("load-error")).Success && g.State.Phase == Phase.DefenseChoice && g.State.PendingAttack != null);
             Check(p.ActionsLeft == 2 && p.Memory.Contains(CardCatalog.Dodge.Id) && g.PassDefense(1).Success && p.Health == p.MaxHealth - 5);
         }),
+        ("Esquivar: sin otra defensa tras fallar, el daño se resuelve sin pedir confirmación", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Players[1];
+            rng.EnqueueDie(2); Check(Play(g, 1, DuelMoveKind.PlayCode));
+            Check(p.Hand.Count == 1 && p.Health == p.MaxHealth - 5 && g.State.Phase == Phase.MagnetChoice);
+        }),
+        ("Esquivar: si tras fallar queda otra defensa, la ventana de Defensa sigue abierta", () =>
+        {
+            var (g, rng) = Fixture(); var p = g.State.Players[1]; p.Hand.Add(CardCatalog.Dodge.Id);
+            rng.EnqueueDie(2); Check(Play(g, 1, DuelMoveKind.PlayCode));
+            Check(g.State.Phase == Phase.DefenseChoice && p.Health == p.MaxHealth && p.ActionsLeft == 1);
+            rng.EnqueueDie(5); Check(Play(g, 1, DuelMoveKind.PlayCode) && g.State.Phase == Phase.Combat && p.Health == p.MaxHealth);
+        }),
+        ("Esquivar: anulado por Error de Carga y sin otra defensa, el daño se resuelve solo", () =>
+        {
+            var (g, _) = Fixture(); var p = g.State.Players[1]; var attacker = g.State.Players[0];
+            attacker.Hand.Add("load-error"); attacker.ActionsLeft = 1;
+            Check(Play(g, 1, DuelMoveKind.PlayCode) && g.State.Phase == Phase.ErrorResponse);
+            Check(new DuelMove { Kind = DuelMoveKind.PlayCode, Index = attacker.Hand.IndexOf("load-error") }.Apply(g, 0).Success);
+            Check(p.ActionsLeft == 2 && p.Health == p.MaxHealth - 5 && g.State.PendingAttack == null);
+        }),
         ("Esquivar: Agilidad modifica dado propio, persiste decisión y cuesta la segunda acción", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Players[1]; p.Hand.Add(CardCatalog.Agility.Id);
@@ -59,5 +80,8 @@ static class DodgeTests
         rng.EnqueueDie(6); Check(g.Attack(0, 0, 0).Success && g.ResolveAttackReroll(0, false).Success && g.State.Phase == Phase.DefenseChoice);
         return (g, rng);
     }
+    // Through DuelMove.Apply, as the server plays it, so the defense window is settled after the move.
+    private static bool Play(GameEngine g, int actor, DuelMoveKind kind, int index = 0) =>
+        new DuelMove { Kind = kind, Index = index }.Apply(g, actor).Success;
     private static void Check(bool value) { if (!value) throw new Exception("Regla de Esquivar no satisfecha"); }
 }

@@ -444,3 +444,12 @@ El estado interno de la partida (`EngineJson`) no cambió. Se publicó en `relic
 local y en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin salas ni partidas
 abiertas; el plan de migración de Maincloud quedó vacío y se conservaron las cuentas y
 los mazos. Solo es compatible el cliente compilado desde esta versión.
+
+El 20 de noviembre la ventana de Defensa se cierra sola cuando ya no ofrece nada: si una
+respuesta se resuelve sin terminar el ataque (Esquivar con 1–3, Púa del Destino, una
+respuesta anulada por Error de Carga) y el defensor no conserva ninguna defensa, el daño
+se resuelve en la misma jugada en vez de esperar «Recibir daño». Se comprueba al final de
+`DuelMove.Apply`, así que una carta robada por la respuesta (otro Esquivar) mantiene la
+ventana abierta. Se publicó en `relick-dev` local y en `relick-pvp-dev-c2006ee7` con
+`--delete-data=never`, sin partidas abiertas y sin cambios de esquema. Es compatible
+con el cliente de la publicación anterior.

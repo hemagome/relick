@@ -88,10 +88,9 @@ static class DestinyPickTests
             game.State.Phase = Phase.Combat;
             random.EnqueueDie(5);
             Check(game.Attack(0, 0, 0).Success && game.State.Phase == Phase.DefenseChoice);
-            Check(game.PlayCode(1, 0).Success && Choose(game, 1, "Hacer 1 daño no letal") &&
-                attacker.Health == 7 && game.State.Phase == Phase.DefenseChoice && game.State.PendingAttack != null);
-            Check(game.PassDefense(1).Success && game.State.Players[1].Health == 5 &&
-                attacker.Relikia == CardCatalog.Destiny.Reward && game.State.Phase == Phase.Combat);
+            // With no defense left after the COMBO, the attack resolves without asking the defender to confirm.
+            Check(game.PlayCode(1, 0).Success && Choose(game, 1, "Hacer 1 daño no letal") && attacker.Health == 7 &&
+                game.State.Players[1].Health == 5 && attacker.Relikia == CardCatalog.Destiny.Reward && game.State.Phase == Phase.Combat);
         }),
         ("Púa del Destino: Error de Carga y Caja de Cartón pueden anular el Código desde la mano", () =>
         {
