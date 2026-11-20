@@ -424,3 +424,13 @@ mazos. Los valores numéricos de fases y jugadas cambiaron, así que solo es
 compatible el cliente compilado desde esta versión. Validación previa en una base
 local aislada: ensayo del borrado y la migración, batería PvP general completa y
 prueba de vencimientos.
+
+El 20 de noviembre se actualizó SpacetimeDB a 2.16.1: la CLI, los paquetes del módulo,
+el cliente y las pruebas, y los bindings regenerados. Se publicó en
+`relick-pvp-dev-c2006ee7` con `--delete-data=never`; el plan de migración quedó vacío
+y se conservaron las cuentas y los mazos. 2.16.1 añade almacenamiento por niveles
+opcional (`CachePolicy` en `[Table]`; el valor por defecto mantiene las tablas en
+memoria) y un límite de 24 GiB de memoria residente por base en Maincloud. En 3.0 el
+valor por defecto pasará a `no_requirement`. Validación previa en un servidor local
+2.16.1: batería PvP general, emparejamiento rápido, mazos, salud de conexión,
+vencimientos y subida de un módulo 2.15 a 2.16.1 sobre datos existentes.
