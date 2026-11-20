@@ -126,7 +126,8 @@ public sealed partial class GameEngine
             case ContinuationKind.EquipFromDeck: FinishEquipFromDeck(next); break;
             case ContinuationKind.CheckAreaEquipDeck: Exhaust(p); break;
             case ContinuationKind.PurpleRingPoints: AwardPurpleRingPoints(next.Actor); CompletePendingPlay(); break;
-            case ContinuationKind.PurpleRingDamage: FinishPurpleRingDamage(next); break;
+            // Duels saved before Anillo Morado's damage moved to its module resume it there.
+            case ContinuationKind.PurpleRingDamage: ContinueLegacyCardStep(next, CardCatalog.PurpleRing.Id, PurpleRingEffect.Destroyed); break;
             case ContinuationKind.LoadGalacticShield: LoadGalacticShield(next); break;
             case ContinuationKind.OrientMovedArea:
                 AskAreaOrientation(next.Actor, moved: true);

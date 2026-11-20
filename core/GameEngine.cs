@@ -510,8 +510,7 @@ public sealed partial class GameEngine
                 case DamageStep.Respond:
                     if (TryTurboSwordDefense(target, amount, attackDie, completed)) return;
                     break;
-                // These two hand over for good: each one loops over its own copies and then resumes the chain.
-                case DamageStep.Absorb: OfferPurpleRingDamage(target, amount, attackDie, completed); return;
+                // Hands over for good: equipment counters, Tótem de Salvación and health.
                 case DamageStep.Counters: ApplyDamageAfterShields(target, amount, attackDie, completed); return;
             }
             foreach (var card in CardEffects.DamageTriggers(step))

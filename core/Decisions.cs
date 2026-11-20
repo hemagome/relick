@@ -196,7 +196,7 @@ internal static class CardEffects
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect(),
-            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect() }.ToDictionary(e => e.CardId);
+            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect(), new PurpleRingEffect() }.ToDictionary(e => e.CardId);
 
     public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 
@@ -470,7 +470,6 @@ public sealed partial class GameEngine
         if (decision.Source == CardCatalog.BlackHole.Id) return BlackHoleChoices(decision);
         if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||
             decision.Source == RelikarioCatalog.IronwingLv2.Id) return IronwingChoices(decision);
-        if (decision.Source == CardCatalog.PurpleRing.Id) return PurpleRingChoices(decision);
         return OsamuDecisionChoices(decision);
     }
 
@@ -495,7 +494,6 @@ public sealed partial class GameEngine
         else if (decision.Source == CardCatalog.BlackHole.Id) ResolveBlackHoleChoice(decision, choice);
         else if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||
             decision.Source == RelikarioCatalog.IronwingLv2.Id) ResolveIronwingChoice(decision, choice);
-        else if (decision.Source == CardCatalog.PurpleRing.Id) ResolvePurpleRingChoice(decision, choice);
         else ResolveOsamuDecision(decision, choice);
         CompleteActivationIfFinished();
     }

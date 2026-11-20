@@ -20,6 +20,7 @@ static class TurnTriggerTests
         ("Disparadores: cada paso de la cadena de daño reúne sus cartas", () =>
         {
             Check(CardEffects.DamageTriggers(DamageStep.Reduce).Select(t => t.CardId).SequenceEqual([Robotize]), "Paso Reduce: Robotizar.");
+            Check(CardEffects.DamageTriggers(DamageStep.Absorb).Select(t => t.CardId).SequenceEqual([CardCatalog.PurpleRing.Id]), "Paso Absorb: Anillo Morado.");
             Check(CardEffects.DamageTriggers(DamageStep.Shield).Select(t => t.CardId).SequenceEqual([CardCatalog.GalacticShield.Id]), "Paso Shield: Escudo Galáctico.");
             Check(Enum.GetValues<DamageStep>().SequenceEqual([DamageStep.Amplify, DamageStep.Prevent, DamageStep.Guard, DamageStep.Respond,
                 DamageStep.Reduce, DamageStep.Absorb, DamageStep.Shield, DamageStep.Counters]), "El orden de los pasos es el de las reglas.");
