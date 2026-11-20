@@ -8,6 +8,12 @@ namespace Relick;
 /// </summary>
 public partial class OnlineLobby
 {
+    /// <summary>
+    /// Board preferences the UI tests read instead of the player's own: missing, so every test starts in the classic view.
+    /// The table view test swaps in its own temporary file.
+    /// </summary>
+    private const string IsolatedBoardSettings = "user://ui-test-board.cfg";
+
     /// <summary>Starts an offline test or preview instead of connecting; returns whether one was started.</summary>
     private bool StartOfflineDevTool()
     {

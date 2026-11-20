@@ -35,7 +35,7 @@ public partial class OnlineLobby
                 await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); QuitWithAudio(); return;
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
-            var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00" }; AddChild(online); online.SetProcess(false);
+            var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00", BoardSettingsPath = IsolatedBoardSettings }; AddChild(online); online.SetProcess(false);
             if (OS.GetCmdlineUserArgs().Contains("--osamu-only"))
             {
                 await online.CheckOsamuSearchLayout(); await online.CheckOsamuPresentation();

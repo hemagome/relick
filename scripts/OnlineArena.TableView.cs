@@ -6,6 +6,8 @@ public partial class OnlineArena
 {
     private const int TableViewMenuId = 6;
     private string _boardSettingsPath = "user://board.cfg";
+    /// <summary>Where the board view preference is saved; the UI tests point it elsewhere so a player's choice never leaks in.</summary>
+    internal string BoardSettingsPath { get => _boardSettingsPath; init => _boardSettingsPath = value; }
     private bool _tableView, _requestedTableView;
     private bool TableView => Desktop && _tableView;
 

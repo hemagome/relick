@@ -175,7 +175,7 @@ public partial class OnlineLobby
 
             // Exercise the real arena hook, including a board rebuild and a healed checkpoint.
             var global = GetNode<MusicDirector>("/root/MusicDirector");
-            arena = new OnlineArena { Connection = new(), RoomCode = "MUSIC-ARENA" };
+            arena = new OnlineArena { Connection = new(), RoomCode = "MUSIC-ARENA", BoardSettingsPath = IsolatedBoardSettings };
             AddChild(arena); arena.SetProcess(false);
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id);
             game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
