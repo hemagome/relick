@@ -99,5 +99,5 @@ Misión: Robo de Equipos y Anillo Morado, del mismo commit, usan decisiones gen�
 
 1. ~~Escribir la primera carta nueva directamente como módulo, para medir el costo real.~~ Hecho con ¡Dame ese equipo! (ver «Primera carta nueva como módulo»).
 2. Decidir la secuencia de RAM ([RAM](RAM.md)) antes de migrar respuestas: Error de Carga, Caja de Cartón y los COMBO de dado.
-3. Ya no quedan Códigos sin respuestas por migrar. Lo siguiente depende de decisiones de diseño: Error de Carga, Caja de Cartón, Estrella del Fontanero, Doblador de Tiempo, Re-lanza y Agilidad necesitan la secuencia de RAM, y Jessica Lee, Mira de Sniper, Misión: Robo de Equipos, Anillo Morado y los demás equipos necesitan que los módulos cubran disparadores, no solo activaciones.
+3. Ya no quedan Códigos sin respuestas por migrar. Lo siguiente depende de decisiones de diseño: Error de Carga, Caja de Cartón, Estrella del Fontanero, Doblador de Tiempo, Re-lanza y Agilidad necesitan la secuencia de RAM, y Jessica Lee, Mira de Sniper, Misión: Robo de Equipos, Anillo Morado y los demás equipos necesitan que los módulos cubran disparadores, no solo activaciones. El diseño está en [Disparadores de carta](CARD_TRIGGERS.md).
 4. Retirar el código de las fases anteriores cuando ya no queden duelos guardados en ellas.
