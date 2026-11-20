@@ -743,10 +743,7 @@ public partial class OnlineArena : Control
         _lastDisabled = disabled;
         foreach (var button in _moveButtons)
         {
-            var gold = (bool)button.GetMeta("golden_totem", false);
-            button.Disabled = disabled || ((int)button.GetMeta("discards") > 0 || gold) && (int)button.GetMeta("discards") != _selected.Count ||
-                gold && _selected.Any(i => SelectableCards.ElementAtOrDefault(i) != CardCatalog.Totem.Id &&
-                    _snapshot!.Players[_snapshot.MySeat].TomeCards?.Any(child => child.HandIndex == i && child.CardId == CardCatalog.Totem.Id) != true);
+            button.Disabled = disabled || (int)button.GetMeta("discards") > 0 && (int)button.GetMeta("discards") != _selected.Count;
         }
         foreach (var menu in _actionMenus)
         {
@@ -850,6 +847,6 @@ public partial class OnlineArena : Control
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
         Phase.TrapCraftChoice => "TRAMPA",
         Phase.ZahiraTarget => "ZAHIRA FLAIR",
-        Phase.CodeResponse or Phase.ErrorResponse or Phase.EffectDamageChoice => "RESPUESTA", Phase.GoldenTotemChoice or Phase.GoldenTotemResolving => "TÓTEM DE ORO", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.MemoryRecoveryChoice => "DISQUETE", Phase.TurnBuffDiscard => "DESCARTAR COSTE", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", Phase.BlueEggDrawChoice => "ROBO OPCIONAL", _ => "RESOLVER EFECTO"
+        Phase.CodeResponse or Phase.ErrorResponse or Phase.EffectDamageChoice => "RESPUESTA", Phase.GoldenTotemResolving => "TÓTEM DE ORO", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.MemoryRecoveryChoice => "DISQUETE", Phase.TurnBuffDiscard => "DESCARTAR COSTE", Phase.MindResetChoice => "RESETEAR LA MENTE", Phase.SniperChoice => "MIRA DE SNIPER", Phase.BlueEggDrawChoice => "ROBO OPCIONAL", _ => "RESOLVER EFECTO"
     };
 }

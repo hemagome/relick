@@ -9,6 +9,8 @@ public sealed partial class GameEngine
 {
     private void ConvertLegacyPhases()
     {
+        // The former Tótem de Oro phase kept an empty placement record; the decision opens the placement itself.
+        var formerGoldenTotem = State.Phase == Phase.GoldenTotemChoice || State.PendingTurnBuff?.ResumePhase == Phase.GoldenTotemChoice;
         if (LegacyDecision(State.Phase, _activeActivation) is { } decision)
         {
             State.PendingDecision = decision;
@@ -20,6 +22,7 @@ public sealed partial class GameEngine
             buff.Decision = stashed;
             buff.ResumePhase = Phase.Decision;
         }
+        if (formerGoldenTotem) State.PendingGoldenTotem = null;
     }
 
     /// <summary>The activation a turn buff interrupted, which owned the state the buff set aside.</summary>
@@ -36,6 +39,8 @@ public sealed partial class GameEngine
         Phase.TotemChoice when State.PendingTotemDamage is { } totem => SalvationTotemEffect.LethalDecision(totem),
         Phase.DeckSearchChoice when frame is { Kind: ActivationKind.Code } search && search.CardId == CardCatalog.KonamyCode.Id =>
             KonamyCodeEffect.SearchDecision(search.Actor, search.ResumePhase),
+        Phase.GoldenTotemChoice when frame is { Kind: ActivationKind.Code } gold && gold.CardId == CardCatalog.GoldenTotem.Id =>
+            GoldenTotemEffect.ShowDecision(gold.Actor, gold.ResumePhase),
         _ => null
     };
 }

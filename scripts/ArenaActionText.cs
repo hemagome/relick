@@ -58,7 +58,6 @@ internal static class ArenaActionText
         DuelMoveKind.FieldCode => "Activar",
         DuelMoveKind.Sniper => option.Move.Flag ? "Equipar" : "Canjear",
         DuelMoveKind.Totem => option.Move.Flag ? "Cancelar daño" : "Recibir daño",
-        DuelMoveKind.GoldenTotem => "Colocar",
         DuelMoveKind.TrapCraft => option.Label,
         DuelMoveKind.Relikia => option.Move.Value == (int)RelikiaEffect.ReplayCode ? "Activar" : RelikiaEffects.Get((RelikiaEffect)option.Move.Value).Name,
         DuelMoveKind.Evolve => "Evolucionar",

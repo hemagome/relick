@@ -88,7 +88,7 @@ static class GoldenTotemTests
             Check(p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id && g.State.Phase == Phase.Actions && g.State.PendingDecision == null);
             Check(g.PublicHistory.Entries.Last().Text.EndsWith("coloca Tótem de Oro con 1 Tótem(s) de Salvación."));
         }),
-        ("Oro: un duelo guardado en la fase anterior se termina con su jugada de entonces", () =>
+        ("Oro: un duelo guardado en la fase anterior se abre como decisión y acepta su jugada de entonces", () =>
         {
             var (g, rng) = Fixture(); var p = g.State.Active;
             Check(g.PlayCode(0, 0).Success);
@@ -96,7 +96,8 @@ static class GoldenTotemTests
             state.Remove("PendingDecision"); state["Phase"] = (int)Phase.GoldenTotemChoice;
             state["PendingGoldenTotem"] = new System.Text.Json.Nodes.JsonObject { ["Actor"] = 0, ["HandIndices"] = new System.Text.Json.Nodes.JsonArray() };
             var legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng); p = legacy.State.Active;
-            Check(DuelOptions.For(legacy, 0).Count(o => o.Move.Kind == DuelMoveKind.GoldenTotem) == 2);
+            Check(legacy.State.PendingDecision?.Source == CardCatalog.GoldenTotem.Id && legacy.State.PendingGoldenTotem == null &&
+                DuelOptions.For(legacy, 0).Count(o => o.Move.Kind == DuelMoveKind.Choose) == 2);
             Check(legacy.ResolveGoldenTotem(0, [1]).Success && p.Equipment == CardCatalog.Totem.Id && p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id);
             Check(legacy.State.PendingGoldenTotem == null && legacy.State.Phase == Phase.Actions && p.Hand.SequenceEqual([CardCatalog.Totem.Id, CardCatalog.Attack.Id]));
         }),

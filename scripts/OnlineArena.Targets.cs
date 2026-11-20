@@ -166,9 +166,7 @@ public partial class OnlineArena
                 {
                     var child = children[index - hosts.Length];
                     var snapshot = _snapshot!;
-                    var cost = snapshot.MySeat == owner && snapshot.Options.Any(option =>
-                        option.Move.Kind == DuelMoveKind.DestinyDefense ||
-                        option.Move.Kind == DuelMoveKind.GoldenTotem && child.CardId == CardCatalog.Totem.Id);
+                    var cost = snapshot.MySeat == owner && snapshot.Options.Any(option => option.Move.Kind == DuelMoveKind.DestinyDefense);
                     if (cost && child.HandIndex is int handIndex) ToggleHandSelection(handIndex);
                     else SelectField(owner, FieldZone.TomeCard, child.Slot);
                 }

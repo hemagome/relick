@@ -11,8 +11,6 @@ static class SimulationDriver
         if (s.Phase == Phase.TrapCraftChoice) return game.ResolveTrapCraft(actor, true);
         if (s.Phase == Phase.ZahiraTarget)
             return DuelOptions.For(game, actor).First(o => o.Move.Kind == DuelMoveKind.ZahiraTarget).Move.Apply(game, actor);
-        if (s.Phase == Phase.GoldenTotemChoice)
-            return game.ResolveGoldenTotem(actor, p.Hand.Select((id, index) => (id, index)).Where(c => c.id == CardCatalog.Totem.Id).Take(2).Select(c => c.index));
         // The bot cancels lethal damage with Tótem de Salvación, as it did before the choice became a decision.
         if (s.Phase == Phase.Decision && s.PendingDecision?.Source == CardCatalog.Totem.Id) return game.ResolveTotem(actor, true);
         if (s.Phase == Phase.Decision)

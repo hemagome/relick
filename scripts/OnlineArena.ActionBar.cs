@@ -100,7 +100,6 @@ public partial class OnlineArena
         var cost = ArenaActionText.Cost(option, s);
         button.TooltipText = button is CardActionButton && cost.Length > 0 ? button.Text + " · " + cost : cost;
         button.SetMeta("option_index", index); button.SetMeta("discards", option.RequiredDiscards);
-        button.SetMeta("golden_totem", option.Move.Kind == DuelMoveKind.GoldenTotem);
         _moveButtons.Add(button); return button;
     }
 
@@ -201,7 +200,6 @@ public partial class OnlineArena
             if (_skillContext)
                 indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && s.Options[i].Move.Index == _selectedSkill).ToList();
             else indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.DestinyDefense || s.Options[i].Move.Kind == DuelMoveKind.ProtectDestruction && s.Options[i].Move.Index >= 0);
-            indices.RemoveAll(i => s.Options[i].Move.Kind == DuelMoveKind.GoldenTotem && s.Options[i].RequiredDiscards != _selected.Count);
             if (s.Phase == Phase.PointsChoice)
                 indices = _pointsTarget.HasValue ? indices.Where(i => s.Options[i].Move.Target == _pointsTarget).ToList() : [];
         }
@@ -217,7 +215,7 @@ public partial class OnlineArena
         // A pending die has one principal action and one menu of real modifiers.
         var die = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && !s.Options[i].Move.Flag).ToArray();
         var main = indices.FirstOrDefault(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea or DuelMoveKind.Equip or DuelMoveKind.Learn or DuelMoveKind.Attack or
-            DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.GoldenTotem or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
+            DuelMoveKind.Recycle or DuelMoveKind.RecoverMemory or DuelMoveKind.SearchDeck or DuelMoveKind.TurnBuffDiscard or DuelMoveKind.DestinyDefense ||
             s.Options[i].Move.Kind == DuelMoveKind.RelikarioSearch ||
             s.Options[i].Move.Kind is DuelMoveKind.TrapCraft or DuelMoveKind.BlueEggDraw && s.Options[i].Move.Flag ||
             s.Options[i].Move.Kind == DuelMoveKind.Choose && (s.Options[i].Primary || Deciding == DecisionKind.ChooseCard && s.Options[i].CardId != null), -1);
@@ -434,7 +432,6 @@ public partial class OnlineArena
             ? s.Phase switch
             {
                 Phase.ErrorResponse => ActivationResponseCard(s),
-                Phase.GoldenTotemChoice => CardCatalog.GoldenTotem.Id,
                 Phase.TrapCraftChoice => s.TrapCardId,
                 Phase.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
                 Phase.BlueEggDrawChoice => CardCatalog.BlueEgg.Id,
@@ -533,7 +530,6 @@ public partial class OnlineArena
     {
         var s = _snapshot!;
         if (s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name;
-        if (s.Phase == Phase.GoldenTotemChoice && s.DecisionPlayer == s.MySeat) return "Tótem de Oro";
         if (s.Phase == Phase.BlueEggDrawChoice) return CardCatalog.BlueEgg.Name;
         // The card that asks names the decision until the player picks what to answer with.
         if (s.Phase == Phase.Decision && s.Decision is { } decision && (Deciding == DecisionKind.Confirm || _fieldSelection == null && _selected.Count == 0))
@@ -547,7 +543,7 @@ public partial class OnlineArena
         return s.Phase switch
         {
             Phase.AttackRerollChoice or Phase.DieRerollChoice => $"Tu dado · {s.Die}",
-            Phase.GoldenTotemChoice => "Tótem de Oro", Phase.TurnBuffDiscard => CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name,
+            Phase.TurnBuffDiscard => CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name,
             Phase.SniperChoice => "Mira de Sniper",
             Phase.DefenseChoice or Phase.EffectDamageChoice => "Defensa", Phase.DestructionResponse => "Proteger carta",
             Phase.CodeResponse or Phase.ErrorResponse => "Respuesta", Phase.RecycleChoice => "Reciclar memoria",
@@ -573,7 +569,6 @@ public partial class OnlineArena
         if (Deciding == DecisionKind.ChooseTarget && _fieldSelection is { Zone: FieldZone.Hand, Index: < 0 }) return "Se destruirá una carta al azar de esa mano.";
         if (Deciding is DecisionKind.Confirm or DecisionKind.ChooseTarget && _fieldSelection == null) return ArenaGuidance.Instruction(s);
         if (ChoosingRecycling) return $"Reciclaje: {_selected.Count}/{s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards} cartas elegidas. " + (_selected.Count == s.Options.First(o => o.Move.Kind == DuelMoveKind.Recycle).RequiredDiscards ? "Confirma para reciclar." : "Elige las cartas que faltan.");
-        if (s.Phase == Phase.GoldenTotemChoice && myTurn) return $"Elige hasta dos Tótems · {_selected.Count}/2 seleccionados.";
         if (s.Phase == Phase.TurnBuffDiscard && myTurn) return $"Descarta {s.ActivationDiscardsRemaining} carta(s) para completar la activación · " + (_selected.Count == 1 ? CardCatalog.Get(SelectableCards[_selected.Single()]!).Name : "elige una carta");
         if (s.Phase == Phase.Discard && myTurn) return $"Descarta {s.DiscardsRemaining} carta(s) para resolver el efecto.";
         if (s.Phase == Phase.Final && myTurn) return s.Players[s.MySeat].HandCount > GameEngine.MaxHandSize

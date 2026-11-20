@@ -9,8 +9,8 @@ public sealed class PendingGoldenTotem
 public sealed partial class GameEngine
 {
     /// <summary>
-    /// Tótem de Oro now asks how many Tótems to show through a decision (GoldenTotemEffect). This command, which names the
-    /// exact copies, still answers it, and finishes duels saved while the former phase, GoldenTotemChoice, was pending.
+    /// Tótem de Oro asks how many Tótems to show through a decision (GoldenTotemEffect). This command from recorded duels,
+    /// which names the exact copies, still answers it.
     /// </summary>
     public CommandResult ResolveGoldenTotem(int actor, IEnumerable<int> handIndices)
     {
@@ -24,13 +24,7 @@ public sealed partial class GameEngine
             DeployGoldenTotem(actor, selected);
             return CommandResult.Ok();
         }
-        if (State.Phase != Phase.GoldenTotemChoice || State.PendingGoldenTotem?.Actor != actor ||
-            _activeActivation is not { Kind: ActivationKind.Code } frame || frame.Actor != actor || frame.CardId != CardCatalog.GoldenTotem.Id)
-            return CommandResult.Fail("No te corresponde colocar Tótem de Oro.");
-        if (!ValidGoldenTotemSelection(State.Players[actor], selected))
-            return CommandResult.Fail("Muestra hasta dos Tótems de Salvación distintos de tu mano; Tótem de Oro necesita un equipo debajo.");
-        DeployGoldenTotem(actor, selected);
-        return CommandResult.Ok();
+        return CommandResult.Fail("No te corresponde colocar Tótem de Oro.");
     }
 
     internal IEnumerable<int> PlayableTotems(int actor) =>

@@ -14,6 +14,15 @@ internal sealed class GoldenTotemEffect : CardEffect, IFieldLeaveReplacement
 
     public override string CardId => CardCatalog.GoldenTotem.Id;
 
+    private const string ShowInstruction = "Elige hasta dos Tótems de Salvación de tu mano. Necesitas un equipo debajo.";
+
+    /// <summary>The choice as <c>Resolve</c> opens it; duels saved in the former Tótem de Oro phase become this decision.</summary>
+    internal static PendingDecision ShowDecision(int actor, Phase resumePhase) => new()
+    {
+        Source = CardCatalog.GoldenTotem.Id, Step = Show, Decider = actor, Kind = DecisionKind.Confirm,
+        Instruction = ShowInstruction, ResumePhase = resumePhase
+    };
+
     // After Escudo Galáctico, before Reverse Shuffle.
     public LeaveStep Step => LeaveStep.Cover;
 
@@ -52,7 +61,7 @@ internal sealed class GoldenTotemEffect : CardEffect, IFieldLeaveReplacement
             ctx.Log("Tótem de Oro se resuelve sin un equipo sobre el cual colocarse.");
             return;
         }
-        ctx.Ask(Show, DecisionKind.Confirm, "Elige hasta dos Tótems de Salvación de tu mano. Necesitas un equipo debajo.");
+        ctx.Ask(Show, DecisionKind.Confirm, ShowInstruction);
     }
 
     // The copies are identical, so the choice is how many to show; with no equipment at least one is needed.

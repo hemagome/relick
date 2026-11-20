@@ -77,11 +77,6 @@ public static class DuelOptions
                             host.Index, (int)host.Zone, host.Owner);
                     }
                     break;
-                case Phase.GoldenTotemChoice:
-                    var maxTotems = Math.Min(2, game.PlayableTotems(actor).Count());
-                    for (var count = p.Equipment == null ? 1 : 0; count <= maxTotems; count++)
-                        Add(DuelMoveKind.GoldenTotem, count == 0 ? "Colocar Tótem de Oro sin mostrar Tótems" : $"Mostrar y colocar {count} Tótem(s) de Salvación", discards: count);
-                    break;
                 case Phase.Draw:
                     Add(DuelMoveKind.Advance, s.ExtraDrawStages > 0 ? "Repetir etapa de robo" : "Ir a combate");
                     break;
