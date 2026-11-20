@@ -495,9 +495,6 @@ public sealed partial class GameEngine
                 case DamageStep.Prevent:
                     if (PreventDamageWithStar(p, amount, completed, attacker)) return;
                     break;
-                case DamageStep.Respond:
-                    if (TryTurboSwordDefense(target, amount, attackDie, completed)) return;
-                    break;
                 case DamageStep.Counters:
                     amount = LimitNonlethalDamage(target, amount, completed);
                     if (amount == 0) { Continue(completed); return; }

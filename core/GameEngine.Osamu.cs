@@ -164,18 +164,12 @@ public sealed partial class GameEngine
             attack.WasRerolled, attack.EffectsSuppressed, attack.SuperAttack ? CardCatalog.SuperAttack.DamageBonus : 0);
     }
 
+    /// <summary>The next Turbo Sword copy after <paramref name="afterPosition"/> rolls its defense die; false when none can.</summary>
     private bool TryTurboSwordDefense(int target, int amount, int attackDie, EngineContinuation? completed, int afterPosition = -1)
     {
-        var p = State.Players[target];
-        var slot = Enumerable.Range(0, p.Skills.Count).OrderBy(p.SkillPosition).FirstOrDefault(i =>
-            p.SkillPosition(i) > afterPosition && p.Skills[i] == CardCatalog.TurboSword.Id &&
-            p.CountersOnSkill(i) < 2 && !EffectsSuppressed(target, FieldZone.Skill, i), -1);
-        if (slot < 0) return false;
-        RollWithRelikario(p, DiePurpose.TurboSwordDefense, new DieEffect
-        {
-            Purpose = DiePurpose.TurboSwordDefense, Actor = target, SkillId = CardCatalog.TurboSword.Id,
-            Slot = p.SkillPosition(slot), AttackDie = attackDie, IncomingDamage = amount, Next = completed
-        });
+        if (TurboSwordEffect.DefenseRoll(State, target, new DamageEvent(target, amount, attackDie), completed, afterPosition, EffectsSuppressed)
+            is not { } roll) return false;
+        RollWithRelikario(State.Players[target], DiePurpose.TurboSwordDefense, roll);
         return true;
     }
 

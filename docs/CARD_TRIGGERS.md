@@ -54,17 +54,18 @@ internal interface ITurnTrigger
     void Fire(GameEngine.EffectContext ctx, FieldTarget source, EngineContinuation then);
 }
 
-/// Pasos de la cadena de daño, en el orden en que se aplican hoy.
-internal enum DamageStep { Amplify, Prevent, Reduce, Respond, Absorb, AfterShields, Lethal }
+/// Pasos de la cadena de daño, en el orden en que se aplican (implementado en el paso 6).
+internal enum DamageStep { Amplify, Prevent, Guard, Respond, Reduce, Absorb, Shield, Counters, Lethal }
+
+internal sealed record DamageEvent(int Target, int Amount, int AttackDie);
 
 internal interface IDamageTrigger
 {
     DamageStep Step { get; }
-    IReadOnlyList<FieldZone> Zones { get; }
-    /// Síncrono: devuelve el daño modificado (Robotizar resta 1 por copia).
-    int Modify(GameEngine.EffectContext ctx, FieldTarget source, DamageEvent damage) => damage.Amount;
-    /// Asíncrono: true si toma el control y continuará con `then` (Anillo Morado, Escudo Galáctico, Tótem).
-    bool TryReplace(GameEngine.EffectContext ctx, FieldTarget source, DamageEvent damage, EngineContinuation then) => false;
+    /// Síncrono: devuelve el daño modificado (Robotizar, los equipos que protegen).
+    int Modify(GameEngine.EffectContext ctx, DamageEvent damage) => damage.Amount;
+    /// Puede pausar (Turbo Sword, Anillo Morado, Escudo Galáctico, Mira de Sniper): true si toma el control.
+    bool TryPause(GameEngine.EffectContext ctx, DamageEvent damage, EngineContinuation? completed) => false;
 }
 
 internal enum FieldLeave { Destroy, Return }
@@ -77,7 +78,7 @@ internal interface IFieldLeaveReplacement
 }
 ```
 
-`DamageEvent` agrupa lo que hoy viaja en parámetros sueltos (`target`, `amount`, `attackDie`, `source`, `completed`). Así un paso nuevo no cambia la firma de todos los demás.
+`DamageEvent` agrupa lo que viaja por la cadena (`target`, `amount`, `attackDie`); la continuación final (`completed`) se pasa aparte porque no cambia. `source` solo importa en el primer paso, así que no forma parte del evento: el atacante que nombra la respuesta visual es siempre `1 - Target` cuando hay dado de ataque, como antes.
 
 Los títulos de dado no van en los efectos: su clave natural es el propósito del dado (`DiePurpose`). Turbo Sword tiene dos propósitos, y Reverse Shuffle o Jessica Lee no tienen módulo. `core/DiePurposes.cs` reúne en una tabla el título y la carta de cada propósito, en lugar de los dos `switch` que había en `RollWithRelikario` y en la vista de resolución de `DuelHistory`.
 
@@ -134,24 +135,22 @@ El daño y la destrucción usan el mismo ejecutor, pero sin instantánea entre p
 
 **Inicio de acciones:** Perro Fantasma (cartas reveladas en mano, de menor a mayor índice), después Robotizar (copias sobre el Relikario).
 
-**Daño**, en `DealDamage` y sus continuaciones:
+**Daño**, en `ResumeDamage` (`GameEngine.cs`), que recorre `DamageStep` en orden:
 
-| Paso | Hoy | `DamageStep` |
+| Paso | Quién actúa | `DamageStep` |
 |---|---|---|
-| 1 | Límite de daño no letal | (motor, antes de la cadena) |
-| 2 | Estrella del Fontanero del atacante: duplica | `Amplify` |
-| 3 | Estrella del Fontanero del defensor: daño 0 | `Prevent` |
-| 4 | Equipo con `PreventDamage` o `DamageReduction` | `Reduce` |
-| 5 | Turbo Sword: dado de defensa | `Respond` |
-| 6 | Robotizar: −1 por copia | `Reduce` (después del equipo) |
-| 7 | Anillo Morado: decisión | `Absorb` |
-| 8 | Escudo Galáctico: carta a mano, −2 | `Absorb` (después de Anillo) |
-| 9 | Contadores de equipo (`DamageCounterLimit`) | `AfterShields` |
-| 10 | Tótem de Salvación: cancelar daño letal | `Lethal` |
+| 1 | Límite de daño no letal; Estrella del Fontanero del atacante duplica | `Amplify` (motor) |
+| 2 | Estrella del Fontanero del defensor: daño 0 | `Prevent` (motor) |
+| 3 | Hoguera, Casco de Diamantes, Capirote Metálico | `Guard` (`GuardEquipmentEffect`) |
+| 4 | Turbo Sword: dado de defensa | `Respond` (`TurboSwordEffect`) |
+| 5 | Robotizar: −1 por copia | `Reduce` (`RobotizeEffect`) |
+| 6 | Anillo Morado: decisión | `Absorb` (`PurpleRingEffect`) |
+| 7 | Escudo Galáctico: carta a mano, −2 | `Shield` (`GalacticShieldEffect`) |
+| 8 | Límite no letal; Mira de Sniper: contadores | `Counters` (motor y `SniperScopeEffect`) |
+| 9 | Tótem de Salvación: cancelar daño letal | `Lethal` (motor, fase `TotemChoice`) |
+| 10 | Vidas del Relikario | (motor, al terminar) |
 
-Los pasos 4 y 6 caen en `Reduce` pero en momentos distintos, con Turbo Sword entre ellos. Por eso cada paso necesita además un orden secundario explícito (`int Order`), en lugar de depender del orden de registro. La prueba de orden del punto 4 lo fija.
-
-**Salida del campo** (implementado como `IFieldLeaveReplacement` con `LeaveStep`): Escudo Galáctico (`Protect`, también cuando la carta vuelve a la mano) → Tótem de Oro sobre un Tótem de Salvación (`Cover`, solo destrucción) → Reverse Shuffle (decisión del dueño, todavía en el motor). Súper Imán actúa antes, al sustituir un efecto rival (`TryReplaceOpponentFieldEffect`), y se queda como un punto aparte: no es una destrucción, sino un efecto rival sustituido.
+Cada carta tiene un paso propio, así que no hizo falta el orden secundario (`int Order`) que proponía la primera versión. Desde `Respond`, si no queda daño, el ejecutor termina la cadena antes del paso; antes esa comprobación estaba repetida en cada tramo.
 
 ## Plan de migración
 
@@ -175,7 +174,16 @@ Cada paso es un commit propio, con compilación del juego y del servidor, los te
    - Tótem de Oro sustituye la destrucción de un Tótem desde su módulo; `GoldenTotemReplacement` queda como adaptador.
    - Las opciones de Escudo Galáctico (proteger y absorber daño comparten `Choices` y `Choose`) siguen en el motor hasta el paso 6, que migra la mitad del daño.
    - Reverse Shuffle se queda en el motor: es una habilidad con su propia fase (`DestructionResponse`) y su propio comando (`ResolveDestructionProtection`), así que irá con la fase B2.
-6. **Daño.** Estrella del Fontanero, Turbo Sword, Robotizar, Anillo Morado, Escudo Galáctico y Tótem. Los indicadores `PreventDamage`, `DamageReduction` y `DamageCounterLimit` de `CardDefinition` pasan a los efectos de sus equipos, lo que cierra el punto 5 de la revisión DRY para esta familia. Es el paso de más riesgo y va el último.
+6. ~~**Daño.**~~ Hecho, en cinco commits:
+   - **Ejecutor:** `ResumeDamage` recorre `DamageStep`. Las llamadas fijas entre tramos pasan a «sigue desde el paso X».
+   - **Pausas:** `IDamageTrigger.TryPause` permite que una carta detenga la cadena y la reanude después con `EffectContext.ContinueDamage`.
+   - **Escudo Galáctico y Anillo Morado:** se mueven enteros a sus módulos, incluidas sus opciones y respuestas. `PurpleRingDamage` queda como adaptador.
+   - **Indicadores de equipo:** `PreventDamage`, `DamageReduction` y `DamageCounterLimit` salen de `CardDefinition` y pasan a `GuardEquipmentEffect` y `SniperScopeEffect`, lo que cierra el punto 5 para esta familia.
+   - **Turbo Sword:** dispara en `Respond`.
+   - **Lo que queda en el motor:**
+     - Estrella del Fontanero, porque es un estado del jugador y no una carta en juego.
+     - Tótem de Salvación, con la fase `TotemChoice`, que va a B2.
+     - Los resultados de los dados de Turbo Sword, que se resuelven por su propósito.
 
 Al terminar, una carta nueva con disparador será un archivo en `core/Effects/` y una línea en `CardEffects`. `EffectContext` perderá los métodos propios de Escudo Galáctico, Tótem de Oro, Combo Parry y la carta del tope de Robotizar.
 

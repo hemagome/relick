@@ -26,6 +26,7 @@ static class TurnTriggerTests
                 DamageStep.Reduce, DamageStep.Absorb, DamageStep.Shield, DamageStep.Counters, DamageStep.Lethal]), "El orden de los pasos es el de las reglas.");
             Check(CardEffects.DamageTriggers(DamageStep.Guard).Select(t => t.CardId).SequenceEqual(
                 [CardCatalog.Bonfire.Id, CardCatalog.DiamondHelmet.Id, CardCatalog.MetalHood.Id]), "Paso Guard: los equipos que protegen.");
+            Check(CardEffects.DamageTriggers(DamageStep.Respond).Select(t => t.CardId).SequenceEqual([CardCatalog.TurboSword.Id]), "Paso Respond: Turbo Sword.");
             Check(CardEffects.DamageTriggers(DamageStep.Counters).Select(t => t.CardId).SequenceEqual([CardCatalog.Sniper.Id]), "Paso Counters: Mira de Sniper.");
         }),
         ("Disparadores: al salir una carta del campo, Escudo Galáctico responde antes que Tótem de Oro", () =>

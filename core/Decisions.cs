@@ -199,7 +199,7 @@ internal static class CardEffects
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect(),
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
-            GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect() }.ToDictionary(e => e.CardId);
+            GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect() }.ToDictionary(e => e.CardId);
 
     public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 
@@ -329,6 +329,8 @@ public sealed partial class GameEngine
         /// </summary>
         public void RollResolvedByEngine(int seat, DiePurpose purpose, int slot = 0) =>
             _engine.RollWithRelikario(State.Players[seat], purpose, new DieEffect { Actor = seat, Purpose = purpose, Slot = slot });
+        /// <summary>Rolls a prepared die effect through the shared window; the engine resolves it by its purpose.</summary>
+        public void RollResolvedByEngine(DieEffect effect) => _engine.RollWithRelikario(State.Players[effect.Actor], effect.Purpose, effect);
         public string? PlayableHandCard(int handIndex) => _engine.PlayableHandCard(Player, handIndex);
         /// <summary>Sends this card from the hand to memory and activates it there without paying actions or PR.</summary>
         public void ActivateFromHandForFree(int handIndex, bool choosesDieResult)
