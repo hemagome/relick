@@ -39,7 +39,8 @@ internal static class ArenaGuidance
         if (SuggestAdvance(s)) return "No quedan jugadas disponibles. " + NextStep(s);
         return s.Phase switch
         {
-            Phase.AttackRerollChoice or Phase.DieRerollChoice => s.Options.Any(o => o.Move.Kind is DuelMoveKind.Dexterity or DuelMoveKind.Pendant or DuelMoveKind.Pc or DuelMoveKind.LearningDie or DuelMoveKind.IronwingDie or DuelMoveKind.ConvertD10 or DuelMoveKind.PlayCode ||
+            Phase.AttackRerollChoice or Phase.DieRerollChoice => s.Options.Any(o => o.Move.Kind is DuelMoveKind.Dexterity or DuelMoveKind.Pendant or DuelMoveKind.Pc or DuelMoveKind.LearningDie or DuelMoveKind.ConvertD10 or DuelMoveKind.PlayCode ||
+                o.Move.Kind == DuelMoveKind.IronwingDie && IsUsefulDieModifier(o, s) ||
                 o.Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && o.Move.Flag)
                 ? "Conserva el dado o elige cómo modificarlo." : "Confirma el resultado del dado.",
             Phase.DefenseChoice => "Elige cómo defenderte o confirma recibir el daño.",
@@ -69,6 +70,15 @@ internal static class ArenaGuidance
             _ when Has(DuelMoveKind.Evolve) => "Puedes evolucionar antes de avanzar.",
             _ => "Elige una opción para continuar la resolución."
         };
+    }
+
+    internal static bool IsUsefulDieModifier(DuelOption option, DuelSnapshot s)
+    {
+        if (option.Move.Kind != DuelMoveKind.IronwingDie || s.Players[s.MySeat].RelikarioId != RelikarioCatalog.Ironwing.Id)
+            return true;
+        // Offer the cheapest way to reach each result, including when the cap makes two costs equivalent.
+        var cost = option.Move.Value;
+        return GameEngine.IronwingAttackDieIncrease(s.Die, cost) > GameEngine.IronwingAttackDieIncrease(s.Die, cost - 1);
     }
 
     // Called only when this hand card has no authorized action in the current snapshot.

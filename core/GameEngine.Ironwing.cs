@@ -28,7 +28,9 @@ public sealed partial class GameEngine
 
     internal int IronwingDieIncrease(int actor, int count) =>
         State.Players[actor].Relikario == RelikarioCatalog.Ironwing
-            ? Math.Min(5 - State.PendingAttackRoll!.Die, count / 2) : count;
+            ? IronwingAttackDieIncrease(State.PendingAttackRoll!.Die, count) : count;
+
+    internal static int IronwingAttackDieIncrease(int die, int count) => Math.Min(5 - die, count / 2);
 
     public CommandResult BoostIronwingDie(int actor, int count)
     {

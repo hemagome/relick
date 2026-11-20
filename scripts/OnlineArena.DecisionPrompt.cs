@@ -10,9 +10,7 @@ public partial class OnlineArena
     private Button? _decisionToggle;
     private bool _decisionMinimized;
 
-    private static bool HasRivalTurnCombo(DuelSnapshot s) => s.CurrentPlayer != s.MySeat && s.Options.Any(o => o.Move.Kind == DuelMoveKind.PlayCode);
-
-    private bool NeedsDecisionPrompt(DuelSnapshot s) => _choosingAttackSkill || ChoosingEffectCards || HasRivalTurnCombo(s) ||
+    private bool NeedsDecisionPrompt(DuelSnapshot s) => _choosingAttackSkill || ChoosingEffectCards ||
         s.DecisionPlayer == s.MySeat && (s.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final or Phase.Finished) ||
             s.Options.Any(o => o.Move.Kind == DuelMoveKind.Discard));
 
@@ -110,7 +108,6 @@ public partial class OnlineArena
         _decisionToggle!.Visible = choosing;
         _decisionToggle.Text = folded ? "Volver a la decisión" : "Ver tablero";
         var title = rejection.Length > 0 ? "Jugada rechazada" : _preparing ? "Mano inicial" : _choosingAttackSkill ? "Elige una habilidad" :
-            HasRivalTurnCombo(s) && s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final ? "COMBO disponible" :
             choosing ? ContextTitle() : SelectedCardId() is { } card ? CardCatalog.Get(card).Name : "";
         if (_decisionTitle.Text != title) _decisionTitle.Text = title;
         _selection.Visible = !folded && _selection.Text.Length > 0;

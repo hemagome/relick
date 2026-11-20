@@ -59,7 +59,7 @@ public partial class OnlineArena
                 DecisionStatus(s, true, false, true, false).Headline == "RESOLVIENDO…", "La prioridad de los estados es incorrecta.");
         }
 
-        foreach (var size in new[] { new Vector2I(1440, 1024), new(1820, 1024), new(1024, 768) })
+        foreach (var size in new[] { new Vector2I(1440, 1024), new(1820, 1024), new(1024, 768), new(844, 390), new(700, 390) })
         {
             GetWindow().Size = size; GetWindow().ContentScaleSize = size; await Layout();
             Vector2? dock = null;
@@ -72,8 +72,19 @@ public partial class OnlineArena
                 Check(PlayableHandIndices.SequenceEqual(expected), $"Cartas jugables {string.Join(",", PlayableHandIndices)} ≠ autorizadas {string.Join(",", expected)} en {size}.");
                 if (own) Check(expected.Contains(0) && expected.Contains(1) && expected.Contains(3) && !expected.Contains(2),
                     "El fixture no ofrece Ataque, aprendizaje y COMBO, o permite Senshuni en combate.");
-                else Check(PlayableHandIndices.SequenceEqual([2]) && _decisionPopup is { Visible: true } && _decisionTitle.Text == "COMBO disponible",
-                    "El COMBO disponible durante el turno rival debe brillar y anunciarse en el centro.");
+                else
+                {
+                    var combo = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode);
+                    Check(PlayableHandIndices.SequenceEqual([2]) && _decisionPopup is { Visible: false } && !PresentsOption(combo),
+                        "El COMBO disponible durante el turno rival solo debe anunciarse con el halo.");
+                    var card = _handCards[2];
+                    _hand!.EnsureControlVisible(card); await Layout();
+                    card.Disabled = false; GuiInputTestDriver.Click(card); await Layout();
+                    Check(PresentedButton(combo) is CardActionButton { Text: "Jugar" } play && play.GetParent() == _cardActions &&
+                        _cardActions.Visible && _cardActionAnchor == card && _decisionPopup is { Visible: false },
+                        "Al tocar un COMBO durante el turno rival, Jugar debe aparecer junto a su carta.");
+                    ClearContext();
+                }
                 if (own && size.X == 1820)
                 {
                     // The offline fixture disables the hand; enable it to see the halo as a player does.
@@ -107,10 +118,13 @@ public partial class OnlineArena
                 Connection.RejectPlay("Otra"); RefreshDecisionFeedback(); ClearRejection(); RefreshDecisionFeedback();
                 Check(!_decisionRejection.IsVisibleInTree(), "Jugar de nuevo no retira el rechazo.");
 
-                // A rival skill on the board: Magnet's normal damage is its own die.
-                SelectField(rival, FieldZone.Skill, 0); await Layout();
-                Check(_inspector.Outlook.IsVisibleInTree() && Faces().SequenceEqual(["½·1D6", "1D6", "5"]), $"Tabla de Magnet incorrecta: {string.Join(" ", Faces())}.");
-                ClearContext();
+                if (!Short)
+                {
+                    // A rival skill on the board: Magnet's normal damage is its own die.
+                    SelectField(rival, FieldZone.Skill, 0); await Layout();
+                    Check(_inspector.Outlook.IsVisibleInTree() && Faces().SequenceEqual(["½·1D6", "1D6", "5"]), $"Tabla de Magnet incorrecta: {string.Join(" ", Faces())}.");
+                    ClearContext();
+                }
                 if (!own)
                 {
                     Check(game.SaveSnapshot() == before, "La consulta alteró el duelo.");
@@ -118,8 +132,24 @@ public partial class OnlineArena
                     ApplyPrivateComboPreference(DuelSnapshot.For(game, seat, 702)); await Layout();
                     Check(PlayableHandIndices.Count == 0 && _decisionPopup is { Visible: false },
                         "El COMBO sigue anunciado con las respuestas omitidas.");
+
+                    var defense = Fixture();
+                    defense.State.Players[seat].Hand[2] = CardCatalog.Dodge.Id;
+                    defense.State.PendingAttack = new(actor, CardCatalog.Destiny.Id, 3, false);
+                    defense.State.Phase = Phase.DefenseChoice;
+                    PresentTestSnapshot(DuelSnapshot.For(defense, seat, 703)); await Layout();
+                    Check(PresentsKind(DuelMoveKind.PassDefense) && !PresentsKind(DuelMoveKind.PlayCode),
+                        "La defensa debe dejar Recibir daño en el aviso y Esquivar en la mano.");
+                    SelectCard(2); await Layout(); PositionCardActions();
+                    var dodge = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode);
+                    Check(PresentedButton(dodge) is CardActionButton { Text: "Jugar" } && _cardActions.Visible &&
+                        _decisionPopup is { Visible: true } && PresentsKind(DuelMoveKind.PassDefense),
+                        "Seleccionar Esquivar debe conservar la decisión de recibir daño.");
+                    Check(!_cardActions.GetGlobalRect().Intersects(_decisionPopup!.GetGlobalRect()),
+                        $"El aviso de defensa tapa el menú de Esquivar en {size}: {_decisionPopup.GetGlobalRect()}, {_cardActions.GetGlobalRect()}.");
                     continue;
                 }
+                if (Short) continue;
 
                 // A skill card in hand has no copy yet: base values, labelled as such.
                 SelectCard(1); await Layout();
@@ -153,6 +183,6 @@ public partial class OnlineArena
                 ClearContext();
             }
         }
-        GD.Print("PVP_DECISION_FEEDBACK_PASS · estado con texto e icono, barra estable, rechazo visible y persistente, cartas jugables autorizadas y tabla de ataque, tres tamaños y ambos asientos.");
+        GD.Print("PVP_DECISION_FEEDBACK_PASS · estado con texto e icono, barra estable, rechazo visible y persistente, cartas jugables autorizadas y tabla de ataque, cinco tamaños y ambos asientos.");
     }
 }

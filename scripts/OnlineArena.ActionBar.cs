@@ -160,7 +160,19 @@ public partial class OnlineArena
         var s = _snapshot!;
         var indices = Enumerable.Range(0, s.Options.Count).Where(i => s.Options[i].Move.Kind is not
             (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve or DuelMoveKind.DestinyPickMemory or DuelMoveKind.PrepareD10)).ToList();
-        // Responses must remain visible even with no hand card (or another card) selected.
+        var rivalCombo = -1;
+        if (s.CurrentPlayer != s.MySeat && s.Phase != Phase.ErrorResponse && ShowCardActivations)
+        {
+            rivalCombo = indices.FirstOrDefault(i =>
+            {
+                var option = s.Options[i];
+                return option.Move.Kind == DuelMoveKind.PlayCode && (_fieldSelection is { } source
+                    ? MatchesField(option, source)
+                    : !_skillContext && _selected.Count == 1 && option.Field == null && _selected.Contains(option.Move.Index));
+            }, -1);
+            indices.RemoveAll(i => s.Options[i].Move.Kind == DuelMoveKind.PlayCode);
+        }
+        // The activation chain presents its response choices together.
         if (s.Phase == Phase.ErrorResponse)
             indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
         else if (s.Phase == Phase.TrapCraftChoice)
@@ -174,7 +186,7 @@ public partial class OnlineArena
         else if (ChoosingEffectCards)
             indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i]) ||
                 Deciding == DecisionKind.ChooseCard && s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].CardId == null).ToList();
-        else if (_fieldSelection is { } field)
+        else if (rivalCombo < 0 && _fieldSelection is { } field)
             indices = indices.Where(i => MatchesField(s.Options[i], field)).ToList();
         else
         {
@@ -234,7 +246,7 @@ public partial class OnlineArena
         else if (die.Length > 0)
         {
             AddOption(_moves, die[0], primary: die[0] == main);
-            AddChoiceMenu(_moves, "Modificar…", indices.Except(die));
+            AddChoiceMenu(_moves, "Modificar…", indices.Except(die).Where(i => ArenaGuidance.IsUsefulDieModifier(s.Options[i], s)));
         }
         else
         {
@@ -257,10 +269,17 @@ public partial class OnlineArena
                 var seat = player;
                 AddLocalButton(_moves, seat == s.MySeat ? "Mis PR" : "PR del rival", () => { _pointsTarget = seat; BuildMoves(); });
             }
+        if (rivalCombo >= 0)
+        {
+            _cardActionAnchor = _fieldSelection is { } source
+                ? FieldActionAnchor(source) : _handCards.ElementAtOrDefault(s.Options[rivalCombo].Move.Index);
+            if (_cardActionAnchor != null) AddOption(_cardActions, rivalCombo, "Jugar", primary: true);
+        }
         PositionCardActions();
         var costs = indices.Select(i => ArenaActionText.Cost(s.Options[i], s)).Where(v => v.Length > 0).Distinct().ToArray();
         _selectionCost = main >= 0 ? (costs.Length > 1 ? ArenaActionText.Label(s.Options[main], s) + ": " : "") + ArenaActionText.Cost(s.Options[main], s)
             : costs.Length == 1 ? costs[0] : "";
+        if (rivalCombo >= 0) _selectionCost = ArenaActionText.Cost(s.Options[rivalCombo], s);
         if (_selectionCost.Length == 0 && !_skillContext && _fieldSelection == null && _selected.Count == 1 &&
             s.Phase is Phase.Draw or Phase.Combat or Phase.Actions && SelectedCardId() is { } selected)
             _selectionCost = ArenaActionText.CardCost(CardCatalog.Get(selected));

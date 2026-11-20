@@ -66,6 +66,7 @@ public partial class OnlineArena
         }
 
         await CheckAreaAndDeckArrivals();
+        CheckIronwingDieChoices();
 
         for (var result = 1; result <= 10; result++)
         {
@@ -95,6 +96,39 @@ public partial class OnlineArena
         if (_die.IsD10 || _die.TopFaceValue != 3)
             throw new Exception("Una nueva tirada D6 debe recuperar el dado cúbico.");
         GD.Print("PVP_NEW_CARDS_PASS");
+    }
+
+    private void CheckIronwingDieChoices()
+    {
+        var attack = CardCatalog.Attack.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[], []], Decks = [[attack, attack, attack, attack], [attack]],
+            Bonuses = [null, null], Relikarios = [RelikarioCatalog.Ironwing.Id, RelikarioCatalog.Osamu.Id]
+        }, new SeededRandom(26));
+        game.State.Active.Dexterity = 0;
+        game.State.Phase = Phase.AttackRerollChoice;
+
+        void CheckCosts(params int[] expected)
+        {
+            ResetAnimations();
+            PresentTestSnapshot(DuelSnapshot.For(game, 0, 14));
+            var actual = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.IronwingDie && PresentsOption(o))
+                .Select(o => o.Move.Value);
+            if (!actual.SequenceEqual(expected) || !PresentsKind(DuelMoveKind.AttackDie))
+                throw new Exception("Modificar el dado debe ofrecer el coste mínimo de Ironwing para cada aumento y permitir conservarlo.");
+            if (expected.Length == 0 && (_actionMenus.Count != 0 || _selection.Text != "Confirma el resultado del dado."))
+                throw new Exception("El aviso ofrece modificar el dado de Ironwing sin un aumento disponible.");
+        }
+
+        game.State.PendingAttackRoll = new(0, CardCatalog.IronwingRoll.Id, 3);
+        CheckCosts(2, 4);
+        game.State.PendingAttackRoll = game.State.PendingAttackRoll with { Die = 4 };
+        CheckCosts(2);
+        game.State.Active.Deck.RemoveRange(1, 3);
+        CheckCosts();
+        game.State.Active.Relikario = RelikarioCatalog.IronwingLv2;
+        CheckCosts(1);
     }
 
     private async Task CheckAreaAndDeckArrivals()
