@@ -14,10 +14,10 @@ public sealed record CardDefinition(
     string Id, string Name, CardKind Kind, string Text,
     int NormalDamage = 0, int CriticalDamage = 0, int Reward = 0,
     int Heal = 0, int Draw = 0, CodeType CodeType = CodeType.None, bool HealFromDie = false, int PrCost = 0, bool IsCombo = false, int ActionCost = 1, bool RerollOwnDie = false, bool CancelActivation = false,
-    int DamageReduction = 0, bool DestroyOnAttackOne = false,
-    int EarliestTurn = 0, int SetOwnDie = 0, bool StoreDie = false, int DamageBonus = 0, int DamageCounterLimit = 0, bool EquipOnDiscard = false,
+    bool DestroyOnAttackOne = false,
+    int EarliestTurn = 0, int SetOwnDie = 0, bool StoreDie = false, int DamageBonus = 0, bool EquipOnDiscard = false,
     int DamagePerReroll = 0, int MaxNormalDamage = 0, bool ProtectOwnCard = false, bool DrawOnExpensiveLearn = false,
-    bool PreventDamage = false, bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false,
+    bool DestroyAtNextTurnStart = false, bool DiscardForTurnBuff = false, bool FieldCombatDie = false,
     int DiscardCost = 0, bool RepeatStage = false, bool Stackable = false,
     // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
     string? Relikario = null, bool Special = false, bool LightEquipment = false)
@@ -82,14 +82,14 @@ public static class CardCatalog
         "Selecciona una carta de cualquier memoria y añádela a tu mano. No puede recuperar la copia que se está activando; sí otra copia de Disquete.", CodeType: CodeType.Object);
     public static readonly CardDefinition Bonfire = new("bonfire", "Hoguera", CardKind.Equipment,
         "Al equipar: gana +1 vida. Mientras esta carta esté equipada, todos los daños que recibas se transforman en 0. Destruye esta carta al inicio de tu siguiente turno luego de haber sido equipada.",
-        Heal: 1, PreventDamage: true, DestroyAtNextTurnStart: true);
+        Heal: 1, DestroyAtNextTurnStart: true);
     public static readonly CardDefinition Reverse = new("reverse-shuffle", "Relick Reverse Shuffle", CardKind.Skill,
         "Al relanzar un dado propio: +1 al daño normal (máx. 5) y crítico de esta copia. Si una carta propia va a ser destruida, puedes destruir esta habilidad enseñada en su lugar, incluidos costes de equipos. Al enseñarla en el espacio de 500 o 1000 PR: lanza D6, puedes relanzarlo hasta dos veces y roba la mitad del resultado final, redondeada hacia arriba.",
         NormalDamage: 2, CriticalDamage: 4, Reward: 600, DamagePerReroll: 1, MaxNormalDamage: 5, ProtectOwnCard: true, DrawOnExpensiveLearn: true, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition TripleAttack = new("triple-cross-attack", "Triple Ataque Cruzado", CardKind.Code,
         "Busca 3 ataques de tu mazo a tu mano.", CodeType: CodeType.Play);
     public static readonly CardDefinition Sniper = new("sniper-scope", "Mira de Sniper", CardKind.Equipment,
-        "Si esta carta es descartada: equipa esta carta gratis o coloca en canje. Equipada: +1 a los daños. Si recibes daño coloca 1 contador en esta carta; con 3 contadores se destruye.", DamageBonus: 1, DamageCounterLimit: 3, EquipOnDiscard: true);
+        "Si esta carta es descartada: equipa esta carta gratis o coloca en canje. Equipada: +1 a los daños. Si recibes daño coloca 1 contador en esta carta; con 3 contadores se destruye.", DamageBonus: 1, EquipOnDiscard: true);
     public static readonly CardDefinition Pc = new("pc-8bits", "PC 8BITS", CardKind.Equipment,
         "Al equipar: lanza 1D6 y colócalo sobre esta carta. Al lanzar un dado puedes destruir este equipo: si guardó 1–3, suma ese valor al dado (máx. 5); si guardó 4–6, cambia el resultado del dado por el valor guardado.", StoreDie: true);
     public static readonly CardDefinition Dodge = new("dodge", "Esquivar", CardKind.Code,
@@ -130,10 +130,9 @@ public static class CardCatalog
         "Lado A: al convertirse en el Área, envíala a tu mano o lanza 1D6. Con 1–5, destruye todas las cartas de tu campo excepto una. Luego destruye esta carta.\nLado B: si esta carta no fue enviada a la mano por su efecto, lanza 1D6. Con 1–5, destruye todas las cartas de tu campo excepto una.");
     public static readonly CardDefinition DiamondHelmet = new("diamond-helmet", "Casco de Diamantes", CardKind.Equipment,
         "Resta 2 puntos a cualquier daño que recibas. Si en el dado de ataque alguien saca 1: destruye esta carta.",
-        DamageReduction: 2, DestroyOnAttackOne: true);
+        DestroyOnAttackOne: true);
     public static readonly CardDefinition MetalHood = new("capirote-metalico", "Capirote Metálico", CardKind.Equipment,
-        "Puedes equipar esta carta a tu adversario. Mientras esté equipada, quien la lleva recibe 2 menos de daño y tiene 1 acción menos por turno. Si quien la lleva saca 1 en un dado, destruye esta carta.",
-        DamageReduction: 2);
+        "Puedes equipar esta carta a tu adversario. Mientras esté equipada, quien la lleva recibe 2 menos de daño y tiene 1 acción menos por turno. Si quien la lleva saca 1 en un dado, destruye esta carta.");
     public static readonly CardDefinition PurpleRing = new("anillo-morado", "Anillo Morado", CardKind.Equipment,
         "Equipo ligero. Puedes destruir esta carta para ganar 500 PR o, cuando recibas daño, recibir solo la mitad de ese daño.",
         LightEquipment: true);

@@ -163,8 +163,10 @@ internal enum DamageStep
     Absorb,
     /// <summary>Escudo Galáctico: take a face-down card and subtract 2.</summary>
     Shield,
-    /// <summary>Equipment counters, Tótem de Salvación and the Relikario's health.</summary>
-    Counters
+    /// <summary>The non-lethal limit, then equipment that gathers counters from damage (Mira de Sniper).</summary>
+    Counters,
+    /// <summary>Tótem de Salvación; after it, the Relikario's health.</summary>
+    Lethal
 }
 
 /// <summary>The damage on its way through the chain.</summary>
@@ -196,7 +198,8 @@ internal static class CardEffects
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect(),
-            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect(), new PurpleRingEffect() }.ToDictionary(e => e.CardId);
+            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
+            GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect() }.ToDictionary(e => e.CardId);
 
     public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 
@@ -312,6 +315,11 @@ public sealed partial class GameEngine
         public void ReturnFieldCardNow(FieldTarget target) => _engine.ReturnFieldCardNow(target);
         /// <summary>Sends a card of this player from <paramref name="source"/> to memory, keeping its corruption mark.</summary>
         public void SendToMemory(string id, CardZone source, int index, bool marked) => _engine.SendToMemory(Player, id, source, index, marked: marked);
+        /// <summary>Destroys this player's equipment through the replacements, then <paramref name="then"/>.</summary>
+        public void DestroyEquipment(EngineContinuation? then) => _engine.DestroyEquipment(Player, then);
+        /// <summary>A continuation that applies the damage straight to this player's health, past the remaining steps.</summary>
+        public EngineContinuation HealthDamage(DamageEvent damage, EngineContinuation? completed) => new()
+            { Kind = ContinuationKind.ApplyDamage, Actor = damage.Target, Count = damage.Amount, Value = damage.AttackDie, Next = completed };
         /// <summary>Goes on with the damage chain after <paramref name="step"/>, with the damage as it stands.</summary>
         public void ContinueDamage(DamageEvent damage, EngineContinuation? completed, DamageStep step) =>
             _engine.ResumeDamage(damage.Target, damage.Amount, damage.AttackDie, completed, step + 1);

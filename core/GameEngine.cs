@@ -476,7 +476,7 @@ public sealed partial class GameEngine
     {
         var p = State.Players[target];
         int? attacker = attackDie > 0 ? source : null;
-        for (var step = from; step <= DamageStep.Counters; step++)
+        for (var step = from; step <= DamageStep.Lethal; step++)
         {
             // From Turbo Sword on, nothing left to receive ends the chain before the step.
             if (step >= DamageStep.Respond && amount <= 0) { Continue(completed); return; }
@@ -495,23 +495,16 @@ public sealed partial class GameEngine
                 case DamageStep.Prevent:
                     if (PreventDamageWithStar(p, amount, completed, attacker)) return;
                     break;
-                case DamageStep.Guard:
-                    var protection = ActiveEquipment(target);
-                    if (protection != null && (protection.PreventDamage || protection.DamageReduction > 0))
-                    {
-                        var reduced = protection.PreventDamage ? 0 : Math.Max(0, amount - protection.DamageReduction);
-                        NotifyGuard(target, attacker, protection.Id, amount, reduced, blocked: protection.PreventDamage);
-                        Log($"{p.Name} reduce el daño de {amount} a {reduced} con {protection.Name}.");
-                        State.LastCombat += $" · {protection.Name}: {reduced} daño recibido";
-                        amount = reduced;
-                        if (amount == 0) { Continue(completed); return; }
-                    }
-                    break;
                 case DamageStep.Respond:
                     if (TryTurboSwordDefense(target, amount, attackDie, completed)) return;
                     break;
-                // Hands over for good: equipment counters, Tótem de Salvación and health.
-                case DamageStep.Counters: ApplyDamageAfterShields(target, amount, attackDie, completed); return;
+                case DamageStep.Counters:
+                    amount = LimitNonlethalDamage(target, amount, completed);
+                    if (amount == 0) { Continue(completed); return; }
+                    break;
+                case DamageStep.Lethal:
+                    if (TryTotemDamage(target, amount, attackDie, completed)) return;
+                    break;
             }
             foreach (var card in CardEffects.DamageTriggers(step))
             {
@@ -521,6 +514,7 @@ public sealed partial class GameEngine
                 if (trigger.TryPause(ctx, new DamageEvent(target, amount, attackDie), completed)) return;
             }
         }
+        ApplyHealthDamage(target, amount, attackDie, completed);
     }
 
     private bool PreventDamageWithStar(PlayerState player, int amount, EngineContinuation? completed, int? attacker = null)
@@ -531,23 +525,6 @@ public sealed partial class GameEngine
         State.LastCombat += " · Estrella del Fontanero: 0 daño recibido";
         Continue(completed);
         return true;
-    }
-
-    private void ApplyDamageAfterShields(int target, int amount, int attackDie, EngineContinuation? completed)
-    {
-        amount = LimitNonlethalDamage(target, amount, completed);
-        if (amount == 0) { Continue(completed); return; }
-        var p = State.Players[target];
-        if (ActiveEquipment(target) is { DamageCounterLimit: > 0 } protection)
-        {
-            p.EquipmentCounters++;
-            if (p.EquipmentCounters >= protection.DamageCounterLimit)
-            {
-                DestroyEquipment(p, new EngineContinuation { Kind = ContinuationKind.ApplyDamage, Actor = target, Count = amount, Value = attackDie, Next = completed });
-                return;
-            }
-        }
-        if (!TryTotemDamage(target, amount, attackDie, completed)) ApplyHealthDamage(target, amount, attackDie, completed);
     }
 
     private void ApplyHealthDamage(int target, int amount, int attackDie, EngineContinuation? completed)
