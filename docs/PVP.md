@@ -415,3 +415,12 @@ El 15 de noviembre se corrigió el cliente: leía la mica y el dado de cada fila
 `my_deck_styles`. No cambió el servidor. Validación en una base local aislada:
 31 comprobaciones de mazos (incluido el guardado con estilo desde el juego) y la
 batería PvP general completa.
+
+El 20 de noviembre se retiró la compatibilidad con partidas guardadas en versiones
+anteriores. En `relick-pvp-dev-c2006ee7` se vaciaron las tablas de salas y partidas
+(no había ninguna sala abierta) y se publicó el módulo con `--delete-data=never`; el
+plan de migración solo retiró `duel` y `duel_step`. Se conservaron las cuentas y los
+mazos. Los valores numéricos de fases y jugadas cambiaron, así que solo es
+compatible el cliente compilado desde esta versión. Validación previa en una base
+local aislada: ensayo del borrado y la migración, batería PvP general completa y
+prueba de vencimientos.
