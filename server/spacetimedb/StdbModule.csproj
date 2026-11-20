@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="SpacetimeDB.Runtime" Version="2.15.0" />
+    <PackageReference Include="SpacetimeDB.Runtime" Version="2.16.1" />
     <Compile Include="../../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

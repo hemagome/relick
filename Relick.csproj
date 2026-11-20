@@ -21,7 +21,7 @@
     <Compile Remove="scripts/Tests/**/*.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="SpacetimeDB.ClientSDK.Godot" Version="2.15.0" />
+    <PackageReference Include="SpacetimeDB.ClientSDK.Godot" Version="2.16.1" />
   </ItemGroup>
 </Project>
 

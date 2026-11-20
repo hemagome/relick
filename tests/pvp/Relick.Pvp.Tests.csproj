@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="SpacetimeDB.ClientSDK" Version="2.15.0" />
+    <PackageReference Include="SpacetimeDB.ClientSDK" Version="2.16.1" />
     <Compile Include="../../network/bindings/**/*.cs" Link="Bindings/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../network/LobbyConnection.cs" Link="LobbyConnection.cs" />
     <Compile Include="../../network/LobbyConnection.QuickMatch.cs" Link="LobbyConnection.QuickMatch.cs" />

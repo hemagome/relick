@@ -28,7 +28,7 @@ El servidor guarda estados completos con efectos pendientes explícitos y prepar
 
 Alcance concreto: crear sala, unirse mediante código, dos jugadores, los mismos mazos de práctica y una partida completa. Después, reconexión a la misma sala.
 
-1. Módulo C# de SpacetimeDB y SDK oficial de Godot fijados en 2.15.0, compilados con .NET 8.
+1. Módulo C# de SpacetimeDB y SDK oficial de Godot fijados en 2.16.1, compilados con .NET 8.
 2. Reutilizar las reglas C#, adaptando la persistencia al modelo de tablas del módulo. Que el lenguaje coincida no elimina este trabajo.
 3. Guardar estado interno privado: mazos ordenados, manos, bonus y fuente de azar.
 4. Exponer únicamente la información permitida: mano propia y estado público del duelo, mediante vistas que validen la identidad y pertenencia a la sala. Los [permisos de tablas](https://spacetimedb.com/docs/tables/access-permissions/) y las [vistas](https://spacetimedb.com/docs/functions/views/) son parte de ese diseño.

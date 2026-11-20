@@ -369,12 +369,13 @@ try
     Check(service.LastResult?.Winner != null && !string.IsNullOrEmpty(service.LastResult.EndReason),
         "Cerrar la sala conserva el resultado autorizado para terminar de leerlo");
     Check(service.Duel == null && b.Duel == null, "Cerrar el resultado limpia las vistas de combate y sus registros");
-    foreach (var table in new[] { "duel", "duel_step" })
+    // The full state, the audit and the receipts stay private; players only read prepared packets through views.
+    foreach (var table in new[] { "current_duel", "duel_audit", "duel_receipt", "duel_hand" })
     {
         var forbidden = false;
         outsider.Connection.SubscriptionBuilder().OnError((_, _) => forbidden = true).Subscribe(new[] { "SELECT * FROM " + table });
         Until(() => forbidden);
-        Check(forbidden, "El estado inicial y registro privado no se pueden consultar: " + table);
+        Check(forbidden, "El estado completo y sus registros privados no se pueden consultar: " + table);
     }
     service.Create("Abandono"); Until(() => service.Room != null);
     var surrenderCode = service.Room!.Code;

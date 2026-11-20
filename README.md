@@ -3,13 +3,13 @@
 [![Godot](https://img.shields.io/badge/Godot-4.7.2%20.NET-478CBF?logo=godotengine&logoColor=white)](https://godotengine.org/download)
 [![.NET](https://img.shields.io/badge/.NET%20SDK-8.0.400-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![C#](https://img.shields.io/badge/C%23-net8.0-239120?logo=csharp&logoColor=white)](Relick.csproj)
-[![SpacetimeDB](https://img.shields.io/badge/SpacetimeDB-2.15.0-1A1A1A)](https://spacetimedb.com)
+[![SpacetimeDB](https://img.shields.io/badge/SpacetimeDB-2.16.1-1A1A1A)](https://spacetimedb.com)
 [![Renderer](https://img.shields.io/badge/render-GL%20Compatibility-478CBF)](project.godot)
 [![Android](https://img.shields.io/badge/Android-net9.0%20·%20ARM64-3DDC84?logo=android&logoColor=white)](export-android.sh)
 
 Juego de cartas para dos jugadores con duelos en línea. El cliente es Godot .NET; las reglas son un motor C# puro (`core/`) que el servidor SpacetimeDB ejecuta de forma autoritativa. Interfaz en español; solo hay modo PvP.
 
-Las versiones de las insignias son las que fija el repositorio: `Godot.NET.Sdk/4.7.2` en [Relick.csproj](Relick.csproj), el SDK en [global.json](global.json) y `SpacetimeDB.ClientSDK.Godot`, `SpacetimeDB.ClientSDK` y `SpacetimeDB.Runtime` 2.15.0 en los proyectos del cliente, las pruebas y el [módulo del servidor](server/spacetimedb/StdbModule.csproj). La CLI `spacetime` debe ser también la 2.15.0.
+Las versiones de las insignias son las que fija el repositorio: `Godot.NET.Sdk/4.7.2` en [Relick.csproj](Relick.csproj), el SDK en [global.json](global.json) y `SpacetimeDB.ClientSDK.Godot`, `SpacetimeDB.ClientSDK` y `SpacetimeDB.Runtime` 2.16.1 en los proyectos del cliente, las pruebas y el [módulo del servidor](server/spacetimedb/StdbModule.csproj). La CLI `spacetime` debe ser también la 2.16.1.
 
 ## Requisitos
 
@@ -17,7 +17,7 @@ Las versiones de las insignias son las que fija el repositorio: `Godot.NET.Sdk/4
 |---|---|
 | [Godot 4.7.2 **.NET**](https://godotengine.org/download) (no la edición estándar) | Abrir y ejecutar el juego |
 | [SDK de .NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) | Compilar el juego, el motor y las pruebas |
-| [CLI de SpacetimeDB 2.15.0](https://spacetimedb.com/install) | Solo para un servidor local, las pruebas de red o publicar el módulo |
+| [CLI de SpacetimeDB 2.16.1](https://spacetimedb.com/install) | Solo para un servidor local, las pruebas de red o publicar el módulo |
 
 Sin servidor propio, el juego se conecta a la base de desarrollo en Maincloud configurada en [network/server.cfg](network/server.cfg) y pide iniciar sesión con SpacetimeAuth la primera vez.
 
