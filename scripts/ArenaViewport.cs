@@ -15,9 +15,12 @@ public static class ArenaViewport
 
     public static void Configure(Window window)
     {
+#if RELICK_DEV_TOOLS
+        // The UI tests and previews size the window themselves.
         if (OS.GetCmdlineUserArgs().Contains("--pvp-ui-test") ||
             OS.GetCmdlineUserArgs().Any(a => a is "--music-test" or "--audio-test") ||
             OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--lobby-preview-dir="))) return;
+#endif
         var mobile = OS.HasFeature("mobile");
         var density = mobile ? Math.Clamp(DisplayServer.ScreenGetDpi() / 160f, 1, 4) : 1;
         var size = window.Size;

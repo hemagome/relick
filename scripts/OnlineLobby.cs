@@ -37,20 +37,9 @@ public partial class OnlineLobby : Control
         GetWindow().CloseRequested += QuitWithAudio;
         BuildLobby();
         GetNode<MusicDirector>("/root/MusicDirector").ShowMenu();
-        if (OS.GetCmdlineUserArgs().Any(a => a is "--music-test" or "--audio-test"))
-        {
-            SetProcess(false); CallDeferred(nameof(MusicSmokeTest)); return;
-        }
-        if (OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--lobby-preview-dir=")))
-        {
-            SetProcess(false);
-            CallDeferred(nameof(LobbyVisualPreview));
-            return;
-        }
-        if (OS.GetCmdlineUserArgs().Contains("--pvp-ui-test"))
-        {
-            SetProcess(false); CallDeferred(nameof(ArenaUiSmokeTest)); return;
-        }
+#if RELICK_DEV_TOOLS
+        if (StartOfflineDevTool()) return;
+#endif
         var config = new ConfigFile();
         config.Load("res://network/server.cfg");
         _server = OS.GetEnvironment("RELICK_SERVER");
@@ -63,9 +52,9 @@ public partial class OnlineLobby : Control
         // An account's credential is short-lived and renewed from its own session file; only the anonymous one is kept as is.
         _lobby.TokenReceived += token => { if (_auth == null) SavePrivate(_tokenPath, token); };
         StartSession(config, key);
-        if (OS.GetCmdlineUserArgs().Contains("--pvp-preparation-test")) CallDeferred(nameof(PreparationSmokeTest));
-        if (OS.GetCmdlineUserArgs().Contains("--pvp-combat-test")) CallDeferred(nameof(CombatSmokeTest));
-        if (OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--pvp-input-peer="))) CallDeferred(nameof(InputPeerSmokeTest));
+#if RELICK_DEV_TOOLS
+        StartOnlineDevTools();
+#endif
     }
 
     private void Connect()

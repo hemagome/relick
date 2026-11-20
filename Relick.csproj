@@ -13,6 +13,13 @@
     <Compile Remove="artifacts/**/*.cs" />
     <None Remove="artifacts/**" />
   </ItemGroup>
+  <!-- UI tests and visual previews (scripts/Tests) are compiled only for development; exports leave them out. -->
+  <PropertyGroup Condition="!$(Configuration.StartsWith('Export'))">
+    <DefineConstants>$(DefineConstants);RELICK_DEV_TOOLS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="$(Configuration.StartsWith('Export'))">
+    <Compile Remove="scripts/Tests/**/*.cs" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="SpacetimeDB.ClientSDK.Godot" Version="2.15.0" />
   </ItemGroup>
