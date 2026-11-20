@@ -6,7 +6,8 @@ internal sealed class ComboParryEffect : ICardEffect
 
     public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => ctx.State.Phase switch
     {
-        Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final or Phase.AttackRerollChoice or Phase.DieRerollChoice or
+        var stage when stage.IsTurnStage() => null,
+        Phase.AttackRerollChoice or Phase.DieRerollChoice or
         Phase.DefenseChoice or Phase.EffectDamageChoice or Phase.MagnetChoice or Phase.CodeResponse or Phase.Decision => null,
         Phase.ErrorResponse when ctx.CanParryActivation() => null,
         _ => "Completa la resolución pendiente antes de jugar Combo Parry."

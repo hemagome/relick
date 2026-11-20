@@ -50,7 +50,7 @@ public partial class OnlineArena
             resumedCombat = current.Phase == Phase.Combat;
             _turnAwaitingCombat = null;
         }
-        if (stage is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)) return;
+        if (!stage.IsTurnStage()) return;
 
         var sameStage = previousStage == stage;
         var sameTurn = previous.Turn == current.Turn && previous.CurrentPlayer == current.CurrentPlayer;

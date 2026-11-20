@@ -41,7 +41,7 @@ public static class DuelOptions
                 Add(DuelMoveKind.IronwingFire, $"Ironwing Fire · destruir una carta · espacio {p.SkillPosition(slot) + 1}", slot);
                 result[^1].CardId = CardCatalog.IronwingFire.Id;
             }
-            if (s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)
+            if (s.Phase.IsTurnStage())
                 for (var i = 0; i < (p.LightEquipment?.Count ?? 0); i++)
                 {
                     if (!game.CanUsePurpleRing(actor, i)) continue;

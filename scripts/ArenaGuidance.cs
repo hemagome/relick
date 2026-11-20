@@ -6,7 +6,7 @@ namespace Relick;
 internal static class ArenaGuidance
 {
     public static bool SuggestAdvance(DuelSnapshot s) => s.Winner == null && s.CurrentPlayer == s.MySeat &&
-        s.DecisionPlayer == s.MySeat && s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final &&
+        s.DecisionPlayer == s.MySeat && s.Phase.IsTurnStage() &&
         s.Options.Any(o => o.Move.Kind == DuelMoveKind.Advance) &&
         s.Options.All(o => o.Move.Kind is DuelMoveKind.Advance or DuelMoveKind.Concede);
 
@@ -89,7 +89,7 @@ internal static class ArenaGuidance
         if (id == null) return "Esta carta no está disponible.";
         var card = CardCatalog.Get(id);
         var own = s.CurrentPlayer == s.MySeat && s.DecisionPlayer == s.MySeat;
-        var normal = s.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final;
+        var normal = s.Phase.IsTurnStage();
         if (card.IsCombo && s.AutoPassCombos && (!own || !normal))
             return "Pulsa COMBO hasta ver la mano alzada para responder con esta carta.";
         if (!own && !card.IsCombo) return "";

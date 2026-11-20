@@ -5,7 +5,7 @@ public sealed partial class GameEngine
     private bool HasDestinyPickResponse(int actor) => ComboResponsesEnabled(actor) && _activeActivation == null &&
         AvailableActions(actor) >= CardCatalog.DestinyPick.ActionCost && PlayableCards(actor).Any(card => card.Id == CardCatalog.DestinyPick.Id);
 
-    private bool CanPlayDestinyPick(int actor) => State.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final ||
+    private bool CanPlayDestinyPick(int actor) => State.Phase.IsTurnStage() ||
         _activeActivation == null && State.DecisionPlayer == actor &&
         State.Phase is Phase.AttackRerollChoice or Phase.DefenseChoice or Phase.MagnetChoice;
 

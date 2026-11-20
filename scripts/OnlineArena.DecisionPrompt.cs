@@ -11,7 +11,7 @@ public partial class OnlineArena
     private bool _decisionMinimized;
 
     private bool NeedsDecisionPrompt(DuelSnapshot s) => _choosingAttackSkill || ChoosingEffectCards ||
-        s.DecisionPlayer == s.MySeat && (s.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final or Phase.Finished) ||
+        s.DecisionPlayer == s.MySeat && (!(s.Phase.IsTurnStage() || s.Phase == Phase.Finished) ||
             s.Options.Any(o => o.Move.Kind == DuelMoveKind.Discard));
 
     private void BuildDecisionPrompt(VBoxContainer? gallery)

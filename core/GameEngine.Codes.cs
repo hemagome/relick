@@ -111,7 +111,7 @@ public sealed partial class GameEngine
         if (State.Phase == Phase.Decision && State.PendingDecision is { AllowsCombos: false } decision)
             return $"Decide primero: {decision.Title()}.";
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
-            State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)))
+            !State.Phase.IsTurnStage()))
             return "Activa las respuestas COMBO para responder con esta carta.";
         if (!card.IsCombo) { var error = ValidateTurn(actor, Phase.Actions); if (error != null) return error; }
         if (AvailableActions(actor) < card.ActionCost) return "No quedan acciones disponibles.";

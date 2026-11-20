@@ -208,7 +208,7 @@ public sealed partial class GameEngine
 
     public IEnumerable<int> IronwingFireDestructions(int actor)
     {
-        if (ValidateTurn(actor) != null || State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final)) return [];
+        if (ValidateTurn(actor) != null || !State.Phase.IsTurnStage()) return [];
         var p = State.Players[actor];
         return p.Skills.Contains(CardCatalog.IronwingFire.Id) && AttackCopies(p) >= 3 && NonSkillFieldCards().Any()
             ? Enumerable.Range(0, p.Skills.Count).Where(slot => IronwingFireReady(actor, slot)) : [];

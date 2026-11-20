@@ -44,7 +44,7 @@ public sealed partial class GameEngine
 
     private bool TryPresentTrapCraft()
     {
-        if (State.TrapCraftQueue == null || State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final) ||
+        if (State.TrapCraftQueue == null || !State.Phase.IsTurnStage() ||
             _activeActivation != null || State.PendingAttack != null || State.PendingSniper != null)
             return false;
 

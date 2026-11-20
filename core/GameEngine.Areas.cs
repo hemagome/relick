@@ -101,7 +101,7 @@ public sealed partial class GameEngine
     internal bool PresentPendingArea()
     {
         // Resolve the action and its dice/replacements before opening another player's decision.
-        if (State.Phase is not (Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final) ||
+        if (!State.Phase.IsTurnStage() ||
             _activeActivation != null || State.PendingAttack != null || State.PendingSniper != null) return false;
         if (State.AreaRewards is { Count: > 0 } rewards)
         {

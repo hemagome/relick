@@ -216,7 +216,7 @@ public sealed partial class GameEngine
     internal DuelResolutionView? PublicResolution()
     {
         var state = State;
-        if (state.IsOver || state.Phase is Phase.Preparation or Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final or Phase.Finished) return null;
+        if (state.IsOver || state.Phase.IsTurnStage() || state.Phase is Phase.Preparation or Phase.Finished) return null;
         var frame = state.PendingDecision?.Source == CardCatalog.ComboParry.Id ? _activeActivation :
             _activationChain.FirstOrDefault() ?? _activeActivation;
         var card = frame?.CardId ?? state.PendingCode?.CardId ?? state.PendingAttack?.SkillId ?? state.PendingAttackRoll?.SkillId ??

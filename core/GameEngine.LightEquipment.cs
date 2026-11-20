@@ -41,7 +41,7 @@ public sealed partial class GameEngine
         .Where(c => c.CardId == CardCatalog.PurpleRing.Id && !EffectsSuppressed(actor, c.Zone, c.Index));
 
     public bool CanUsePurpleRing(int actor, int index) => actor is 0 or 1 && actor == State.CurrentPlayer &&
-        State.Phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final &&
+        State.Phase.IsTurnStage() &&
         AvailablePurpleRings(actor).Any(c => c.Index == index);
 
     public CommandResult UsePurpleRing(int actor, int index)

@@ -6,6 +6,15 @@ public enum FutureDieState { Ready, Prepared, Used }
 
 public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse, MemoryRecoveryChoice, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, TotemChoice, GoldenTotemChoice, GoldenTotemResolving, TrapCraftChoice, ZahiraTarget, BlueEggDrawChoice, Decision }
 
+public static class PhaseExtensions
+{
+    /// <summary>The four stages of a turn (Robo, Combate, Acciones, Final), with no pending resolution or choice.</summary>
+    public static bool IsTurnStage(this Phase phase) => phase is Phase.Draw or Phase.Combat or Phase.Actions or Phase.Final;
+
+    /// <summary>A turn stage other than Final: the ones a choice resumes into and where hand cards show their cost.</summary>
+    public static bool IsStageBeforeFinal(this Phase phase) => phase is Phase.Draw or Phase.Combat or Phase.Actions;
+}
+
 public sealed record LightEquipmentCopy(string CardId, bool Borrowed = false);
 
 public sealed class PlayerState

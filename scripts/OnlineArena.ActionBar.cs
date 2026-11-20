@@ -281,7 +281,7 @@ public partial class OnlineArena
             : costs.Length == 1 ? costs[0] : "";
         if (rivalCombo >= 0) _selectionCost = ArenaActionText.Cost(s.Options[rivalCombo], s);
         if (_selectionCost.Length == 0 && !_skillContext && _fieldSelection == null && _selected.Count == 1 &&
-            s.Phase is Phase.Draw or Phase.Combat or Phase.Actions && SelectedCardId() is { } selected)
+            s.Phase.IsStageBeforeFinal() && SelectedCardId() is { } selected)
             _selectionCost = ArenaActionText.CardCost(CardCatalog.Get(selected));
         _selection.Text = ContextHint(); _selection.TooltipText = _selection.Text;
         _decisionHint = _selection.Text;
