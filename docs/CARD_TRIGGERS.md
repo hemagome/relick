@@ -38,7 +38,7 @@ Consecuencias:
 
 ### 1. Familias de disparadores como interfaces
 
-Cada familia es una interfaz opcional que un `CardEffect` puede implementar además de su activación:
+Cada familia es una interfaz opcional que una carta registrada implementa además de sus reglas. La base es `CardRules` (`CardId`, `Choices`, `Choose`, `Continue`). `CardEffect` la extiende con la activación (`Unavailable`, `Resolve`) y solo la usan las cartas que el jugador activa. Un equipo o un Área que solo reaccionan derivan de `CardRules`, así que el motor nunca los resuelve como un código:
 
 ```csharp
 /// Momentos del turno en los que una carta en juego puede intervenir. El orden del enum es el orden de las reglas.
@@ -79,7 +79,7 @@ internal interface IDestructionReplacement
 
 `DamageEvent` agrupa lo que hoy viaja en parámetros sueltos (`target`, `amount`, `attackDie`, `source`, `completed`). Así un paso nuevo no cambia la firma de todos los demás.
 
-Además, dos miembros virtuales en `CardEffect`, con valor por defecto, eliminan los despachos por identificador:
+Además, un miembro virtual en `CardRules`, con valor por defecto, eliminan los despachos por identificador:
 
 ```csharp
 public virtual string? DieCaption(DiePurpose purpose, DieEffect effect) => null;  // sustituye el switch de RollWithRelikario
@@ -149,7 +149,11 @@ Los pasos 4 y 6 caen en `Reduce` pero en momentos distintos, con Turbo Sword ent
 
 Cada paso es un commit propio, con compilación del juego y del servidor, los tests del motor y las pruebas de repetición (`SnapshotTests`, `ReplayQueryTests`, `DuelHistoryTests`).
 
-1. **Despacho de decisiones por efecto.** Registrar como `CardEffect` las cartas cuyas decisiones despacha hoy `Decisions.cs` por identificador: Moto-Ratón, Anillo Morado, Robo de Equipos, Fantasma Ladrón, Era Futurista, Casco de Copias y Agujero Negro. Su `Resolve` puede quedarse sin uso si la carta no se activa. No cambia ningún orden. Ironwing y Osamu son Relikarios, no cartas, y necesitan un registro equivalente para Relikarios; se dejan para el final.
+1. ~~**Despacho de decisiones por efecto.**~~ Hecho para Moto-Ratón, Fantasma Ladrón y Era Futurista, que derivan de `CardRules`. Sus opciones y respuestas solo necesitaron operaciones genéricas del contexto: `DrawAtTurnStart`, `GiveHandCard`, `CompletePendingPlay`, `EffectsSuppressed` y `ActivateOutOfGameCopy`. Las demás siguen en el despacho de `Decisions.cs` hasta su paso, porque sus respuestas forman parte de otra cadena:
+   - Anillo Morado: la cadena de daño (paso 6).
+   - Robo de Equipos y Agujero Negro: la entrada de un Área en juego, con varias destrucciones encadenadas.
+   - Casco de Copias: la secuencia de RAM, fuera de alcance.
+   - Ironwing y Osamu: son Relikarios, no cartas, y necesitan un registro equivalente para Relikarios.
 2. **`DieCaption`.** Mover cada título al efecto de su carta. Es trivial y sirve de prueba de que el registro cubre cartas sin activación.
 3. **Infraestructura y `ActionStart`.** `ActiveSources`, `PendingTriggers`, `ContinuationKind.NextTrigger` y la interfaz `ITurnTrigger`. Migrar Perro Fantasma y Robotizar, con `RobotizeActionStart` como adaptador. Son dos cartas ya parcialmente en su efecto, y validan el ejecutor completo, incluidas la pausa y la reanudación.
 4. **`TurnStart` y `FinalStage`.** Moto-Ratón (con `BikeTurnStart` como adaptador) y Zahira Flair. Mira de Sniper dispara al descartar, no en un momento del turno. Se decide aquí si entra como un momento más de `TurnMoment` o como una familia propia, según lo que muestre su prueba de orden.

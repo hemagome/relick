@@ -94,7 +94,7 @@ public sealed partial class GameEngine
         if (State.Turn < card.EarliestTurn) return $"{card.Name} solo puede activarse a partir del turno {card.EarliestTurn} de la partida.";
         var prCost = CodePrCost(card) + extraCost;
         if (p.Relikia < prCost) return $"Necesitas {prCost} PR.";
-        if (CardEffects.For(card.Id) is { } effect && effect.Unavailable(EffectFor(Array.IndexOf(State.Players, p), card.Id), excludedHand) is { } effectError)
+        if (CardEffects.For(card.Id) is CardEffect effect && effect.Unavailable(EffectFor(Array.IndexOf(State.Players, p), card.Id), excludedHand) is { } effectError)
             return effectError;
         if (card.CancelActivation && !CanPlayLoadError(Array.IndexOf(State.Players, p))) return "No hay una activación que puedas anular.";
         if ((card.RerollOwnDie || card.SetOwnDie > 0) && !OwnDiePending(Array.IndexOf(State.Players, p))) return "Requiere un dado propio pendiente.";

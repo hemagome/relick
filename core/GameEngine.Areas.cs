@@ -2,7 +2,8 @@ namespace Relick.Core;
 
 public sealed partial class GameEngine
 {
-    private static DecisionChoice[] AreaSideChoices(int actor) =>
+    /// <summary>Who gets side A of a two-sided Area; Era Futurista, Robo de Equipos and Agujero Negro ask it.</summary>
+    internal static DecisionChoice[] AreaSideChoices(int actor) =>
     [
         new() { Label = "Lado A para mí · Lado B para el rival", Value = actor, Public = "elige el lado A para sí." },
         new() { Label = "Lado B para mí · Lado A para el rival", Value = 1 - actor, Public = "elige el lado B para sí." }

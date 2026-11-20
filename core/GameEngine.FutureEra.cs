@@ -2,24 +2,6 @@ namespace Relick.Core;
 
 public sealed partial class GameEngine
 {
-    private void OrientFutureEra(PendingDecision decision, DecisionChoice choice)
-    {
-        var p = State.Players[decision.Decider];
-        p.AreaSideA = choice.Value;
-        if (decision.Step == "moved" || EffectsSuppressed(decision.Decider, FieldZone.Area))
-        {
-            CompletePendingPlay();
-            return;
-        }
-        var frame = new EngineActivation(choice.Value, CardCatalog.Robotize.Id, 0, 0, State.Phase)
-        {
-            FieldCardId = FieldInstance(CardCatalog.Robotize.Id, CardCatalog.Robotize.Id),
-            HeldCard = CardCatalog.Robotize.Id
-        };
-        Log($"{State.Players[choice.Value].Name} activa Robotizar de fuera de la partida con Era Futurista.");
-        BeginActivation(frame);
-    }
-
     private bool HasFutureEraSideB() => State.Players.Select((p, index) => (p, index)).Any(area =>
         area.p.Area == CardCatalog.FutureEra.Id && area.p.AreaSideA.HasValue && !EffectsSuppressed(area.index, FieldZone.Area));
 

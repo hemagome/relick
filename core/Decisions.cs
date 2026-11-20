@@ -82,35 +82,45 @@ public sealed class DecisionView
 }
 
 /// <summary>
-/// The rules of one card, in one place. The engine calls <see cref="Resolve"/> when the card resolves, asks it for
-/// the choices of a decision it opened, hands it the answer, and resumes it after an operation that may pause
+/// The rules of one card that the engine consults outside an activation: the choices of a decision the card opened
+/// (on its own or from a trigger in the engine), the answer, and how it resumes after an operation that may pause
 /// (a destruction someone can protect, a Bonus refill). Steps are plain names so a saved duel can resume them.
 /// </summary>
-internal abstract class CardEffect
+internal abstract class CardRules
 {
     public abstract string CardId { get; }
-    /// <summary>Why the card cannot be activated now, beyond the common costs; <paramref name="excludedHand"/> is the card itself.
-    /// Null by default: the card has no restriction of its own.</summary>
-    public virtual string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
-    public abstract void Resolve(GameEngine.EffectContext ctx);
-    /// <summary>The choices of a decision this card opened; only a card that calls <c>Ask</c> needs it.</summary>
+    /// <summary>The choices of a decision this card opened.</summary>
     public virtual IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => [];
     public virtual void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) { }
     /// <summary>Resumes the card at <paramref name="step"/>; only a card that pauses with <c>Then</c> or <c>Roll</c> needs it.</summary>
     public virtual void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) { }
 }
 
+/// <summary>
+/// A card whose rules live in one place, including its activation: the engine checks <see cref="Unavailable"/> before
+/// it can be played and calls <see cref="Resolve"/> when it resolves. A card the player never activates (an equipment
+/// or Area that only reacts) derives from <see cref="CardRules"/> instead, so the engine never resolves it as a code.
+/// </summary>
+internal abstract class CardEffect : CardRules
+{
+    /// <summary>Why the card cannot be activated now, beyond the common costs; <paramref name="excludedHand"/> is the card itself.
+    /// Null by default: the card has no restriction of its own.</summary>
+    public virtual string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
+    public abstract void Resolve(GameEngine.EffectContext ctx);
+}
+
 internal static class CardEffects
 {
-    private static readonly IReadOnlyDictionary<string, CardEffect> Registered =
-        new CardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
+    private static readonly IReadOnlyDictionary<string, CardRules> Registered =
+        new CardRules[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
             new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
-            new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect() }.ToDictionary(e => e.CardId);
+            new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect(),
+            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect() }.ToDictionary(e => e.CardId);
 
-    public static CardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
+    public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
 
 public sealed partial class GameEngine
@@ -147,7 +157,19 @@ public sealed partial class GameEngine
         public EngineContinuation Then(string step, FieldTarget? target = null) =>
             new() { Kind = ContinuationKind.CardEffectStep, Actor = Actor, Text = Card.Id, Step = step, Target = target };
 
-        public void Continue(EngineContinuation next) => _engine.Continue(next);
+        public void Continue(EngineContinuation? next) => _engine.Continue(next);
+        /// <summary>Goes back to the engine's pending play: the action stage, a RAM resolution or a die waiting for answers.</summary>
+        public void CompletePendingPlay() => _engine.CompletePendingPlay();
+        public bool EffectsSuppressed(int owner, FieldZone zone, int index = -1) => _engine.EffectsSuppressed(owner, zone, index);
+        /// <summary>The draw of the turn's draw stage, with <paramref name="extraCards"/> beyond the usual one (three with an empty hand).</summary>
+        public void DrawAtTurnStart(int extraCards) => _engine.DrawAtTurnStart(extraCards: extraCards);
+        /// <summary>Moves a hand card of this player to the rival's hand.</summary>
+        public void GiveHandCard(int handIndex) => _engine.MoveCardBetweenHands(Player, State.Players[1 - Actor], handIndex);
+        /// <summary>Activates a copy of <paramref name="cardId"/> from outside the game for <paramref name="seat"/>, as Era Futurista does.</summary>
+        public void ActivateOutOfGameCopy(int seat, string cardId) => _engine.BeginActivation(new EngineActivation(seat, cardId, 0, 0, State.Phase)
+        {
+            FieldCardId = _engine.FieldInstance(cardId, cardId), HeldCard = cardId
+        });
 
         /// <summary>Destroys a card through every replacement; <paramref name="then"/> learns whether it was prevented.</summary>
         public void Destroy(FieldTarget target, EngineContinuation then)
@@ -295,9 +317,6 @@ public sealed partial class GameEngine
         if (CardEffects.For(decision.Source) is { } effect)
             return effect.Choices(EffectFor(actor, decision.Source), decision);
         if (decision.Source == CardCatalog.CopyHelmet.Id) return CopyHelmetChoices(decision);
-        if (decision.Source == CardCatalog.FutureEra.Id) return AreaSideChoices(decision.Decider);
-        if (decision.Source == CardCatalog.MouseBike.Id) return BikeChoices();
-        if (decision.Source == CardCatalog.ThiefGhost.Id) return GhostGiftChoices(decision.Decider);
         if (decision.Source == CardCatalog.EquipmentRaid.Id) return EquipmentRaidChoices(decision);
         if (decision.Source == CardCatalog.BlackHole.Id) return BlackHoleChoices(decision);
         if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||
@@ -323,9 +342,6 @@ public sealed partial class GameEngine
         if (CardEffects.For(decision.Source) is { } effect)
             effect.Choose(EffectFor(decision.Decider, decision.Source), decision, choice);
         else if (decision.Source == CardCatalog.CopyHelmet.Id) AddCopyHelmetToRam(decision, choice);
-        else if (decision.Source == CardCatalog.FutureEra.Id) OrientFutureEra(decision, choice);
-        else if (decision.Source == CardCatalog.MouseBike.Id) ResolveBikeTurnStart(choice);
-        else if (decision.Source == CardCatalog.ThiefGhost.Id) ResolveGhostGift(decision, choice);
         else if (decision.Source == CardCatalog.EquipmentRaid.Id) ResolveEquipmentRaidChoice(decision, choice);
         else if (decision.Source == CardCatalog.BlackHole.Id) ResolveBlackHoleChoice(decision, choice);
         else if (decision.Source == CardCatalog.IronwingFire.Id || decision.Source == RelikarioCatalog.Ironwing.Id ||
@@ -347,7 +363,7 @@ public sealed partial class GameEngine
 
     private bool TryResolveWithEffect(PlayerState p, CardDefinition card)
     {
-        if (CardEffects.For(card.Id) is not { } effect) return false;
+        if (CardEffects.For(card.Id) is not CardEffect effect) return false;
         effect.Resolve(EffectFor(Array.IndexOf(State.Players, p), card.Id));
         return true;
     }
