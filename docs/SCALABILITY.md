@@ -4,7 +4,7 @@ Fecha de trabajo: 6 de noviembre de 2026, America/Mexico_City. CLI, Runtime y SD
 
 ## Cambios implementados
 
-El estado actual de cada duelo se guarda en `current_duel`, con reglas versión 1 y formato de estado versión 1. Los efectos de reciclaje, dados, Re-lanza y activaciones pendientes son datos tipados; las referencias compartidas entre activaciones se restauran con una tabla de nodos. Ninguna continuación de reglas depende de funciones guardadas en memoria.
+El estado actual de cada duelo se guarda en `current_duel`, con reglas versión 1 y formato de estado versión 2. Los efectos de reciclaje, dados, Re-lanza y activaciones pendientes son datos tipados; las referencias compartidas entre activaciones se restauran con una tabla de nodos. Ninguna continuación de reglas depende de funciones guardadas en memoria.
 
 Una jugada carga un estado, valida y ejecuta un comando, y guarda el estado resultante. No consulta el historial para reconstruir partidas actuales. El registro de texto interno no se incluye en el estado persistido, para evitar crecimiento por número de jugadas.
 
@@ -116,7 +116,7 @@ dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --restart-prepare http
 dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --restart-verify http://127.0.0.1:3100 relick-dev /tmp/relick-restart-check.json
 ```
 
-Las pruebas de regresión incluyen 24 duelos de referencia y tres casos adicionales de efectos anidados, registrados antes de cambiar el motor. Los registros antiguos se comparan hasta su primer agotamiento: su reciclaje aleatorio fue sustituido por selección manual. Los duelos completos con las reglas actuales comparan cada estado y sus opciones después de guardar/restaurar y de reproducir su historial; incluyen decisiones de reciclaje y efectos anidados.
+Los duelos completos con las reglas actuales comparan cada estado y sus opciones después de guardar/restaurar y de reproducir su historial; incluyen decisiones de reciclaje y efectos anidados.
 
 ## Validación final
 

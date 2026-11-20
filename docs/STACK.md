@@ -22,7 +22,7 @@ Para un duelo 1 contra 1, un servidor sencillo con WebSocket también sería via
 
 ## Persistencia del duelo
 
-El servidor guarda estados completos con efectos pendientes explícitos y prepara las vistas autorizadas al aceptar cada jugada. La reproducción de historial queda limitada a la conversión de salas de la versión anterior. Véase [el informe de escalabilidad](SCALABILITY.md).
+El servidor guarda estados completos con efectos pendientes explícitos y prepara las vistas autorizadas al aceptar cada jugada. No se reproduce el historial: cada partida empieza desde su apertura y continúa desde su estado guardado. Véase [el informe de escalabilidad](SCALABILITY.md).
 
 ## Diseño del MVP en línea
 

@@ -28,7 +28,7 @@ Consecuencias:
 
 ## Requisitos
 
-1. **Mismo resultado, byte a byte.** Los duelos guardados y las repeticiones (`DuelHistory`) se reproducen con el motor actual. Ningún paso de la migración puede cambiar el orden de los disparadores, el consumo de azar ni el texto del registro.
+1. **Mismas reglas.** Ningún paso de la migración puede cambiar el orden de los disparadores, el consumo de azar ni el texto del registro; las pruebas de cada carta y de orden lo comprueban. (Al principio también se exigía reproducir duelos guardados con versiones anteriores; ese requisito se retiró, ver el apartado 4.)
 2. **Pausa y reanudación serializables.** Un disparador puede pedir una decisión o lanzar un dado. La cadena debe poder guardarse en ese punto y continuar después de reconectar, como ya hacen `EngineContinuation` y `PendingDecision`.
 3. **Orden explícito.** El orden entre familias de disparadores lo fija el motor según las reglas, no el orden de registro de las cartas.
 4. **Interfaces pequeñas.** Igual que en la fase A, una carta implementa solo los disparadores que usa.
@@ -127,8 +127,7 @@ El daño y la destrucción usan el mismo ejecutor, pero sin instantánea entre p
 
 ### 4. Compatibilidad
 
-- **Continuaciones antiguas.** `RobotizeActionStart`, `GoldenTotemReplacement`, `BikeTurnStart` y las demás siguen en el `switch` de `EngineContinuations.cs` como adaptadores que reanudan la cadena nueva desde el punto equivalente. No se borran ni se reordenan valores de `ContinuationKind` ni de `Phase`, porque los duelos guardados los serializan.
-- **Estado nuevo opcional.** Si un paso necesita estado nuevo en la partida, se omite al serializar cuando está vacío, igual que `Sleeve` o `Dice` en `PlayerState`. Así un duelo sin disparadores pendientes guarda exactamente el mismo JSON que antes. El paso 3 no necesitó ninguno.
+- **Sin adaptadores.** En esta etapa no se conservan continuaciones ni fases para partidas guardadas con versiones anteriores: al cambiar el estado se vacían salas y partidas (ver [Efectos de carta](CARD_EFFECTS.md#compatibilidad)). Los valores de `Phase` y `ContinuationKind` se pueden reordenar o borrar.
 - **Orden actual como especificación.** Antes de migrar cada familia se añade una prueba que fija el orden actual con varias cartas a la vez: el registro y el estado tras cada paso. La migración debe pasarla sin cambiarla.
 
 ## Orden actual que el diseño conserva
@@ -162,22 +161,22 @@ Cada paso es un commit propio, con compilación del juego y del servidor, los te
    - Casco de Copias: la secuencia de RAM, fuera de alcance.
    - Ironwing y Osamu: son Relikarios, no cartas, y necesitan un registro equivalente para Relikarios.
 2. ~~**Títulos de dado.**~~ Hecho con `DiePurposes`, una tabla por propósito en lugar de un miembro de cada efecto (ver arriba). Los títulos y la carta mostrada no cambian. Agujero Negro y Perro Fantasma siguen sin nombrar carta desde el propósito, como antes.
-3. ~~**Infraestructura y `ActionStart`.**~~ Hecho: `ITurnTrigger`, `CardEffects.TurnTriggers` y el ejecutor de `GameEngine.TurnTriggers.cs` (ver el apartado 3). Perro Fantasma (`Order = 0`) y Robotizar (`Order = 1`) disparan desde su módulo, y toda la cadena de la carta del tope de Robotizar vive ya en `RobotizeEffect`. `RobotizeActionStart` queda como adaptador hacia el módulo. `TurnTriggerTests` fija el orden y comprueba que un duelo guardado con la continuación anterior se reanuda. `ActiveSources` se pospone: de momento basta `ActiveAttachedCopies`, que sustituye a la búsqueda propia de Robotizar.
+3. ~~**Infraestructura y `ActionStart`.**~~ Hecho: `ITurnTrigger`, `CardEffects.TurnTriggers` y el ejecutor de `GameEngine.TurnTriggers.cs` (ver el apartado 3). Perro Fantasma (`Order = 0`) y Robotizar (`Order = 1`) disparan desde su módulo, y toda la cadena de la carta del tope de Robotizar vive ya en `RobotizeEffect`. `TurnTriggerTests` fija el orden. `ActiveSources` se pospone: de momento basta `ActiveAttachedCopies`, que sustituye a la búsqueda propia de Robotizar.
 4. ~~**`TurnStart` y `FinalStage`.**~~ Hecho:
    - **Moto-Ratón** dispara en `TurnStart`. La caducidad de los equipos con `DestroyAtNextTurnStart` sigue en el motor, antes de los disparadores; se moverá con los indicadores de equipo del paso 6. Su respuesta lanza ella misma el robo, porque el número de cartas depende de la opción elegida. Un disparador posterior en `TurnStart` necesitaría que esa carta extra se transmitiera.
    - **Zahira Flair** (`CardRules`, sin activación) dispara en `FinalStage` con el mismo modelo de reentrada que Perro Fantasma, usando `ZahiraFinalSlot` como su avance. El resultado del dado se sigue resolviendo en el motor por su propósito (`RollResolvedByEngine`).
-   - `BikeTurnStart` queda como adaptador hacia el inicio de turno y desaparece `GameEngine.MouseBike.cs`.
+   - `BikeTurnStart` sigue el inicio de turno tras un equipo que caduca, y desaparece `GameEngine.MouseBike.cs`.
    - **Mira de Sniper no es un momento del turno**, sino un evento («carta descartada») con su lote de cartas, lanzado desde cuatro caminos de descarte y con su propia fase (`SniperChoice`). Irá en una familia propia (`IDiscardTrigger`) cuando se retire esa fase en la fase B2.
 5. ~~**Destrucción.**~~ Hecho, como familia de **salida del campo** en lugar de solo destrucción:
    - Escudo Galáctico protege tanto si la carta se destruye como si vuelve a la mano (Flauta de Vidrio), así que la interfaz es `IFieldLeaveReplacement`, con el tipo de salida (`FieldLeave`) y el orden (`LeaveStep`, que sustituye a `DestructionStep`).
    - `RequestDestruction` y `ReturnFieldCard` consultan la misma cadena (`TryReplaceFieldLeave`). El antiguo `checkShield: false` pasa a `after: LeaveStep.Protect`: si el escudo declina, la destrucción sigue desde el paso siguiente.
-   - Tótem de Oro sustituye la destrucción de un Tótem desde su módulo; `GoldenTotemReplacement` queda como adaptador.
+   - Tótem de Oro sustituye la destrucción de un Tótem desde su módulo.
    - Las opciones de Escudo Galáctico (proteger y absorber daño comparten `Choices` y `Choose`) siguen en el motor hasta el paso 6, que migra la mitad del daño.
    - Reverse Shuffle se queda en el motor: es una habilidad con su propia fase (`DestructionResponse`) y su propio comando (`ResolveDestructionProtection`), así que irá con la fase B2.
 6. ~~**Daño.**~~ Hecho, en cinco commits:
    - **Ejecutor:** `ResumeDamage` recorre `DamageStep`. Las llamadas fijas entre tramos pasan a «sigue desde el paso X».
    - **Pausas:** `IDamageTrigger.TryPause` permite que una carta detenga la cadena y la reanude después con `EffectContext.ContinueDamage`.
-   - **Escudo Galáctico y Anillo Morado:** se mueven enteros a sus módulos, incluidas sus opciones y respuestas. `PurpleRingDamage` queda como adaptador.
+   - **Escudo Galáctico y Anillo Morado:** se mueven enteros a sus módulos, incluidas sus opciones y respuestas.
    - **Indicadores de equipo:** `PreventDamage`, `DamageReduction` y `DamageCounterLimit` salen de `CardDefinition` y pasan a `GuardEquipmentEffect` y `SniperScopeEffect`, lo que cierra el punto 5 para esta familia.
    - **Turbo Sword:** dispara en `Respond`.
    - **Lo que queda en el motor:**

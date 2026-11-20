@@ -82,20 +82,10 @@ Misión: Robo de Equipos y Anillo Morado, del mismo commit, usan decisiones gen�
 
 ## Compatibilidad
 
-- **Duelos guardados con una fase anterior.** Al cargarse, `GameEngine.LegacyPhases` convierte cada fase propia de carta ya sustituida en la decisión equivalente. Lo hace tanto en el nivel principal como en el estado que aparta un Estrella del Fontanero o un Doblador de Tiempo (`PendingTurnBuff`), así que esas fases ya no tienen código propio:
-  - `TotemChoice` → decisión de Tótem de Salvación;
-  - `DeckSearchChoice` → búsqueda de Código Konamy;
-  - `GoldenTotemChoice` → cuántos Tótems mostrar;
-  - `DestroyChoice` → objetivo de Huevo Azul o Bomba de Tiempo;
-  - `MindResetChoice` → el paso pendiente de Resetear la Mente, con la mano mirada y las memorias ya elegidas;
-  - `ZahiraTarget` → dónde colocar o mover Zahira Flair.
-  
-  Pruebas: cada una guardada en su fase anterior, más Konamy apartado por Estrella y Resetear la Mente a mitad de sus elecciones.
-- **Fases a las que solo llega una partida antigua.** `BlueEggDrawChoice`, `PointsChoice` y `MemoryRecoveryChoice` ya no se abren en partidas nuevas. Se llega a ellas desde una continuación (`OfferBlueEggDraw`, `FinishCodeDestruction`) o un dado (`PointsChange` sin paso) guardados a medias, así que conservan su código hasta que esas continuaciones se adapten igual que `RobotizeActionStart`.
-- **Tiradas guardadas a medias.** Una tirada de Vida Extra, Aumento de PR, Carga Rápida o Esquivar guardada antes de esta versión no conoce su módulo y se termina con el código anterior. Pruebas: las tiradas guardadas antes de mover Vida Extra y Esquivar.
-- **Registros de jugadas antiguos.** `ResolveDestruction`, `ResolveDeckSearch`, `ResolveBlueEggDraw`, `ResolvePointsChange`, `ResolveMemoryRecovery`, `ChooseMindResetTarget`, `ChooseMindResetMemory`, `ResolveMindReset` y `ResolveGoldenTotem` responden a la decisión nueva (esta última con las copias exactas que nombra), así que esas jugadas siguen reproduciéndose. La prueba de duelos grabados compara el estado completo antes y después de cada decisión.
-- **Clientes anteriores con el servidor nuevo.** Las fases y jugadas viajan como números. Un cliente compilado desde `main` lee la vista sin errores; recibe una fase desconocida y opciones como «Equipo rival» o «Añadir Hoguera · mazo 3», que su interfaz muestra como botones con ese texto. Queda jugable, pero sin el tablero iluminado ni la galería: conviene publicar el cliente antes que el servidor.
-- **Cliente nuevo con el servidor anterior.** El cliente conserva el código de las fases anteriores.
+En esta etapa de desarrollo no se mantiene código para partidas guardadas con versiones anteriores. Cuando un cambio altera el estado de una partida (fases, continuaciones, jugadas), se vacían las salas y partidas de la base y se publican juntos el cliente y el servidor. Las cuentas y los mazos no guardan estado de reglas y se conservan.
+
+- **Una sola forma de responder.** Las elecciones de carta llegan siempre como `DuelMoveKind.Choose`. Las pruebas usan atajos con nombre (`ResolveTotem`, `ResolveDestruction`, `ChooseMindResetTarget`…) definidos en `scripts/Tests/DecisionCommands.cs`, que responden la decisión por su significado; el motor no los tiene.
+- **Cliente y servidor juntos.** Las fases y jugadas viajan como números y sus valores pueden cambiar entre versiones, así que un cliente de otra versión no es compatible.
 
 ## Validación
 
