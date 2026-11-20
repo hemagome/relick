@@ -179,10 +179,6 @@ public sealed partial class GameEngine
         public IReadOnlyList<DecisionChoice> GalacticShieldChoices(PendingDecision decision) => _engine.GalacticShieldChoices(decision);
         public void ResolveGalacticShieldChoice(PendingDecision decision, DecisionChoice choice) => _engine.ResolveGalacticShieldChoice(decision, choice);
         public IEnumerable<int> PlayableTotems() => _engine.PlayableTotems(Actor);
-        public void ResolveGhostDog() => _engine.ResolveGhostDog(Actor);
-        public IReadOnlyList<DecisionChoice> GhostDogChoices(PendingDecision d) => _engine.GhostDogChoices(d);
-        public void ResolveGhostDogChoice(PendingDecision d, DecisionChoice c) => _engine.ResolveGhostDogChoice(d, c);
-        public void ResolveGhostDogResult(int die) => _engine.ResolveGhostDogResult(Actor, die);
         public IEnumerable<FieldTarget> ReturnableFieldCards() => _engine.ReturnableFieldCards();
         public string FieldName(FieldTarget target) => _engine.FieldCardName(target);
         public string FieldPlace(FieldTarget target) => FieldCardPlace(State, target);
@@ -236,7 +232,24 @@ public sealed partial class GameEngine
         /// <summary>Ends Resetear la Mente without returning cards; the turn may end now if it was waiting for it.</summary>
         public void EndMindReset() { _engine.EndMindResetActivation(); _engine.CompleteEndTurnIfReady(); }
         /// <summary>Moves a memory card to this player's hand; a card from the rival's memory stays marked as foreign.</summary>
-        public string TakeFromMemory(int owner, int index) => _engine.TakeFromMemory(Actor, owner, index);
+        public string TakeFromMemory(int owner, int index) => _engine.TakeFromMemory(Actor, owner, index, Card.Name);
+        /// <summary>Moves a corrupted card to this player's hand and returns its hand slot; a rival's card stays marked as foreign.</summary>
+        public int TakeCorruptedCard(int owner, int index)
+        {
+            var cards = State.Players[owner].CorruptedMemory;
+            var slot = Player.Hand.Count;
+            Player.Hand.Add(cards[index]);
+            cards.RemoveAt(index);
+            if (owner != Actor) _engine.MarkBorrowedHandCard(Player, slot);
+            return slot;
+        }
+        /// <summary>Moves <paramref name="owner"/>'s Bonus to this player's hand, without refilling it.</summary>
+        public void TakeBonus(int owner) => _engine.TakeBonus(State.Players[owner], Player);
+        /// <summary>Whether this activation lets the player choose the die result instead of rolling.</summary>
+        public bool ChoosesDieResult => _engine._activeActivation?.ChooseDieResult == true;
+        /// <summary>Whether that memory slot holds the copy being activated, which an effect cannot take from itself.</summary>
+        public bool IsActivatingMemoryCard(int owner, int index) => _engine._activeActivation is { } frame &&
+            frame.MemorySeat == owner && frame.MemoryIndex == index && frame.HeldCard == null;
         /// <summary>Once the effect commits to a result, Error de Carga can no longer cancel it.</summary>
         public void CloseErrorWindow() { if (_engine._activeActivation != null) _engine._activeActivation.CanInterrupt = false; }
         public void RefillBonus(int owner, EngineContinuation? then) => _engine.RefillBonus(State.Players[owner], then);
