@@ -478,6 +478,8 @@ public sealed partial class GameEngine
         int? attacker = attackDie > 0 ? source : null;
         for (var step = from; step <= DamageStep.Counters; step++)
         {
+            // From Turbo Sword on, nothing left to receive ends the chain before the step.
+            if (step >= DamageStep.Respond && amount <= 0) { Continue(completed); return; }
             switch (step)
             {
                 case DamageStep.Amplify:
@@ -508,13 +510,17 @@ public sealed partial class GameEngine
                 case DamageStep.Respond:
                     if (TryTurboSwordDefense(target, amount, attackDie, completed)) return;
                     break;
-                // The next three hand over for good: each one loops over its own copies and then resumes the chain.
+                // These two hand over for good: each one loops over its own copies and then resumes the chain.
                 case DamageStep.Absorb: OfferPurpleRingDamage(target, amount, attackDie, completed); return;
-                case DamageStep.Shield: OfferGalacticShieldDamage(target, amount, attackDie, completed); return;
                 case DamageStep.Counters: ApplyDamageAfterShields(target, amount, attackDie, completed); return;
             }
             foreach (var card in CardEffects.DamageTriggers(step))
-                amount = ((IDamageTrigger)card).Modify(EffectFor(target, card.CardId), new DamageEvent(target, amount, attackDie));
+            {
+                var trigger = (IDamageTrigger)card;
+                var ctx = EffectFor(target, card.CardId);
+                amount = trigger.Modify(ctx, new DamageEvent(target, amount, attackDie));
+                if (trigger.TryPause(ctx, new DamageEvent(target, amount, attackDie), completed)) return;
+            }
         }
     }
 

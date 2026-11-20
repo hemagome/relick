@@ -17,9 +17,10 @@ static class TurnTriggerTests
             Check(Ids(TurnMoment.ActionStart).SequenceEqual([Dog, Robotize]), "Inicio de Acciones: Perro Fantasma y después Robotizar.");
             Check(Ids(TurnMoment.FinalStage).SequenceEqual([CardCatalog.ZahiraFlair.Id]), "Etapa final: Zahira Flair.");
         }),
-        ("Disparadores: Robotizar es la carta que resta daño en su paso de la cadena", () =>
+        ("Disparadores: cada paso de la cadena de daño reúne sus cartas", () =>
         {
             Check(CardEffects.DamageTriggers(DamageStep.Reduce).Select(t => t.CardId).SequenceEqual([Robotize]), "Paso Reduce: Robotizar.");
+            Check(CardEffects.DamageTriggers(DamageStep.Shield).Select(t => t.CardId).SequenceEqual([CardCatalog.GalacticShield.Id]), "Paso Shield: Escudo Galáctico.");
             Check(Enum.GetValues<DamageStep>().SequenceEqual([DamageStep.Amplify, DamageStep.Prevent, DamageStep.Guard, DamageStep.Respond,
                 DamageStep.Reduce, DamageStep.Absorb, DamageStep.Shield, DamageStep.Counters]), "El orden de los pasos es el de las reglas.");
         }),

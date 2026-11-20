@@ -174,12 +174,17 @@ internal sealed record DamageEvent(int Target, int Amount, int AttackDie)
     public int? Attacker => AttackDie > 0 ? 1 - Target : null;
 }
 
-/// <summary>A card that changes damage at its step of the chain without pausing it.</summary>
+/// <summary>A card that acts on damage at its step of the chain; the context's player is the one receiving it.</summary>
 internal interface IDamageTrigger
 {
     DamageStep Step { get; }
-    /// <summary>The damage after this card; the context's player is the one receiving it.</summary>
-    int Modify(GameEngine.EffectContext ctx, DamageEvent damage);
+    /// <summary>Changes the damage without pausing the chain.</summary>
+    int Modify(GameEngine.EffectContext ctx, DamageEvent damage) => damage.Amount;
+    /// <summary>
+    /// May pause the chain (a decision, a die). True when it took over: it resumes the chain later with
+    /// <c>EffectContext.ContinueDamage</c>, or ends it with <paramref name="completed"/>.
+    /// </summary>
+    bool TryPause(GameEngine.EffectContext ctx, DamageEvent damage, EngineContinuation? completed) => false;
 }
 
 internal static class CardEffects
@@ -286,8 +291,9 @@ public sealed partial class GameEngine
         /// <summary>Moves the activating card to this player's <paramref name="zone"/> slot, keeping its owner and corruption mark; returns its instance id.</summary>
         public string InstallActivationCard(CardZone zone, int slot) => _engine.InstallActivationCard(_engine._activeActivation!, Player, zone, slot);
         /// <summary>Tells the presentation that a card of this player moved between piles; it does not move the card.</summary>
-        public void NotifyPileMove(string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory) =>
-            _engine.NotifyPileMove(Player, id, source, index, destination);
+        public void NotifyPileMove(string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory,
+            int? destinationPlayer = null, int sourceIndex = 0) =>
+            _engine.NotifyPileMove(Player, id, source, index, destination, destinationPlayer: destinationPlayer, sourceIndex: sourceIndex);
         /// <summary>Ends this card's work at <paramref name="moment"/>: the moment's later triggers run, then the engine's pending play.</summary>
         public void FinishTurnTrigger(TurnMoment moment) => _engine.ContinueTurnTriggers(moment, Actor, Card.Id);
         /// <summary>How many copies of this card sit on top of this player's Relikario with their effects active.</summary>
@@ -300,7 +306,15 @@ public sealed partial class GameEngine
         /// <summary>The player whose Relikario this card sits on top of, directly or under a Zahira Flair; null elsewhere.</summary>
         public int? RelikarioOwnerBelow(FieldTarget target) => _engine.AboveRelikarioOwner(target);
         /// <summary>Destroys through the field-leave replacements and Reverse Shuffle, without Súper Imán's substitution.</summary>
-        public void RequestDestruction(FieldTarget target, EngineContinuation? then) => _engine.RequestDestruction(target, then);
+        public void RequestDestruction(FieldTarget target, EngineContinuation? then, LeaveStep? after = null) =>
+            _engine.RequestDestruction(target, then, after);
+        /// <summary>Moves a card of the field back to its owner's hand at once, with no replacement.</summary>
+        public void ReturnFieldCardNow(FieldTarget target) => _engine.ReturnFieldCardNow(target);
+        /// <summary>Sends a card of this player from <paramref name="source"/> to memory, keeping its corruption mark.</summary>
+        public void SendToMemory(string id, CardZone source, int index, bool marked) => _engine.SendToMemory(Player, id, source, index, marked: marked);
+        /// <summary>Goes on with the damage chain after <paramref name="step"/>, with the damage as it stands.</summary>
+        public void ContinueDamage(DamageEvent damage, EngineContinuation? completed, DamageStep step) =>
+            _engine.ResumeDamage(damage.Target, damage.Amount, damage.AttackDie, completed, step + 1);
         /// <summary>
         /// Rolls for <paramref name="seat"/> through the shared die window; the engine resolves the result by its purpose,
         /// for cards whose die outcome is still in the engine.
@@ -338,8 +352,6 @@ public sealed partial class GameEngine
         public void FinishComboParry() => _engine.FinishComboParry(Actor);
         public bool CanParryActivation() => _engine.CanParryActivation(Actor);
         public bool CanPlayDestinyPick() => _engine.CanPlayDestinyPick(Actor);
-        public IReadOnlyList<DecisionChoice> GalacticShieldChoices(PendingDecision decision) => _engine.GalacticShieldChoices(decision);
-        public void ResolveGalacticShieldChoice(PendingDecision decision, DecisionChoice choice) => _engine.ResolveGalacticShieldChoice(decision, choice);
         public IEnumerable<int> PlayableTotems() => _engine.PlayableTotems(Actor);
         public IEnumerable<FieldTarget> ReturnableFieldCards() => _engine.ReturnableFieldCards();
         public string FieldName(FieldTarget target) => _engine.FieldCardName(target);
