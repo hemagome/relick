@@ -81,7 +81,8 @@ internal sealed class RobotizeEffect : CardEffect, ITurnTrigger
         }
         if (ctx.Player.Exchange.Count >= 2)
         {
-            // As before the module: with the exchange full, the remaining copies show no card this stage.
+            // Nothing moved, so every remaining copy would find this same card and the same full exchange: ending the
+            // chain here gives the same result as letting each copy try.
             ctx.Log($"{ctx.Player.Name} tiene ambos espacios de canje ocupados.");
             ctx.FinishTurnTrigger(TurnMoment.ActionStart);
             return;
