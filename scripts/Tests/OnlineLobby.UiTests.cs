@@ -180,6 +180,11 @@ public partial class OnlineLobby
                 await online.CheckGalacticShieldLayout(); online.QueueFree(); await Layout();
                 QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--glass-flute-only"))
+            {
+                await online.CheckGlassFluteReturnLayout(); online.QueueFree(); await Layout();
+                QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--victorious-manual-control-only"))
             {
                 await online.CheckVictoriousManualControlLayout(); online.QueueFree(); await Layout();
@@ -391,6 +396,7 @@ public partial class OnlineLobby
             await online.CheckPurpleRingLayout();
             await online.CheckGalacticShieldLayout();
             await online.CheckVictoriousManualControlLayout();
+            await online.CheckGlassFluteReturnLayout();
             await online.CheckEllieLayout();
             await online.CheckRobotizeLayout();
             await online.CheckNewCardsLayout();

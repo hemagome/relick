@@ -19,7 +19,8 @@ public partial class OnlineArena
         // Control Manual Victorioso: a card moving between two zones of its owner's field.
         public bool IsFieldMove => Event is { Kind: DuelVisualKind.Pile, FieldMove: true };
         public bool TurnsSideways => IsSkillLesson || IsExchangePlacement || IsFieldMove && SidewaysZone(Event.Destination);
-        public bool LeavesSideways => Event.Kind == DuelVisualKind.Pile && (Event.Source == CardZone.Exchange || IsFieldMove && SidewaysZone(Event.Source));
+        public bool LeavesSideways => Event.Kind == DuelVisualKind.Pile && (Event.Source == CardZone.Exchange ||
+            (IsFieldMove || ReturnsToHand(Event)) && SidewaysZone(Event.Source));
         // Exchange slots and skill tiles show their card lying down.
         public static bool SidewaysZone(CardZone zone) => zone is CardZone.Exchange or CardZone.Skill;
         public bool LoadsAttachment => Event is { Kind: DuelVisualKind.Pile, Source: CardZone.Deck,
@@ -62,6 +63,17 @@ public partial class OnlineArena
         CardZone.GalacticShield or CardZone.ShieldCharge => _root?.FindChild(GalacticShieldNodeName(relative, slot), true, false) as Control,
         CardZone.Deck => _root?.FindChild("DeckStack" + relative, true, false) as Control,
         _ => null
+    };
+
+    // A field card returned to a hand: Value is its hand slot and SourceIndex the field slot it leaves.
+    private static bool ReturnsToHand(DuelVisualEvent cue) =>
+        cue is { Kind: DuelVisualKind.Pile, Destination: CardZone.Hand, FieldMove: false } && cue.Source != CardZone.Hand;
+
+    private static string? FieldFace(DuelPlayerView player, CardZone zone, int slot) => zone switch
+    {
+        CardZone.Skill => player.Skills.ElementAtOrDefault(slot), CardZone.Exchange => player.Exchange.ElementAtOrDefault(slot),
+        CardZone.LightEquipment => player.LightEquipment?.ElementAtOrDefault(slot),
+        CardZone.EquipmentCover => player.EquipmentCovers?.ElementAtOrDefault(slot), _ => null
     };
 
     private Control? PileFlightTarget(Flight flight)
@@ -113,7 +125,7 @@ public partial class OnlineArena
             var relative = cue.Player == current.MySeat ? 0 : 1;
             var source = cue.Kind is DuelVisualKind.Return or DuelVisualKind.HandTransfer ? CardZone.Hand : cue.Kind == DuelVisualKind.BonusClaim ? CardZone.Bonus : cue.Source;
             var slot = cue.Kind is DuelVisualKind.HandTransfer or DuelVisualKind.HandDiscard ? 0 :
-                cue.Kind is DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal || cue.FieldMove || source == CardZone.ShieldCharge ? cue.SourceIndex : cue.Value;
+                cue.Kind is DuelVisualKind.MemoryClaim or DuelVisualKind.HandSteal || cue.FieldMove || ReturnsToHand(cue) ? cue.SourceIndex : cue.Value;
             var node = ZoneNode(relative, source, slot);
             var player = previous.Players[cue.Player];
             string? id = source switch
@@ -206,14 +218,17 @@ public partial class OnlineArena
             if (cue.FieldMove)
             {
                 // The card stays face up the whole way: it leaves one public zone of the field for another.
-                var face = source switch
-                {
-                    CardZone.Skill => player.Skills.ElementAtOrDefault(slot), CardZone.Exchange => player.Exchange.ElementAtOrDefault(slot),
-                    CardZone.LightEquipment => player.LightEquipment?.ElementAtOrDefault(slot),
-                    CardZone.EquipmentCover => player.EquipmentCovers?.ElementAtOrDefault(slot), _ => id
-                };
-                result[cue] = new Flight(cue, origin, face, Duration: 0.55,
+                result[cue] = new Flight(cue, origin, FieldFace(player, source, slot) ?? id, Duration: 0.55,
                     OriginRotation: (node?.Rotation ?? 0) + (Flight.SidewaysZone(source) ? Mathf.Pi / 2 : 0), StartsFaceUp: true, EndsFaceUp: true);
+                continue;
+            }
+            if (ReturnsToHand(cue) && source != CardZone.ShieldCharge)
+            {
+                // Flauta de Vidrio and similar returns: public on the field, the card turns face down only on its way
+                // into a hand the viewer cannot see.
+                result[cue] = new Flight(cue, origin, FieldFace(player, source, slot) ?? id, Duration: 0.55,
+                    OriginRotation: rotation + (source == CardZone.Skill ? Mathf.Pi / 2 : 0), StartsFaceUp: true,
+                    EndsFaceUp: PileRecipient(cue) == current.MySeat);
                 continue;
             }
             if (source == CardZone.Hand && cue.Destination == CardZone.Area)
