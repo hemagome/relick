@@ -324,7 +324,8 @@ internal sealed class PublicDuelObservation : IDisposable
             if (_draws[i] > 0) Add(DuelHistoryEventKind.Draw, i, _draws[i]);
             if (p.Equipment != null && (p.Equipment != old.Equipment || p.EquipmentStackedCopies > old.Copies))
                 Add(DuelHistoryEventKind.Equipped, i, card: p.Equipment);
-            if (_move.Kind == DuelMoveKind.ZahiraTarget &&
+            // The placement answers through a decision now; recorded duels still name it with their former move.
+            if (_move.Kind is DuelMoveKind.ZahiraTarget or DuelMoveKind.Choose && _card == CardCatalog.ZahiraFlair.Id &&
                 (p.ZahiraHost != old.ZahiraHost ? p.ZahiraHost : p.ZahiraHost2 != old.ZahiraHost2 ? p.ZahiraHost2 : null) is { } host)
                 Add(DuelHistoryEventKind.ZahiraCover, i, other: host.Owner,
                     otherCard: host.Zone == FieldZone.Relikario ? state.Players[host.Owner].Relikario.Id : host.CardId);

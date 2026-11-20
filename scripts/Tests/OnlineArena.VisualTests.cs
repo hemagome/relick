@@ -81,11 +81,11 @@ public partial class OnlineArena
         {
             GetWindow().Size = size; GetWindow().ContentScaleSize = size;
             await Layout(1);
-            if (PresentsKind(DuelMoveKind.ZahiraTarget) || !_selection.Text.Contains("rival"))
+            if (PresentsKind(DuelMoveKind.Choose) || !_selection.Text.Contains("rival"))
                 throw new Exception("El rival puede elegir el destino de Zahira Flair.");
             await Layout(0);
-            var target = _moveButtons.Single(button => PresentedOption(button)?.Move is
-                { Kind: DuelMoveKind.ZahiraTarget, Target: 1, Value: (int)FieldZone.Relikario });
+            var target = _moveButtons.Single(button => PresentedOption(button) is
+                { Move.Kind: DuelMoveKind.Choose, Field: { Owner: 1, Zone: FieldZone.Relikario } });
             _movesScroll.EnsureControlVisible(target);
             for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             target.Disabled = false;

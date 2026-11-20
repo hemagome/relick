@@ -95,7 +95,7 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         if (PlayableHandCard(p, handIndex) is not { } id || CardCatalog.Get(id).Kind != CardKind.Code) return "Elige un código que puedas usar.";
         var card = CardCatalog.Get(id);
-        if (State.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget) return "Completa la decisión del Código Trampa antes de jugar.";
+        if (State.Phase is Phase.TrapCraftChoice) return "Completa la decisión del Código Trampa antes de jugar.";
         if (State.Phase == Phase.BlueEggDrawChoice) return "Decide primero si robas con Huevo Azul Explosivo.";
         if (State.Phase == Phase.Decision && State.PendingDecision is { AllowsCombos: false } decision)
             return $"Decide primero: {decision.Title()}.";

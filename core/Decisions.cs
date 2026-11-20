@@ -364,6 +364,10 @@ public sealed partial class GameEngine
         public bool CanPlayDestinyPick() => _engine.CanPlayDestinyPick(Actor);
         public IEnumerable<int> PlayableTotems() => _engine.PlayableTotems(Actor);
         public IEnumerable<FieldTarget> ReturnableFieldCards() => _engine.ReturnableFieldCards();
+        /// <summary>Every card on the field, Relikarios included.</summary>
+        public IEnumerable<FieldTarget> FieldCards() => _engine.FieldCards();
+        /// <summary>Súper Imán's substitution when this player's effect would affect a rival card; true when it took the effect's place.</summary>
+        public bool ReplaceOpponentFieldEffect(FieldTarget target, EngineContinuation then) => _engine.TryReplaceOpponentFieldEffect(Actor, target, then);
         public string FieldName(FieldTarget target) => _engine.FieldCardName(target);
         public string FieldPlace(FieldTarget target) => FieldCardPlace(State, target);
         public void ReturnFieldCard(FieldTarget target) => _engine.ReturnFieldCard(Actor, target);

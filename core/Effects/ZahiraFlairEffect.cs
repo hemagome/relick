@@ -7,7 +7,59 @@ namespace Relick.Core;
 /// </summary>
 internal sealed class ZahiraFlairEffect : CardRules, ITurnTrigger
 {
+    private const string Place = "place";
+
     public override string CardId => CardCatalog.ZahiraFlair.Id;
+
+    /// <summary>
+    /// Where a Zahira Flair goes, when it is created from a trap recipe or moved by its 3–4. The engine opens it; duels
+    /// saved in the former placement phase become this decision.
+    /// </summary>
+    internal static PendingDecision PlacementDecision(int actor, bool creating, int slot, Phase resumePhase = default) => new()
+    {
+        // Confirm lists every host as a button, as the former phase did; each still lights its card on the board.
+        Source = CardCatalog.ZahiraFlair.Id, Step = Place, Decider = actor, Kind = DecisionKind.Confirm,
+        Instruction = "Elige una carta del campo para colocar a Zahira Flair encima", ResumePhase = resumePhase,
+        Continuation = new EngineContinuation { Actor = actor, Flag = creating, Count = slot }
+    };
+
+    /// <summary>The cards this player's Zahira Flair in <paramref name="slot"/> may cover: not its current host, nor a rival's copy that already sits on another copy.</summary>
+    internal static IEnumerable<FieldTarget> Hosts(GameState state, IEnumerable<FieldTarget> field, int actor, int slot)
+    {
+        var current = state.Players[actor].Zahira(slot);
+        return field.Where(target =>
+            !(current is { } host && host.Owner == target.Owner && host.Zone == target.Zone && host.Index == target.Index) &&
+            (target.Zone != FieldZone.Zahira || target.Owner != actor &&
+                state.Players[target.Owner].Zahira(GameEngine.ZahiraSlot(target.Index)) is not { Zone: FieldZone.Zahira }));
+    }
+
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) =>
+        Hosts(ctx.State, ctx.FieldCards(), ctx.Actor, decision.Continuation!.Count).Select(host => new DecisionChoice
+        {
+            Label = $"{ctx.FieldName(host)} · {ctx.PlayerName(host.Owner)}{Position(ctx.State, host)}", Button = "Colocar",
+            Field = host, Public = "elige dónde colocar Zahira Flair."
+        }).ToList();
+
+    private static string Position(GameState state, FieldTarget host) => host.Zone switch
+    {
+        FieldZone.Equipment when state.Players[host.Owner].EquipmentStackedCopies > 0 => $" · equipo {host.Index + 1}",
+        FieldZone.EquipmentCover => $" · cobertura {host.Index + 1}",
+        FieldZone.LightEquipment => $" · equipo ligero {host.Index + 1}",
+        FieldZone.Skill => $" · habilidad {state.Players[host.Owner].SkillPosition(host.Index) + 1}",
+        FieldZone.Exchange => $" · canje {host.Index + 1}",
+        FieldZone.Attached => $" · anexo {host.Index + 1}",
+        FieldZone.Bonus => " · Bonus",
+        FieldZone.Area => " · Área",
+        _ => ""
+    };
+
+    /// <summary>Places or moves the copy onto the chosen card; Súper Imán may replace the move on a rival card.</summary>
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    {
+        var pending = decision.Continuation!;
+        var placement = new EngineContinuation { Kind = ContinuationKind.PlaceZahira, Actor = ctx.Actor, Target = choice.Field, Flag = pending.Flag, Count = pending.Count };
+        if (!ctx.ReplaceOpponentFieldEffect(choice.Field!, placement)) ctx.Continue(placement);
+    }
 
     public TurnMoment Moment => TurnMoment.FinalStage;
     public int Order => 0;

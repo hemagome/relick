@@ -844,7 +844,6 @@ public partial class OnlineArena : Control
         Phase.Preparation => "PREPARACIÓN", Phase.Draw => "ROBO", Phase.Combat => "COMBATE", Phase.Actions => "ACCIONES", Phase.Discard => "DESCARTE", Phase.Final => "DESCARTE FINAL", Phase.Finished => "FINAL",
         Phase.AttackRerollChoice or Phase.DieRerollChoice => "DECISIÓN DEL DADO", Phase.DefenseChoice => "DEFENSA",
         Phase.TrapCraftChoice => "TRAMPA",
-        Phase.ZahiraTarget => "ZAHIRA FLAIR",
         Phase.CodeResponse or Phase.ErrorResponse or Phase.EffectDamageChoice => "RESPUESTA", Phase.GoldenTotemResolving => "TÓTEM DE ORO", Phase.DestructionResponse => "PROTEGER CARTA", Phase.RecycleChoice => "RECICLAJE", Phase.MemoryRecoveryChoice => "DISQUETE", Phase.TurnBuffDiscard => "DESCARTAR COSTE", Phase.SniperChoice => "MIRA DE SNIPER", Phase.BlueEggDrawChoice => "ROBO OPCIONAL", _ => "RESOLVER EFECTO"
     };
 }

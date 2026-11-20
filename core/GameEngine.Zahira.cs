@@ -1,5 +1,6 @@
 namespace Relick.Core;
 
+/// <summary>Only in duels saved before the Zahira Flair placement used a decision; converted when loaded.</summary>
 public sealed record ZahiraPlacement(int Actor, Phase ResumePhase, bool Creating, int Slot = 0);
 
 public sealed partial class GameEngine
@@ -58,14 +59,8 @@ public sealed partial class GameEngine
     }
 
     /// <summary>Cards the Zahira Flair being placed or moved by <paramref name="actor"/> may cover.</summary>
-    public IEnumerable<FieldTarget> ZahiraTargets(int actor)
-    {
-        var current = State.Players[actor].Zahira(State.PendingZahiraPlacement?.Slot ?? 0);
-        return FieldCards().Where(target =>
-            !(current is { } host && host.Owner == target.Owner && host.Zone == target.Zone && host.Index == target.Index) &&
-            (target.Zone != FieldZone.Zahira || target.Owner != actor &&
-                State.Players[target.Owner].Zahira(ZahiraSlot(target.Index)) is not { Zone: FieldZone.Zahira }));
-    }
+    public IEnumerable<FieldTarget> ZahiraTargets(int actor) => ZahiraFlairEffect.Hosts(State, FieldCards(), actor,
+        State.PendingDecision is { Source: "zahira-flair", Continuation: { } placement } ? placement.Count : 0);
 
     internal string FieldCardName(FieldTarget target) => target.Zone == FieldZone.Relikario
         ? State.Players[target.Owner].Relikario.Name : CardCatalog.Get(target.CardId).Name;
@@ -80,25 +75,13 @@ public sealed partial class GameEngine
         _ => null
     };
 
-    private void BeginZahiraPlacement(int actor, bool creating, int slot)
-    {
-        State.PendingZahiraPlacement = new(actor, State.Phase, creating, slot);
-        State.Phase = Phase.ZahiraTarget;
-    }
+    private void BeginZahiraPlacement(int actor, bool creating, int slot) =>
+        AskDecision(ZahiraFlairEffect.PlacementDecision(actor, creating, slot));
 
-    public CommandResult ResolveZahiraTarget(int actor, int owner, FieldZone zone, int index)
-    {
-        if (State.Phase != Phase.ZahiraTarget || State.PendingZahiraPlacement is not { } pending || actor != pending.Actor)
-            return CommandResult.Fail("No te corresponde elegir dónde colocar Zahira Flair.");
-        var target = ZahiraTargets(actor).FirstOrDefault(card => card.Owner == owner && card.Zone == zone && card.Index == index);
-        if (target == null) return CommandResult.Fail("Elige otra carta del campo para Zahira Flair.");
-
-        State.PendingZahiraPlacement = null;
-        State.Phase = pending.ResumePhase;
-        var placement = new EngineContinuation { Kind = ContinuationKind.PlaceZahira, Actor = actor, Target = target, Flag = pending.Creating, Count = pending.Slot };
-        if (!TryReplaceOpponentFieldEffect(actor, target, placement)) FinishZahiraPlacement(placement);
-        return CommandResult.Ok();
-    }
+    /// <summary>The command from before the placement used a decision; recorded duels still send it.</summary>
+    public CommandResult ResolveZahiraTarget(int actor, int owner, FieldZone zone, int index) =>
+        ResolveDecisionWhere(actor, CardCatalog.ZahiraFlair.Id, c => c.Field is { } t && t.Owner == owner && t.Zone == zone && t.Index == index)
+        ?? CommandResult.Fail("No te corresponde elegir dónde colocar Zahira Flair.");
 
     private void FinishZahiraPlacement(EngineContinuation next)
     {

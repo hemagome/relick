@@ -58,25 +58,6 @@ public static class DuelOptions
                         Add(DuelMoveKind.TrapCraft, $"Crear {Card(recipes[choice])}", value: choice, flag: true);
                     Add(DuelMoveKind.TrapCraft, "Pasar sin crear");
                     break;
-                case Phase.ZahiraTarget:
-                    foreach (var host in game.ZahiraTargets(actor))
-                    {
-                        var position = host.Zone switch
-                        {
-                            FieldZone.Equipment when s.Players[host.Owner].EquipmentStackedCopies > 0 => $" · equipo {host.Index + 1}",
-                            FieldZone.EquipmentCover => $" · cobertura {host.Index + 1}",
-                            FieldZone.LightEquipment => $" · equipo ligero {host.Index + 1}",
-                            FieldZone.Skill => $" · habilidad {s.Players[host.Owner].SkillPosition(host.Index) + 1}",
-                            FieldZone.Exchange => $" · canje {host.Index + 1}",
-                            FieldZone.Attached => $" · anexo {host.Index + 1}",
-                            FieldZone.Bonus => " · Bonus",
-                            FieldZone.Area => " · Área",
-                            _ => ""
-                        };
-                        Add(DuelMoveKind.ZahiraTarget, $"{game.FieldCardName(host)} · {s.Players[host.Owner].Name}{position}",
-                            host.Index, (int)host.Zone, host.Owner);
-                    }
-                    break;
                 case Phase.Draw:
                     Add(DuelMoveKind.Advance, s.ExtraDrawStages > 0 ? "Repetir etapa de robo" : "Ir a combate");
                     break;

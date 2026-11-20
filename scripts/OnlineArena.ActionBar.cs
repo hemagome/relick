@@ -176,8 +176,6 @@ public partial class OnlineArena
             indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
         else if (s.Phase == Phase.TrapCraftChoice)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.TrapCraft).ToList();
-        else if (s.Phase == Phase.ZahiraTarget)
-            indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.ZahiraTarget).ToList();
         else if (s.Phase == Phase.BlueEggDrawChoice)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.BlueEggDraw).ToList();
         else if (Deciding == DecisionKind.Confirm)
@@ -433,7 +431,6 @@ public partial class OnlineArena
             {
                 Phase.ErrorResponse => ActivationResponseCard(s),
                 Phase.TrapCraftChoice => s.TrapCardId,
-                Phase.ZahiraTarget => CardCatalog.ZahiraFlair.Id,
                 Phase.BlueEggDrawChoice => CardCatalog.BlueEgg.Id,
                 Phase.Decision when s.Decision?.Source == CardCatalog.Robotize.Id =>
                     s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId,
@@ -534,7 +531,7 @@ public partial class OnlineArena
         // The card that asks names the decision until the player picks what to answer with.
         if (s.Phase == Phase.Decision && s.Decision is { } decision && (Deciding == DecisionKind.Confirm || _fieldSelection == null && _selected.Count == 0))
             return decision.Title;
-        if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget && InspectorActivationId() is { } trap)
+        if (s.Phase is Phase.TrapCraftChoice && InspectorActivationId() is { } trap)
             return CardCatalog.Get(trap).Name;
         if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(ActivationResponseCard(s)).Name;
         var id = SelectedCardId(); if (id != null) return CardCatalog.Get(id).Name;
@@ -562,7 +559,7 @@ public partial class OnlineArena
             return "Elige cómo responder a la activación o deja que se resuelva.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return s.ErrorAfterDie
             ? $"Dado final: {s.Die}. Anula el código ahora o deja que termine su efecto." : "Anula la activación o deja que se resuelva.";
-        if (s.Phase is Phase.TrapCraftChoice or Phase.ZahiraTarget or Phase.BlueEggDrawChoice) return ArenaGuidance.Instruction(s);
+        if (s.Phase is Phase.TrapCraftChoice or Phase.BlueEggDrawChoice) return ArenaGuidance.Instruction(s);
         if (myTurn && s.Decision?.Source == CardCatalog.Robotize.Id &&
             s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId is { } top)
             return $"Elige qué hacer con {CardCatalog.Get(top).Name}, la carta del tope de tu mazo.";

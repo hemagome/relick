@@ -87,7 +87,8 @@ Misión: Robo de Equipos y Anillo Morado, del mismo commit, usan decisiones gen�
   - `DeckSearchChoice` → búsqueda de Código Konamy;
   - `GoldenTotemChoice` → cuántos Tótems mostrar;
   - `DestroyChoice` → objetivo de Huevo Azul o Bomba de Tiempo;
-  - `MindResetChoice` → el paso pendiente de Resetear la Mente, con la mano mirada y las memorias ya elegidas.
+  - `MindResetChoice` → el paso pendiente de Resetear la Mente, con la mano mirada y las memorias ya elegidas;
+  - `ZahiraTarget` → dónde colocar o mover Zahira Flair.
   
   Pruebas: cada una guardada en su fase anterior, más Konamy apartado por Estrella y Resetear la Mente a mitad de sus elecciones.
 - **Fases a las que solo llega una partida antigua.** `BlueEggDrawChoice`, `PointsChoice` y `MemoryRecoveryChoice` ya no se abren en partidas nuevas. Se llega a ellas desde una continuación (`OfferBlueEggDraw`, `FinishCodeDestruction`) o un dado (`PointsChange` sin paso) guardados a medias, así que conservan su código hasta que esas continuaciones se adapten igual que `RobotizeActionStart`.

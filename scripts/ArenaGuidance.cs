@@ -31,7 +31,6 @@ internal static class ArenaGuidance
                 Phase.AttackRerollChoice or Phase.DieRerollChoice => "El rival está resolviendo su dado.",
                 Phase.Discard or Phase.TurnBuffDiscard or Phase.Final => "El rival está resolviendo sus descartes.",
                 Phase.TrapCraftChoice => "El rival está decidiendo si crea un Código Trampa.",
-                Phase.ZahiraTarget => "El rival elige dónde colocar Zahira Flair.",
                 _ => "Esperando la decisión del rival."
             };
             return waiting + (Has(DuelMoveKind.PlayCode) ? " Puedes activar un COMBO." : "");
@@ -53,7 +52,6 @@ internal static class ArenaGuidance
             Phase.TrapCraftChoice when s.TrapCardId == CardCatalog.ZahiraFlair.Id => "Tu canje permite crear Zahira Flair.",
             Phase.TrapCraftChoice when s.TrapCardId == CardCatalog.SuperAttack.Id => "Tu canje permite añadir Súper Ataque a tu mano.",
             Phase.TrapCraftChoice => "Tu canje permite crear Súper Imán en la zona de equipos.",
-            Phase.ZahiraTarget => "Elige una carta del campo para colocar a Zahira Flair encima.",
             Phase.PointsChoice => "Elige de quién modificar los PR y después aumenta o resta.",
             Phase.RelikiaChoice => Has(DuelMoveKind.Placement) ? "Elige una carta y su destino: canje o fondo del mazo." : "Elige cómo resolver la Relikia.",
             Phase.Combat when Has(DuelMoveKind.Learn) && Has(DuelMoveKind.Attack) => "Enseña una habilidad o elige un Ataque.",

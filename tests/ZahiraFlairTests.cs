@@ -14,16 +14,32 @@ static class ZahiraFlairTests
             Check(DuelSnapshot.For(game, 0, 1).TrapCardId == CardCatalog.ZahiraFlair.Id);
             Check(game.ResolveTrapCraft(0, false).Success && game.State.Active.ZahiraAvailable);
             Offer(game);
-            Check(game.ResolveTrapCraft(0, true).Success && game.State.Phase == Phase.ZahiraTarget);
+            Check(game.ResolveTrapCraft(0, true).Success && ZahiraPlacement(game));
             var before = game.SaveSnapshot();
             Check(!game.ResolveZahiraTarget(1, 1, FieldZone.Relikario, -1).Success &&
                   !game.ResolveZahiraTarget(0, 1, FieldZone.Hand, 0).Success && game.SaveSnapshot() == before);
             game = GameEngine.FromSnapshot(before, random);
-            Check(DuelOptions.For(game, 1).All(option => option.Move.Kind != DuelMoveKind.ZahiraTarget));
-            var target = DuelOptions.For(game, 0).Single(option => option.Move.Kind == DuelMoveKind.ZahiraTarget &&
-                option.Move.Target == 1 && option.Move.Value == (int)FieldZone.Relikario);
+            Check(DuelOptions.For(game, 1).All(option => option.Move.Kind != DuelMoveKind.Choose));
+            var target = DuelOptions.For(game, 0).Single(option => option.Move.Kind == DuelMoveKind.Choose &&
+                option.Field is { Owner: 1, Zone: FieldZone.Relikario });
             Check(target.Move.Apply(game, 0).Success && game.EffectsSuppressed(1, FieldZone.Relikario));
             Check(game.State.Active.ActionsLeft == 0 && game.State.Active.Relikia == 0 && !game.State.Active.ZahiraAvailable);
+        }),
+        ("Zahira Flair: un duelo guardado en la fase anterior de colocación se abre como decisión y acepta su jugada", () =>
+        {
+            var (game, random) = Fixture();
+            game.State.Active.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Attack.Id]);
+            Check(game.Exchange(0, 0).Success && game.Exchange(0, 0).Success);
+            Offer(game);
+            Check(game.ResolveTrapCraft(0, true).Success && ZahiraPlacement(game));
+            // The shape the engine saved before the placement used a decision.
+            var json = System.Text.Json.Nodes.JsonNode.Parse(game.SaveSnapshot())!; var state = json["State"]!.AsObject();
+            var resume = state["PendingDecision"]!["ResumePhase"]!.GetValue<int>();
+            state["PendingZahiraPlacement"] = new System.Text.Json.Nodes.JsonObject { ["Actor"] = 0, ["ResumePhase"] = resume, ["Creating"] = true, ["Slot"] = 0 };
+            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.ZahiraTarget;
+            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), random);
+            Check(ZahiraPlacement(legacy) && legacy.State.PendingZahiraPlacement == null && legacy.State.PendingDecision!.ResumePhase == (Phase)resume);
+            Check(legacy.ResolveZahiraTarget(0, 1, FieldZone.Relikario, -1).Success && legacy.EffectsSuppressed(1, FieldZone.Relikario));
         }),
         ("Zahira Flair: los tres rangos del dado se resuelven en la etapa final rival", () =>
         {
@@ -40,7 +56,7 @@ static class ZahiraFlairTests
                     Check(game.State.CurrentPlayer == 0 && game.State.Players[0].ZahiraHost == null && rival.Health == 8);
                 else if (die <= 4)
                 {
-                    Check(game.State.Phase == Phase.ZahiraTarget && game.State.DecisionPlayer == 0);
+                    Check(ZahiraPlacement(game) && game.State.DecisionPlayer == 0);
                     Check(!game.ResolveZahiraTarget(0, 1, FieldZone.Relikario, -1).Success);
                     game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
                     Check(game.ResolveZahiraTarget(0, 0, FieldZone.Bonus, -1).Success && game.State.CurrentPlayer == 0);
@@ -59,7 +75,7 @@ static class ZahiraFlairTests
             random.EnqueueDie(2);
             Check(game.Advance(1).Success && game.State.Phase == Phase.DieRerollChoice && game.State.DecisionPlayer == 0);
             game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
-            Check(game.UseDexterity(0).Success && game.State.Phase == Phase.ZahiraTarget && game.State.LastDie == 3);
+            Check(game.UseDexterity(0).Success && ZahiraPlacement(game) && game.State.LastDie == 3);
             Check(game.ResolveZahiraTarget(0, 1, FieldZone.Relikario, -1).Success && game.State.CurrentPlayer == 0);
         }),
         ("Zahira Flair: el Bonus destruido se repone y la trampa sale del juego con él", () =>
@@ -162,7 +178,7 @@ static class ZahiraFlairTests
             Place(game, 0, 0, FieldZone.Bonus);
             game.State.CurrentPlayer = 1;
             Trade(game, 1);
-            Check(game.ResolveTrapCraft(1, true).Success && game.State.Phase == Phase.ZahiraTarget);
+            Check(game.ResolveTrapCraft(1, true).Success && ZahiraPlacement(game));
             Check(game.ZahiraTargets(1).Count(target => target.Zone == FieldZone.Zahira) == 2 &&
                   game.ZahiraTargets(1).All(target => target.Zone != FieldZone.Zahira || target.Owner == 0));
             Check(game.ResolveZahiraTarget(1, 0, FieldZone.Zahira, GameEngine.ZahiraIndex(0)).Success);
@@ -209,6 +225,8 @@ static class ZahiraFlairTests
         Check(game.State.Phase == Phase.TrapCraftChoice && game.ResolveTrapCraft(actor, true).Success &&
               game.ResolveZahiraTarget(actor, owner, zone, index).Success);
     }
+
+    private static bool ZahiraPlacement(GameEngine game) => game.State.Phase == Phase.Decision && game.State.PendingDecision?.Source == CardCatalog.ZahiraFlair.Id;
 
     private static (GameEngine, ScriptedRandom) Fixture(int copies = 0)
     {

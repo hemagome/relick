@@ -147,7 +147,6 @@ public sealed class DuelSnapshot
         var s = game.State;
         var stagePhase = s.Phase == Phase.DestructionResponse ? s.PendingDestruction!.ResumePhase : s.Phase;
         if (s.Phase == Phase.TrapCraftChoice) stagePhase = s.TrapCraftResumePhase!.Value;
-        if (s.Phase == Phase.ZahiraTarget) stagePhase = s.PendingZahiraPlacement!.ResumePhase;
         if (s.Phase == Phase.ErrorResponse && game.IsFieldCodeActivation) stagePhase = Phase.Combat;
         if (s.PendingTurnBuff != null) stagePhase = s.PendingTurnBuff.ResumePhase;
         if (s.PendingReload != null && !s.IsOver) stagePhase = Phase.Actions;

@@ -191,7 +191,7 @@ static class SkillTests
             }
             game.State.Phase = Phase.Actions;
             random.EnqueueDie(3);
-            Check(game.Advance(0).Success && game.State.Phase == Phase.ZahiraTarget);
+            Check(game.Advance(0).Success && ZahiraPlacement(game));
             Check(game.ResolveZahiraTarget(1, 0, FieldZone.Zahira, -1).Success && game.State.Phase == Phase.Finished && game.State.Winner == 1);
         })
     };
@@ -202,6 +202,8 @@ static class SkillTests
         if (result.Success && game.State.Phase == Phase.AttackRerollChoice) return game.ResolveAttackReroll(actor, false);
         return result;
     }
+
+    private static bool ZahiraPlacement(GameEngine game) => game.State.Phase == Phase.Decision && game.State.PendingDecision?.Source == CardCatalog.ZahiraFlair.Id;
 
     private static (GameEngine, ScriptedRandom) Fixture(string skill)
     {

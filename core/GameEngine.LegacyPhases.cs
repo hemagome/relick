@@ -15,7 +15,7 @@ public sealed partial class GameEngine
         {
             State.PendingDecision = decision;
             State.Phase = Phase.Decision;
-            State.PendingTotemDamage = null; State.DestroyActor = null; State.PendingMindReset = null;
+            State.PendingTotemDamage = null; State.DestroyActor = null; State.PendingMindReset = null; State.PendingZahiraPlacement = null;
         }
         if (State.PendingTurnBuff is { } buff && LegacyDecision(buff.ResumePhase, TurnBuffParentFrame(), buff.DestroyActor, buff.MindReset) is { } stashed)
         {
@@ -47,6 +47,8 @@ public sealed partial class GameEngine
         Phase.DestroyChoice when destroyActor is int actor && frame is { Kind: ActivationKind.Code } code && code.CardId == CardCatalog.TimeBomb.Id =>
             TimeBombEffect.TargetDecision(actor, code.ResumePhase),
         Phase.MindResetChoice when mindReset != null => MindResetEffect.LegacyDecision(State, mindReset),
+        Phase.ZahiraTarget when State.PendingZahiraPlacement is { } zahira =>
+            ZahiraFlairEffect.PlacementDecision(zahira.Actor, zahira.Creating, zahira.Slot, zahira.ResumePhase),
         _ => null
     };
 }

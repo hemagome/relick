@@ -9,8 +9,6 @@ static class SimulationDriver
         if (s.IsOver || s.DecisionPlayer != actor) return CommandResult.Fail("El rival no puede jugar ahora.");
         var p = s.Players[actor];
         if (s.Phase == Phase.TrapCraftChoice) return game.ResolveTrapCraft(actor, true);
-        if (s.Phase == Phase.ZahiraTarget)
-            return DuelOptions.For(game, actor).First(o => o.Move.Kind == DuelMoveKind.ZahiraTarget).Move.Apply(game, actor);
         // The bot cancels lethal damage with Tótem de Salvación, as it did before the choice became a decision.
         if (s.Phase == Phase.Decision && s.PendingDecision?.Source == CardCatalog.Totem.Id) return game.ResolveTotem(actor, true);
         if (s.Phase == Phase.Decision)
