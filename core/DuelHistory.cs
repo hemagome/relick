@@ -225,15 +225,7 @@ public sealed partial class GameEngine
         if (card == null && state.PendingDieRoll is { } die)
         {
             actor = die.Player;
-            card = die.Purpose switch
-            {
-                DiePurpose.ExtraLife => CardCatalog.ExtraLife.Id, DiePurpose.PointsChange => CardCatalog.PointsIncrease.Id,
-                DiePurpose.Dodge => CardCatalog.Dodge.Id, DiePurpose.PcStore => CardCatalog.Pc.Id,
-                DiePurpose.SkillLearning => CardCatalog.Reverse.Id, DiePurpose.FieldCombat => CardCatalog.Jessica.Id,
-                DiePurpose.QuickLoad => CardCatalog.QuickLoad.Id, DiePurpose.Zahira => CardCatalog.ZahiraFlair.Id,
-                DiePurpose.TurboSwordDamage or DiePurpose.TurboSwordDefense => CardCatalog.TurboSword.Id,
-                DiePurpose.TurboOverlapDamage => CardCatalog.TurboOverlap.Id, _ => null
-            };
+            card = DiePurposes.CardId(die.Purpose);
         }
         return new DuelResolutionView { Actor = actor, DecisionPlayer = state.DecisionPlayer, CardId = card ?? "",
             Status = state.Phase is Phase.ErrorResponse or Phase.CodeResponse or Phase.DefenseChoice or Phase.DestructionResponse or Phase.EffectDamageChoice or Phase.TotemChoice

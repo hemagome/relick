@@ -79,11 +79,7 @@ internal interface IDestructionReplacement
 
 `DamageEvent` agrupa lo que hoy viaja en parámetros sueltos (`target`, `amount`, `attackDie`, `source`, `completed`). Así un paso nuevo no cambia la firma de todos los demás.
 
-Además, un miembro virtual en `CardRules`, con valor por defecto, eliminan los despachos por identificador:
-
-```csharp
-public virtual string? DieCaption(DiePurpose purpose, DieEffect effect) => null;  // sustituye el switch de RollWithRelikario
-```
+Los títulos de dado no van en los efectos: su clave natural es el propósito del dado (`DiePurpose`). Turbo Sword tiene dos propósitos, y Reverse Shuffle o Jessica Lee no tienen módulo. `core/DiePurposes.cs` reúne en una tabla el título y la carta de cada propósito, en lugar de los dos `switch` que había en `RollWithRelikario` y en la vista de resolución de `DuelHistory`.
 
 Las decisiones que abre un disparador ya llevan `Source = card.Id`. Con la carta registrada, `DecisionChoices` y `ApplyDecision` las envían a `Choices` y `Choose` del efecto sin cambios, y la cadena de `if` desaparece carta a carta.
 
@@ -154,7 +150,7 @@ Cada paso es un commit propio, con compilación del juego y del servidor, los te
    - Robo de Equipos y Agujero Negro: la entrada de un Área en juego, con varias destrucciones encadenadas.
    - Casco de Copias: la secuencia de RAM, fuera de alcance.
    - Ironwing y Osamu: son Relikarios, no cartas, y necesitan un registro equivalente para Relikarios.
-2. **`DieCaption`.** Mover cada título al efecto de su carta. Es trivial y sirve de prueba de que el registro cubre cartas sin activación.
+2. ~~**Títulos de dado.**~~ Hecho con `DiePurposes`, una tabla por propósito en lugar de un miembro de cada efecto (ver arriba). Los títulos y la carta mostrada no cambian. Agujero Negro y Perro Fantasma siguen sin nombrar carta desde el propósito, como antes.
 3. **Infraestructura y `ActionStart`.** `ActiveSources`, `PendingTriggers`, `ContinuationKind.NextTrigger` y la interfaz `ITurnTrigger`. Migrar Perro Fantasma y Robotizar, con `RobotizeActionStart` como adaptador. Son dos cartas ya parcialmente en su efecto, y validan el ejecutor completo, incluidas la pausa y la reanudación.
 4. **`TurnStart` y `FinalStage`.** Moto-Ratón (con `BikeTurnStart` como adaptador) y Zahira Flair. Mira de Sniper dispara al descartar, no en un momento del turno. Se decide aquí si entra como un momento más de `TurnMoment` o como una familia propia, según lo que muestre su prueba de orden.
 5. **Destrucción.** Escudo Galáctico, Tótem de Oro y Reverse Shuffle. Requiere antes la suite de UI en verde: cambia lo que la UI recibe durante una destrucción protegida.

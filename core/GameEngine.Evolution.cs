@@ -64,23 +64,7 @@ public sealed partial class GameEngine
     {
         var actor = Array.IndexOf(State.Players, p);
         var equipment = ActiveEquipment(actor)?.Id;
-        var caption = purpose switch
-        {
-            DiePurpose.Zahira => "Zahira Flair · Etapa final",
-            DiePurpose.QuickLoad => "Carga Rápida · Robo o descarte",
-            DiePurpose.FieldCombat => "Jessica Lee · Efecto de canje/Bonus",
-            DiePurpose.SkillLearning => "Reverse Shuffle · Aprendizaje",
-            DiePurpose.PcStore => "PC 8BITS · Valor guardado",
-            DiePurpose.Dodge => "Esquivar · Defensa",
-            DiePurpose.ExtraLife => "Vida Extra · Curación",
-            DiePurpose.PointsChange => "Aumento de Relick Points",
-            DiePurpose.TurboSwordDefense => "Turbo Sword · Defensa",
-            DiePurpose.TurboSwordDamage => "Turbo Sword · Daño",
-            DiePurpose.TurboOverlapDamage => $"Turbo Overlap · Dado de daño {(effect.Slot == 0 ? 1 : 2)}",
-            DiePurpose.BlackHole => "Agujero Negro · Dado de Área",
-            DiePurpose.GhostDog => "Perro Fantasma · Recuperación",
-            _ => ""
-        };
+        var caption = DiePurposes.Caption(purpose, effect);
         var die = rolledDie ?? Roll(caption, roller: actor);
         if (purpose == DiePurpose.TurboOverlapDamage && effect.Slot == 0 && !ReplaySequentialOverlap)
         {
