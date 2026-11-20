@@ -1,17 +1,14 @@
 namespace Relick.Core;
 
 /// <summary>Carga Rápida: draw 2, then roll 1D6. 1–2: discard 2; 3–4: discard 1; 5: draw 1; 6: draw 2.</summary>
-internal sealed class QuickLoadEffect : ICardEffect
+internal sealed class QuickLoadEffect : CardEffect
 {
     private const string Roll = "roll", Result = "result";
 
-    public string CardId => CardCatalog.QuickLoad.Id;
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
-    public void Resolve(GameEngine.EffectContext ctx) => ctx.Draw(ctx.Card.Draw, ctx.Then(Roll));
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => [];
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) { }
+    public override string CardId => CardCatalog.QuickLoad.Id;
+    public override void Resolve(GameEngine.EffectContext ctx) => ctx.Draw(ctx.Card.Draw, ctx.Then(Roll));
 
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         if (step == Roll) { ctx.Roll(DiePurpose.QuickLoad, Result); return; }
         var die = next.Value;

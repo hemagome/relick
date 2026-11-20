@@ -38,7 +38,7 @@ public sealed class DecisionChoice
 
 /// <summary>
 /// The single decision phase that replaces a phase per card. It records which card asks, which step of that
-/// card's effect continues with the answer and who answers; the card's <see cref="ICardEffect"/> computes the choices.
+/// card's effect continues with the answer and who answers; the card's <see cref="CardEffect"/> computes the choices.
 /// </summary>
 public sealed class PendingDecision
 {
@@ -86,28 +86,31 @@ public sealed class DecisionView
 /// the choices of a decision it opened, hands it the answer, and resumes it after an operation that may pause
 /// (a destruction someone can protect, a Bonus refill). Steps are plain names so a saved duel can resume them.
 /// </summary>
-internal interface ICardEffect
+internal abstract class CardEffect
 {
-    string CardId { get; }
-    /// <summary>Why the card cannot be activated now, beyond the common costs; <paramref name="excludedHand"/> is the card itself.</summary>
-    string? Unavailable(GameEngine.EffectContext ctx, int excludedHand);
-    void Resolve(GameEngine.EffectContext ctx);
-    IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision);
-    void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice);
-    void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next);
+    public abstract string CardId { get; }
+    /// <summary>Why the card cannot be activated now, beyond the common costs; <paramref name="excludedHand"/> is the card itself.
+    /// Null by default: the card has no restriction of its own.</summary>
+    public virtual string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
+    public abstract void Resolve(GameEngine.EffectContext ctx);
+    /// <summary>The choices of a decision this card opened; only a card that calls <c>Ask</c> needs it.</summary>
+    public virtual IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => [];
+    public virtual void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) { }
+    /// <summary>Resumes the card at <paramref name="step"/>; only a card that pauses with <c>Then</c> or <c>Roll</c> needs it.</summary>
+    public virtual void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) { }
 }
 
 internal static class CardEffects
 {
-    private static readonly IReadOnlyDictionary<string, ICardEffect> Registered =
-        new ICardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
+    private static readonly IReadOnlyDictionary<string, CardEffect> Registered =
+        new CardEffect[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
             new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect() }.ToDictionary(e => e.CardId);
 
-    public static ICardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
+    public static CardEffect? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
 }
 
 public sealed partial class GameEngine

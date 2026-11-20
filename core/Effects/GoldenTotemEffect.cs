@@ -5,20 +5,20 @@ namespace Relick.Core;
 /// equipment. It needs an equipment underneath and cannot be activated with Relikia. The placement, with its
 /// destruction of the previous equipment and the cover that protects the Tótems, is the engine's own sequence.
 /// </summary>
-internal sealed class GoldenTotemEffect : ICardEffect
+internal sealed class GoldenTotemEffect : CardEffect
 {
     private const string Show = "show";
     private const int MaxTotems = 2;
 
-    public string CardId => CardCatalog.GoldenTotem.Id;
+    public override string CardId => CardCatalog.GoldenTotem.Id;
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand)
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand)
     {
         if (excludedHand < 0) return "Tótem de Oro no puede activarse con Relikia.";
         return ctx.Player.Equipment == null && !ctx.PlayableTotems().Any() ? "Tótem de Oro necesita un equipo debajo o un Tótem de Salvación en tu mano." : null;
     }
 
-    public void Resolve(GameEngine.EffectContext ctx)
+    public override void Resolve(GameEngine.EffectContext ctx)
     {
         if (ctx.Player.Equipment == null && !ctx.PlayableTotems().Any())
         {
@@ -29,7 +29,7 @@ internal sealed class GoldenTotemEffect : ICardEffect
     }
 
     // The copies are identical, so the choice is how many to show; with no equipment at least one is needed.
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
     {
         var most = Math.Min(MaxTotems, ctx.PlayableTotems().Count());
         return Enumerable.Range(0, most + 1).Where(count => count > 0 || ctx.Player.Equipment != null).Select(count => new DecisionChoice
@@ -41,8 +41,6 @@ internal sealed class GoldenTotemEffect : ICardEffect
     }
 
     // The first copies in hand order, as the former test bot chose them.
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) =>
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) =>
         ctx.DeployGoldenTotem(ctx.PlayableTotems().Take(choice.Value).ToArray());
-
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) { }
 }

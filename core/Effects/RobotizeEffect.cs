@@ -1,18 +1,16 @@
 namespace Relick.Core;
 
-internal sealed class RobotizeEffect : ICardEffect
+internal sealed class RobotizeEffect : CardEffect
 {
-    public string CardId => CardCatalog.Robotize.Id;
+    public override string CardId => CardCatalog.Robotize.Id;
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         excludedHand < 0 ? "Robotizar necesita colocarse encima del Relikario y no puede activarse con Relikia." : null;
 
-    public void Resolve(GameEngine.EffectContext ctx) => ctx.DeployRobotize();
+    public override void Resolve(GameEngine.EffectContext ctx) => ctx.DeployRobotize();
 
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => ctx.RobotizeTopCardChoices();
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => ctx.RobotizeTopCardChoices();
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) =>
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) =>
         ctx.ResolveRobotizeTopCard(decision.Continuation!, choice.Value == 1);
-
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) { }
 }

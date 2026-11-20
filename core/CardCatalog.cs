@@ -7,7 +7,7 @@ public enum CardKind { Attack, Skill, Code, Attachment, Equipment, Area }
 
 /// <summary>
 /// Only cards supplied by the user; no sample cards in the playable catalogue. A card whose rules live in an
-/// <see cref="ICardEffect"/> (core/Effects) needs no rule flag here. HealFromDie stays only as a hint for the card icon
+/// <see cref="CardEffect"/> (core/Effects) needs no rule flag here. HealFromDie stays only as a hint for the card icon
 /// and the test bot; the engine no longer reads it.
 /// </summary>
 public sealed record CardDefinition(

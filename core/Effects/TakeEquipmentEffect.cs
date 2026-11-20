@@ -1,25 +1,25 @@
 namespace Relick.Core;
 
-internal sealed class TakeEquipmentEffect : ICardEffect
+internal sealed class TakeEquipmentEffect : CardEffect
 {
     private const string Target = "equipment";
     private const string Equip = "equip";
     private const string Attach = "attach";
-    public string CardId => CardCatalog.TakeEquipment.Id;
+    public override string CardId => CardCatalog.TakeEquipment.Id;
 
     private static int AttackIndex(PlayerState player) => player.Deck.FindIndex(id => DeckRules.IsAttack(CardCatalog.Get(id)));
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => !ctx.RivalEquipment().Any()
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => !ctx.RivalEquipment().Any()
         ? "El adversario no tiene un equipo que puedas tomar."
         : AttackIndex(ctx.Player) < 0 ? "No hay una carta de Ataque en tu mazo." : null;
 
-    public void Resolve(GameEngine.EffectContext ctx)
+    public override void Resolve(GameEngine.EffectContext ctx)
     {
         if (Unavailable(ctx, -1) is { } reason) { ctx.Log(reason); return; }
         ctx.Ask(Target, DecisionKind.ChooseTarget, "Selecciona el equipo rival que quieres equiparte", allowsCombos: true);
     }
 
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
     {
         if (AttackIndex(ctx.Player) < 0) return [];
         return ctx.RivalEquipment().Select(target =>
@@ -31,13 +31,13 @@ internal sealed class TakeEquipmentEffect : ICardEffect
         }).ToArray();
     }
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
     {
         ctx.CloseErrorWindow();
         ctx.TakeEquipment(choice.Field!, ctx.Then(Equip, choice.Field));
     }
 
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         if (step == Equip)
         {

@@ -2,13 +2,13 @@ using System.Text.RegularExpressions;
 
 namespace Relick.Core;
 
-internal sealed class EllieEffect : ICardEffect
+internal sealed class EllieEffect : CardEffect
 {
     private const string Pick = "pick";
     private const int MaxCards = 2;
     private static readonly Regex LifeWord = new(@"\bvidas?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    public string CardId => CardCatalog.Ellie.Id;
+    public override string CardId => CardCatalog.Ellie.Id;
 
     internal static bool Matches(CardDefinition card) =>
         !string.Equals(card.Name, CardCatalog.Ellie.Name, StringComparison.OrdinalIgnoreCase) &&
@@ -17,10 +17,10 @@ internal sealed class EllieEffect : ICardEffect
     private static IEnumerable<int> MatchingSlots(PlayerState player) =>
         Enumerable.Range(0, player.Deck.Count).Where(slot => Matches(CardCatalog.Get(player.Deck[slot])));
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         MatchingSlots(ctx.Player).Any() ? null : "Tu mazo necesita otra carta con la palabra «vida» o «vidas».";
 
-    public void Resolve(GameEngine.EffectContext ctx)
+    public override void Resolve(GameEngine.EffectContext ctx)
     {
         ctx.CloseErrorWindow();
         var count = MatchingSlots(ctx.Player).Take(MaxCards).Count();
@@ -32,7 +32,7 @@ internal sealed class EllieEffect : ICardEffect
             remaining == MaxCards ? "Elige la primera de dos cartas con «vida» o «vidas»" : "Elige una carta con «vida» o «vidas»",
             value: remaining);
 
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) =>
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) =>
         MatchingSlots(ctx.Player).Select(slot => new DecisionChoice
         {
             Label = $"Añadir {CardCatalog.Get(ctx.Player.Deck[slot]).Name} · mazo {slot + 1}",
@@ -40,7 +40,7 @@ internal sealed class EllieEffect : ICardEffect
             Public = "añade una carta del mazo a su mano con Ellie."
         }).ToArray();
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
     {
         ctx.Announce($"{ctx.Player.Name} añade una carta de su mazo a su mano con Ellie.");
         if (decision.Value == MaxCards)
@@ -52,5 +52,5 @@ internal sealed class EllieEffect : ICardEffect
         ctx.MoveDeckCardToHand(choice.Value);
     }
 
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) => AskForCard(ctx, 1);
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) => AskForCard(ctx, 1);
 }

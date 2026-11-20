@@ -5,16 +5,16 @@ namespace Relick.Core;
 /// send them to their owners' decks, shuffle, and the target draws 1 card. Each pick is a step of the same decision;
 /// while it waits only the decider sees the chosen hand, and other COMBO may interrupt it as before.
 /// </summary>
-internal sealed class MindResetEffect : ICardEffect
+internal sealed class MindResetEffect : CardEffect
 {
     public const string Target = "target", Memory = "memory", Hand = "hand", Finish = "finish";
     private const int Memories = 2;
 
-    public string CardId => CardCatalog.MindReset.Id;
+    public override string CardId => CardCatalog.MindReset.Id;
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => ctx.MindResetUnavailable(excludedHand);
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => ctx.MindResetUnavailable(excludedHand);
 
-    public void Resolve(GameEngine.EffectContext ctx)
+    public override void Resolve(GameEngine.EffectContext ctx)
     {
         if (ctx.State.Players.All(p => p.Hand.Count == 0) || ctx.ResettableMemoryCards().Count() < Memories)
         {
@@ -35,7 +35,7 @@ internal sealed class MindResetEffect : ICardEffect
         new() { Label = label, Button = "Finalizar", Value = -1, Public = $"termina Resetear la Mente {why}.", RequiresAcknowledgement = showsHand };
 
     // Computed from the board each time, like the former options: an interruption may have emptied a hand.
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
     {
         var s = ctx.State;
         if (decision.Step == Target)
@@ -65,7 +65,7 @@ internal sealed class MindResetEffect : ICardEffect
         }).ToList();
     }
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
     {
         if (choice.Value < 0) { ctx.EndMindReset(); return; }
         var s = ctx.State;
@@ -91,6 +91,4 @@ internal sealed class MindResetEffect : ICardEffect
         else
             ctx.Ask(Hand, DecisionKind.ChooseCard, $"Elige una no-habilidad de la mano de {ctx.PlayerName(target)}", allowsCombos: true, announce: false, picks: picks, showsHandOf: target);
     }
-
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) { }
 }

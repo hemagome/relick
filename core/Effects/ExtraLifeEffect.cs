@@ -1,17 +1,14 @@
 namespace Relick.Core;
 
 /// <summary>Vida Extra: roll 1D6 and gain 1, 2, 3 or 4 lives, without passing your Relikario's maximum.</summary>
-internal sealed class ExtraLifeEffect : ICardEffect
+internal sealed class ExtraLifeEffect : CardEffect
 {
     private const string Heal = "heal";
 
-    public string CardId => CardCatalog.ExtraLife.Id;
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
-    public void Resolve(GameEngine.EffectContext ctx) => ctx.Roll(DiePurpose.ExtraLife, Heal);
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => [];
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) { }
+    public override string CardId => CardCatalog.ExtraLife.Id;
+    public override void Resolve(GameEngine.EffectContext ctx) => ctx.Roll(DiePurpose.ExtraLife, Heal);
 
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         var die = next.Value;
         var amount = die switch { 1 => 1, 2 => 2, 3 or 4 or 5 => 3, 6 => 4, _ => 0 };

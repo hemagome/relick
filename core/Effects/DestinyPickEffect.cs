@@ -1,24 +1,24 @@
 namespace Relick.Core;
 
-internal sealed class DestinyPickEffect : ICardEffect
+internal sealed class DestinyPickEffect : CardEffect
 {
     private const string Mode = "mode";
     private const string Corruption = "corruption";
     private const string Finished = "finished";
     private const int Draw = 0, Damage = 1, Corrupt = 2;
 
-    public string CardId => CardCatalog.DestinyPick.Id;
+    public override string CardId => CardCatalog.DestinyPick.Id;
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         ctx.CanPlayDestinyPick() ? null : "Completa la resolución pendiente antes de jugar Púa del Destino.";
 
-    public void Resolve(GameEngine.EffectContext ctx)
+    public override void Resolve(GameEngine.EffectContext ctx)
     {
         ctx.CloseErrorWindow();
         ctx.Ask(Mode, DecisionKind.Confirm, "Escoge un efecto de Púa del Destino.");
     }
 
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
     {
         return decision.Step == Mode ? ModeChoices(ctx) : ctx.ResettableMemoryCards().Select(slot =>
         {
@@ -44,7 +44,7 @@ internal sealed class DestinyPickEffect : ICardEffect
         return choices;
     }
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
     {
         if (decision.Step == Corruption)
         {
@@ -61,7 +61,7 @@ internal sealed class DestinyPickEffect : ICardEffect
         }
     }
 
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         ctx.EndActivation();
     }

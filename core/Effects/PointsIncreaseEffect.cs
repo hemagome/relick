@@ -1,15 +1,14 @@
 namespace Relick.Core;
 
 /// <summary>Aumento de Relick Points: roll 1D6 and raise or lower any player's PR by 300 to 1500; PR never drop below zero.</summary>
-internal sealed class PointsIncreaseEffect : ICardEffect
+internal sealed class PointsIncreaseEffect : CardEffect
 {
     private const string Roll = "roll", Target = "target";
 
-    public string CardId => CardCatalog.PointsIncrease.Id;
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
-    public void Resolve(GameEngine.EffectContext ctx) => ctx.Roll(DiePurpose.PointsChange, Roll);
+    public override string CardId => CardCatalog.PointsIncrease.Id;
+    public override void Resolve(GameEngine.EffectContext ctx) => ctx.Roll(DiePurpose.PointsChange, Roll);
 
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         var die = next.Value;
         var points = die switch { 1 => 300, 2 => 400, 3 or 4 => 500, 5 => 1000, 6 => 1500, _ => 0 };
@@ -19,7 +18,7 @@ internal sealed class PointsIncreaseEffect : ICardEffect
     }
 
     // Value packs the seat and the direction: seat × 2, plus 1 to increase.
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) =>
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) =>
         Enumerable.Range(0, ctx.State.Players.Length).SelectMany(seat => new[]
         {
             new DecisionChoice { Label = $"Aumentar PR de {ctx.PlayerName(seat)}", Button = seat == ctx.Actor ? $"+{decision.Value} a mis PR" : $"+{decision.Value} al rival",
@@ -28,7 +27,7 @@ internal sealed class PointsIncreaseEffect : ICardEffect
                 Value = seat * 2, Public = $"reduce los PR de {ctx.PlayerName(seat)}." }
         }).ToList();
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
     {
         var target = ctx.State.Players[choice.Value / 2]; var increase = choice.Value % 2 == 1; var before = target.Relikia;
         target.Relikia = increase ? target.Relikia + decision.Value : Math.Max(0, target.Relikia - decision.Value);

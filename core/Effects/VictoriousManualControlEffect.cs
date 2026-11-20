@@ -1,25 +1,25 @@
 namespace Relick.Core;
 
-internal sealed class VictoriousManualControlEffect : ICardEffect
+internal sealed class VictoriousManualControlEffect : CardEffect
 {
     private const string Source = "source", Destination = "destination";
 
-    public string CardId => CardCatalog.VictoriousManualControl.Id;
+    public override string CardId => CardCatalog.VictoriousManualControl.Id;
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand)
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand)
     {
         if (ctx.Player.Health < 1) return "Necesitas 1 punto de vida para mover una carta.";
         return ctx.MovableFieldCards().Any() ? null : "Necesitas una carta en tu campo y una zona compatible vacía.";
     }
 
-    public void Resolve(GameEngine.EffectContext ctx)
+    public override void Resolve(GameEngine.EffectContext ctx)
     {
         ctx.CloseErrorWindow();
         if (Unavailable(ctx, -1) != null) { ctx.Log($"{ctx.Card.Name} se resuelve sin un movimiento válido."); return; }
         ctx.Ask(Source, DecisionKind.ChooseTarget, "Elige una carta de tu campo para moverla. El traslado cuesta 1 vida.");
     }
 
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision)
     {
         if (decision.Step == Source)
             return ctx.MovableFieldCards().Select(card => new DecisionChoice
@@ -52,7 +52,7 @@ internal sealed class VictoriousManualControlEffect : ICardEffect
         _ => "Bonus"
     };
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
     {
         if (decision.Step == Source) ctx.AskFieldDestination(choice.Field!);
         else
@@ -61,6 +61,4 @@ internal sealed class VictoriousManualControlEffect : ICardEffect
             ctx.PayLifeAndMoveFieldCard(source, ctx.CompatibleFieldDestinations(source).ElementAt(choice.Value));
         }
     }
-
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) { }
 }

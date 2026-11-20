@@ -4,7 +4,7 @@ Piloto del 16 de noviembre de 2026, ampliado el mismo día con cuatro cartas má
 
 ## Cómo funciona
 
-**Un módulo por carta.** Las reglas de una carta viven en un archivo de `core/Effects/` que implementa `ICardEffect` (`core/Decisions.cs`) y se registra en `CardEffects`. El módulo responde a cinco preguntas:
+**Un módulo por carta.** Las reglas de una carta viven en un archivo de `core/Effects/` que hereda de `CardEffect` (`core/Decisions.cs`) y se registra en `CardEffects`. El módulo responde a cinco preguntas:
 
 | Método | Qué decide |
 |---|---|
@@ -13,6 +13,8 @@ Piloto del 16 de noviembre de 2026, ampliado el mismo día con cuatro cartas má
 | `Choices` | Las opciones de una decisión que abrió, calculadas en vivo. |
 | `Choose` | Qué hace con la opción elegida. |
 | `Continue` | Cómo sigue después de una operación que puede pausar, como una destrucción protegible. |
+
+`CardId` y `Resolve` son obligatorios. Los demás tienen un valor por defecto (sin restricción propia, sin opciones, sin continuación), así que cada módulo solo sobrescribe lo que usa.
 
 **Una sola fase de decisión.** `Phase.Decision` con `PendingDecision` sustituye a una fase por carta. Guarda qué carta pregunta, el paso que continúa, quién decide, el tipo (`Confirm`, `ChooseTarget`, `ChooseCard`), la instrucción y si se admiten COMBO mientras espera. Las opciones no se guardan: se recalculan, así que siempre reflejan el tablero y nunca contienen cartas privadas en el estado.
 

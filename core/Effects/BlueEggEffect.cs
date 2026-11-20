@@ -1,23 +1,23 @@
 namespace Relick.Core;
 
 /// <summary>Huevo Azul Explosivo: destroy a non-skill on the field, then you may pay 200 PR to draw 1 card.</summary>
-internal sealed class BlueEggEffect : ICardEffect
+internal sealed class BlueEggEffect : CardEffect
 {
     public const int DrawCost = 200;
     private const string Draw = "draw";
 
-    public string CardId => CardCatalog.BlueEgg.Id;
+    public override string CardId => CardCatalog.BlueEgg.Id;
 
-    public string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
+    public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         ctx.NonSkillFieldCards().Any() ? null : "No hay no-habilidades en el campo para destruir.";
 
-    public void Resolve(GameEngine.EffectContext ctx)
+    public override void Resolve(GameEngine.EffectContext ctx)
     {
         if (!ctx.NonSkillFieldCards().Any()) { ctx.Log($"{ctx.Card.Name} se resuelve sin objetivos disponibles."); return; }
         ctx.Ask(FieldDestruction.Target, DecisionKind.ChooseTarget, "Elige una no-habilidad del campo para destruir", allowsCombos: true, announce: false);
     }
 
-    public IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => decision.Step switch
+    public override IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => decision.Step switch
     {
         FieldDestruction.Target => ctx.NonSkillFieldCards().Select(t => FieldDestruction.Card(ctx, t)).ToList(),
         Draw => (ctx.Player.Relikia >= DrawCost
@@ -28,7 +28,7 @@ internal sealed class BlueEggEffect : ICardEffect
         _ => []
     };
 
-    public void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
+    public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
     {
         if (decision.Step == FieldDestruction.Target) { FieldDestruction.Destroy(ctx, choice.Field!); return; }
         if (choice.Value != 1) return;
@@ -37,7 +37,7 @@ internal sealed class BlueEggEffect : ICardEffect
         ctx.Draw(1);
     }
 
-    public void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
+    public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         if (step == FieldDestruction.Destroyed)
             // Duels recorded before the optional draw replay without it.
