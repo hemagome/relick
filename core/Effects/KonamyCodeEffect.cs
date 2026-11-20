@@ -6,12 +6,6 @@ internal sealed class KonamyCodeEffect : CardEffect
     private const string Pick = "pick";
     private const string Instruction = "Elige una no-habilidad de tu mazo";
 
-    /// <summary>The search as <c>Resolve</c> opens it; duels saved in the former deck search phase become this decision.</summary>
-    internal static PendingDecision SearchDecision(int actor, Phase resumePhase) => new()
-    {
-        Source = CardCatalog.KonamyCode.Id, Step = Pick, Decider = actor, Kind = DecisionKind.ChooseCard,
-        Instruction = Instruction, AllowsCombos = true, ResumePhase = resumePhase
-    };
 
     public override string CardId => CardCatalog.KonamyCode.Id;
 

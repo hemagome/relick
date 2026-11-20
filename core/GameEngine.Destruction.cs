@@ -167,17 +167,4 @@ public sealed partial class GameEngine
         return true;
     }
 
-    private void FinishCodeDestruction(EngineContinuation next)
-    {
-        var target = next.Target!;
-        var card = target.Zone == FieldZone.Hand ? "una carta de la mano" : CardCatalog.Get(target.CardId).Name;
-        Log(next.Prevented ? $"{next.Text}: la carta original queda protegida por una sustitución." :
-            $"{State.Players[next.Actor].Name} destruye {card} de {State.Players[target.Owner].Name} con {next.Text}.");
-        State.DestroyActor = null; State.Phase = Phase.Actions;
-        var drawChoice = _activeActivation?.CardId == CardCatalog.BlueEgg.Id
-            ? new EngineContinuation { Kind = ContinuationKind.OfferBlueEggDraw, Actor = next.Actor } : null;
-        if (!next.Prevented && target.Zone == FieldZone.Bonus) RefillBonus(State.Players[target.Owner], drawChoice);
-        else if (drawChoice != null) Continue(drawChoice);
-        CompleteActivationIfFinished();
-    }
 }

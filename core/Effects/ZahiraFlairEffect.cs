@@ -11,15 +11,12 @@ internal sealed class ZahiraFlairEffect : CardRules, ITurnTrigger
 
     public override string CardId => CardCatalog.ZahiraFlair.Id;
 
-    /// <summary>
-    /// Where a Zahira Flair goes, when it is created from a trap recipe or moved by its 3–4. The engine opens it; duels
-    /// saved in the former placement phase become this decision.
-    /// </summary>
-    internal static PendingDecision PlacementDecision(int actor, bool creating, int slot, Phase resumePhase = default) => new()
+    /// <summary>Where a Zahira Flair goes, when it is created from a trap recipe or moved by its 3–4; the engine opens it.</summary>
+    internal static PendingDecision PlacementDecision(int actor, bool creating, int slot) => new()
     {
         // Confirm lists every host as a button, as the former phase did; each still lights its card on the board.
         Source = CardCatalog.ZahiraFlair.Id, Step = Place, Decider = actor, Kind = DecisionKind.Confirm,
-        Instruction = "Elige una carta del campo para colocar a Zahira Flair encima", ResumePhase = resumePhase,
+        Instruction = "Elige una carta del campo para colocar a Zahira Flair encima",
         Continuation = new EngineContinuation { Actor = actor, Flag = creating, Count = slot }
     };
 

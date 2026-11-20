@@ -125,28 +125,6 @@ static class KonamyCodeTests
                 }
             }
         }),
-        ("Konamy: un duelo guardado en la fase de búsqueda anterior la termina como decisión, también apartada por Estrella", () =>
-        {
-            static System.Text.Json.Nodes.JsonObject State(System.Text.Json.Nodes.JsonNode json) => json["State"]!.AsObject();
-            var (g, rng) = Fixture(); var p = g.State.Active;
-            Check(g.PlayCode(0, 0).Success && g.State.PendingDecision?.Source == CardCatalog.KonamyCode.Id);
-            // The shape the engine saved before Código Konamy used decisions.
-            var json = System.Text.Json.Nodes.JsonNode.Parse(g.SaveSnapshot())!;
-            State(json).Remove("PendingDecision"); State(json)["Phase"] = (int)Phase.DeckSearchChoice;
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng); p = legacy.State.Active;
-            Check(legacy.State.PendingDecision?.Source == CardCatalog.KonamyCode.Id && legacy.ResolveDeckSearch(0, 2).Success &&
-                p.Hand.Single() == CardCatalog.DiamondHelmet.Id && legacy.State.Phase == Phase.Actions);
-
-            // The same former phase, set aside by Estrella del Fontanero while it collects its discard.
-            (g, rng) = Fixture(); p = g.State.Active; p.Hand.AddRange([CardCatalog.PlumberStar.Id, CardCatalog.Senshuni.Id]);
-            Check(g.PlayCode(0, 0).Success && g.PlayCode(0, 0).Success && g.State.PendingTurnBuff?.Decision?.Source == CardCatalog.KonamyCode.Id);
-            json = System.Text.Json.Nodes.JsonNode.Parse(g.SaveSnapshot())!;
-            var buff = State(json)["PendingTurnBuff"]!.AsObject(); buff.Remove("Decision"); buff["ResumePhase"] = (int)Phase.DeckSearchChoice;
-            legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng); p = legacy.State.Active;
-            Check(legacy.State.PendingTurnBuff!.Decision?.Source == CardCatalog.KonamyCode.Id && legacy.State.PendingTurnBuff.ResumePhase == Phase.Decision);
-            Check(legacy.ResolveTurnBuffDiscard(0, 0).Success && legacy.State.PendingDecision?.Source == CardCatalog.KonamyCode.Id &&
-                legacy.ResolveDeckSearch(0, 2).Success && p.Hand.Single() == CardCatalog.DiamondHelmet.Id);
-        }),
     };
 
     static (GameEngine, ScriptedRandom) Fixture(int actor = 0)

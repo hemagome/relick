@@ -201,28 +201,6 @@ static class TotemTests
             Check(DuelSnapshot.For(g, 1, 1).Stage == Phase.Finished && DuelOptions.For(g, 1).Count == 0 && g.State.Players[1].EquipmentStackedCopies == 1);
             Reject(g, () => g.ResolveTotem(1, true));
         }),
-        ("Tótem: un duelo guardado en la fase anterior se abre como decisión y se resuelve igual", () =>
-        {
-            foreach (var cancel in new[] { true, false })
-            {
-                var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, 1); target.Health = 3;
-                Hit(g, rng, 5); Check(TotemDecision(g));
-                // The shape the engine saved before Tótem de Salvación used decisions.
-                var json = System.Text.Json.Nodes.JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
-                var decision = state["PendingDecision"]!.AsObject();
-                var hit = decision["Continuation"]!.AsObject();
-                state["PendingTotemDamage"] = new System.Text.Json.Nodes.JsonObject
-                {
-                    ["Target"] = 1, ["Amount"] = hit["Count"]!.GetValue<int>(), ["AttackDie"] = hit["Value"]!.GetValue<int>(),
-                    ["ResumePhase"] = decision["ResumePhase"]!.GetValue<int>(), ["Completed"] = hit["Next"]?.DeepClone()
-                };
-                state.Remove("PendingDecision"); state["Phase"] = (int)Phase.TotemChoice;
-                var legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng); target = legacy.State.Players[1];
-                Check(TotemDecision(legacy) && legacy.State.PendingTotemDamage == null && legacy.DecisionChoices(1).Count == 2);
-                Check(legacy.ResolveTotem(1, cancel).Success && !TotemDecision(legacy) &&
-                    (cancel ? target.Health == 3 && target.Equipment == null : target.Health == 0));
-            }
-        }),
         ("Tótem: valida actor, etapa y exclusión de otros códigos mientras se elige protección", () =>
         {
             var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, 1); target.Health = 3;

@@ -109,10 +109,10 @@ public sealed partial class GameEngine
     /// <summary>Read-only query for plays other than advancing; never consumes cards or randomness.</summary>
     public bool HasAvailablePlay(int actor)
     {
-        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TrapCraftChoice or Phase.BlueEggDrawChoice or Phase.Decision) return actor == State.DecisionPlayer;
+        if (State.Phase is Phase.DestructionResponse or Phase.TurnBuffDiscard or Phase.EffectDamageChoice or Phase.TrapCraftChoice or Phase.Decision) return actor == State.DecisionPlayer;
         if (State.Phase == Phase.Discard)
             return !State.IsOver && actor == State.DecisionPlayer && State.DiscardsRemaining > 0 && State.Players[actor].Hand.Count > 0;
-        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.PointsChoice or Phase.ErrorResponse or Phase.SniperChoice or Phase.MemoryRecoveryChoice)
+        if (State.Phase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.DieRerollChoice or Phase.CodeResponse or Phase.ErrorResponse or Phase.SniperChoice)
             return actor == State.DecisionPlayer;
         if (ValidateTurn(actor) != null) return false;
         var p = State.Active;

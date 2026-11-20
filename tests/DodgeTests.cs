@@ -49,19 +49,6 @@ static class DodgeTests
             Check(g.State.Players[1].ActionsLeft == 0 && g.State.Players[1].Health == 8);
         })
     };
-    public static (string, Action)[] Legacy => new (string, Action)[]
-    {
-        ("Esquivar: una tirada guardada antes de mover la carta a su módulo termina con la regla anterior", () =>
-        {
-            var (g, rng) = Fixture(); var p = g.State.Players[1]; p.Equipment = CardCatalog.Pendant.Id; p.Dexterity = 0;
-            rng.EnqueueDie(5); Check(g.PlayCode(1, 0).Success && g.State.Phase == Phase.DieRerollChoice && g.State.PendingDieRoll!.Purpose == DiePurpose.Dodge);
-            var json = System.Text.Json.Nodes.JsonNode.Parse(g.SaveSnapshot())!; var die = json["PendingDie"]!.AsObject();
-            Check(die["Step"]?.GetValue<string>() == "result"); die.Remove("Step"); die["SkillId"] = "";
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng);
-            Check(legacy.ResolveDieReroll(1, false).Success && legacy.State.PendingAttack == null && legacy.State.Phase == Phase.Combat);
-            Check(legacy.State.LastCombat.Contains("niega el ataque con Esquivar (dado 5)"));
-        }),
-    };
 
     private static (GameEngine, ScriptedRandom) Fixture()
     {

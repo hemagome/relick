@@ -10,12 +10,6 @@ internal sealed class BlueEggEffect : CardEffect
 
     private const string TargetInstruction = "Elige una no-habilidad del campo para destruir";
 
-    /// <summary>The target choice as <c>Resolve</c> opens it; duels saved in the former destruction phase become this decision.</summary>
-    internal static PendingDecision TargetDecision(int actor, Phase resumePhase) => new()
-    {
-        Source = CardCatalog.BlueEgg.Id, Step = FieldDestruction.Target, Decider = actor, Kind = DecisionKind.ChooseTarget,
-        Instruction = TargetInstruction, AllowsCombos = true, ResumePhase = resumePhase
-    };
 
     public override string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) =>
         ctx.NonSkillFieldCards().Any() ? null : "No hay no-habilidades en el campo para destruir.";

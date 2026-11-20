@@ -540,10 +540,6 @@ public sealed partial class GameEngine
         CompleteActivationIfFinished();
     }
 
-    /// <summary>Resumes a card module from a continuation kind saved before the card had a module.</summary>
-    private void ContinueLegacyCardStep(EngineContinuation next, string cardId, string step) =>
-        CardEffects.For(cardId)!.Continue(EffectFor(next.Actor, cardId), step, next);
-
     private void ContinueCardEffect(EngineContinuation next)
     {
         var effect = CardEffects.For(next.Text) ?? throw new InvalidOperationException("Paso de una carta sin efecto registrado.");

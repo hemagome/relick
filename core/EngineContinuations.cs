@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, FinishCodeDestruction, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, GoldenTotemReplacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, OfferBlueEggDraw, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, PurpleRingDamage, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, RobotizeActionStart, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -101,15 +101,12 @@ public sealed partial class GameEngine
             case ContinuationKind.AttackDieReady: ContinueAttackDie(); break;
             case ContinuationKind.ConfirmedAttackDie: ResolveConfirmedAttackDie(next.Attack!); break;
             case ContinuationKind.ConfirmedEffectDie: ApplyDieEffect(next.SavedDieEffect!, next.Value); break;
-            // Duels saved before Robotizar moved to its module resume its chain there.
-            case ContinuationKind.RobotizeActionStart: ContinueLegacyCardStep(next, CardCatalog.Robotize.Id, RobotizeEffect.TopCards); break;
             case ContinuationKind.BreakRobotize:
             case ContinuationKind.BreakMetalHood:
                 Log($"{p.Name} saca 1 en su D6 y debe destruir {FieldCardName(next.Target!)}.");
                 RequestDestruction(next.Target!, next.Next);
                 break;
             case ContinuationKind.AttackOneEquipment: DestroyAttackOneEquipment(next.Actor, next.Next); break;
-            case ContinuationKind.FinishCodeDestruction: FinishCodeDestruction(next); break;
             case ContinuationKind.IronwingDiePaid: ResumeIronwingDie(next); break;
             case ContinuationKind.IronwingBonus: OfferIronwingBonus(next.Attack!, next.Count); break;
             case ContinuationKind.IronwingRoll: FinishIronwingRoll(next); break;
@@ -120,14 +117,11 @@ public sealed partial class GameEngine
             case ContinuationKind.BlackHoleDestroy: ContinueBlackHoleDestruction(next); break;
             case ContinuationKind.BlackHoleCardDestroyed: FinishBlackHoleDestruction(next); break;
             case ContinuationKind.BlackHoleFinish: FinishBlackHole(next); break;
-            case ContinuationKind.OfferBlueEggDraw: OfferBlueEggDraw(next.Actor); break;
             case ContinuationKind.CardEffectStep: ContinueCardEffect(next); break;
             case ContinuationKind.AreaRaidSideB: PresentRaidSideB(next.Value, next.Actor); break;
             case ContinuationKind.EquipFromDeck: FinishEquipFromDeck(next); break;
             case ContinuationKind.CheckAreaEquipDeck: Exhaust(p); break;
             case ContinuationKind.PurpleRingPoints: AwardPurpleRingPoints(next.Actor); CompletePendingPlay(); break;
-            // Duels saved before Anillo Morado's damage moved to its module resume it there.
-            case ContinuationKind.PurpleRingDamage: ContinueLegacyCardStep(next, CardCatalog.PurpleRing.Id, PurpleRingEffect.Destroyed); break;
             case ContinuationKind.LoadGalacticShield: LoadGalacticShield(next); break;
             case ContinuationKind.OrientMovedArea:
                 AskAreaOrientation(next.Actor, moved: true);
@@ -145,8 +139,6 @@ public sealed partial class GameEngine
             case ContinuationKind.PlaceZahira: FinishZahiraPlacement(next); break;
             case ContinuationKind.FinishZahiraDestruction: FinishZahiraDestruction(next); break;
             case ContinuationKind.GoldenTotemPlacement: ContinueGoldenTotemPlacement(next); break;
-            // Duels saved before Tótem de Oro's cover moved to its module resume it there.
-            case ContinuationKind.GoldenTotemReplacement: ContinueLegacyCardStep(next, CardCatalog.GoldenTotem.Id, GoldenTotemEffect.Covered); break;
             case ContinuationKind.ApplyDamage: ApplyHealthDamage(next.Actor, next.Count, next.Value, next.Next); break;
             case ContinuationKind.FinishAttackDamage: FinishAttackDamage(next.Flag); break;
             case ContinuationKind.ResolveSkillAttack: ResolveSkillAttack(next.Attack!); break;
@@ -182,7 +174,6 @@ public sealed partial class GameEngine
             case ContinuationKind.RollRelikia: RollWithRelikario(p, DiePurpose.Relikia, new DieEffect { Purpose = DiePurpose.Relikia, Actor = next.Actor }); break;
             case ContinuationKind.ResumeMindReset:
                 State.Phase = next.Phase; State.PendingAttackRoll = next.Attack; State.PendingDieRoll = next.Die; _pendingDieEffect = next.SavedDieEffect;
-                if (State.Phase == Phase.MemoryRecoveryChoice && _activeActivation is { } recovery) BeginMemoryRecovery(recovery.Actor);
                 RecheckDecision();
                 CompletePendingPlay();
                 break;
@@ -208,7 +199,7 @@ public sealed partial class GameEngine
             ContinueCardEffect(new EngineContinuation { Kind = ContinuationKind.CardEffectStep, Actor = effect.Actor, Text = effect.SkillId, Step = effect.Step, Value = die });
             return;
         }
-        // Below: rolls of cards without a module, and rolls saved before their card moved to one.
+        // Below: rolls of cards whose outcome is still in the engine.
         var p = State.Players[effect.Actor];
         switch (effect.Purpose)
         {
@@ -216,7 +207,6 @@ public sealed partial class GameEngine
             case DiePurpose.TurboSwordDamage:
             case DiePurpose.TurboOverlapDamage: ResolveTurboDamageDie(effect, die); break;
             case DiePurpose.TurboSwordDefense: ResolveTurboSwordDefense(effect, die); break;
-            case DiePurpose.QuickLoad: ResolveQuickLoadDie(effect.Actor, die); break;
             case DiePurpose.Zahira: ResolveZahiraDie(effect.Actor, die, effect.Slot); break;
             case DiePurpose.FieldCombat: ResolveFieldCombatDie(effect, die); break;
             case DiePurpose.SkillLearning:
@@ -228,34 +218,9 @@ public sealed partial class GameEngine
                 Log($"{p.Name} guarda un {die} sobre PC 8BITS.");
                 if (effect.Next != null) Continue(effect.Next);
                 break;
-            case DiePurpose.Dodge:
-                _activeActivation = null;
-                if (die <= 3)
-                {
-                    Log($"{p.Name} resuelve Esquivar: dado {die}, roba una carta; el ataque sigue pendiente.");
-                    DrawCards(p, 1);
-                }
-                else
-                {
-                    var attack = State.PendingAttack!;
-                    var attacker = State.Players[attack.Attacker];
-                    if (!attack.RewardPending)
-                        attacker.Relikia = Math.Max(0, attacker.Relikia - CardCatalog.Get(attack.SkillId).Reward);
-                    State.PendingAttack = null; State.Phase = Phase.Combat;
-                    State.LastCombat = $"{p.Name} niega el ataque con Esquivar (dado {die})."; Log(State.LastCombat);
-                }
-                break;
             case DiePurpose.MagnetDamage:
                 Log($"{p.Name} lanza D6 por el daño normal de Magnet Shuffle: {die}.");
                 ResolveAttackResult(effect.Actor, CardCatalog.Get(effect.SkillId), effect.AttackDie, die, effect.Rerolled, attackDamageBonus: effect.AttackDamageBonus); break;
-            case DiePurpose.PointsChange:
-                var points = die switch { 1 => 300, 2 => 400, 3 or 4 => 500, 5 => 1000, _ => 1500 };
-                State.PendingPoints = new(effect.Actor, die, points); State.Phase = Phase.PointsChoice;
-                State.LastCombat = $"{p.Name} · Aumento de Relick Points · D6 = {die} · Elige destino de {points} PR"; Log(State.LastCombat); break;
-            case DiePurpose.ExtraLife:
-                var amount = die switch { 1 => 1, 2 => 2, 6 => 4, _ => 3 }; var healed = Heal(p, amount);
-                State.LastCombat = $"{p.Name} · Vida Extra · D6 = {die} · Recupera {healed} vida(s)";
-                Log($"{p.Name} resuelve Vida Extra: D6 = {die}, gana {amount} vida(s); recupera {healed} hasta su máximo de {p.MaxHealth}."); break;
             case DiePurpose.Recycling:
                 _pendingDieEffect = effect;
                 State.PendingDieRoll = new(effect.Actor, DiePurpose.Recycling, die, State.Phase);

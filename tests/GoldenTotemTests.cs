@@ -88,19 +88,6 @@ static class GoldenTotemTests
             Check(p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id && g.State.Phase == Phase.Actions && g.State.PendingDecision == null);
             Check(g.PublicHistory.Entries.Last().Text.EndsWith("coloca Tótem de Oro con 1 Tótem(s) de Salvación."));
         }),
-        ("Oro: un duelo guardado en la fase anterior se abre como decisión y acepta su jugada de entonces", () =>
-        {
-            var (g, rng) = Fixture(); var p = g.State.Active;
-            Check(g.PlayCode(0, 0).Success);
-            var json = System.Text.Json.Nodes.JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
-            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.GoldenTotemChoice;
-            state["PendingGoldenTotem"] = new System.Text.Json.Nodes.JsonObject { ["Actor"] = 0, ["HandIndices"] = new System.Text.Json.Nodes.JsonArray() };
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), rng); p = legacy.State.Active;
-            Check(legacy.State.PendingDecision?.Source == CardCatalog.GoldenTotem.Id && legacy.State.PendingGoldenTotem == null &&
-                DuelOptions.For(legacy, 0).Count(o => o.Move.Kind == DuelMoveKind.Choose) == 2);
-            Check(legacy.ResolveGoldenTotem(0, [1]).Success && p.Equipment == CardCatalog.Totem.Id && p.EquipmentCovers!.Single() == CardCatalog.GoldenTotem.Id);
-            Check(legacy.State.PendingGoldenTotem == null && legacy.State.Phase == Phase.Actions && p.Hand.SequenceEqual([CardCatalog.Totem.Id, CardCatalog.Attack.Id]));
-        }),
         ("Oro: Caja no responde a Personaje y Relikia no puede activarlo", () =>
         {
             var (g, _) = Fixture(); var p = g.State.Active; g.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
@@ -171,17 +158,6 @@ static class GoldenTotemTests
                 Check(protect ? target.EquipmentCovers!.Count == 1 && target.Memory.Single() == CardCatalog.Reverse.Id : target.EquipmentCovers == null && target.Memory.Single() == CardCatalog.GoldenTotem.Id);
                 Check(g.State.PendingAttack == null && g.State.Active.Relikia == 600);
             }
-        }),
-        ("Oro: un duelo guardado con la continuación anterior de la sustitución la completa desde el módulo", () =>
-        {
-            var (g, rng) = Fixture(); var target = g.State.Players[1]; Stack(target, 2, 1); target.Skills.Add(CardCatalog.Reverse.Id);
-            Attack(g, rng); Check(g.State.Phase == Phase.DestructionResponse && g.State.PendingDestruction!.Completed is { Step: GoldenTotemEffect.Covered });
-            // The shape the engine saved before the cover moved to Tótem de Oro's module.
-            var legacy = g.State.PendingDestruction!.Completed!;
-            legacy.Kind = ContinuationKind.GoldenTotemReplacement; legacy.Text = ""; legacy.Step = null;
-            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); target = g.State.Players[1];
-            Check(g.ResolveDestructionProtection(1, -1).Success && target.Health == 5 && target.EquipmentStackedCopies == 1 &&
-                target.EquipmentCovers == null && g.State.Log.Any(line => line.Contains("gracias a la sustitución de Tótem de Oro")));
         }),
         ("Oro: pasar Error impide cancelar Huevo durante la protección; Reverse sigue protegiendo la cobertura", () =>
         {

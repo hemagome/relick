@@ -58,25 +58,6 @@ static class TurnTriggerTests
             var robot = log.FindLastIndex(line => line.Contains("con Robotizar"));
             Check(dog >= 0 && robot > dog, "El registro conserva el orden: Perro Fantasma y después Robotizar.");
         }),
-        ("Disparadores: un duelo guardado con la continuación anterior de Robotizar sigue su cadena en el módulo", () =>
-        {
-            var (game, random) = Fixture(Ellie, Ellie, Attack, Attack);
-            var p = game.State.Active;
-            p.AttachedCards.AddRange([Robotize, Robotize]);
-            game.State.Phase = Phase.Combat;
-            Check(game.Advance(0).Success && game.State.PendingDecision is { Continuation.Count: 1 } decision && decision.Source == Robotize,
-                "La primera copia pregunta y queda una pendiente.");
-            // The shape the engine saved before Robotizar had a module.
-            var legacy = game.State.PendingDecision!.Continuation!;
-            legacy.Kind = ContinuationKind.RobotizeActionStart; legacy.Text = ""; legacy.Step = null;
-            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
-            Pick(game, 0, choice => choice.Value == 1);
-            Check(game.State.PendingDecision?.Source == Robotize, "La segunda copia pregunta tras reanudar la continuación anterior.");
-            Pick(game, 0, choice => choice.Value != 1);
-            p = game.State.Active;
-            Check(game.State.Phase == Phase.Actions && game.State.PendingDecision == null &&
-                p.Hand.SequenceEqual([Ellie]) && p.Exchange.SequenceEqual([Ellie]), "Ambas copias resuelven su carta.");
-        })
     ];
 
     private static (GameEngine, ScriptedRandom) Fixture(params string[] deck)

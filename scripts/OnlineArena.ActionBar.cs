@@ -15,7 +15,6 @@ public partial class OnlineArena
     private string _selectionCost = "";
     private readonly List<MenuButton> _actionMenus = [];
     private bool _skillContext, _showReplayMemory;
-    private int? _pointsTarget;
     private (int Owner, FieldZone Zone, int Index)? _fieldSelection;
     private (CardDefinition Card, int? Counters)? _inspectorPreview;
     private (int Seat, RelikarioDefinition Form, bool Evolution)? _relikarioPreview;
@@ -26,7 +25,7 @@ public partial class OnlineArena
         _selected.Clear(); _selectedSkill = -1; _skillContext = false;
         _choosingAttackSkill = false;
         _decisionMinimized = false;
-        _fieldSelection = null; _pointsTarget = null; _showReplayMemory = false;
+        _fieldSelection = null; _showReplayMemory = false;
         _inspectorPreview = null; _relikarioPreview = null;
     }
 
@@ -176,8 +175,6 @@ public partial class OnlineArena
             indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
         else if (s.Phase == Phase.TrapCraftChoice)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.TrapCraft).ToList();
-        else if (s.Phase == Phase.BlueEggDrawChoice)
-            indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.BlueEggDraw).ToList();
         else if (Deciding == DecisionKind.Confirm)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.Choose).ToList();
         else if (ChoosingEffectCards)
@@ -198,8 +195,6 @@ public partial class OnlineArena
             if (_skillContext)
                 indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && s.Options[i].Move.Index == _selectedSkill).ToList();
             else indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.DestinyDefense || s.Options[i].Move.Kind == DuelMoveKind.ProtectDestruction && s.Options[i].Move.Index >= 0);
-            if (s.Phase == Phase.PointsChoice)
-                indices = _pointsTarget.HasValue ? indices.Where(i => s.Options[i].Move.Target == _pointsTarget).ToList() : [];
         }
         var chooseAttackSkill = !_choosingAttackSkill && _selectedSkill < 0 && SelectedAttacks().Any();
         var cardAnchoring = !NeedsDecisionPrompt(s);
@@ -259,12 +254,6 @@ public partial class OnlineArena
             AddChoiceMenu(_moves, s.Phase == Phase.DestructionResponse ? "Sustituir…" : "Defender…",
                 s.Options.Select((o, i) => (o, i)).Where(c => c.o.Move.Kind == DuelMoveKind.DestinyDefense || c.o.Move.Kind == DuelMoveKind.ProtectDestruction && c.o.Move.Index >= 0).Select(c => c.i), true);
         }
-        if (s.Phase == Phase.PointsChoice && _pointsTarget == null)
-            foreach (var player in s.Options.Where(o => o.Move.Kind == DuelMoveKind.Points).Select(o => o.Move.Target).Distinct().OrderBy(p => p != s.MySeat))
-            {
-                var seat = player;
-                AddLocalButton(_moves, seat == s.MySeat ? "Mis PR" : "PR del rival", () => { _pointsTarget = seat; BuildMoves(); });
-            }
         if (rivalCombo >= 0)
         {
             _cardActionAnchor = _fieldSelection is { } source
@@ -325,7 +314,7 @@ public partial class OnlineArena
     }
 
     private bool HasContextSelection => _selected.Count > 0 || _selectedSkill >= 0 || _fieldSelection != null ||
-        _pointsTarget != null || _preparing && SelectedCardId() != null;
+        _preparing && SelectedCardId() != null;
 
     /// <summary>Hovering a Relikario portrait reads its card and effect in the inspector, as hovering a card does.</summary>
     private void BindRelikarioPreviews()
@@ -431,7 +420,6 @@ public partial class OnlineArena
             {
                 Phase.ErrorResponse => ActivationResponseCard(s),
                 Phase.TrapCraftChoice => s.TrapCardId,
-                Phase.BlueEggDrawChoice => CardCatalog.BlueEgg.Id,
                 Phase.Decision when s.Decision?.Source == CardCatalog.Robotize.Id =>
                     s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId,
                 Phase.Decision when s.Decision is { } decision && CardCatalog.All.ContainsKey(decision.Source) => decision.Source,
@@ -527,7 +515,6 @@ public partial class OnlineArena
     {
         var s = _snapshot!;
         if (s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name;
-        if (s.Phase == Phase.BlueEggDrawChoice) return CardCatalog.BlueEgg.Name;
         // The card that asks names the decision until the player picks what to answer with.
         if (s.Phase == Phase.Decision && s.Decision is { } decision && (Deciding == DecisionKind.Confirm || _fieldSelection == null && _selected.Count == 0))
             return decision.Title;
@@ -544,7 +531,6 @@ public partial class OnlineArena
             Phase.SniperChoice => "Mira de Sniper",
             Phase.DefenseChoice or Phase.EffectDamageChoice => "Defensa", Phase.DestructionResponse => "Proteger carta",
             Phase.CodeResponse or Phase.ErrorResponse => "Respuesta", Phase.RecycleChoice => "Reciclar memoria",
-            Phase.PointsChoice => _pointsTarget is int target ? s.Players[target].Name : "Relick Points",
             Phase.MagnetChoice => "Crítico de Magnet",
             _ => ChoosingEffectCards ? "Elige una carta" : _fieldSelection?.Zone == FieldZone.Hand ? _fieldSelection.Value.Owner == s.MySeat ? "Mi mano" : "Mano rival" : s.DecisionPlayer != s.MySeat ? "Decisión del rival" : s.Phase switch
             { Phase.Combat => "Tu combate", Phase.Actions => "Tus acciones", Phase.Draw => "Fase de robo", Phase.Final => "Cierre del turno", _ => "Tu decisión" }
@@ -559,7 +545,7 @@ public partial class OnlineArena
             return "Elige cómo responder a la activación o deja que se resuelva.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return s.ErrorAfterDie
             ? $"Dado final: {s.Die}. Anula el código ahora o deja que termine su efecto." : "Anula la activación o deja que se resuelva.";
-        if (s.Phase is Phase.TrapCraftChoice or Phase.BlueEggDrawChoice) return ArenaGuidance.Instruction(s);
+        if (s.Phase is Phase.TrapCraftChoice) return ArenaGuidance.Instruction(s);
         if (myTurn && s.Decision?.Source == CardCatalog.Robotize.Id &&
             s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId is { } top)
             return $"Elige qué hacer con {CardCatalog.Get(top).Name}, la carta del tope de tu mazo.";

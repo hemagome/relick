@@ -1,13 +1,6 @@
 namespace Relick.Core;
 
 public sealed record MemorySelection(int Owner, int Index);
-public sealed class PendingMindReset
-{
-    public int Actor { get; set; }
-    public int Target { get; set; } = -1;
-    public List<MemorySelection> Memories { get; set; } = [];
-    public Phase ResumePhase { get; set; }
-}
 
 public sealed partial class GameEngine
 {

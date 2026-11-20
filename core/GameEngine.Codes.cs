@@ -93,7 +93,6 @@ public sealed partial class GameEngine
         if (PlayableHandCard(p, handIndex) is not { } id || CardCatalog.Get(id).Kind != CardKind.Code) return "Elige un código que puedas usar.";
         var card = CardCatalog.Get(id);
         if (State.Phase is Phase.TrapCraftChoice) return "Completa la decisión del Código Trampa antes de jugar.";
-        if (State.Phase == Phase.BlueEggDrawChoice) return "Decide primero si robas con Huevo Azul Explosivo.";
         if (State.Phase == Phase.Decision && State.PendingDecision is { AllowsCombos: false } decision)
             return $"Decide primero: {decision.Title()}.";
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
@@ -116,30 +115,10 @@ public sealed partial class GameEngine
         return CommandResult.Fail("No te corresponde elegir objetivo.");
     }
 
-    private void OfferBlueEggDraw(int actor)
-    {
-        if (State.Players[actor].Relikia >= BlueEggDrawCost) State.Phase = Phase.BlueEggDrawChoice;
-    }
-
     public CommandResult ResolveBlueEggDraw(int actor, bool pay)
     {
         if (ResolveDecisionWhere(actor, CardCatalog.BlueEgg.Id, c => c.Field == null && c.Value == (pay ? 1 : 0)) is { } answered) return answered;
-        // Legacy: a duel saved while this draw phase was pending.
-        if (State.Phase != Phase.BlueEggDrawChoice || State.DecisionPlayer != actor)
-            return CommandResult.Fail("No te corresponde decidir el robo de Huevo Azul Explosivo.");
-        var p = State.Players[actor];
-        if (pay && p.Relikia < BlueEggDrawCost)
-            return CommandResult.Fail($"Necesitas {BlueEggDrawCost} PR.");
-
-        State.Phase = Phase.Actions;
-        if (pay)
-        {
-            p.Relikia -= BlueEggDrawCost;
-            Log($"{p.Name} paga {BlueEggDrawCost} PR para robar una carta con {CardCatalog.BlueEgg.Name}.");
-            DrawCards(p, 1);
-        }
-        CompleteActivationIfFinished();
-        return CommandResult.Ok();
+        return CommandResult.Fail("No te corresponde decidir el robo de Huevo Azul Explosivo.");
     }
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor
         : State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor;

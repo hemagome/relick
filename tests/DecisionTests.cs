@@ -50,45 +50,6 @@ static class DecisionTests
             Check(g.State.Phase == Phase.Decision && g.State.PendingDecision is { Source: "blue-egg", Step: "target" } restored && restored.ResumePhase == pending.ResumePhase);
             Check(g.ResolveDestruction(0, 1, FieldZone.Bonus).Success && rival.Memory.Contains(CardCatalog.Senshuni.Id) && g.State.Phase == Phase.Actions);
         }),
-        ("Decisión: un duelo guardado con la fase anterior de Huevo se abre como decisión y acepta sus jugadas de entonces", () =>
-        {
-            var g = Fixture(CardCatalog.BlueEgg.Id); var p = g.State.Active; var rival = g.State.Players[1];
-            p.Relikia = 200; rival.Equipment = CardCatalog.Pendant.Id; p.Bonus = CardCatalog.Senshuni.Id;
-            Check(g.PlayCode(0, 0).Success);
-            // Rewrite the save as the previous version wrote it: the destruction phase and its actor, no decision.
-            var json = JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
-            state["Phase"] = (int)Phase.DestroyChoice; state["DestroyActor"] = 0; state.Remove("PendingDecision");
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom()); p = legacy.State.Active; rival = legacy.State.Players[1];
-            Check(legacy.State.PendingDecision is { Source: "blue-egg", Step: "target", AllowsCombos: true, Decider: 0 } && legacy.State.DestroyActor == null);
-            Check(new DuelMove { Kind = DuelMoveKind.Destroy, Target = 1, Value = (int)FieldZone.Equipment, Index = -1 }.Apply(legacy, 0).Success && rival.Equipment == null);
-            Check(legacy.State.PendingDecision is { Source: "blue-egg", Step: "draw" } && legacy.ResolveBlueEggDraw(0, false).Success &&
-                legacy.State.Phase == Phase.Actions && p.Relikia == 200);
-        }),
-        ("Decisión: una tirada guardada antes de mover Vida Extra a su módulo termina con la regla anterior", () =>
-        {
-            var g = Fixture(CardCatalog.ExtraLife.Id); var p = g.State.Active; p.Health = 3; p.Equipment = CardCatalog.Pendant.Id;
-            Check(g.PlayCode(0, 0).Success && g.State.Phase == Phase.DieRerollChoice && g.State.PendingDieRoll!.Purpose == DiePurpose.ExtraLife);
-            var json = JsonNode.Parse(g.SaveSnapshot())!; var die = json["PendingDie"]!.AsObject();
-            Check(die["Step"]?.GetValue<string>() == "heal"); die.Remove("Step"); die["SkillId"] = "";
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom()); var rolled = legacy.State.PendingDieRoll!.Die;
-            Check(legacy.ResolveDieReroll(0, false).Success && legacy.State.Active.Health == Math.Min(8, 3 + rolled switch { 1 => 1, 2 => 2, 6 => 4, _ => 3 }));
-        }),
-        ("Decisión: Aumento de PR guardado en su fase anterior se termina con su jugada de entonces", () =>
-        {
-            var g = Fixture(CardCatalog.PointsIncrease.Id); var p = g.State.Active; p.Dexterity = 0;
-            Check(g.PlayCode(0, 0).Success && g.State.PendingDecision is { Kind: DecisionKind.Confirm } decision && decision.Value > 0);
-            var amount = g.State.PendingDecision!.Value;
-            Check(DuelOptions.For(g, 0).Count(o => o.Move.Kind == DuelMoveKind.Choose) == 4 && DuelOptions.For(g, 0).Single(o => o.Primary).Button == $"+{amount} a mis PR");
-            var json = JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
-            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.PointsChoice;
-            state["PendingPoints"] = new JsonObject { ["Actor"] = 0, ["Die"] = 6, ["Amount"] = amount };
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom());
-            var points = DuelOptions.For(legacy, 0).Where(o => o.Move.Kind == DuelMoveKind.Points).ToArray();
-            Check(points.Length == 4);
-            var result = legacy.ResolvePointsChange(0, 0, true);
-            Check(result.Success, result.Message);
-            Check(legacy.State.Active.Relikia == p.Relikia + amount && legacy.State.Phase == Phase.Actions);
-        }),
         ("Decisión: Resetear la Mente pausa la búsqueda de Konamy, muestra la mano solo a quien decide y la devuelve intacta", () =>
         {
             var g = Fixture(CardCatalog.KonamyCode.Id); var p = g.State.Active; var rival = g.State.Players[1];
@@ -115,37 +76,6 @@ static class DecisionTests
             Check(g.State.Phase == Phase.Decision && g.State.PendingDecision is { Source: "konamy-code", Suspended: null } && DuelSnapshot.For(g, 0, 2).Players[1].Hand.All(c => c == null));
             var pendant = DuelOptions.For(g, 0).Single(o => o.Move.Kind == DuelMoveKind.Choose && o.CardId == CardCatalog.Pendant.Id);
             Check(pendant.Move.Apply(g, 0).Success && p.Hand.Contains(CardCatalog.Pendant.Id) && g.State.Phase == Phase.Actions && g.State.PendingDecision == null);
-        }),
-        ("Decisión: Resetear la Mente guardado en su fase anterior se abre como decisión y acepta sus jugadas de entonces", () =>
-        {
-            var g = Fixture(CardCatalog.MindReset.Id); var p = g.State.Active; var rival = g.State.Players[1];
-            p.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Magnet.Id]); rival.Hand.Add(CardCatalog.Senshuni.Id);
-            Check(g.PlayCode(0, 0).Success && g.State.PendingDecision is { Source: "mind-reset" });
-            var json = JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
-            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.MindResetChoice;
-            state["PendingMindReset"] = new JsonObject { ["Actor"] = 0, ["Target"] = -1, ["Memories"] = new JsonArray(), ["ResumePhase"] = (int)Phase.Actions };
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom()); rival = legacy.State.Players[1];
-            Check(legacy.State.PendingDecision is { Source: "mind-reset", Step: MindResetEffect.Target, AllowsCombos: true } && legacy.State.PendingMindReset == null);
-            Check(legacy.ChooseMindResetTarget(0, 1).Success && DuelSnapshot.For(legacy, 0, 1).Players[1].Hand.SequenceEqual(rival.Hand));
-            // With a single non-skill left in the chosen hand, the decision answers itself, as in any current duel.
-            Check(legacy.ChooseMindResetMemory(0, 0, 0).Success && legacy.ChooseMindResetMemory(0, 0, 1).Success);
-            Check(legacy.State.PendingDecision == null && legacy.State.Phase == Phase.Actions);
-            Check(rival.Hand.Count == 1 && legacy.State.Active.Memory.SequenceEqual([CardCatalog.MindReset.Id]));
-        }),
-        ("Decisión: Resetear la Mente guardado a mitad de sus elecciones conserva la mano mirada y la memoria elegida", () =>
-        {
-            var g = Fixture(CardCatalog.MindReset.Id); var p = g.State.Active; var rival = g.State.Players[1];
-            p.Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Magnet.Id]); rival.Hand.Add(CardCatalog.Senshuni.Id);
-            Check(g.PlayCode(0, 0).Success);
-            var json = JsonNode.Parse(g.SaveSnapshot())!; var state = json["State"]!.AsObject();
-            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.MindResetChoice;
-            state["PendingMindReset"] = new JsonObject { ["Actor"] = 0, ["Target"] = 1,
-                ["Memories"] = new JsonArray(new JsonObject { ["Owner"] = 0, ["Index"] = 1 }), ["ResumePhase"] = (int)Phase.Actions };
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), new ScriptedRandom()); rival = legacy.State.Players[1];
-            Check(legacy.State.PendingDecision is { Step: MindResetEffect.Memory, ShowsHandOf: 1 } decision && decision.Picks!.SequenceEqual([2]));
-            Check(DuelSnapshot.For(legacy, 0, 1).Players[1].Hand.SequenceEqual(rival.Hand) && DuelSnapshot.For(legacy, 1, 1).Players[1].Hand.SequenceEqual(rival.Hand));
-            Check(legacy.DecisionChoices(0).All(c => !(c.Owner == 0 && c.Value == 1)), "La memoria ya elegida no vuelve a ofrecerse.");
-            Check(legacy.ChooseMindResetMemory(0, 0, 0).Success && legacy.State.PendingDecision == null && legacy.State.Phase == Phase.Actions && rival.Hand.Count == 1);
         }),
         ("Decisión: las cartas con efecto registrado no necesitan indicadores en su definición", () =>
         {

@@ -16,12 +16,6 @@ internal sealed class GoldenTotemEffect : CardEffect, IFieldLeaveReplacement
 
     private const string ShowInstruction = "Elige hasta dos Tótems de Salvación de tu mano. Necesitas un equipo debajo.";
 
-    /// <summary>The choice as <c>Resolve</c> opens it; duels saved in the former Tótem de Oro phase become this decision.</summary>
-    internal static PendingDecision ShowDecision(int actor, Phase resumePhase) => new()
-    {
-        Source = CardCatalog.GoldenTotem.Id, Step = Show, Decider = actor, Kind = DecisionKind.Confirm,
-        Instruction = ShowInstruction, ResumePhase = resumePhase
-    };
 
     // After Escudo Galáctico, before Reverse Shuffle.
     public LeaveStep Step => LeaveStep.Cover;

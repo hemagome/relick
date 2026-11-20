@@ -4,7 +4,7 @@ namespace Relick.Core;
 
 public enum FutureDieState { Ready, Prepared, Used }
 
-public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, PointsChoice, DestroyChoice, ErrorResponse, RecycleChoice, DeckSearchChoice, MindResetChoice, SniperChoice, Final, DestructionResponse, MemoryRecoveryChoice, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, TotemChoice, GoldenTotemChoice, GoldenTotemResolving, TrapCraftChoice, ZahiraTarget, BlueEggDrawChoice, Decision }
+public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, ErrorResponse, RecycleChoice, SniperChoice, Final, DestructionResponse, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, GoldenTotemResolving, TrapCraftChoice, Decision }
 
 public static class PhaseExtensions
 {
@@ -298,13 +298,9 @@ public sealed class GameState
     public EngineContinuation? PendingAfterError { get; internal set; }
     [JsonInclude]
     public List<ActivationInfo> ActivationChain { get; internal set; } = new();
-    [JsonInclude]
-    public int? DestroyActor { get; internal set; }
     /// <summary>The decision a card effect is waiting for (<see cref="Phase.Decision"/>).</summary>
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingDecision? PendingDecision { get; internal set; }
-    [JsonInclude]
-    public PendingPoints? PendingPoints { get; internal set; }
     [JsonInclude]
     public PendingCode? PendingCode { get; internal set; }
     [JsonInclude]
@@ -316,8 +312,6 @@ public sealed class GameState
     [JsonInclude]
     public PendingAttack? PendingAttack { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public PendingMindReset? PendingMindReset { get; internal set; }
-    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingSniper? PendingSniper { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingDestruction? PendingDestruction { get; internal set; }
@@ -328,16 +322,9 @@ public sealed class GameState
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingReload? PendingReload { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    /// <summary>Only in duels saved before Tótem de Salvación used decisions; converted when loaded.</summary>
-    public PendingTotemDamage? PendingTotemDamage { get; internal set; }
-    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingGoldenTotem? PendingGoldenTotem { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public List<int>? PendingTrapCrafts { get; internal set; }
-    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<TrapCraft>? TrapCraftQueue { get; internal set; }
-    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public ZahiraPlacement? PendingZahiraPlacement { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ZahiraRolledThisFinal { get; internal set; }
     // Next Zahira Flair of the waiting player that still has to roll in this final stage.
@@ -373,7 +360,6 @@ public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Pha
 
 public sealed record ActivationInfo(int Actor, string CardId, int ActionsPaid, int PrPaid);
 
-public sealed record PendingPoints(int Actor, int Die, int Amount);
 
 public sealed record PendingCode(int Actor, string CardId, bool FromMemory, int MemoryIndex, Phase ResumePhase);
 

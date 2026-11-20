@@ -76,23 +76,6 @@ static class PurpleRingTests
             Check(p.Health == 1 && p.Equipment == CardCatalog.Totem.Id && p.LightEquipment?.Count == 1 &&
                 p.Memory.SequenceEqual([CardCatalog.Reverse.Id, Ring]) && g.State.Phase == Phase.Combat, "El Tótem recibe el daño ya reducido.");
         }),
-        ("Anillo: un duelo guardado con la continuación anterior del golpe lo termina desde el módulo", () =>
-        {
-            var (g, rng) = Fixture();
-            var p = g.State.Players[1];
-            p.LightEquipment = [new(Ring)];
-            p.Skills.Add(CardCatalog.Reverse.Id);
-            Attack(g, rng, 6);
-            Choose(g, 1, 0, "Recibir 2 de daño");
-            Check(g.State.Phase == Phase.DestructionResponse && g.State.PendingDestruction!.Completed is { Step: PurpleRingEffect.Destroyed },
-                "La destrucción del Anillo espera la respuesta de Reverse.");
-            // The shape the engine saved before Anillo Morado's damage moved to its module.
-            var legacy = g.State.PendingDestruction!.Completed!;
-            legacy.Kind = ContinuationKind.PurpleRingDamage; legacy.Text = ""; legacy.Step = null;
-            g = GameEngine.FromSnapshot(g.SaveSnapshot(), rng); p = g.State.Players[1];
-            Check(g.ResolveDestructionProtection(1, -1).Success && p.Health == 6 && p.LightEquipment == null && p.Memory.Single() == Ring,
-                "El Anillo se destruye y el defensor recibe la mitad.");
-        }),
         ("Anillo: también reduce daño de efectos y deja que se resuelva el robo posterior", () =>
         {
             var (g, rng) = Fixture();

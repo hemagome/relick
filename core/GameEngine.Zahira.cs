@@ -1,7 +1,5 @@
 namespace Relick.Core;
 
-/// <summary>Only in duels saved before the Zahira Flair placement used a decision; converted when loaded.</summary>
-public sealed record ZahiraPlacement(int Actor, Phase ResumePhase, bool Creating, int Slot = 0);
 
 public sealed partial class GameEngine
 {

@@ -152,14 +152,6 @@ public static class DuelOptions
                 case Phase.RecycleChoice:
                     Add(DuelMoveKind.Recycle, $"Reciclar {game.RecyclingCount} cartas de tu memoria", discards: game.RecyclingCount);
                     break;
-                case Phase.MemoryRecoveryChoice:
-                    foreach (var selection in game.RecoverableMemoryCards())
-                    {
-                        var id = s.Players[selection.Owner].Memory[selection.Index];
-                        Add(DuelMoveKind.RecoverMemory, $"Recuperar {Card(id)} · memoria de {s.Players[selection.Owner].Name} · carta {selection.Index + 1}", selection.Index, target: selection.Owner);
-                        result[^1].CardId = id;
-                    }
-                    break;
                 case Phase.AttackRerollChoice:
                 case Phase.DieRerollChoice:
                     var kind = s.Phase == Phase.AttackRerollChoice ? DuelMoveKind.AttackDie : DuelMoveKind.EffectDie;
@@ -202,13 +194,6 @@ public static class DuelOptions
                 case Phase.ErrorResponse:
                     Add(DuelMoveKind.PassError, "No responder con Error de Carga");
                     break;
-                case Phase.PointsChoice:
-                    for (var owner = 0; owner < 2; owner++)
-                    {
-                        Add(DuelMoveKind.Points, "Aumentar PR de " + s.Players[owner].Name, target: owner, flag: true);
-                        Add(DuelMoveKind.Points, "Disminuir PR de " + s.Players[owner].Name, target: owner);
-                    }
-                    break;
                 case Phase.Decision:
                     var choices = game.DecisionChoices(actor);
                     for (var i = 0; i < choices.Count; i++)
@@ -218,11 +203,6 @@ public static class DuelOptions
                         result[^1].Field = choices[i].Field is { } field ? field with { CardId = CardCatalog.TextId(field.CardId) } : null;
                         result[^1].Button = choices[i].Button; result[^1].Primary = choices[i].Primary; result[^1].Owner = choices[i].Owner;
                     }
-                    break;
-                case Phase.BlueEggDrawChoice:
-                    if (p.Relikia >= GameEngine.BlueEggDrawCost)
-                        Add(DuelMoveKind.BlueEggDraw, $"Robar 1 carta · {GameEngine.BlueEggDrawCost} PR", flag: true);
-                    Add(DuelMoveKind.BlueEggDraw, "Continuar sin robar");
                     break;
                 case Phase.RelikiaChoice:
                     if (s.PendingRelikia == RelikiaChoice.PlaceHandCard)

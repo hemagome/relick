@@ -29,11 +29,6 @@ static class SimulationDriver
         if (s.Phase == Phase.DestructionResponse) return game.ResolveDestructionProtection(actor, game.DestructionProtectors(actor).FirstOrDefault(-1));
         if (s.Phase == Phase.SniperChoice) return game.ResolveSniper(actor, true);
         if (s.Phase == Phase.RecycleChoice) return game.ResolveRecycling(actor, Enumerable.Range(0, game.RecyclingCount));
-        if (s.Phase == Phase.MemoryRecoveryChoice)
-        {
-            var card = game.RecoverableMemoryCards().First();
-            return game.ResolveMemoryRecovery(actor, card.Owner, card.Index);
-        }
         if (s.Phase == Phase.ErrorResponse)
         {
             var error = p.Hand.FindIndex(id => CardCatalog.Get(id).CancelActivation);
@@ -57,7 +52,6 @@ static class SimulationDriver
             if (die < 4 && game.CanUsePendant(actor, PendantEffect.Reroll)) return game.UsePendant(actor, PendantEffect.Reroll);
             return attack ? game.ResolveAttackReroll(actor, false) : game.ResolveDieReroll(actor, false);
         }
-        if (s.Phase == Phase.PointsChoice) return game.ResolvePointsChange(actor, actor, true);
         if (s.Phase == Phase.CodeResponse) return game.ResolveCodeResponse(actor, true);
         if (s.Phase == Phase.DefenseChoice)
         {

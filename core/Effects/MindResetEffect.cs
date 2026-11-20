@@ -95,21 +95,4 @@ internal sealed class MindResetEffect : CardEffect
         : picks.Count < Memories ? (Memory, DecisionKind.ChooseCard, $"Elige una carta de cualquier memoria ({picks.Count + 1}/{Memories})")
         : (Hand, DecisionKind.ChooseCard, $"Elige una no-habilidad de la mano de {state.Players[target].Name}");
 
-    /// <summary>
-    /// The decision a duel saved in the former Resetear la Mente phase was waiting on: the target, or the next pick with
-    /// the memories already chosen.
-    /// </summary>
-    internal static PendingDecision LegacyDecision(GameState state, PendingMindReset pending)
-    {
-        var decision = new PendingDecision
-        {
-            Source = CardCatalog.MindReset.Id, Step = Target, Decider = pending.Actor, Kind = DecisionKind.Confirm,
-            Instruction = TargetInstruction, AllowsCombos = true, ResumePhase = pending.ResumePhase
-        };
-        if (pending.Target < 0) return decision;
-        var picks = pending.Memories.Select(m => m.Index * 2 + m.Owner).ToList();
-        (decision.Step, decision.Kind, decision.Instruction) = Next(state, pending.Target, picks);
-        decision.Picks = picks; decision.ShowsHandOf = pending.Target;
-        return decision;
-    }
 }

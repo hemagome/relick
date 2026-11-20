@@ -28,12 +28,10 @@ public partial class OnlineArena
         else if (m.Kind == DuelMoveKind.UsePurpleRing) SelectField(s.MySeat, FieldZone.LightEquipment, m.Index);
         else if (m.Kind == DuelMoveKind.Magnet) SelectField(1 - s.MySeat,
             m.Flag ? m.Value == (int)FieldZone.Area ? FieldZone.Area : FieldZone.Bonus : FieldZone.Hand, m.Index);
-        else if (m.Kind == DuelMoveKind.Points) { _pointsTarget = m.Target; BuildMoves(); }
         else if (m.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction && m.Index >= 0) SelectSkill(m.Index);
         if (o.RequiredDiscards > 0)
         {
-            var indices = m.Kind == DuelMoveKind.GoldenTotem ? s.Players[s.MySeat].Hand.Select((id, i) => (id, i)).Where(c => c.id == CardCatalog.Totem.Id).Select(c => c.i)
-                : Enumerable.Range(0, SelectableCards.Count);
+            var indices = Enumerable.Range(0, SelectableCards.Count);
             foreach (var i in indices.Take(o.RequiredDiscards)) SelectCard(i);
         }
         else if (IsHandAction(m.Kind)) { SelectCard(m.Index); if (m.Kind == DuelMoveKind.Attack) SelectSkill(m.Value); }

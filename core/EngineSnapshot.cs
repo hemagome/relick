@@ -65,11 +65,6 @@ public sealed partial class GameEngine
     {
         var saved = JsonSerializer.Deserialize(json, EngineJson.Default.EngineSnapshot) ?? throw new InvalidOperationException("Estado de partida vacío.");
         if (saved.FormatVersion != 2 || saved.State.Players.Length != 2) throw new InvalidOperationException("Formato de estado no compatible.");
-        if (saved.State.PendingTrapCrafts is { } oldCrafts)
-        {
-            saved.State.TrapCraftQueue ??= oldCrafts.Select(actor => new TrapCraft(actor, CardCatalog.SuperMagnet.Id)).ToList();
-            saved.State.PendingTrapCrafts = null;
-        }
         // The saved Relikario is only an Id plus a copy of its numbers: take the catalog's current definition, which
         // also carries what is never saved (evolution, display name). Earlier saves stored Yuno Lv 2 with ten maximum
         // lives; the catalog restores its corrected cap.
@@ -91,7 +86,6 @@ public sealed partial class GameEngine
             batch.Resolution.Links.AddRange(batch.Links.Select(i => Frame(i)!));
             game._ramResolutions.Add(batch.Resolution);
         }
-        game.ConvertLegacyPhases();
         return game;
     }
 }

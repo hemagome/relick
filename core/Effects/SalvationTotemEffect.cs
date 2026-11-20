@@ -13,13 +13,6 @@ internal sealed class SalvationTotemEffect : CardRules, IDamageTrigger
 
     private static string Instruction(int amount) => $"Vas a recibir {amount} de daño. Decide si destruyes un Tótem de Salvación para cancelarlo.";
 
-    /// <summary>The choice as the damage chain opens it; duels saved in the former Tótem phase become this decision.</summary>
-    internal static PendingDecision LethalDecision(PendingTotemDamage pending) => new()
-    {
-        Source = CardCatalog.Totem.Id, Step = Lethal, Decider = pending.Target, Kind = DecisionKind.Confirm,
-        Instruction = Instruction(pending.Amount), ResumePhase = pending.ResumePhase,
-        Continuation = new EngineContinuation { Actor = pending.Target, Count = pending.Amount, Value = pending.AttackDie, Next = pending.Completed }
-    };
 
     public DamageStep Step => DamageStep.Lethal;
 

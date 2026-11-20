@@ -25,22 +25,6 @@ static class ZahiraFlairTests
             Check(target.Move.Apply(game, 0).Success && game.EffectsSuppressed(1, FieldZone.Relikario));
             Check(game.State.Active.ActionsLeft == 0 && game.State.Active.Relikia == 0 && !game.State.Active.ZahiraAvailable);
         }),
-        ("Zahira Flair: un duelo guardado en la fase anterior de colocación se abre como decisión y acepta su jugada", () =>
-        {
-            var (game, random) = Fixture();
-            game.State.Active.Hand.AddRange([CardCatalog.Senshuni.Id, CardCatalog.Attack.Id]);
-            Check(game.Exchange(0, 0).Success && game.Exchange(0, 0).Success);
-            Offer(game);
-            Check(game.ResolveTrapCraft(0, true).Success && ZahiraPlacement(game));
-            // The shape the engine saved before the placement used a decision.
-            var json = System.Text.Json.Nodes.JsonNode.Parse(game.SaveSnapshot())!; var state = json["State"]!.AsObject();
-            var resume = state["PendingDecision"]!["ResumePhase"]!.GetValue<int>();
-            state["PendingZahiraPlacement"] = new System.Text.Json.Nodes.JsonObject { ["Actor"] = 0, ["ResumePhase"] = resume, ["Creating"] = true, ["Slot"] = 0 };
-            state.Remove("PendingDecision"); state["Phase"] = (int)Phase.ZahiraTarget;
-            var legacy = GameEngine.FromSnapshot(json.ToJsonString(), random);
-            Check(ZahiraPlacement(legacy) && legacy.State.PendingZahiraPlacement == null && legacy.State.PendingDecision!.ResumePhase == (Phase)resume);
-            Check(legacy.ResolveZahiraTarget(0, 1, FieldZone.Relikario, -1).Success && legacy.EffectsSuppressed(1, FieldZone.Relikario));
-        }),
         ("Zahira Flair: los tres rangos del dado se resuelven en la etapa final rival", () =>
         {
             foreach (var die in Enumerable.Range(1, 6))
