@@ -13,13 +13,4 @@ public sealed partial class GameEngine
 
     private IEnumerable<FieldTarget> ActiveRobotizeCopies(int actor) => ActiveAttachedCopies(actor, CardCatalog.Robotize.Id);
 
-    private int ReduceDamageWithRobotize(int target, int amount, int attackDie)
-    {
-        var reduced = Math.Max(0, amount - ActiveRobotizeCopies(target).Count());
-        if (reduced == amount) return amount;
-        NotifyGuard(target, attackDie > 0 ? 1 - target : null, CardCatalog.Robotize.Id, amount, reduced, blocked: false);
-        State.LastCombat += $" · Robotizar: {reduced} de daño";
-        Log($"{State.Players[target].Name} reduce el daño de {amount} a {reduced} con Robotizar.");
-        return reduced;
-    }
 }

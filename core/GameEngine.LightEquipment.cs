@@ -65,7 +65,7 @@ public sealed partial class GameEngine
         if (amount == 0) { Continue(completed); return; }
         if (!AvailablePurpleRings(target).Any(c => used?.Contains(c.Index) != true))
         {
-            OfferGalacticShieldDamage(target, amount, attackDie, completed);
+            ResumeDamage(target, amount, attackDie, completed, DamageStep.Shield);
             return;
         }
         AskDecision(new PendingDecision
@@ -99,7 +99,7 @@ public sealed partial class GameEngine
         var hit = decision.Continuation!;
         if (choice.Field == null)
         {
-            OfferGalacticShieldDamage(hit.Actor, hit.Count, hit.Value, hit.Next);
+            ResumeDamage(hit.Actor, hit.Count, hit.Value, hit.Next, DamageStep.Shield);
             return;
         }
         hit.Target = choice.Field;

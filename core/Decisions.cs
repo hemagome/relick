@@ -143,6 +143,45 @@ internal interface IFieldLeaveReplacement
     bool TryReplace(GameEngine.EffectContext ctx, FieldTarget target, FieldLeave leave, EngineContinuation? then);
 }
 
+/// <summary>
+/// The steps of the damage chain, in the order the engine applies them (docs/CARD_TRIGGERS.md). Each step is either
+/// the engine's own code or the cards registered for it; the engine resumes the chain from a step after a pause.
+/// </summary>
+internal enum DamageStep
+{
+    /// <summary>Estrella del Fontanero of the attacker doubles the damage.</summary>
+    Amplify,
+    /// <summary>Estrella del Fontanero of the defender prevents it.</summary>
+    Prevent,
+    /// <summary>The equipment's own reduction or prevention.</summary>
+    Guard,
+    /// <summary>Turbo Sword's defense die.</summary>
+    Respond,
+    /// <summary>Cards that subtract from the damage without asking (Robotizar).</summary>
+    Reduce,
+    /// <summary>Anillo Morado: halve the damage or gain PR.</summary>
+    Absorb,
+    /// <summary>Escudo Galáctico: take a face-down card and subtract 2.</summary>
+    Shield,
+    /// <summary>Equipment counters, Tótem de Salvación and the Relikario's health.</summary>
+    Counters
+}
+
+/// <summary>The damage on its way through the chain.</summary>
+internal sealed record DamageEvent(int Target, int Amount, int AttackDie)
+{
+    /// <summary>The attacking seat when the damage comes from an attack die, as the guard feedback names it.</summary>
+    public int? Attacker => AttackDie > 0 ? 1 - Target : null;
+}
+
+/// <summary>A card that changes damage at its step of the chain without pausing it.</summary>
+internal interface IDamageTrigger
+{
+    DamageStep Step { get; }
+    /// <summary>The damage after this card; the context's player is the one receiving it.</summary>
+    int Modify(GameEngine.EffectContext ctx, DamageEvent damage);
+}
+
 internal static class CardEffects
 {
     private static readonly IReadOnlyDictionary<string, CardRules> Registered =
@@ -159,6 +198,12 @@ internal static class CardEffects
     private static readonly IReadOnlyDictionary<TurnMoment, CardRules[]> TurnTriggerTable = Registered.Values
         .OfType<ITurnTrigger>().GroupBy(t => t.Moment)
         .ToDictionary(g => g.Key, g => g.OrderBy(t => t.Order).Cast<CardRules>().ToArray());
+
+    private static readonly ILookup<DamageStep, CardRules> DamageTriggerTable = Registered.Values
+        .OfType<IDamageTrigger>().ToLookup(t => t.Step, t => (CardRules)t);
+
+    /// <summary>The cards that change damage at <paramref name="step"/>.</summary>
+    public static IEnumerable<CardRules> DamageTriggers(DamageStep step) => DamageTriggerTable[step];
 
     /// <summary>The cards that may replace a card leaving the field, in the order the rules fix.</summary>
     public static IReadOnlyList<CardRules> LeaveReplacements { get; } = Registered.Values
@@ -249,6 +294,9 @@ public sealed partial class GameEngine
         public int ActiveAttachedCopies() => _engine.ActiveAttachedCopies(Actor, Card.Id).Count();
         /// <summary>This player's equipment, when its effects are active.</summary>
         public CardDefinition? ActiveEquipment() => _engine.ActiveEquipment(Actor);
+        /// <summary>Tells the presentation that this card changed damage to this player from <paramref name="original"/> to <paramref name="final"/>.</summary>
+        public void NotifyGuard(int? attacker, int original, int final, bool blocked) =>
+            _engine.NotifyGuard(Actor, attacker, Card.Id, original, final, blocked);
         /// <summary>The player whose Relikario this card sits on top of, directly or under a Zahira Flair; null elsewhere.</summary>
         public int? RelikarioOwnerBelow(FieldTarget target) => _engine.AboveRelikarioOwner(target);
         /// <summary>Destroys through the field-leave replacements and Reverse Shuffle, without Súper Imán's substitution.</summary>

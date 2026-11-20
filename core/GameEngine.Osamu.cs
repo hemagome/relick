@@ -202,6 +202,6 @@ public sealed partial class GameEngine
             DealDamage(1 - effect.Actor, reflected, completed: effect.Next, source: effect.Actor);
         }
         else if (!TryTurboSwordDefense(effect.Actor, effect.IncomingDamage, effect.AttackDie, effect.Next, effect.Slot))
-            ApplyIncomingDamage(effect.Actor, effect.IncomingDamage, effect.AttackDie, effect.Next);
+            ResumeDamage(effect.Actor, effect.IncomingDamage, effect.AttackDie, effect.Next, DamageStep.Reduce);
     }
 }

@@ -2,10 +2,10 @@ namespace Relick.Core;
 
 /// <summary>
 /// Robotizar: placed on top of the Relikario. At the start of the action stage, each active copy shows the top card of
-/// the deck; a code may go to the hand or the exchange, anything else goes to the exchange. Its damage reduction is
-/// still in the engine's damage chain.
+/// the deck; a code may go to the hand or the exchange, anything else goes to the exchange. Each active copy also
+/// subtracts 1 from the damage its owner receives.
 /// </summary>
-internal sealed class RobotizeEffect : CardEffect, ITurnTrigger
+internal sealed class RobotizeEffect : CardEffect, ITurnTrigger, IDamageTrigger
 {
     private const string Top = "top";
     /// <summary>The step that handles the next copy; duels saved with the old continuation kind resume here too.</summary>
@@ -16,6 +16,18 @@ internal sealed class RobotizeEffect : CardEffect, ITurnTrigger
     public TurnMoment Moment => TurnMoment.ActionStart;
     // After Perro Fantasma.
     public int Order => 1;
+
+    DamageStep IDamageTrigger.Step => DamageStep.Reduce;
+
+    public int Modify(GameEngine.EffectContext ctx, DamageEvent damage)
+    {
+        var reduced = Math.Max(0, damage.Amount - ctx.ActiveAttachedCopies());
+        if (reduced == damage.Amount) return damage.Amount;
+        ctx.NotifyGuard(damage.Attacker, damage.Amount, reduced, blocked: false);
+        ctx.State.LastCombat += $" · Robotizar: {reduced} de daño";
+        ctx.Log($"{ctx.Player.Name} reduce el daño de {damage.Amount} a {reduced} con Robotizar.");
+        return reduced;
+    }
 
     /// <summary>Counts the active copies once, at the start; a copy destroyed meanwhile still shows its card.</summary>
     public bool Fire(GameEngine.EffectContext ctx)

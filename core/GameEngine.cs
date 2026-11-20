@@ -464,31 +464,58 @@ public sealed partial class GameEngine
         BeginTurn();
     }
 
-    private void DealDamage(int target, int amount, int attackDie = 0, EngineContinuation? completed = null, int? source = null)
+    private void DealDamage(int target, int amount, int attackDie = 0, EngineContinuation? completed = null, int? source = null) =>
+        ResumeDamage(target, amount, attackDie, completed, DamageStep.Amplify, source);
+
+    /// <summary>
+    /// Runs the damage chain from <paramref name="from"/>. A step that pauses (a die, a decision, a destruction) takes
+    /// over and resumes the chain later from the next step; one that leaves no damage ends it with <paramref name="completed"/>.
+    /// <paramref name="source"/> only matters from the first step: Estrella del Fontanero of the attacker and the guard feedback.
+    /// </summary>
+    private void ResumeDamage(int target, int amount, int attackDie, EngineContinuation? completed, DamageStep from, int? source = null)
     {
-        if (amount <= 0 || LimitNonlethalDamage(target, amount, completed) == 0) { Continue(completed); return; }
         var p = State.Players[target];
-        if (source is int owner && State.Players[owner].StarEffects > 0)
-        {
-            var original = amount;
-            for (var i = 0; i < State.Players[owner].StarEffects; i++) amount *= 2;
-            Log($"Estrella del Fontanero aumenta el daño de {State.Players[owner].Name} de {original} a {amount}.");
-            State.LastCombat += $" · Estrella del Fontanero: {amount} de daño";
-        }
         int? attacker = attackDie > 0 ? source : null;
-        if (PreventDamageWithStar(p, amount, completed, attacker)) return;
-        var protection = ActiveEquipment(target);
-        if (protection != null && (protection.PreventDamage || protection.DamageReduction > 0))
+        for (var step = from; step <= DamageStep.Counters; step++)
         {
-            var reduced = protection.PreventDamage ? 0 : Math.Max(0, amount - protection.DamageReduction);
-            NotifyGuard(target, attacker, protection.Id, amount, reduced, blocked: protection.PreventDamage);
-            Log($"{p.Name} reduce el daño de {amount} a {reduced} con {protection.Name}.");
-            State.LastCombat += $" · {protection.Name}: {reduced} daño recibido";
-            amount = reduced;
-            if (amount == 0) { Continue(completed); return; }
+            switch (step)
+            {
+                case DamageStep.Amplify:
+                    if (amount <= 0 || LimitNonlethalDamage(target, amount, completed) == 0) { Continue(completed); return; }
+                    if (source is int owner && State.Players[owner].StarEffects > 0)
+                    {
+                        var original = amount;
+                        for (var i = 0; i < State.Players[owner].StarEffects; i++) amount *= 2;
+                        Log($"Estrella del Fontanero aumenta el daño de {State.Players[owner].Name} de {original} a {amount}.");
+                        State.LastCombat += $" · Estrella del Fontanero: {amount} de daño";
+                    }
+                    break;
+                case DamageStep.Prevent:
+                    if (PreventDamageWithStar(p, amount, completed, attacker)) return;
+                    break;
+                case DamageStep.Guard:
+                    var protection = ActiveEquipment(target);
+                    if (protection != null && (protection.PreventDamage || protection.DamageReduction > 0))
+                    {
+                        var reduced = protection.PreventDamage ? 0 : Math.Max(0, amount - protection.DamageReduction);
+                        NotifyGuard(target, attacker, protection.Id, amount, reduced, blocked: protection.PreventDamage);
+                        Log($"{p.Name} reduce el daño de {amount} a {reduced} con {protection.Name}.");
+                        State.LastCombat += $" · {protection.Name}: {reduced} daño recibido";
+                        amount = reduced;
+                        if (amount == 0) { Continue(completed); return; }
+                    }
+                    break;
+                case DamageStep.Respond:
+                    if (TryTurboSwordDefense(target, amount, attackDie, completed)) return;
+                    break;
+                // The next three hand over for good: each one loops over its own copies and then resumes the chain.
+                case DamageStep.Absorb: OfferPurpleRingDamage(target, amount, attackDie, completed); return;
+                case DamageStep.Shield: OfferGalacticShieldDamage(target, amount, attackDie, completed); return;
+                case DamageStep.Counters: ApplyDamageAfterShields(target, amount, attackDie, completed); return;
+            }
+            foreach (var card in CardEffects.DamageTriggers(step))
+                amount = ((IDamageTrigger)card).Modify(EffectFor(target, card.CardId), new DamageEvent(target, amount, attackDie));
         }
-        if (!TryTurboSwordDefense(target, amount, attackDie, completed))
-            ApplyIncomingDamage(target, amount, attackDie, completed);
     }
 
     private bool PreventDamageWithStar(PlayerState player, int amount, EngineContinuation? completed, int? attacker = null)
@@ -500,9 +527,6 @@ public sealed partial class GameEngine
         Continue(completed);
         return true;
     }
-
-    private void ApplyIncomingDamage(int target, int amount, int attackDie, EngineContinuation? completed) =>
-        OfferPurpleRingDamage(target, ReduceDamageWithRobotize(target, amount, attackDie), attackDie, completed);
 
     private void ApplyDamageAfterShields(int target, int amount, int attackDie, EngineContinuation? completed)
     {

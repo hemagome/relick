@@ -62,6 +62,22 @@ static class GalacticShieldTests
                 defender.GalacticShields[0].Cards.Count == 0 && visuals.All(cue => cue.Kind != DuelVisualKind.Hit),
                 "La carta marcada conserva su marca y evitar todo el daño no produce un golpe.");
         }),
+        ("Escudo: en la cadena de daño, Robotizar resta antes de que el escudo ofrezca su carta", () =>
+        {
+            var (game, random) = Fixture();
+            var defender = game.State.Active;
+            defender.GalacticShields = [new() { Cards = [new(Charges[0], false)] }];
+            defender.AttachedCards.Add(CardCatalog.Robotize.Id);
+            game.State.CurrentPlayer = 1;
+            game.State.Phase = Phase.Combat;
+            game.State.Active.Bonus = CardCatalog.Jessica.Id;
+            random.EnqueueDie(5);
+            Check(game.UseFieldCode(1, FieldZone.Bonus).Success && defender.Health == 8 && defender.Hand.Single() == Charges[0],
+                "Robotizar y el escudo anulan juntos los 2 de daño.");
+            var robot = game.State.Log.FindIndex(line => line.Contains("de 2 a 1 con Robotizar"));
+            var shield = game.State.Log.FindIndex(line => line.Contains("de 1 a 0 con Escudo Galáctico"));
+            Check(robot >= 0 && shield > robot, "Robotizar reduce primero y el escudo recibe el daño ya reducido.");
+        }),
         ("Escudo: otra copia protege a la elegida y las cartas restantes salen con su escudo", () =>
         {
             var (game, random) = Fixture();

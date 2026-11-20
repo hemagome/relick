@@ -80,7 +80,7 @@ public sealed partial class GameEngine
         var shield = ChargedGalacticShields(actor).FirstOrDefault(card => card.Index >= start);
         if (shield == null)
         {
-            ApplyDamageAfterShields(actor, amount, attackDie, completed);
+            ResumeDamage(actor, amount, attackDie, completed, DamageStep.Counters);
             return;
         }
         AskDecision(new PendingDecision
