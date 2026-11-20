@@ -135,23 +135,10 @@ public static partial class Module
             return current;
         }
         if (ctx.Db.Opening.RoomCode.Find(roomCode) is not Opening opening) throw new Exception("Ambos jugadores deben confirmar primero.");
-        GameEngine game; ulong revision = 0;
-        if (ctx.Db.Duel.RoomCode.Find(roomCode) is Duel legacy)
-        {
-            // The sole history replay path: migrate a version-1 room once, atomically.
-            var steps = ctx.Db.DuelStep.RoomCode.Filter(roomCode).OrderBy(s => s.Revision).ToArray();
-            game = RestoreDuel(legacy, steps).Game; revision = legacy.Revision;
-            foreach (var step in steps)
-            {
-                ctx.Db.DuelReceipt.Insert(new DuelReceipt { Key = step.Receipt, RoomCode = roomCode, Revision = step.Revision, Option = step.Option, SelectedCards = step.SelectedCards });
-                if (step.Revision + 128 > revision) ctx.Db.DuelAudit.Insert(new DuelAudit { Key = roomCode + ":" + step.Revision, RoomCode = roomCode, Revision = step.Revision, EntryJson = step.EntryJson });
-                ctx.Db.DuelStep.Receipt.Delete(step.Receipt);
-            }
-            ctx.Db.Duel.RoomCode.Delete(roomCode);
-        }
-        else game = GameEngine.FromOpening(InitialDuel(opening, ctx.Db.Member.RoomCode.Filter(roomCode), ctx.Db.Card.RoomCode.Filter(roomCode), player => ctx.Db.Loadout.Player.Find(player)?.Traps,
+        var game = GameEngine.FromOpening(InitialDuel(opening, ctx.Db.Member.RoomCode.Filter(roomCode), ctx.Db.Card.RoomCode.Filter(roomCode), player => ctx.Db.Loadout.Player.Find(player)?.Traps,
             player => ctx.Db.LoadoutStyle.Player.Find(player) is LoadoutStyle style ? (style.Sleeve, style.Dice) : null,
             player => ctx.Db.LoadoutRelikario.Player.Find(player)?.Relikario), new DuelRandom());
+        const ulong revision = 0;
         current = new CurrentDuel { RoomCode = roomCode, Revision = revision, RulesVersion = 1, SnapshotJson = game.SaveSnapshot(false), Finished = game.State.IsOver };
         ctx.Db.CurrentDuel.Insert(current); CacheDuel(ctx, roomCode, game, revision);
         return current;

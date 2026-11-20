@@ -15,7 +15,6 @@ static class ScalabilityChecks
             if (mode == "--load") await Load(server, database, args.ElementAtOrDefault(3) ?? "artifacts/scalability-load.json");
             else if (mode == "--state-benchmark") StateBenchmark(args.ElementAtOrDefault(3) ?? "artifacts/scalability-state.json");
             else if (mode == "--expiry-test") await Expiry(server, database);
-            else if (mode == "--migration-test") await Migration(server, database);
             else if (mode == "--rate-test") await Rate(server, database);
             else if (mode == "--restart-prepare") await Restart(server, database, args.ElementAtOrDefault(3) ?? "/tmp/relick-restart-check.json", false);
             else if (mode == "--restart-verify") await Restart(server, database, args.ElementAtOrDefault(3) ?? "/tmp/relick-restart-check.json", true);
@@ -70,7 +69,6 @@ static class ScalabilityChecks
         public List<string> Errors = [];
         public T.RoomInfo? Room => Connection.Db.MyRoom.Iter().SingleOrDefault();
         public T.MoveResult? Result => Connection.Db.MyMoveResult.Iter().SingleOrDefault();
-        public T.FixtureStats? Stats => Connection.Db.MyFixtureStats.Iter().SingleOrDefault();
         public DuelSnapshot? Duel => Connection.Db.MyDuel.Iter().SingleOrDefault() is { } row ? JsonSerializer.Deserialize(row.Json, DuelJson.Default.DuelSnapshot) : null;
     }
     static void Check(bool condition, string message)
@@ -106,36 +104,6 @@ static class ScalabilityChecks
         Check(a.Room != null && b.Room != null, "La actividad renueva el vencimiento sin que lo borre el temporizador anterior");
         await h.Wait(() => a.Room == null && b.Room == null, 8);
         Check(!a.Connection.Db.MyHand.Iter().Any() && !b.Connection.Db.MyHand.Iter().Any(), "El planificador limpia sala, membresías y cartas al vencer");
-    }
-    static async Task Migration(string server, string database)
-    {
-        using var h = new Harness(); var a = h.Client(server, database, true); var b = h.Client(server, database, true);
-        var code = await ReadyPair(h, a, b);
-        var actor = a.Duel!.CurrentPlayer == 0 ? a : b;
-        var learn = actor.Duel!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Learn);
-        var nonce = Guid.NewGuid().ToString("N");
-        a.Connection.Reducers.SeedLegacyFixture(nonce, false);
-        await h.Wait(() => a.Stats?.LegacySteps == 1 && a.Duel == null);
-        Check(a.Stats!.LeasePresent, "Preparar el fixture conserva el temporizador normal de la sala");
-        a.Connection.Reducers.EnsureDuel();
-        await h.Wait(() => a.Duel?.Revision == 1 && b.Duel?.Revision == 1 && a.Stats?.LegacySteps == 0);
-        Check(a.Stats!.Receipts == 1 && a.Stats.SnapshotBytes > 0 && actor.Duel!.Players[actor.Duel.MySeat].Skills.Length == 1,
-            "La migración conserva la jugada previa, crea el estado actual y retira el historial legado");
-        var size = a.Stats.SnapshotBytes;
-        a.Connection.Reducers.CompactFixture(); await h.Wait(() => a.Stats?.Revision == 201 && b.Duel?.Revision == 201);
-        Check(a.Stats!.Audit == 128 && a.Stats.Receipts == 201 && a.Stats.SnapshotBytes == size,
-            "La auditoría queda acotada a 128 entradas y el estado no crece con la historia");
-        actor.Connection.Reducers.PlayDuelV2(code, 0, nonce, learn, []);
-        await h.Wait(() => actor.Result?.CommandId == nonce);
-        Check(actor.Result!.Accepted && actor.Duel!.Revision == 201, "Compactar conserva el comprobante y repetir una jugada antigua no la ejecuta otra vez");
-        a.Connection.Reducers.ClearFixture(); await h.Wait(() => a.Room == null && b.Room == null);
-        await ReadyPair(h, a, b);
-        a.Connection.Reducers.SeedLegacyFixture(Guid.NewGuid().ToString("N"), true);
-        await h.Wait(() => a.Stats?.LegacySteps == 1 && a.Duel == null);
-        var errors = a.Errors.Count; a.Connection.Reducers.EnsureDuel(); await h.Wait(() => a.Errors.Count > errors);
-        Check(a.Stats!.LegacySteps == 1 && a.Stats.SnapshotBytes == 0 && a.Stats.Receipts == 0,
-            "Una versión de reglas desconocida se rechaza sin sobrescribir su partida");
-        a.Connection.Reducers.ClearFixture(); await h.Wait(() => a.Room == null && b.Room == null);
     }
     static async Task Rate(string server, string database)
     {

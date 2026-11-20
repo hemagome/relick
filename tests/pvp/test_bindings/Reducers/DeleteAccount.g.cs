@@ -13,17 +13,17 @@ namespace Relick.TestNetwork.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CompactFixtureHandler(ReducerEventContext ctx);
-        public event CompactFixtureHandler? OnCompactFixture;
+        public delegate void DeleteAccountHandler(ReducerEventContext ctx);
+        public event DeleteAccountHandler? OnDeleteAccount;
 
-        public void CompactFixture()
+        public void DeleteAccount()
         {
-            conn.InternalCallReducer(new Reducer.CompactFixture());
+            conn.InternalCallReducer(new Reducer.DeleteAccount());
         }
 
-        public bool InvokeCompactFixture(ReducerEventContext ctx, Reducer.CompactFixture args)
+        public bool InvokeDeleteAccount(ReducerEventContext ctx, Reducer.DeleteAccount args)
         {
-            if (OnCompactFixture == null)
+            if (OnDeleteAccount == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -36,7 +36,7 @@ namespace Relick.TestNetwork.Types
                 }
                 return false;
             }
-            OnCompactFixture(
+            OnDeleteAccount(
                 ctx
             );
             return true;
@@ -47,9 +47,9 @@ namespace Relick.TestNetwork.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class CompactFixture : Reducer, IReducerArgs
+        public sealed partial class DeleteAccount : Reducer, IReducerArgs
         {
-            string IReducerArgs.ReducerName => "compact_fixture";
+            string IReducerArgs.ReducerName => "delete_account";
         }
     }
 }

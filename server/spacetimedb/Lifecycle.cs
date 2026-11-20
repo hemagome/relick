@@ -53,7 +53,7 @@ public static partial class Module
 #if RELICK_SHORT_LEASES
         var delay = 2_000_000L; // Dedicated local lifecycle test build, never the deployed module.
 #else
-        var delay = current?.Finished == true ? 86_400_000_000L : (current != null || ctx.Db.Duel.RoomCode.Find(roomCode) != null || ctx.Db.Opening.RoomCode.Find(roomCode) != null) ? 7_200_000_000L : 600_000_000L;
+        var delay = current?.Finished == true ? 86_400_000_000L : (current != null || ctx.Db.Opening.RoomCode.Find(roomCode) != null) ? 7_200_000_000L : 600_000_000L;
 #endif
         var old = ctx.Db.RoomExpiry.RoomCode.Find(roomCode);
         var deadline = ctx.Timestamp.MicrosecondsSinceUnixEpoch + delay;
@@ -91,11 +91,10 @@ public static partial class Module
             ctx.Db.DuelChoices.Player.Delete(member.Player); ctx.Db.MoveResult.Player.Delete(member.Player);
             ctx.Db.PlayBudget.Player.Delete(member.Player); ctx.Db.Member.Player.Delete(member.Player);
         }
-        foreach (var step in ctx.Db.DuelStep.RoomCode.Filter(code).ToList()) ctx.Db.DuelStep.Receipt.Delete(step.Receipt);
         foreach (var receipt in ctx.Db.DuelReceipt.RoomCode.Filter(code).ToList()) ctx.Db.DuelReceipt.Key.Delete(receipt.Key);
         foreach (var audit in ctx.Db.DuelAudit.RoomCode.Filter(code).ToList()) ctx.Db.DuelAudit.Key.Delete(audit.Key);
         ctx.Db.DuelBoard.RoomCode.Delete(code); ctx.Db.CurrentDuel.RoomCode.Delete(code);
-        ctx.Db.Duel.RoomCode.Delete(code); ctx.Db.Opening.RoomCode.Delete(code); ctx.Db.Room.Code.Delete(code);
+        ctx.Db.Opening.RoomCode.Delete(code); ctx.Db.Room.Code.Delete(code);
         if (ctx.Db.RoomExpiry.RoomCode.Find(code) is RoomExpiry expiry) ctx.Db.RoomExpiry.ScheduledId.Delete(expiry.ScheduledId);
     }
 }

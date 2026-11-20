@@ -130,8 +130,6 @@ public static partial class Module
         if (ctx.Db.Member.Player.Find(ctx.Sender) is not Member me) return;
         if (ctx.Db.CurrentDuel.RoomCode.Find(me.RoomCode) is CurrentDuel live && live.Revision > 0 && !live.Finished)
             throw new Exception("Abandona el duelo antes de cerrar la sala.");
-        if (ctx.Db.Duel.RoomCode.Find(me.RoomCode) is Duel legacy && !RestoreDuel(legacy, ctx.Db.DuelStep.RoomCode.Filter(me.RoomCode)).Game.State.IsOver)
-            throw new Exception("Abandona el duelo antes de cerrar la sala.");
         DeleteRoom(ctx, me.RoomCode);
     }
 

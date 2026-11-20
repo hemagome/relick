@@ -176,7 +176,7 @@ Comprueba identidades independientes, escritura de nombres/código, creación y 
 
 ## Persistencia, privacidad y escalabilidad
 
-El servidor guarda el estado actual del duelo y sus decisiones pendientes. Las vistas leen paquetes ya preparados de tablero, mano privada y opciones; no reconstruyen la partida a partir del historial. Los registros anteriores compatibles se convierten una sola vez al reconectar. Las tablas de estado, auditoría y comprobantes permanecen privadas.
+El servidor guarda el estado actual del duelo y sus decisiones pendientes. Las vistas leen paquetes ya preparados de tablero, mano privada y opciones; no reconstruyen la partida a partir del historial. Las tablas de estado, auditoría y comprobantes permanecen privadas.
 
 El protocolo actualizado distingue entre jugadas aceptadas y rechazos que consumen cuota. Después de actualizar, vuelve a abrir el juego con `./jugar.sh` para usar el cliente actual.
 

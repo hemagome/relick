@@ -12,34 +12,30 @@ namespace Relick.TestNetwork.Types
 {
     [SpacetimeDB.Type]
     [DataContract]
-    public sealed partial class Duel
+    public sealed partial class Loadout
     {
+        [DataMember(Name = "player")]
+        public SpacetimeDB.Identity Player;
         [DataMember(Name = "room_code")]
         public string RoomCode;
-        [DataMember(Name = "initial_json")]
-        public string InitialJson;
-        [DataMember(Name = "revision")]
-        public ulong Revision;
-        [DataMember(Name = "rules_version")]
-        public uint RulesVersion;
+        [DataMember(Name = "traps")]
+        public System.Collections.Generic.List<string> Traps;
 
-        public Duel(
+        public Loadout(
+            SpacetimeDB.Identity Player,
             string RoomCode,
-            string InitialJson,
-            ulong Revision,
-            uint RulesVersion
+            System.Collections.Generic.List<string> Traps
         )
         {
+            this.Player = Player;
             this.RoomCode = RoomCode;
-            this.InitialJson = InitialJson;
-            this.Revision = Revision;
-            this.RulesVersion = RulesVersion;
+            this.Traps = Traps;
         }
 
-        public Duel()
+        public Loadout()
         {
             this.RoomCode = "";
-            this.InitialJson = "";
+            this.Traps = new();
         }
     }
 }

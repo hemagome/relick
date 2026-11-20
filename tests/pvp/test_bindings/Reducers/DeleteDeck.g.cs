@@ -13,17 +13,17 @@ namespace Relick.TestNetwork.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ClearFixtureHandler(ReducerEventContext ctx);
-        public event ClearFixtureHandler? OnClearFixture;
+        public delegate void DeleteDeckHandler(ReducerEventContext ctx, ulong id);
+        public event DeleteDeckHandler? OnDeleteDeck;
 
-        public void ClearFixture()
+        public void DeleteDeck(ulong id)
         {
-            conn.InternalCallReducer(new Reducer.ClearFixture());
+            conn.InternalCallReducer(new Reducer.DeleteDeck(id));
         }
 
-        public bool InvokeClearFixture(ReducerEventContext ctx, Reducer.ClearFixture args)
+        public bool InvokeDeleteDeck(ReducerEventContext ctx, Reducer.DeleteDeck args)
         {
-            if (OnClearFixture == null)
+            if (OnDeleteDeck == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -36,8 +36,9 @@ namespace Relick.TestNetwork.Types
                 }
                 return false;
             }
-            OnClearFixture(
-                ctx
+            OnDeleteDeck(
+                ctx,
+                args.Id
             );
             return true;
         }
@@ -47,9 +48,21 @@ namespace Relick.TestNetwork.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class ClearFixture : Reducer, IReducerArgs
+        public sealed partial class DeleteDeck : Reducer, IReducerArgs
         {
-            string IReducerArgs.ReducerName => "clear_fixture";
+            [DataMember(Name = "id")]
+            public ulong Id;
+
+            public DeleteDeck(ulong Id)
+            {
+                this.Id = Id;
+            }
+
+            public DeleteDeck()
+            {
+            }
+
+            string IReducerArgs.ReducerName => "delete_deck";
         }
     }
 }

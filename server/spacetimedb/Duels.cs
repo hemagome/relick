@@ -4,26 +4,6 @@ using System.Text.Json;
 
 public static partial class Module
 {
-    [Table(Accessor = "Duel")]
-    public partial struct Duel
-    {
-        [PrimaryKey] public string RoomCode;
-        public string InitialJson;
-        public ulong Revision;
-        public uint RulesVersion;
-    }
-
-    [Table(Accessor = "DuelStep")]
-    public partial struct DuelStep
-    {
-        [PrimaryKey] public string Receipt;
-        [SpacetimeDB.Index.BTree] public string RoomCode;
-        public ulong Revision;
-        public int Option;
-        public List<int> SelectedCards;
-        public string EntryJson;
-    }
-
     [SpacetimeDB.Type]
     public partial struct DuelInfo
     {
@@ -51,16 +31,6 @@ public static partial class Module
             Dice = players.Select(p => styleOf(p.Player)?.Dice ?? CosmeticCatalog.DefaultDice).ToArray(),
             Relikarios = players.Select(p => relikarioOf(p.Player) ?? RelikarioCatalog.Yuno.Id).ToArray()
         };
-    }
-
-    private static (GameEngine Game, DuelRandom Random) RestoreDuel(Duel duel, IEnumerable<DuelStep> steps)
-    {
-        if (duel.RulesVersion != 1) throw new Exception("Versión de reglas no compatible.");
-        var ordered = steps.OrderBy(s => s.Revision).ToArray();
-        if ((ulong)ordered.Length != duel.Revision || ordered.Where((s, i) => s.Revision != (ulong)i + 1).Any())
-            throw new Exception("Registro de partida incompleto.");
-        return DuelReplay.Restore(JsonSerializer.Deserialize(duel.InitialJson, DuelJson.Default.DuelOpening)!,
-            ordered.Select(s => JsonSerializer.Deserialize(s.EntryJson, DuelJson.Default.DuelEntry)!), legacyBlueEgg: true, sequentialOverlap: true);
     }
 
     // Compatibility view. It joins cached packets; it never runs or replays the engine.

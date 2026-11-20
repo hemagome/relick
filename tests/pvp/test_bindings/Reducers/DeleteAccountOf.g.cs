@@ -13,17 +13,17 @@ namespace Relick.TestNetwork.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void SeedLegacyFixtureHandler(ReducerEventContext ctx, string nonce, bool unsupported);
-        public event SeedLegacyFixtureHandler? OnSeedLegacyFixture;
+        public delegate void DeleteAccountOfHandler(ReducerEventContext ctx, SpacetimeDB.Identity player);
+        public event DeleteAccountOfHandler? OnDeleteAccountOf;
 
-        public void SeedLegacyFixture(string nonce, bool unsupported)
+        public void DeleteAccountOf(SpacetimeDB.Identity player)
         {
-            conn.InternalCallReducer(new Reducer.SeedLegacyFixture(nonce, unsupported));
+            conn.InternalCallReducer(new Reducer.DeleteAccountOf(player));
         }
 
-        public bool InvokeSeedLegacyFixture(ReducerEventContext ctx, Reducer.SeedLegacyFixture args)
+        public bool InvokeDeleteAccountOf(ReducerEventContext ctx, Reducer.DeleteAccountOf args)
         {
-            if (OnSeedLegacyFixture == null)
+            if (OnDeleteAccountOf == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -36,10 +36,9 @@ namespace Relick.TestNetwork.Types
                 }
                 return false;
             }
-            OnSeedLegacyFixture(
+            OnDeleteAccountOf(
                 ctx,
-                args.Nonce,
-                args.Unsupported
+                args.Player
             );
             return true;
         }
@@ -49,28 +48,21 @@ namespace Relick.TestNetwork.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class SeedLegacyFixture : Reducer, IReducerArgs
+        public sealed partial class DeleteAccountOf : Reducer, IReducerArgs
         {
-            [DataMember(Name = "nonce")]
-            public string Nonce;
-            [DataMember(Name = "unsupported")]
-            public bool Unsupported;
+            [DataMember(Name = "player")]
+            public SpacetimeDB.Identity Player;
 
-            public SeedLegacyFixture(
-                string Nonce,
-                bool Unsupported
-            )
+            public DeleteAccountOf(SpacetimeDB.Identity Player)
             {
-                this.Nonce = Nonce;
-                this.Unsupported = Unsupported;
+                this.Player = Player;
             }
 
-            public SeedLegacyFixture()
+            public DeleteAccountOf()
             {
-                this.Nonce = "";
             }
 
-            string IReducerArgs.ReducerName => "seed_legacy_fixture";
+            string IReducerArgs.ReducerName => "delete_account_of";
         }
     }
 }
