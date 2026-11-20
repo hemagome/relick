@@ -117,7 +117,6 @@ public sealed partial class GameEngine
         }
     }
 
-    internal bool ReplaySequentialOverlap { get; set; }
 
     private bool RollTurboDamage(PendingAttackRoll attack)
     {

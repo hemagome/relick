@@ -66,7 +66,7 @@ public sealed partial class GameEngine
         var equipment = ActiveEquipment(actor)?.Id;
         var caption = DiePurposes.Caption(purpose, effect);
         var die = rolledDie ?? Roll(caption, roller: actor);
-        if (purpose == DiePurpose.TurboOverlapDamage && effect.Slot == 0 && !ReplaySequentialOverlap)
+        if (purpose == DiePurpose.TurboOverlapDamage && effect.Slot == 0)
         {
             var firstIsD10 = CurrentDieIsD10;
             var firstCaption = CurrentDieCaption;
@@ -85,14 +85,9 @@ public sealed partial class GameEngine
         var modified = die != rolled;
         State.LastDie = die;
         var resume = State.Phase;
-        // Older logs can contain a separate confirmation for a die with no remaining options.
-        var keepLegacyChoice = LegacyBlueEgg && (die > 6 || purpose == DiePurpose.SkillLearning || HasTurnBuffInHand(actor) ||
-            HasComboParry(actor) || p.Relikario.CanRerollAnyDie && !EffectsSuppressed(actor, FieldZone.Relikario) && !p.AttackRerollUsedThisTurn && die != 1 ||
-            equipment == CardCatalog.Pendant.Id || HasRerollCombo(actor) || equipment == CardCatalog.Pc.Id && p.EquipmentDie > 0 ||
-            p.Dexterity > 0 && CanBoostWithDexterity(die) || CanBoostIronwingEffect(actor, die));
         State.PendingDieRoll = new(actor, purpose, die, resume, Modified: modified);
         State.Phase = Phase.DieRerollChoice;
-        if (keepLegacyChoice || !LegacyBlueEgg && CanRespondToEffectDie())
+        if (CanRespondToEffectDie())
         {
             _pendingDieEffect = effect;
             return;

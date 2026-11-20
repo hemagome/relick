@@ -116,23 +116,6 @@ static class EggComboTests
             Check(g.ResolveRecycling(0, [0]).Success && g.State.Phase == Phase.Actions &&
                 p.Hand.Count == 1 && p.Deck.Single() == CardCatalog.BlueEgg.Id && p.Relikia == 0);
         }),
-        ("Huevo: el registro anterior conserva el pago de activación al reconstruir la partida", () =>
-        {
-            var opening = new DuelOpening
-            {
-                Names = ["A", "B"], StartingSeat = 0, Hands = [[CardCatalog.BlueEgg.Id], []],
-                Decks = [[CardCatalog.Attack.Id], [CardCatalog.Attack.Id, CardCatalog.Attack.Id]],
-                Bonuses = [null, CardCatalog.Senshuni.Id]
-            };
-            var (game, rng) = DuelReplay.Restore(opening, [], legacyBlueEgg: true);
-            var p = game.State.Active;
-            Check(game.Advance(0).Success && !game.PlayCode(0, 0).Success);
-            p.Relikia = 400;
-            Check(game.PlayCode(0, 0).Success && p.Relikia == 200);
-            game = GameEngine.FromSnapshot(game.SaveSnapshot(), rng);
-            Check(game.ResolveDestruction(0, 1, FieldZone.Bonus).Success &&
-                game.State.Active.Relikia == 200 && game.State.Phase == Phase.Actions);
-        }),
         ("Re-lanza: gratis sin acciones, relanza 1, roba solo con 1–3, 6 no natural", () =>
         {
             foreach (var die in Enumerable.Range(1, 6))

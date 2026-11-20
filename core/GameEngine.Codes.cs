@@ -4,12 +4,9 @@ public sealed record FieldTarget(int Owner, FieldZone Zone, int Index, string Ca
 public sealed partial class GameEngine
 {
     public const int BlueEggDrawCost = 200;
-    internal bool LegacyBlueEgg { get; private init; }
 
-    internal static int CodePrCost(CardDefinition card, bool legacyBlueEgg) =>
-        legacyBlueEgg && card.Id == CardCatalog.BlueEgg.Id ? BlueEggDrawCost : card.PrCost;
+    internal static int CodePrCost(CardDefinition card) => card.PrCost;
 
-    private int CodePrCost(CardDefinition card) => CodePrCost(card, LegacyBlueEgg);
 
     private IEnumerable<FieldTarget> TimeBombTargets(int excludedOwner = -1, int excludedHand = -1)
     {
@@ -150,7 +147,7 @@ public sealed partial class GameEngine
     {
         var card = CardCatalog.Get(entry.Id);
         return card.IsCombo && (card.RerollOwnDie || card.SetOwnDie > 0) &&
-            (LegacyBlueEgg ? AvailableActions(actor) >= card.ActionCost : CodeUnavailableReason(actor, entry.Index) == null);
+            CodeUnavailableReason(actor, entry.Index) == null;
     });
     private CommandResult PlayRerollCombo(int actor, int index)
     {

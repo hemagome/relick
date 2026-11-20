@@ -237,8 +237,6 @@ public sealed partial class GameEngine
         public GameState State => _engine.State;
         public PlayerState Player => State.Players[Actor];
         public string PlayerName(int seat) => State.Players[seat].Name;
-        /// <summary>Duels recorded before the optional Huevo Azul draw replay with its original rules.</summary>
-        public bool LegacyRules => _engine.LegacyBlueEgg;
 
         public void Log(string text) => _engine.Log(text);
         public void Announce(string text) { State.LastCombat = text; _engine.Log(text); }
@@ -468,7 +466,7 @@ public sealed partial class GameEngine
     private bool ResolveOnlyChoice(PendingDecision decision, IReadOnlyList<DecisionChoice> choices)
     {
         // Version 1 duels recorded selections as separate moves, even with a single eligible choice.
-        if (LegacyBlueEgg || choices is not [{ RequiresAcknowledgement: false } choice]) return false;
+        if (choices is not [{ RequiresAcknowledgement: false } choice]) return false;
         ApplyDecision(decision, choice);
         return true;
     }

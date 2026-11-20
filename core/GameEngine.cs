@@ -32,7 +32,7 @@ public sealed partial class GameEngine
         _random = random;
     }
 
-    public static GameEngine FromOpening(DuelOpening opening, IGameRandom random, bool legacyBlueEgg = false)
+    public static GameEngine FromOpening(DuelOpening opening, IGameRandom random)
     {
         var state = new GameState { Phase = Phase.Combat, Turn = 1, CurrentPlayer = opening.StartingSeat };
         for (var seat = 0; seat < 2; seat++)
@@ -48,7 +48,7 @@ public sealed partial class GameEngine
             player.Deck.AddRange(opening.Decks[seat]);
             state.Players[seat] = player;
         }
-        var game = new GameEngine(state, random) { LegacyBlueEgg = legacyBlueEgg };
+        var game = new GameEngine(state, random);
         game.PromoteInitialAreas();
         if (game.HasTimeBenderForDraw()) state.Phase = Phase.Draw;
         game.PresentPendingArea();
@@ -439,7 +439,7 @@ public sealed partial class GameEngine
             return;
         }
         // An interrupt can spend or remove the last option before returning to the pending die.
-        if (!LegacyBlueEgg && ResolveUnopposedDie()) return;
+        if (ResolveUnopposedDie()) return;
         // With nothing left to fire, the pending play goes on below, as it does when a trigger finishes by continuation.
         if (_activeActivation == null && State is { Phase: Phase.Actions, ActionStartActor: int actor } &&
             RunTurnTriggers(TurnMoment.ActionStart, actor)) return;

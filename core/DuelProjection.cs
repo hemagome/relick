@@ -71,8 +71,6 @@ public sealed class DuelPlayerView
 public sealed class DuelSnapshot
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    public bool LegacyBlueEgg { get; set; }
-    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool AutoPassCombos { get; set; }
     public ulong Revision { get; set; }
     public int MySeat { get; set; }
@@ -169,7 +167,6 @@ public sealed class DuelSnapshot
         var s = game.State;
         return new DuelSnapshot
         {
-            LegacyBlueEgg = game.LegacyBlueEgg,
             AutoPassCombos = seat >= 0 && s.Players[seat].AutoPassCombos,
             TrapCardId = s.Phase == Phase.TrapCraftChoice ? s.TrapCraftQueue![0].CardId : null,
             TrapIngredients = s.Phase == Phase.TrapCraftChoice ? s.TrapCraftQueue![0].Ingredients : null,

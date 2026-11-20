@@ -92,7 +92,7 @@ internal static class ArenaActionText
             case DuelMoveKind.PlayCode:
                 var card = HandCard(option, s)!;
                 if (card.Id == CardCatalog.VictoriousManualControl.Id) return CardCost(card);
-                return Resources(card.ActionCost, GameEngine.CodePrCost(card, s.LegacyBlueEgg), card.DiscardCost);
+                return Resources(card.ActionCost, GameEngine.CodePrCost(card), card.DiscardCost);
             case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch:
             case DuelMoveKind.DestinyPickMemory: case DuelMoveKind.RevealGhostDog: return "1 acción";
             case DuelMoveKind.UsePurpleRing:
@@ -105,7 +105,7 @@ internal static class ArenaActionText
             case DuelMoveKind.Relikia:
                 var effect = RelikiaEffects.Get((RelikiaEffect)m.Value);
                 var replayed = effect.Id == RelikiaEffect.ReplayCode ? CardCatalog.Get(s.Players[s.MySeat].Memory[m.Index]) : null;
-                var resources = Resources(effect.Actions, effect.Cost + (replayed == null ? 0 : GameEngine.CodePrCost(replayed, s.LegacyBlueEgg)),
+                var resources = Resources(effect.Actions, effect.Cost + (replayed == null ? 0 : GameEngine.CodePrCost(replayed)),
                     replayed?.DiscardCost ?? 0);
                 return replayed?.Id == CardCatalog.VictoriousManualControl.Id ? resources + " · 1 vida" : resources;
             case DuelMoveKind.FieldCode: case DuelMoveKind.Sniper: return "Sin coste adicional";

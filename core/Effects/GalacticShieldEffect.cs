@@ -70,21 +70,15 @@ internal sealed class GalacticShieldEffect : CardEffect, IFieldLeaveReplacement,
         var choices = new List<DecisionChoice>();
         foreach (var shield in shields)
         {
-            // The charges are face down, so the player picks a shield and takes its top card. Version 1 duels cached
-            // one option per charge, so they keep that list for their recorded indices to stay valid.
-            var charges = ctx.LegacyRules ? ctx.Player.GalacticShields![shield.Index].Cards.Count : 1;
-            for (var i = 0; i < charges; i++)
+            // The charges are face down, so the player picks a shield and takes its top card.
+            var label = takingDamage ? "Añadir una carta boca abajo a tu mano" : "Enviar una carta boca abajo a memoria";
+            if (shields.Length > 1) label += $" · Escudo {shield.Index + 1}";
+            choices.Add(new DecisionChoice
             {
-                var label = ctx.LegacyRules ? $"Carta boca abajo {i + 1}"
-                    : takingDamage ? "Añadir una carta boca abajo a tu mano" : "Enviar una carta boca abajo a memoria";
-                if (shields.Length > 1) label += $" · Escudo {shield.Index + 1}";
-                choices.Add(new DecisionChoice
-                {
-                    Label = label, Value = shield.Index * Capacity + i,
-                    Public = takingDamage ? "añade una carta boca abajo de Escudo Galáctico a su mano."
-                        : $"envía una carta boca abajo a memoria para conservar {ctx.FieldName(target)}."
-                });
-            }
+                Label = label, Value = shield.Index * Capacity,
+                Public = takingDamage ? "añade una carta boca abajo de Escudo Galáctico a su mano."
+                    : $"envía una carta boca abajo a memoria para conservar {ctx.FieldName(target)}."
+            });
         }
         if (!takingDamage)
             choices.Add(new DecisionChoice { Label = "Pasar sin usar el escudo", Value = -1, Public = "decide no usar Escudo Galáctico." });

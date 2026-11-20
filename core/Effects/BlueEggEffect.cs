@@ -49,8 +49,7 @@ internal sealed class BlueEggEffect : CardEffect
     public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next)
     {
         if (step == FieldDestruction.Destroyed)
-            // Duels recorded before the optional draw replay without it.
-            FieldDestruction.Finish(ctx, next, ctx.LegacyRules ? null : ctx.Then(Draw));
+            FieldDestruction.Finish(ctx, next, ctx.Then(Draw));
         else if (step == Draw && ctx.Player.Relikia >= DrawCost)
             ctx.Ask(Draw, DecisionKind.Confirm, $"Decide si pagas {DrawCost} PR para robar una carta.", announce: false);
     }
