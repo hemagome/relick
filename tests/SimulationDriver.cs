@@ -34,7 +34,6 @@ static class SimulationDriver
         if (s.Phase == Phase.SniperChoice) return game.ResolveSniper(actor, true);
         if (s.Phase == Phase.RecycleChoice) return game.ResolveRecycling(actor, Enumerable.Range(0, game.RecyclingCount));
         if (s.Phase == Phase.MindResetChoice) return DuelOptions.For(game, actor).First(o => o.Move.Kind is DuelMoveKind.MindResetTarget or DuelMoveKind.MindResetMemory or DuelMoveKind.MindResetHand).Move.Apply(game, actor);
-        if (s.Phase == Phase.DeckSearchChoice) return game.ResolveDeckSearch(actor, game.SearchableDeckCards(actor).First());
         if (s.Phase == Phase.MemoryRecoveryChoice)
         {
             var card = game.RecoverableMemoryCards().First();

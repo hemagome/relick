@@ -11,6 +11,16 @@ internal sealed class SalvationTotemEffect : CardRules, IDamageTrigger
 
     public override string CardId => CardCatalog.Totem.Id;
 
+    private static string Instruction(int amount) => $"Vas a recibir {amount} de daño. Decide si destruyes un Tótem de Salvación para cancelarlo.";
+
+    /// <summary>The choice as the damage chain opens it; duels saved in the former Tótem phase become this decision.</summary>
+    internal static PendingDecision LethalDecision(PendingTotemDamage pending) => new()
+    {
+        Source = CardCatalog.Totem.Id, Step = Lethal, Decider = pending.Target, Kind = DecisionKind.Confirm,
+        Instruction = Instruction(pending.Amount), ResumePhase = pending.ResumePhase,
+        Continuation = new EngineContinuation { Actor = pending.Target, Count = pending.Amount, Value = pending.AttackDie, Next = pending.Completed }
+    };
+
     public DamageStep Step => DamageStep.Lethal;
 
     /// <summary>The equipped copies, bottom first, whose effects are active.</summary>
@@ -28,8 +38,7 @@ internal sealed class SalvationTotemEffect : CardRules, IDamageTrigger
         if (active.Length == 0) return false;
         if (damage.Amount >= ctx.Player.Health)
         {
-            ctx.Ask(Lethal, DecisionKind.Confirm,
-                $"Vas a recibir {damage.Amount} de daño. Decide si destruyes un Tótem de Salvación para cancelarlo.",
+            ctx.Ask(Lethal, DecisionKind.Confirm, Instruction(damage.Amount),
                 continuation: new EngineContinuation { Actor = ctx.Actor, Count = damage.Amount, Value = damage.AttackDie, Next = completed });
             return true;
         }

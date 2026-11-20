@@ -214,13 +214,6 @@ public static class DuelOptions
                         result[^1].CardId = id;
                     }
                     break;
-                case Phase.DeckSearchChoice:
-                    foreach (var index in game.SearchableDeckCards(actor))
-                    {
-                        Add(DuelMoveKind.SearchDeck, $"Añadir {Card(p.Deck[index])} · mazo {index + 1}", index);
-                        result[^1].CardId = p.Deck[index];
-                    }
-                    break;
                 case Phase.AttackRerollChoice:
                 case Phase.DieRerollChoice:
                     var kind = s.Phase == Phase.AttackRerollChoice ? DuelMoveKind.AttackDie : DuelMoveKind.EffectDie;

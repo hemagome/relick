@@ -12,7 +12,7 @@ public sealed partial class GameEngine
             var stage when stage.IsTurnStage() => stage,
             Phase.AttackRerollChoice or Phase.DefenseChoice or Phase.MagnetChoice or Phase.EffectDamageChoice => Phase.Combat,
             Phase.DieRerollChoice => State.PendingDieRoll?.ResumePhase is { } resume && resume.IsStageBeforeFinal() ? resume : null,
-            Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.DeckSearchChoice or Phase.MemoryRecoveryChoice => Phase.Actions,
+            Phase.CodeResponse or Phase.PointsChoice or Phase.DestroyChoice or Phase.MemoryRecoveryChoice => Phase.Actions,
             Phase.Decision => State.PendingDecision is { AllowsCombos: true } decision && decision.ResumePhase.IsStageBeforeFinal() ? decision.ResumePhase : null,
             _ => null
         };

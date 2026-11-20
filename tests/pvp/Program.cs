@@ -431,7 +431,6 @@ try
         if (!isRecycling)
         {
             choice = before.Phase == Phase.ErrorResponse ? options.First(o => o.Option.Move.Kind == DuelMoveKind.PassError) :
-                before.Phase == Phase.DeckSearchChoice ? options.First(o => IsDeckSearch(before, o.Option)) :
                 before.Decision?.Kind == DecisionKind.ChooseCard ? options.First(o => o.Option.Move.Kind == DuelMoveKind.Choose) :
                 before.Phase == Phase.DieRerollChoice ? options.First(o => o.Option.Move.Kind == DuelMoveKind.EffectDie) :
                 options.FirstOrDefault(o => o.Option.Move.Kind == DuelMoveKind.PlayCode &&
