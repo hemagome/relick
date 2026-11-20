@@ -65,6 +65,8 @@ public partial class OnlineArena
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
 
+        await CheckAreaAndDeckArrivals();
+
         for (var result = 1; result <= 10; result++)
         {
             _die.Value = 0;
@@ -93,5 +95,59 @@ public partial class OnlineArena
         if (_die.IsD10 || _die.TopFaceValue != 3)
             throw new Exception("Una nueva tirada D6 debe recuperar el dado cúbico.");
         GD.Print("PVP_NEW_CARDS_PASS");
+    }
+
+    private async Task CheckAreaAndDeckArrivals()
+    {
+        var attack = CardCatalog.Attack.Id;
+        var area = CardCatalog.BlackHole.Id;
+        var random = new DuelRandom();
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[area], []], Decks = [[attack, attack], [attack, attack]],
+            Bonuses = [null, null], Relikarios = [RelikarioCatalog.Ironwing.Id, RelikarioCatalog.Osamu.Id]
+        }, random);
+        game.State.Phase = Phase.Actions;
+        game.State.Active.Relikia = RelikarioCatalog.IronwingLv2.EvolutionCost;
+        game.State.Active.Memory.AddRange([attack, attack]);
+        foreach (var player in game.State.Players) player.Dexterity = 0;
+
+        ResetAnimations();
+        var before = DuelSnapshot.For(game, 0, 10);
+        PresentTestSnapshot(before);
+        var visuals = DuelVisualEvents.Capture(game);
+        if (!game.ActivateArea(0, 0).Success) throw new Exception("No se activa Agujero Negro.");
+        var after = DuelSnapshot.For(game, 0, 11);
+        after.Visuals = visuals;
+        var origins = CaptureOrigins(after, before);
+        PresentTestSnapshot(after);
+        Animate(visuals, origins);
+        var slot = (ZoneCardButton)ZoneNode(0, CardZone.Area, -1)!;
+        if (slot.Modulate.A != 1 || slot.PresentedCard != null)
+            throw new Exception("El contorno del Área debe verse antes de que aterrice Agujero Negro.");
+        ResetAnimations();
+        if (slot.PresentedCard?.Id != area) throw new Exception("El Área queda oculta al interrumpir el vuelo.");
+
+        random.Replay([5, 5]);
+        if (!game.ResolveDecision(0, 0).Success || !game.ResolveDecision(0, 1).Success)
+            throw new Exception("No se resuelve Agujero Negro.");
+        random.Finish();
+        before = DuelSnapshot.For(game, 0, 12);
+        PresentTestSnapshot(before);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        visuals = DuelVisualEvents.Capture(game);
+        random.Record(limit => limit - 1);
+        if (!game.Evolve(0).Success) throw new Exception("Ironwing no devuelve sus Ataques al mazo.");
+        after = DuelSnapshot.For(game, 0, 13);
+        after.Visuals = visuals;
+        origins = CaptureOrigins(after, before);
+        PresentTestSnapshot(after);
+        Animate(visuals, origins);
+        var deck = (DeckStack)ZoneNode(0, CardZone.Deck, -1)!;
+        if (deck.Modulate.A != 1 || deck.PresentedAmount != before.Players[0].DeckCount)
+            throw new Exception("El mazo debe mostrar su contorno y sus cartas anteriores durante los vuelos.");
+        for (var frame = 0; frame < 12 && IsAnimating; frame++) UpdateFlights(1.2);
+        if (IsAnimating || deck.PresentedAmount != after.Players[0].DeckCount)
+            throw new Exception("El mazo debe contar los dos Ataques al terminar las animaciones.");
     }
 }

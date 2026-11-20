@@ -267,8 +267,13 @@ public partial class OnlineArena
                             cues.Count(c => c.Kind == DuelVisualKind.Pile && c.Destination == CardZone.EquipmentCover) != 1)
                             throw new Exception("Oro no anima las colocaciones elegidas.");
                         Animate(cues, origins);
+                        var equipment = (ZoneCardButton)ZoneNode(relative, CardZone.Equipment, -1)!;
+                        if (equipment.Modulate.A != 1 || cover!.Modulate.A != 1 ||
+                            equipment.PresentedCard != null || cover.PresentedCard != null)
+                            throw new Exception("El equipo y su cobertura deben mostrar sus contornos mientras llegan los Tótems.");
                         for (var i = 0; i < 20; i++) { UpdateFlights(0.5); await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
-                        if (IsAnimating) throw new Exception("Oro deja vuelos pendientes al colocar cartas.");
+                        if (IsAnimating || equipment.PresentedCard?.Id != CardCatalog.Totem.Id || cover.PresentedCard?.Id != CardCatalog.GoldenTotem.Id)
+                            throw new Exception("El equipo y su cobertura deben aparecer al terminar los vuelos.");
                     }
                     if (step == 4 && current.Players[actor].Health != 5) throw new Exception("Oro cancela un daño no letal que debía aplicarse.");
                     var minimum = _root.GetCombinedMinimumSize();
@@ -1813,12 +1818,12 @@ public partial class OnlineArena
                 ZoneNode(0, CardZone.Attached, -1) is not AttachmentStack stack ||
                 stack.Cards.Single() != CardCatalog.Attack.Id || !stack.AccessibilityName.StartsWith("Debajo del Relikario"))
                 throw new Exception("El tablero no muestra el equipo transferido y el Ataque bajo el Relikario.");
-            var received = ZoneNode(0, CardZone.Equipment, -1)!;
+            var received = (ZoneCardButton)ZoneNode(0, CardZone.Equipment, -1)!;
             Animate(cues, origins);
-            if (received.Modulate.A != 0 || stack.Modulate.A != 0)
-                throw new Exception("Los destinos deben esperar la llegada de cada carta.");
+            if (received.Modulate.A != 1 || stack.Modulate.A != 1 || received.PresentedCard != null || stack.PresentedTopCardId != null)
+                throw new Exception("Las zonas deben seguir visibles mientras esperan sus cartas.");
             for (var i = 0; i < 12 && IsAnimating; i++) UpdateFlights(1);
-            if (IsAnimating || received.Modulate.A != 1 || stack.Modulate.A != 1)
+            if (IsAnimating || received.PresentedCard?.Id != CardCatalog.DiamondHelmet.Id || stack.PresentedTopCardId != CardCatalog.Attack.Id)
                 throw new Exception("La animación deja ocultos el equipo o el Ataque.");
         }
         GD.Print("PVP_TAKE_EQUIPMENT_PASS · arte, selección rival, transferencias y Ataque anexado en escritorio y compacto.");

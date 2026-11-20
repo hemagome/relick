@@ -99,6 +99,10 @@ public partial class OnlineArena
     {
         Animate(cues, origins);
         if (presentedCount() != 0) throw new Exception("Las cartas deben contarse conforme aterrizan.");
+        var attachment = target as AttachmentStack;
+        if (target.Modulate.A != 1 || target.SelfModulate.A != 1 ||
+            attachment?.PresentedTopCardId != null || target is ZoneCardButton { PresentedCard: not null })
+            throw new Exception("La zona debe conservar su contorno mientras espera la carta principal.");
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         for (var i = 0; i < loads.Length; i++)
         {
@@ -107,6 +111,8 @@ public partial class OnlineArena
                 UpdateFlights(_activeFlight == null ? 0 : 1.2);
             if (_activeFlight?.Event != load || _flightTarget != target || _flightFront?.Visible == true || (_flightFront != null) != faceUp)
                 throw new Exception($"El vuelo {load.Destination} debe empezar boca abajo y dirigirse a su carta anfitriona.");
+            if (attachment != null && attachment.PresentedTopCardId != attachment.TopCardId)
+                throw new Exception("El Tomo debe verse en su zona al recibir sus cartas.");
             UpdateFlights(0.27);
             if ((_flightFront?.Visible == true) != faceUp) throw new Exception("Solo se revela el arte de las cartas públicas.");
             UpdateFlights(1.2);

@@ -11,6 +11,8 @@ public partial class DeckStack : Control
     public int Amount { get; set; }
     public Color Accent { get; set; }
     private Texture2D? _back;
+    private int _pendingArrivals;
+    internal int PresentedAmount => Amount - _pendingArrivals;
     /// <summary>On the desktop board the pile fills its zone, like every other card.</summary>
     public bool Board { get; init; }
     internal bool RaisedPile { get; init; }
@@ -18,10 +20,19 @@ public partial class DeckStack : Control
     {
         CustomMinimumSize = new(Math.Max(70, CustomMinimumSize.X), 116);
         MouseFilter = MouseFilterEnum.Pass;
-        TooltipText = $"Mazo: {Amount} cartas restantes";
+        DescribeDeck();
         _back = SleeveArt.Back(Sleeve);
         Resized += QueueRedraw;
     }
+
+    internal void ChangePendingArrivals(int delta)
+    {
+        _pendingArrivals = Math.Clamp(_pendingArrivals + delta, 0, Amount);
+        DescribeDeck();
+        QueueRedraw();
+    }
+
+    private void DescribeDeck() => TooltipText = $"Mazo: {PresentedAmount} cartas restantes";
 
     // Legacy docks keep the 70×116 footprint; board rows stretch the pile to their height.
     public Rect2 TopRect
@@ -42,14 +53,15 @@ public partial class DeckStack : Control
 
     public override void _Draw()
     {
-        BoardArt.Socket(this, new Rect2(Vector2.Zero, Size), Accent, Amount == 0 ? 1 : 0.55f);
+        var amount = PresentedAmount;
+        BoardArt.Socket(this, new Rect2(Vector2.Zero, Size), Accent, amount == 0 ? 1 : 0.55f);
         var top = TopRect;
-        if (Amount > 0 && _back != null)
+        if (amount > 0 && _back != null)
         {
-            if (RaisedPile) BoardArt.StackEdges(this, top, Amount, Accent, deck: true);
+            if (RaisedPile) BoardArt.StackEdges(this, top, amount, Accent, deck: true);
             else
             {
-                var layers = Math.Min(5, Math.Max(1, Amount / 6));
+                var layers = Math.Min(5, Math.Max(1, amount / 6));
                 RelickVisuals.Shadow(this, new Rect2(top.Position + new Vector2(layers * 1.5f, layers * 1.5f + 2), top.Size).Grow(-2), new Color(0, 0, 0, 0.6f), 8);
                 for (var layer = layers; layer > 0; layer--)
                     BoardArt.Plate(this, new Rect2(top.Position + new Vector2(layer * 1.5f, layer * 1.5f), top.Size),
@@ -61,7 +73,7 @@ public partial class DeckStack : Control
         {
             BoardArt.Icon(this, GameIcon.Cards, top.GetCenter(), 20, BoardArt.Tint(Accent, 0.16f));
         }
-        var caption = Amount.ToString();
+        var caption = amount.ToString();
         var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 10).X + 14;
         var chip = new Rect2((Size.X - width) / 2, Size.Y - 22, width, 17);
         BoardArt.Plate(this, chip, Board ? new Color("0b1020") : new Color(0, 0, 0, 0.45f), BoardArt.Tint(Accent, Board ? 0.6f : 0.4f), 4);

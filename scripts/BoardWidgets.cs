@@ -828,7 +828,8 @@ public partial class ZoneCardButton : Button
         (_departingEffectUsed ? "USADA" : "") : CardStatus;
     private string? _previousEquipmentStatus;
     internal bool AwaitingEquipment { get; private set; }
-    internal bool AwaitingArrival { get; private set; }
+    private int _pendingArrivals;
+    internal bool AwaitingArrival => _pendingArrivals > 0;
     internal bool HasDeparturePreview => _departingCard != null;
     internal CardDefinition? PresentedCard => AwaitingEquipment && _previousEquipmentStatus == null
         ? null : _departingCard ?? (AwaitingArrival ? null : Card);
@@ -840,9 +841,9 @@ public partial class ZoneCardButton : Button
         QueueRedraw();
     }
 
-    internal void SetArrivalPending(bool pending)
+    internal void ChangePendingArrivals(int delta)
     {
-        AwaitingArrival = pending;
+        _pendingArrivals = Math.Max(0, _pendingArrivals + delta);
         DescribeCard();
         QueueRedraw();
     }
@@ -957,11 +958,35 @@ public partial class AttachmentStack : Button
     internal bool RaisedPile { get; init; }
     private int _pendingTomeCards;
     internal int PresentedTomeCards => TomeCardCount - _pendingTomeCards;
-    private int Amount => Cards.Count + PresentedTomeCards;
+    private int _pendingArrivals;
+    private int PresentedCardCount => Cards.Count - _pendingArrivals;
+    private int Amount => PresentedCardCount + PresentedTomeCards;
     private float PileWidth => Size.X / (Cards.Count == 0 ? 1 : ShieldCount + 1);
     private Texture2D[] _previews = [];
+    private Texture2D[] _presentedPreviews = [];
     internal string? TopCardId { get; private set; }
-    internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(0, 0, PileWidth, Size.Y) : PreviewRect(_previews.Length - 1);
+    internal string? PresentedTopCardId { get; private set; }
+    // The incoming card keeps its final landing footprint while the pile shows only arrived cards.
+    internal Rect2 CardRect => _previews.Length == 0 ? new Rect2(0, 0, PileWidth, Size.Y) : PreviewRect(_previews, _previews.Length - 1);
+
+    internal void ChangePendingArrivals(int delta)
+    {
+        var pending = Math.Clamp(_pendingArrivals + delta, 0, Cards.Count);
+        if (_pendingArrivals == pending) return;
+        _pendingArrivals = pending;
+        if (pending == 0)
+        {
+            PresentedTopCardId = TopCardId;
+            _presentedPreviews = _previews;
+        }
+        else
+        {
+            _presentedPreviews = LoadPreviews(PresentedCardCount, out var top);
+            PresentedTopCardId = top;
+        }
+        DescribeStack();
+        QueueRedraw();
+    }
 
     internal void ChangePendingTomeCards(int delta)
     {
@@ -972,7 +997,7 @@ public partial class AttachmentStack : Button
 
     private void DescribeStack()
     {
-        AccessibilityName = $"{Location(Cards)}: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
+        AccessibilityName = $"{Location(Cards.Take(PresentedCardCount).ToArray())}: {Amount} {(Amount == 1 ? "carta" : "cartas")}";
         TooltipText = $"{AccessibilityName}. Sin límite. Pulsa para consultar todas las cartas y sus efectos.";
     }
 
@@ -984,13 +1009,20 @@ public partial class AttachmentStack : Button
         return $"{zone} {(relikario == null ? "del Relikario" : $"de {relikario}")}";
     }
 
-    private Rect2 PreviewRect(int index)
+    private Texture2D[] LoadPreviews(int count, out string? top)
     {
-        if (Board) return BoardArt.FitArtwork(_previews[index], RaisedPile ? BoardArt.StackArea(new(PileWidth, Size.Y)) : new Rect2(4, 4, PileWidth - 8, Size.Y - 8));
+        var cards = Cards.Take(count).OrderBy(id => !DeckRules.IsAttack(CardCatalog.Get(id))).TakeLast(3).ToArray();
+        top = cards.LastOrDefault();
+        return cards.Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId)).OfType<Texture2D>().ToArray();
+    }
+
+    private Rect2 PreviewRect(Texture2D[] previews, int index)
+    {
+        if (Board) return BoardArt.FitArtwork(previews[index], RaisedPile ? BoardArt.StackArea(new(PileWidth, Size.Y)) : new Rect2(4, 4, PileWidth - 8, Size.Y - 8));
         var offset = Math.Min(14, PileWidth / 6);
-        var spread = (_previews.Length - 1) * offset;
+        var spread = (previews.Length - 1) * offset;
         var area = new Rect2(4 + index * offset, 4, PileWidth - 8 - spread, Size.Y - 8);
-        return BoardArt.FitArtwork(_previews[index], area);
+        return BoardArt.FitArtwork(previews[index], area);
     }
 
     public override void _Ready()
@@ -999,9 +1031,8 @@ public partial class AttachmentStack : Button
         Disabled = Amount == 0;
         MouseDefaultCursorShape = Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
         DescribeStack();
-        var previews = Cards.OrderBy(id => !DeckRules.IsAttack(CardCatalog.Get(id))).TakeLast(3).ToArray();
-        TopCardId = previews.LastOrDefault();
-        _previews = previews.Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId)).OfType<Texture2D>().ToArray();
+        _presentedPreviews = _previews = LoadPreviews(Cards.Count, out var top);
+        PresentedTopCardId = TopCardId = top;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         Resized += QueueRedraw;
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
@@ -1016,14 +1047,14 @@ public partial class AttachmentStack : Button
             BoardArt.CenterText(this, "SOBRE RELIKARIO", new(Size.X / 2, 15), 8, BoardArt.Tint(BoardArt.Muted, 0.8f));
             if (Size.Y > 60) BoardArt.Icon(this, GameIcon.Flag, Size / 2 + new Vector2(0, 5), 20, BoardArt.Tint(accent, 0.16f));
         }
-        else if (_previews.Length == 0)
+        else if (_presentedPreviews.Length == 0)
             BoardArt.Icon(this, GameIcon.Cards, new Vector2(PileWidth, Size.Y) / 2, 32, BoardArt.Muted);
-        for (var i = Board ? Math.Max(0, _previews.Length - 1) : 0; i < _previews.Length; i++)
+        for (var i = Board ? Math.Max(0, _presentedPreviews.Length - 1) : 0; i < _presentedPreviews.Length; i++)
         {
-            var rect = PreviewRect(i);
+            var rect = PreviewRect(_presentedPreviews, i);
             RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
             if (RaisedPile) BoardArt.StackEdges(this, rect, Amount, accent);
-            DrawTextureRect(_previews[i], rect, false);
+            DrawTextureRect(_presentedPreviews[i], rect, false);
         }
         if (Amount > 1) BoardArt.CardBadge(this, new(PileWidth, Size.Y), $"×{Amount}");
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, !Disabled && IsHovered(), HasFocus());

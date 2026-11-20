@@ -64,6 +64,8 @@ public partial class OnlineArena
                 Bonuses = [null, null], StartingSeat = 0
             }, new SeededRandom(26));
             game.State.Phase = Phase.Actions;
+            game.State.Active.AttachedCards.Add(attack);
+            game.State.Active.GalacticShields = [new()];
             ResetAnimations();
             var before = DuelSnapshot.For(game, seat, 10);
             PresentTestSnapshot(before);
@@ -71,10 +73,22 @@ public partial class OnlineArena
             if (!game.PlayCode(0, 0).Success) throw new Exception("No se juega Robotizar.");
             var after = DuelSnapshot.For(game, seat, 11);
             after.Visuals = visuals;
-            var flight = CaptureOrigins(after, before).Values.SingleOrDefault();
+            var origins = CaptureOrigins(after, before);
+            var flight = origins.Values.SingleOrDefault();
             if (flight is not { IsPlacement: true } || flight.Event.Destination != CardZone.Attached || flight.Face != robotize.Id ||
-                flight.StartsFaceUp != (seat == 0) || ZoneNode(seat == 0 ? 0 : 1, CardZone.Attached, -1) is not AttachmentStack)
+                flight.StartsFaceUp != (seat == 0))
                 throw new Exception("Robotizar debe volar desde la mano hasta encima del Relikario, no a la memoria.");
+            PresentTestSnapshot(after);
+            var relative = seat == 0 ? 0 : 1;
+            var stack = (AttachmentStack)ZoneNode(relative, CardZone.Attached, -1)!;
+            var shield = (ZoneCardButton)ZoneNode(relative, CardZone.GalacticShield, 0)!;
+            Animate(visuals, origins);
+            if (stack.PresentedTopCardId != attack || stack.Modulate.A != 1 || stack.SelfModulate.A != 1 ||
+                shield.PresentedCard?.Id != CardCatalog.GalacticShield.Id)
+                throw new Exception("El Ataque anexo, el contorno y el Escudo deben seguir visibles durante el vuelo de Robotizar.");
+            ResetAnimations();
+            if (stack.PresentedTopCardId != robotize.Id)
+                throw new Exception("Al interrumpir el vuelo, Robotizar debe quedar visible en el tablero.");
         }
         GD.Print("PVP_ROBOTIZE_PASS");
     }

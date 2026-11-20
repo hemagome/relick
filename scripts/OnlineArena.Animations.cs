@@ -851,30 +851,37 @@ public partial class OnlineArena
 
     private void SetDestinationPending(Flight flight, Control? target, bool pending, bool queued = false)
     {
+        // Count an arrival once when queued and remove it on landing or interruption.
+        var adjustCount = queued || !pending;
+        var delta = pending ? 1 : -1;
         if (flight.LoadsAttachment)
         {
-            if (queued || !pending)
+            if (adjustCount)
             {
-                var delta = pending ? 1 : -1;
                 if (target is AttachmentStack tome) tome.ChangePendingTomeCards(delta);
                 if (target is ZoneCardButton shield) shield.ChangePendingShieldCharges(delta);
             }
             return;
         }
-        if ((queued || !pending) && flight.MemoryArrivals is { } arrivals)
+        if (adjustCount && flight.MemoryArrivals is { } arrivals)
             foreach (var arrival in arrivals)
                 if (ZoneNode(arrival.Player == _snapshot!.MySeat ? 0 : 1, arrival.Zone, -1) is MemoryZoneButton pile)
-                    pile.ChangePendingArrivals(pending ? arrival.Count : -arrival.Count);
+                    pile.ChangePendingArrivals(delta * arrival.Count);
 
-        if (target is MemoryZoneButton) return;
-        if (target is AttachmentStack { ShieldCount: > 0 } attached) attached.SelfModulate = new(1, 1, 1, pending ? 0 : 1);
-        else if (target is SkillTile skill) skill.SetLessonPending(pending);
-        else if ((flight.IsExchangePlacement || flight.Event.Kind == DuelVisualKind.BonusPlace ||
-                  flight.Event.Destination == CardZone.GalacticShield) && target is ZoneCardButton slot)
-            slot.SetArrivalPending(pending);
-        else if (flight.IsPlacement && target is ZoneCardButton equipment)
+        if (target is SkillTile skill) skill.SetLessonPending(pending);
+        else if (flight.IsPlacement && flight.Event.Destination is CardZone.Equipment or CardZone.LightEquipment && target is ZoneCardButton equipment)
             equipment.SetEquipmentPending(pending, flight.PreviousEquipmentStatus);
-        else if (target != null) target.Modulate = new(1, 1, 1, pending ? 0 : 1);
+        else if (target is HandCard or OpponentHandCard)
+            target.Modulate = new(1, 1, 1, pending ? 0 : 1);
+        else if (adjustCount)
+        {
+            switch (target)
+            {
+                case AttachmentStack attached: attached.ChangePendingArrivals(delta); break;
+                case DeckStack deck: deck.ChangePendingArrivals(delta); break;
+                case ZoneCardButton slot: slot.ChangePendingArrivals(delta); break;
+            }
+        }
     }
 
     private static bool RectVisible(Control anchor, Rect2 rect)
