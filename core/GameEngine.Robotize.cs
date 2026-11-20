@@ -2,17 +2,6 @@ namespace Relick.Core;
 
 public sealed partial class GameEngine
 {
-    private void DeployRobotize(int actor)
-    {
-        var player = State.Players[actor];
-        var frame = _activeActivation!;
-        var id = InstallActivationCard(frame, player, CardZone.Attached, player.AttachedCards.Count);
-        NotifyPileMove(player, CardCatalog.Robotize.Id, CardZone.Activation, destination: CardZone.Attached);
-        player.AttachedCards.Add(id);
-        State.LastCombat = $"{player.Name} coloca Robotizar encima de su Relikario.";
-        Log(State.LastCombat);
-    }
-
     private IEnumerable<FieldTarget> ActiveRobotizeCopies(int actor)
     {
         var attached = State.Players[actor].AttachedCards;
@@ -53,22 +42,6 @@ public sealed partial class GameEngine
             });
         }
         else ResolveRobotizeTopCard(next.Actor, next, toHand: false);
-    }
-
-    private IReadOnlyList<DecisionChoice> RobotizeTopCardChoices(int actor)
-    {
-        var player = State.Players[actor];
-        var card = CardCatalog.Get(player.Deck[0]);
-        var hand = new DecisionChoice
-        {
-            Label = $"Añadir {card.Name} a la mano", Button = "Añadir a mano", CardId = card.Id, Value = 1, Primary = true,
-            Public = "añade la carta del tope de su mazo a su mano con Robotizar."
-        };
-        return player.Exchange.Count >= 2 ? [hand] : [hand, new DecisionChoice
-        {
-            Label = $"Enviar {card.Name} al canje", Button = "Enviar al canje", CardId = card.Id,
-            Public = "envía la carta del tope de su mazo al canje con Robotizar."
-        }];
     }
 
     private void ResolveRobotizeTopCard(int actor, EngineContinuation next, bool toHand)

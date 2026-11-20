@@ -170,8 +170,11 @@ public sealed partial class GameEngine
         /// <summary>Shows these Tótems de Salvación and places them with Tótem de Oro on top, through the engine's placement sequence.</summary>
         public void DeployGoldenTotem(int[] handIndices) => _engine.DeployGoldenTotem(Actor, handIndices);
         public void DeployGalacticShield() => _engine.DeployGalacticShield(Actor);
-        public void DeployRobotize() => _engine.DeployRobotize(Actor);
-        public IReadOnlyList<DecisionChoice> RobotizeTopCardChoices() => _engine.RobotizeTopCardChoices(Actor);
+        /// <summary>Moves the activating card to this player's <paramref name="zone"/> slot, keeping its owner and corruption mark; returns its instance id.</summary>
+        public string InstallActivationCard(CardZone zone, int slot) => _engine.InstallActivationCard(_engine._activeActivation!, Player, zone, slot);
+        /// <summary>Tells the presentation that a card of this player moved between piles; it does not move the card.</summary>
+        public void NotifyPileMove(string id, CardZone source, int index = -1, CardZone destination = CardZone.Memory) =>
+            _engine.NotifyPileMove(Player, id, source, index, destination);
         public void ResolveRobotizeTopCard(EngineContinuation next, bool toHand) => _engine.ResolveRobotizeTopCard(Actor, next, toHand);
         public void FinishComboParry() => _engine.FinishComboParry(Actor);
         public bool CanParryActivation() => _engine.CanParryActivation(Actor);
