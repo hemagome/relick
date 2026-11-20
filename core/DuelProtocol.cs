@@ -179,6 +179,15 @@ public static class DuelReplay
     }
 }
 
+// Moves and phases travel by name: their numeric values shift whenever a member is removed, and a
+// client and server built from different versions would otherwise read one move as another (a stale
+// Concede shown as "Usar PC"). Integers are rejected, so a mismatch fails to decode instead.
+public sealed class StrictEnumConverter<TEnum> : JsonStringEnumConverter<TEnum> where TEnum : struct, Enum
+{
+    public StrictEnumConverter() : base(null, allowIntegerValues: false) { }
+}
+
+[JsonSourceGenerationOptions(Converters = [typeof(StrictEnumConverter<DuelMoveKind>), typeof(StrictEnumConverter<Phase>)])]
 [JsonSerializable(typeof(DuelOpening))]
 [JsonSerializable(typeof(DuelEntry))]
 [JsonSerializable(typeof(DuelSnapshot))]

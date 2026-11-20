@@ -8,6 +8,7 @@ static class DuelTests
         ("PvP: proyección oculta mazos, manos rivales, corruptas y registros", Privacy),
         ("PvP: reconstrucción conserva decisiones y continuaciones durante duelos completos", ReplayMatches),
         ("PvP: rechazo de un registro de azar incompleto", InvalidRandom),
+        ("PvP: jugadas y fases viajan por nombre y rechazan valores numéricos", MovesTravelByName),
         ("PvP: señales visuales conservan tiradas repetidas sin revelar cartas ni mutar reglas", VisualPrivacy),
         ("Impactos: distinguen 4, 5 y 6 para ambos jugadores sin confundir daño ni dado secundario", VisualAttackImpact),
         ("Impactos: usan el resultado final tras relanzar y convertir el seis de Yuno", VisualFinalAttackDie),
@@ -91,6 +92,20 @@ static class DuelTests
         try { random.Next(6); }
         catch (InvalidOperationException) { return; }
         throw new Exception("Se generó azar nuevo al reconstruir una partida.");
+    }
+
+    static void MovesTravelByName()
+    {
+        var options = new List<DuelOption> { new() { Label = "Abandonar duelo", Move = new() { Kind = DuelMoveKind.Concede } } };
+        var json = JsonSerializer.Serialize(options, DuelJson.Default.ListDuelOption);
+        if (!json.Contains("\"Concede\"")) throw new Exception("La jugada no se serializó por nombre: " + json);
+        if (JsonSerializer.Deserialize(json, DuelJson.Default.ListDuelOption)![0].Move.Kind != DuelMoveKind.Concede) throw new Exception("La jugada no se recuperó.");
+        var snapshot = JsonSerializer.Serialize(new DuelSnapshot { Phase = Phase.Decision }, DuelJson.Default.DuelSnapshot);
+        if (!snapshot.Contains("\"Decision\"")) throw new Exception("La fase no se serializó por nombre.");
+        // A peer from another version sending a bare number must fail to decode, never map to a different move.
+        try { JsonSerializer.Deserialize(json.Replace("\"Concede\"", "24"), DuelJson.Default.ListDuelOption); }
+        catch (JsonException) { return; }
+        throw new Exception("Se aceptó una jugada numérica.");
     }
 
     static void VisualPrivacy()

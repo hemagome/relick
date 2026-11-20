@@ -434,3 +434,13 @@ memoria) y un límite de 24 GiB de memoria residente por base en Maincloud. En 3
 valor por defecto pasará a `no_requirement`. Validación previa en un servidor local
 2.16.1: batería PvP general, emparejamiento rápido, mazos, salud de conexión,
 vencimientos y subida de un módulo 2.15 a 2.16.1 sobre datos existentes.
+
+El 20 de noviembre las jugadas (`DuelMoveKind`) y las fases (`Phase`) pasaron a viajar
+por nombre en el JSON de `DuelJson`, y los valores numéricos se rechazan al leer. Antes,
+un cliente y un servidor de versiones distintas leían una jugada como otra: tras retirar
+`Points` y `Destroy`, el «Abandonar duelo» de un servidor antiguo aparecía como «Usar PC»
+en el cliente nuevo y abandonaba la partida al pulsarlo. Ahora ese desfase falla al leer.
+El estado interno de la partida (`EngineJson`) no cambió. Se publicó en `relick-dev`
+local y en `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin salas ni partidas
+abiertas; el plan de migración de Maincloud quedó vacío y se conservaron las cuentas y
+los mazos. Solo es compatible el cliente compilado desde esta versión.
