@@ -70,6 +70,42 @@ static class NewCardInteractionsTests
             Check(g.State.Players[0].Health == 6 && g.State.Players[1].Health == 4);
             Check(g.State.Players[1].Memory.SequenceEqual([Helmet]) && g.State.Players[1].ActionsLeft == 1);
         }),
+        ("Casco de Copias: cada respuesta consecutiva consume un Casco de la mano", () =>
+        {
+            foreach (var secondHelmet in new[] { false, true })
+            {
+                var (g, random) = Fixture([Life, Flute], [Helmet, secondHelmet ? Helmet : Attack]);
+                g.State.Players[0].Equipment = Bike;
+                g.State.Players[1].Equipment = CardCatalog.DiamondHelmet.Id;
+                random.EnqueueDie(2);
+                random.EnqueueDie(2);
+
+                Check(g.PlayCode(0, 0).Success);
+                var first = DuelSnapshot.For(g, 1, 1).Options.Single(option =>
+                    option.Move is { Kind: DuelMoveKind.PlayCode, Index: 0 });
+                Check(first.Move.Apply(g, 1).Success);
+                if (secondHelmet)
+                    Check(g.State.Phase == Phase.ErrorResponse && g.State.ErrorAfterDie && g.PassErrorResponse(1).Success);
+                Check(g.State.Phase == Phase.Actions && g.State.Players[1].Memory.SequenceEqual([Helmet]) &&
+                    g.State.Players[1].ActionsLeft == 1);
+
+                g = GameEngine.FromSnapshot(g.SaveSnapshot(), random);
+                Check(g.PlayCode(0, 0).Success);
+                var second = DuelSnapshot.For(g, 1, 2).Options.SingleOrDefault(option => option.Move.Kind == DuelMoveKind.PlayCode);
+                if (!secondHelmet)
+                {
+                    Check(second == null && !first.Move.Apply(g, 1).Success);
+                    Check(g.State.DecisionPlayer == 0 && g.State.Players[1].Memory.SequenceEqual([Helmet]));
+                    continue;
+                }
+
+                Check(second != null && second.Move.Apply(g, 1).Success);
+                Pick(g, 1, choice => choice.Field is { Owner: 1, Zone: FieldZone.Equipment });
+                var player = g.State.Players[1];
+                Check(player.Memory.SequenceEqual([Helmet, Helmet]) && player.ActionsLeft == 0);
+                Check(player.Hand.SequenceEqual([CardCatalog.DiamondHelmet.Id]) && g.State.Phase == Phase.Actions);
+            }
+        }),
         ("Casco de Copias: el clon de Tomo conserva sus anexos en canje y recupera su identidad al salir", () =>
         {
             var move = CardCatalog.VictoriousManualControl.Id;
@@ -87,6 +123,7 @@ static class NewCardInteractionsTests
             g.State.CurrentPlayer = 0;
             g = GameEngine.FromSnapshot(g.SaveSnapshot(), random);
             Check(g.PlayCode(0, 0).Success);
+            Check(g.State.DecisionPlayer == 0 && DuelSnapshot.For(g, 1, 1).Options.All(option => option.Move.Kind != DuelMoveKind.PlayCode));
             Pick(g, 0, choice => choice.Field is { Owner: 1, Zone: FieldZone.Exchange });
             Check(g.State.Players[1].Hand.SequenceEqual(new[] { Helmet }.Concat(children)));
             Check(g.State.Players[1].Exchange.Count == 0 && g.State.Players[1].Memory.SequenceEqual([move]));

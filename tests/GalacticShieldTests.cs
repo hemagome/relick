@@ -109,15 +109,22 @@ static class GalacticShieldTests
         {
             foreach (var useBox in new[] { false, true })
             {
-                var (game, _) = Fixture();
-                var player = game.State.Active;
-                player.Hand.Add(Shield);
+                var (game, random) = Fixture();
+                game.State.Active.Hand.Add(Shield);
                 if (useBox) game.State.Players[1].Equipment = CardCatalog.CardboardBox.Id;
                 else game.State.Players[1].Hand.Add(CardCatalog.LoadError.Id);
-                Check(game.PlayCode(0, 0).Success &&
-                    (useBox ? game.ResolveCodeResponse(1, true) : game.PlayCode(1, 0)).Success, "La activación admite ambas respuestas.");
+                var visuals = DuelVisualEvents.Capture(game);
+                Check(game.PlayCode(0, 0).Success && game.State.Active.Memory.Count == 0 && visuals.Count == 0,
+                    "El Escudo sigue en activación mientras espera la respuesta.");
+                game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+                visuals = DuelVisualEvents.Capture(game);
+                Check((useBox ? game.ResolveCodeResponse(1, true) : game.PlayCode(1, 0)).Success,
+                    "La activación admite ambas respuestas tras reconectar.");
+                var player = game.State.Active;
                 Check(player.GalacticShields == null && player.Deck.Count == 8 && player.Memory.Single() == Shield &&
                     player.ActionsLeft == 2 && game.State.Phase == Phase.Actions, "La cancelación no aparta cargas.");
+                Check(visuals.Single(cue => cue is { Kind: DuelVisualKind.Pile, Player: 0 }) is
+                    { Source: CardZone.Activation, Destination: CardZone.Memory }, "El Escudo viaja a Memoria al anularse.");
             }
         }),
         ("Escudo: un mazo corto recicla antes de completar la carga", () =>

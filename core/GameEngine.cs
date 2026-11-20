@@ -228,8 +228,8 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var card = CardCatalog.Get(PlayableHandCard(p, handIndex)!);
         if (card.Id == CardCatalog.CopyHelmet.Id) return PlayCopyHelmet(actor, handIndex);
-        if (card.Id == CardCatalog.MagicTome.Id || handIndex >= TomeHandBase &&
-            (card.Id == CardCatalog.Robotize.Id || card.Id == CardCatalog.GalacticShield.Id || card.Id == CardCatalog.GoldenTotem.Id))
+        if (card.Id == CardCatalog.MagicTome.Id || card.Id == CardCatalog.GalacticShield.Id || handIndex >= TomeHandBase &&
+            (card.Id == CardCatalog.Robotize.Id || card.Id == CardCatalog.GoldenTotem.Id))
         {
             var frame = new EngineActivation(actor, card.Id, card.ActionCost, CodePrCost(card), State.Phase);
             HoldActivationCard(frame, handIndex);
@@ -243,7 +243,7 @@ public sealed partial class GameEngine
         if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
-        var deferCorruption = (card.Id == CardCatalog.GoldenTotem.Id || card.Id == CardCatalog.GalacticShield.Id || card.Id == CardCatalog.Robotize.Id) &&
+        var deferCorruption = (card.Id == CardCatalog.GoldenTotem.Id || card.Id == CardCatalog.Robotize.Id) &&
             p.CorruptsOnMemory(CardZone.Hand, handIndex);
         // Robotizar waits in memory like an equipment: it announces its flight when it lands or when it is canceled.
         var robotize = card.Id == CardCatalog.Robotize.Id;

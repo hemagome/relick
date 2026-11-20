@@ -34,6 +34,9 @@ public partial class OnlineArena
             var afterShield = DuelSnapshot.For(game, seat, 41);
             afterShield.Visuals = shieldVisuals;
             var shieldOrigins = CaptureOrigins(afterShield, beforeShield);
+            if (shieldVisuals.Any(cue => cue is { Kind: DuelVisualKind.Pile, Destination: CardZone.Memory }) ||
+                shieldOrigins.Values.Count(flight => flight.IsPlacement && flight.Event.Destination == CardZone.GalacticShield) != 1)
+                throw new Exception("El Escudo debe volar una sola vez sobre el Relikario, sin pasar por Memoria.");
             var loads = shieldVisuals.Where(cue => cue is { Source: CardZone.Deck, Destination: CardZone.ShieldCharge }).ToArray();
             if (loads.Length != 3 || loads.Any(cue => shieldOrigins[cue].Face != null))
                 throw new Exception("Las tres cargas del Escudo deben viajar boca abajo.");
