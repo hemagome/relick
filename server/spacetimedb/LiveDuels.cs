@@ -194,6 +194,8 @@ public static partial class Module
         if (!result.Success) { WriteMoveResult(ctx, commandId, false, result.Message); return; }
         current.Revision++; current.Finished = game.State.IsOver; current.SnapshotJson = game.SaveSnapshot(false);
         ctx.Db.CurrentDuel.RoomCode.Update(current); CacheDuel(ctx, roomCode, game, current.Revision, visuals);
+        // Moves are refused once finished, so this runs only on the move that ends the duel.
+        if (current.Finished) RecordOutcome(ctx, roomCode, game.State.Winner);
         ctx.Db.DuelReceipt.Insert(new DuelReceipt { Key = key, RoomCode = roomCode, Revision = current.Revision, Option = option, SelectedCards = selected });
         AppendAudit(ctx, roomCode, current.Revision, JsonSerializer.Serialize(new DuelEntry { Actor = me.Seat, Move = choice.Move, RandomValues = random.Finish() }, DuelJson.Default.DuelEntry));
         WriteMoveResult(ctx, commandId, true, "", current.Revision); TouchRoom(ctx, roomCode);

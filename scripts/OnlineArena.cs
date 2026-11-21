@@ -330,7 +330,8 @@ public partial class OnlineArena : Control
                 InspectSkill = slot => ShowCards("Habilidad", [player.Skills[slot]]),
                 CanLearn = relative == 0 && !_preparing && s.Winner == null && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Learn),
                 Evolve = () => SendKind(DuelMoveKind.Evolve), CanEvolve = s.Options.Any(o => o.Move.Kind == DuelMoveKind.Evolve) && !Connection.PlayPending && !IsAnimating,
-                Relikia = relative == 0 && !_preparing && s.Winner == null ? OpenRelikiaMenu : null
+                Relikia = relative == 0 && !_preparing && s.Winner == null ? OpenRelikiaMenu : null,
+                Profile = ProfilesShown ? () => ShowProfile(seat, player.Name, relative == 0) : null
             };
         }
         var combatMessage = _preparing ? PreparationMessage() : s.Winner != null ? resultCaption : s.LastCombat;

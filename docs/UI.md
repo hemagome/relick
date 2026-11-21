@@ -246,6 +246,15 @@ Pruebas:
 - `--decks-only`: el editor en cuatro tamaños, gestos de cartas, pestaña Estilo y guardado.
 - Ambas forman parte de la matriz completa.
 
+## Perfil público
+
+- **Tarjeta (`ProfileCard`).** Retrato del Relikario dentro del marco elegido (`ProfileAvatar`), nombre con el color de su lado, título, resultados («7 V · 3 D · 1 E · 64 % de victorias»), Relikario favorito y tapete.
+- **Rival.** En la preparación y en el duelo, el nombre de cada jugador se puede tocar y abre su tarjeta en una ventana emergente que se cierra al tocar fuera. Sin perfiles en el servidor, el nombre no responde.
+- **Editor (`ProfileEditor`).** Se abre desde el retrato junto a «Tu nombre» en el lobby. Retratos con su imagen, títulos en un desplegable y muestras de color para marcos y tapetes; la vista previa sigue cada elección y solo se guarda al pulsar Guardar.
+- **Tapete.** Se aplica al abrir la arena y vuelve al Clásico al salir.
+
+Prueba enfocada: `--profile-only`. Abre la tarjeta del rival en dos tamaños y ambos asientos, comprueba que cabe en pantalla y que no se duplica, y recorre el editor. Forma parte de la matriz completa; con `--ui-screenshot-dir` guarda la tarjeta y el editor.
+
 ## Toques de animación
 
 Cuatro efectos cosméticos. Ninguno forma parte de `IsAnimating`: no bloquean jugadas ni decisiones. Todos se apagan con la preferencia de movimiento reducido del sistema o con `relick/accessibility/reduced_motion`.

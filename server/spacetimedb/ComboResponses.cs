@@ -29,7 +29,9 @@ public static partial class Module
         var result = game.SetComboResponses(me.Seat, enabled, out var resumed);
         if (!result.Success) { WriteMoveResult(ctx, commandId, false, result.Message); return; }
         if (resumed) current.Revision++;
+        var wasFinished = current.Finished;
         current.Finished = game.State.IsOver; current.SnapshotJson = game.SaveSnapshot(false);
+        if (!wasFinished && current.Finished) RecordOutcome(ctx, roomCode, game.State.Winner);
         ctx.Db.CurrentDuel.RoomCode.Update(current);
         if (resumed)
         {

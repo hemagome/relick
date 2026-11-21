@@ -109,6 +109,8 @@ public static partial class Module
         ctx.Db.LoadoutStyle.Player.Delete(player);
         ctx.Db.LoadoutRelikario.Player.Delete(player);
         ctx.Db.PlayBudget.Player.Delete(player);
+        ctx.Db.Profile.Player.Delete(player);
+        foreach (var record in ctx.Db.PlayerRecord.Player.Filter(player).ToList()) ctx.Db.PlayerRecord.Id.Delete(record.Id);
         ctx.Db.Account.Player.Delete(player);
     }
 }

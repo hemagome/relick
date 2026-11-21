@@ -5,6 +5,7 @@ using System.Text.Json;
 if (args.FirstOrDefault() == "--connection-health") return await ConnectionHealthChecks.Run(args);
 if (args.FirstOrDefault() == "--quick-match") return await QuickMatchChecks.Run(args);
 if (args.FirstOrDefault() == "--decks") return await DeckChecks.Run(args);
+if (args.FirstOrDefault() == "--profiles") return await ProfileChecks.Run(args);
 if (args.FirstOrDefault() == "--login") return await LoginChecks.Run(args);
 if (args.FirstOrDefault()?.StartsWith("--") == true) return await ScalabilityChecks.Run(args);
 

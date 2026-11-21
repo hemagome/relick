@@ -20,6 +20,8 @@ public sealed class ArenaPlayerActions
     public bool CanLearn { get; init; }
     public string EvolutionHint { get; init; } = "Evolucionar cuesta 1800 PR y requiere un 6 natural.";
     public Action<ResourceBadge>? Relikia { get; init; }
+    /// <summary>Opens this player's public profile; null when the server has no profiles.</summary>
+    public Action? Profile { get; init; }
 }
 
 public static class ArenaPresentation
@@ -72,6 +74,21 @@ public static class ArenaPresentation
         panel.AddThemeStyleboxOverride("panel", RelickVisuals.Glass(BoardArt.Tint(fill.Lightened(0.06f), 0.90f), BoardArt.Tint(fill.Darkened(0.2f), 0.90f),
             border, 10, 8, new Color(0, 0, 0, 0.4f)));
         parent.AddChild(panel); return panel;
+    }
+
+    /// <summary>Lets a player's name open their profile card with a click or a tap.</summary>
+    private static void OpensProfile(Label name, string playerName, Action? profile)
+    {
+        if (profile == null) return;
+        name.MouseFilter = Control.MouseFilterEnum.Stop;
+        name.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+        name.TooltipText = $"{playerName} · Ver perfil";
+        name.GuiInput += input =>
+        {
+            if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
+            name.AcceptEvent();
+            profile();
+        };
     }
 
     private static Label Heading(string text, int size, Color color)
@@ -141,6 +158,7 @@ public static class ArenaPresentation
         // Whose turn it is lives in the phase bar's status cell; the name is only the name.
         var ownerName = Heading(owner.Name, 17, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; info.AddChild(ownerName);
+        OpensProfile(ownerName, owner.Name, actions.Profile);
         var name = Text($"{RelikarioCatalog.NameOf(owner.RelikarioId)} · Lv {owner.Level}", 11, BoardArt.Muted);
         name.ClipText = true; name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · {RelikarioCatalog.NameOf(owner.RelikarioId)} · Vida máxima: {owner.MaxHealth}";
         info.AddChild(name);
@@ -338,6 +356,7 @@ public static class ArenaPresentation
         names.AddThemeConstantOverride("separation", 0);
         var ownerName = Text(owner.Name, 9, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = compact; ownerName.TooltipText = owner.Name; names.AddChild(ownerName);
+        OpensProfile(ownerName, owner.Name, actions.Profile);
         var name = Text($"{RelikarioCatalog.NameOf(owner.RelikarioId)} · Lv {owner.Level}", compact ? 15 : 18);
         name.ClipText = compact; name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · Vida máxima: {owner.MaxHealth}";

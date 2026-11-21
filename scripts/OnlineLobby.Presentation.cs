@@ -67,6 +67,12 @@ public partial class OnlineLobby
 
         var identity = Surface(column, 16); _identityPanel = identity;
         var identityRow = new HBoxContainer(); identityRow.AddThemeConstantOverride("separation", 20); identity.AddChild(identityRow);
+        _profileButton = new Button { Name = "OpenProfile", CustomMinimumSize = new(56, 56), Visible = false, TooltipText = "Mi perfil",
+            AccessibilityName = "Mi perfil", SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        _profileAvatar = new ProfileAvatar { Name = "ProfileButtonAvatar", MouseFilter = MouseFilterEnum.Ignore };
+        _profileButton.AddChild(_profileAvatar); _profileAvatar.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.Minsize, 4);
+        _profileButton.Pressed += OpenProfile;
+        identityRow.AddChild(_profileButton);
         var identityLabel = Caption("TU NOMBRE", BoardArt.Muted);
         identityLabel.CustomMinimumSize = new(100, 0); identityLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         identityRow.AddChild(identityLabel);
@@ -214,6 +220,7 @@ public partial class OnlineLobby
         _name.Editable = _code.Editable = room == null && !busy && !searching;
         PresentAccountName(_name.Editable);
         _decks.Disabled = !ready || busy || searching || room != null;
+        PresentProfileButton(ready && !busy && !searching && room == null);
         PresentEquippedDeck(_lobby.Decks.FirstOrDefault(deck => deck.Active));
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;

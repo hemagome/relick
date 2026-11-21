@@ -461,3 +461,31 @@ canje). El cliente anima la carta boca arriba de una casilla a otra. `FieldMove`
 opcional y un cliente anterior lo ignora. Se publicó en `relick-dev` local y en
 `relick-pvp-dev-c2006ee7` con `--delete-data=never`, sin partidas abiertas y sin cambios
 de esquema.
+
+## Perfil público
+
+Cada cuenta tiene un perfil con retrato, título, marco y tapete (`core/ProfileCatalog.cs`), además de sus resultados. Todo es cosmético: ninguna elección cambia una regla.
+
+Cambios en el servidor (`server/spacetimedb/Profiles.cs`):
+
+- **Tabla `profile`.** Guarda las cuatro elecciones de cada jugador. Sin fila se muestran las predeterminadas (Yuno, Novato, Clásico, Clásico).
+- **Tabla `player_record`.** Victorias, derrotas y empates por jugador y Relikario, contados por forma base (Yuno Lv 2 cuenta como Yuno). Se escribe una sola vez, en la jugada que termina el duelo (`play_duel_v_2`, o `set_combo_responses` si reanuda la resolución hasta el final). Abandonar cuenta como derrota; un duelo que caduca sin terminar no cuenta.
+- **Vista `my_profile`.** El perfil propio con sus totales y el Relikario favorito (el más jugado; en empate, el de más victorias y luego el orden del catálogo).
+- **Vista `my_room_profiles`.** Los perfiles de los dos asientos de la sala del jugador. Un rival solo se ve mientras compartís sala, y nunca se publica su identidad.
+- **Reductor `set_profile`.** Rechaza retratos, títulos, marcos y tapetes que no existan; solo los Relikarios base son retratos.
+- Eliminar la cuenta borra también su perfil y sus resultados.
+
+Cambios en el cliente:
+
+- `LobbyConnection.Profile.cs` se suscribe a las dos vistas por separado, como a la partida rápida, así que un servidor sin perfiles sigue sincronizando la sala y los mazos; el juego oculta entonces el perfil.
+- En el lobby, el retrato junto al nombre abre **Mi perfil**, un editor con vista previa.
+- En la preparación y en el duelo, tocar el nombre de un jugador abre su tarjeta de perfil.
+- El tapete elegido viste tu arena (`RelickVisuals.Playmat`); el lobby conserva el Clásico. Cada jugador ve su propio tapete.
+
+Validación local con `tests/server/dev`:
+
+- Las comprobaciones del motor, incluidas las del catálogo del perfil.
+- La batería de perfiles con `-- --profiles`: valores predeterminados, rechazos, visibilidad solo dentro de la sala, resultados de dos duelos reales y borrado con la cuenta.
+- Las baterías de mazos y PvP general completas.
+
+Aún no publicado en Maincloud. El plan de migración solo agrega las tablas privadas `profile` y `player_record`, las vistas `my_profile` y `my_room_profiles` y el reductor `set_profile`.

@@ -88,6 +88,8 @@ public partial class OnlineLobby : Control
             _resultExitRequested && room?.Code != _arena.RoomCode))
         {
             RemoveChild(_arena); _arena.QueueFree(); _arena = null; _content.Visible = true;
+            // The lobby keeps the classic cloth; the chosen playmat dresses only the arena.
+            RelickVisuals.Playmat = RelickPlaymat.Classic;
             GetNode<MusicDirector>("/root/MusicDirector").ShowMenu();
             _lobby.ClearResult(); _resultExitRequested = false;
             _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
@@ -106,6 +108,7 @@ public partial class OnlineLobby : Control
     private void OpenArena(string roomCode)
     {
         _resultExitRequested = false;
+        RelickVisuals.Playmat = ProfilePlaymats.Of(_lobby.Profile?.Playmat);
         var arena = new OnlineArena { Connection = _lobby, RoomCode = roomCode };
         arena.ReturnToLobbyRequested += () =>
         {

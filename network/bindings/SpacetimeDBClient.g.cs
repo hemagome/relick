@@ -39,8 +39,10 @@ namespace Relick.Network.Types
             AddTable(MyInitialSkill = new(conn));
             AddTable(MyMoveResult = new(conn));
             AddTable(MyPreparation = new(conn));
+            AddTable(MyProfile = new(conn));
             AddTable(MyQuickSearch = new(conn));
             AddTable(MyRoom = new(conn));
+            AddTable(MyRoomProfiles = new(conn));
             AddTable(MyRoomRelikarios = new(conn));
         }
     }
@@ -549,8 +551,10 @@ namespace Relick.Network.Types
             new QueryBuilder().From.MyInitialSkill().ToSql(),
             new QueryBuilder().From.MyMoveResult().ToSql(),
             new QueryBuilder().From.MyPreparation().ToSql(),
+            new QueryBuilder().From.MyProfile().ToSql(),
             new QueryBuilder().From.MyQuickSearch().ToSql(),
             new QueryBuilder().From.MyRoom().ToSql(),
+            new QueryBuilder().From.MyRoomProfiles().ToSql(),
             new QueryBuilder().From.MyRoomRelikarios().ToSql(),
         }
         ;
@@ -569,8 +573,10 @@ namespace Relick.Network.Types
         public global::SpacetimeDB.Table<InitialSkillInfo, MyInitialSkillCols, MyInitialSkillIxCols> MyInitialSkill() => new("my_initial_skill", new MyInitialSkillCols("my_initial_skill"), new MyInitialSkillIxCols("my_initial_skill"));
         public global::SpacetimeDB.Table<MoveResult, MyMoveResultCols, MyMoveResultIxCols> MyMoveResult() => new("my_move_result", new MyMoveResultCols("my_move_result"), new MyMoveResultIxCols("my_move_result"));
         public global::SpacetimeDB.Table<PreparationInfo, MyPreparationCols, MyPreparationIxCols> MyPreparation() => new("my_preparation", new MyPreparationCols("my_preparation"), new MyPreparationIxCols("my_preparation"));
+        public global::SpacetimeDB.Table<ProfileInfo, MyProfileCols, MyProfileIxCols> MyProfile() => new("my_profile", new MyProfileCols("my_profile"), new MyProfileIxCols("my_profile"));
         public global::SpacetimeDB.Table<QuickSearchInfo, MyQuickSearchCols, MyQuickSearchIxCols> MyQuickSearch() => new("my_quick_search", new MyQuickSearchCols("my_quick_search"), new MyQuickSearchIxCols("my_quick_search"));
         public global::SpacetimeDB.Table<RoomInfo, MyRoomCols, MyRoomIxCols> MyRoom() => new("my_room", new MyRoomCols("my_room"), new MyRoomIxCols("my_room"));
+        public global::SpacetimeDB.Table<ProfileInfo, MyRoomProfilesCols, MyRoomProfilesIxCols> MyRoomProfiles() => new("my_room_profiles", new MyRoomProfilesCols("my_room_profiles"), new MyRoomProfilesIxCols("my_room_profiles"));
         public global::SpacetimeDB.Table<RoomRelikarioInfo, MyRoomRelikariosCols, MyRoomRelikariosIxCols> MyRoomRelikarios() => new("my_room_relikarios", new MyRoomRelikariosCols("my_room_relikarios"), new MyRoomRelikariosIxCols("my_room_relikarios"));
     }
 
@@ -671,6 +677,7 @@ namespace Relick.Network.Types
                 Reducer.SetActiveDeck args => Reducers.InvokeSetActiveDeck(eventContext, args),
                 Reducer.SetComboResponses args => Reducers.InvokeSetComboResponses(eventContext, args),
                 Reducer.SetDisplayName args => Reducers.InvokeSetDisplayName(eventContext, args),
+                Reducer.SetProfile args => Reducers.InvokeSetProfile(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
         }

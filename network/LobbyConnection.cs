@@ -149,6 +149,7 @@ public sealed partial class LobbyConnection : IDisposable
                 // Apart, like the quick search: a server without deck styles still syncs the room and the decks.
                 connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_deck_styles"]);
                 connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_room_relikarios"]);
+                SubscribeProfiles(connection);
             })
             .OnConnectError(error => { Ready = Connecting = false; Message = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; })
             .OnDisconnect((_, error) => { Ready = Connecting = false; Message = "Se perdió la conexión. Pulsa Reconectar para recuperar tu sala."; });
@@ -176,6 +177,7 @@ public sealed partial class LobbyConnection : IDisposable
         _connection.Reducers.OnLeaveRoom += context => RoomReply(context);
         RegisterQuickMatchReplies();
         RegisterDeckReplies();
+        RegisterProfileReplies();
         void BoardResult(string json, string roomCode)
         {
             var packet = JsonSerializer.Deserialize(json, DuelJson.Default.DuelBoardPacket)!;
@@ -498,5 +500,6 @@ public sealed partial class LobbyConnection : IDisposable
         if (_connection?.IsActive == true) _connection.Disconnect();
         _connection = null; _preparationSubscription = null;
         _decks = null; DeckPending = false; DeckRevision++;
+        ProfilesAvailable = ProfilePending = false; ProfileRevision++;
     }
 }
