@@ -108,6 +108,8 @@ public partial class OnlineArena
         }
         var cost = ArenaActionText.Cost(option, s);
         button.TooltipText = button is CardActionButton && cost.Length > 0 ? button.Text + " · " + cost : cost;
+        if (option.Move.Kind == DuelMoveKind.RevealGhostDog)
+            button.TooltipText += "\nSe activa gratis al inicio de tu próxima etapa de acciones si sigue en tu mano.";
         if (s.Phase == Phase.ErrorResponse && option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id)
             button.TooltipText += ArenaActionText.SingleCopyTargetName(s) is { } target ? $"\nCopiar {target}" : "\nElige qué carta de la RAM copiar.";
         button.SetMeta("option_index", index); button.SetMeta("discards", option.RequiredDiscards);

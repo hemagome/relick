@@ -8,7 +8,7 @@ internal static class ArenaActionText
     public static string Label(DuelOption option, DuelSnapshot s) => option.Move.Kind switch
     {
         DuelMoveKind.Learn => "Enseñar",
-        DuelMoveKind.RevealGhostDog => "Revelar para la próxima etapa de acciones",
+        DuelMoveKind.RevealGhostDog => "Revelar",
         DuelMoveKind.Attack when option.Field?.Zone == FieldZone.TomeCard =>
             $"Atacar con {CardCatalog.Get(s.Players[s.MySeat].Skills[option.Move.Value]).Name}",
         DuelMoveKind.Attack => "Atacar",

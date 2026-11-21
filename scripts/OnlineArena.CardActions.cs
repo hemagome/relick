@@ -50,6 +50,7 @@ public partial class OnlineArena
         DuelMoveKind.Equip or DuelMoveKind.UsePurpleRing or DuelMoveKind.BoxDefense or DuelMoveKind.CodeResponse or DuelMoveKind.ProtectDestruction => GameIcon.Shield,
         DuelMoveKind.ActivateArea => GameIcon.Flag,
         DuelMoveKind.Exchange => GameIcon.Exchange,
+        DuelMoveKind.RevealGhostDog => GameIcon.Eye,
         DuelMoveKind.Placement when move.Value == (int)CardDestination.Exchange => GameIcon.Exchange,
         DuelMoveKind.Discard or DuelMoveKind.TurnBuffDiscard => GameIcon.Memory,
         DuelMoveKind.Placement or DuelMoveKind.Magnet => GameIcon.Cards,

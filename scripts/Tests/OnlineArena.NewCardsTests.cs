@@ -64,6 +64,18 @@ public partial class OnlineArena
             dialog.QueueFree();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await CheckCopyHelmetTargets();
+
+            var dog = new GameEngine(26);
+            dog.State.Phase = Phase.Actions;
+            var seat = dog.State.CurrentPlayer;
+            var index = dog.State.Active.Hand.Count;
+            dog.State.Active.Hand.Add(CardCatalog.GhostDog.Id);
+            PresentTestSnapshot(DuelSnapshot.For(dog, seat, 4));
+            SelectCard(index);
+            var reveal = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.RevealGhostDog);
+            if (PresentedButton(reveal) is not CardActionButton { Text: "Revelar", Symbol: GameIcon.Eye } button ||
+                button.GetParent() != _cardActions || !button.TooltipText.Contains("próxima etapa de acciones"))
+                throw new Exception("Perro Fantasma debe mostrar Revelar con un ojo y conservar el momento de activación en la ayuda.");
         }
 
         await CheckAreaAndDeckArrivals();

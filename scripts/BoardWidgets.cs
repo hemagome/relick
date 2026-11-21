@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass, Check, Pencil, Copy, Trash, Bench }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass, Check, Pencil, Copy, Trash, Bench, Eye }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -166,6 +166,11 @@ public static class BoardArt
                 break;
             case GameIcon.Bolt:
                 Shape(new(0, -14), new(-11, 3), new(-2, 3), new(-5, 14), new(12, -5), new(3, -5), new(7, -14));
+                break;
+            case GameIcon.Eye:
+                c.DrawPolyline(new Vector2[] { new(-14, 0), new(-8, -6), new(-4, -8), new(0, -9), new(4, -8), new(8, -6),
+                    new(14, 0), new(8, 6), new(4, 8), new(0, 9), new(-4, 8), new(-8, 6), new(-14, 0) }, color, 3, true);
+                c.DrawCircle(Vector2.Zero, 4.5f, color, antialiased: true);
                 break;
             case GameIcon.Heart:
                 Shape(new(-14, -8), new(-9, -13), new(-4, -13), new(0, -8), new(4, -13), new(9, -13), new(14, -8),
