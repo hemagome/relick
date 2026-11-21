@@ -488,4 +488,9 @@ Validación local con `tests/server/dev`:
 - La batería de perfiles con `-- --profiles`: valores predeterminados, rechazos, visibilidad solo dentro de la sala, resultados de dos duelos reales y borrado con la cuenta.
 - Las baterías de mazos y PvP general completas.
 
-Aún no publicado en Maincloud. El plan de migración solo agrega las tablas privadas `profile` y `player_record`, las vistas `my_profile` y `my_room_profiles` y el reductor `set_profile`.
+Publicado el 20 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud con
+`--delete-data=never`. El plan de migración solo agregó las tablas privadas `profile`
+y `player_record` y las vistas `my_profile` y `my_room_profiles`, junto con el reductor
+`set_profile`. Se conservaron las cuentas y los mazos, y las tablas nuevas empiezan vacías.
+No se ejecutó la batería de perfiles contra Maincloud: el módulo real exige iniciar
+sesión con SpacetimeAuth. Los resultados empiezan a contarse desde esta publicación.
