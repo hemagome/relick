@@ -12,10 +12,7 @@ internal static class ArenaActionText
         DuelMoveKind.Attack when option.Field?.Zone == FieldZone.TomeCard =>
             $"Atacar con {CardCatalog.Get(s.Players[s.MySeat].Skills[option.Move.Value]).Name}",
         DuelMoveKind.Attack => "Atacar",
-        DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id =>
-            SingleCopyTargetName(s) is { } target ? $"Copiar {target}" : "Elegir carta para copiar",
-        DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.ComboParry.Id => "Combo Parry",
-        DuelMoveKind.PlayCode => HandCard(option, s)?.CancelActivation == true ? "Anular" : HandCard(option, s)?.IsCombo == true ? "Activar" : "Jugar",
+        DuelMoveKind.PlayCode => "Activar",
         DuelMoveKind.Equip when option.Move.Flag => "Equipar al rival",
         DuelMoveKind.Equip when HandCard(option, s)?.Id == CardCatalog.MetalHood.Id => "Equiparme",
         DuelMoveKind.Equip => "Equipar",
@@ -42,11 +39,13 @@ internal static class ArenaActionText
         DuelMoveKind.SkipMagnet => "No tomar carta",
         DuelMoveKind.CodeResponse => option.Move.Flag ? "Anular con Caja" : "Dejar resolver",
         DuelMoveKind.PassError => "Dejar resolver",
+        DuelMoveKind.Choose when s.Decision?.Source == CardCatalog.ZahiraFlair.Id && option.Field is { } host =>
+            ZahiraDestination(host, s),
         DuelMoveKind.Choose => option.Button ?? option.Label,
         DuelMoveKind.Placement => option.Move.Value == (int)CardDestination.Exchange ? "Canjear" : "Al mazo",
         DuelMoveKind.Reward => option.Move.Value == (int)RelikiaReward.OpponentDiscards ? "Provocar descartes" : "Corromper códigos",
         DuelMoveKind.Corrupt => "Corromper",
-        DuelMoveKind.DestinyPickMemory => "Activar Púa del Destino",
+        DuelMoveKind.DestinyPickMemory => "Activar",
         DuelMoveKind.Recycle => "Reciclar",
         DuelMoveKind.FieldCode => "Activar",
         DuelMoveKind.Sniper => option.Move.Flag ? "Equipar" : "Canjear",
@@ -58,6 +57,45 @@ internal static class ArenaActionText
         _ => option.Label
     };
 
+    private static string ZahiraDestination(FieldTarget host, DuelSnapshot s)
+    {
+        var owner = s.Players[host.Owner];
+        var position = host.Index + 1;
+        var zone = host.Zone switch
+        {
+            FieldZone.Relikario => "Relikario",
+            FieldZone.Equipment when owner.EquipmentStackedCopies > 0 => $"Equipo {position}",
+            FieldZone.Equipment => "Equipo",
+            FieldZone.EquipmentCover => $"Cobertura de equipo {position}",
+            FieldZone.LightEquipment => $"Equipo ligero {position}",
+            FieldZone.Skill => $"Habilidad {owner.SkillPosition(host.Index) + 1}",
+            FieldZone.Attached => $"Anexo {position}",
+            FieldZone.GalacticShield => $"Escudo {position}",
+            FieldZone.TomeCard => ZahiraTomeLocation(owner.TomeCards, host.Index),
+            FieldZone.Bonus => "Bonus",
+            FieldZone.Area => "Área",
+            FieldZone.Exchange => $"Canje {position}",
+            FieldZone.Zahira => $"Trampa {GameEngine.ZahiraSlot(host.Index) + 1}",
+            _ => "Campo"
+        };
+        var side = host.Zone == FieldZone.Zahira ? "Del rival" : host.Owner == s.MySeat ? "Tu campo" : "Campo rival";
+        var card = host.Zone == FieldZone.Relikario ? RelikarioCatalog.DisplayNameOf(host.CardId) : CardCatalog.Get(host.CardId).Name;
+        return $"{zone} · {side}\n{card}";
+    }
+
+    private static string ZahiraTomeLocation(TomeCardView[]? cards, int slot)
+    {
+        if (cards?.FirstOrDefault(card => card.Slot == slot) is not { } target) return $"Tomo · carta {slot + 1}";
+        var host = target.HostZone switch
+        {
+            FieldZone.Bonus => "Bonus",
+            FieldZone.Exchange => $"canje {target.HostIndex + 1}",
+            _ => $"anexo {target.HostIndex + 1}"
+        };
+        var position = cards.Count(card => card.HostZone == target.HostZone && card.HostIndex == target.HostIndex && card.Slot <= slot);
+        return $"Tomo en {host} · carta {position}";
+    }
+
     public static CardDefinition? HandCard(DuelOption option, DuelSnapshot s)
     {
         var id = option.Field?.Zone == FieldZone.TomeCard ? option.CardId :
@@ -65,8 +103,7 @@ internal static class ArenaActionText
         return id == null ? null : CardCatalog.Get(id);
     }
 
-    // An authorized helmet can always copy the opening activation. Subsequent RAM links are
-    // Error de Carga counters or copies, which the public resolution shows as the copied card.
+    // Subsequent RAM links are counters or copies. If they are all counters, only the opening card can be copied.
     public static string? SingleCopyTargetName(DuelSnapshot s) =>
         s.Resolution is { } live && CardCatalog.All.TryGetValue(CardCatalog.TextId(live.CardId), out var source) &&
         source.CodeType is CodeType.Object or CodeType.Character &&

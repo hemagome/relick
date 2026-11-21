@@ -124,15 +124,18 @@ public partial class OnlineArena
         if (!game.PlayCode(0, 0).Success) throw new Exception("No se prepara el objetivo de Casco de Copias.");
         await Present(1);
         var reply = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode);
-        if (PresentedButton(reply)?.Text != $"Copiar {source.Name}" || !_selection.Text.Contains(source.Name))
-            throw new Exception("El objetivo único debe aparecer antes de jugar Casco de Copias.");
+        SelectCard(reply.Move.Index);
+        if (PresentedButton(reply) is not CardActionButton { Text: "Activar" } activate ||
+            activate.GetParent() != _cardActions || !activate.TooltipText.Contains(source.Name))
+            throw new Exception("Casco de Copias debe ofrecer Activar junto a la carta e indicar su objetivo único.");
         if (!reply.Move.Apply(game, 1).Success || game.State.Phase != Phase.ErrorResponse)
             throw new Exception("El objetivo único debe copiarse directamente y devolver la prioridad.");
 
         await Present(0);
         reply = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(o, _snapshot)?.Id == helmet);
+        SelectCard(reply.Move.Index);
         var actions = game.State.Players[0].ActionsLeft;
-        if (PresentedButton(reply)?.Text != "Elegir carta para copiar" || !reply.Move.Apply(game, 0).Success ||
+        if (PresentedButton(reply) is not CardActionButton { Text: "Activar" } || !reply.Move.Apply(game, 0).Success ||
             game.State.Players[0].ActionsLeft != actions || !game.State.Players[0].Hand.Contains(helmet))
             throw new Exception("Con dos objetivos, abrir el selector debe conservar la acción y el Casco.");
 

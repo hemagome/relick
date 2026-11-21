@@ -48,7 +48,7 @@ public partial class OnlineArena
                     var activate = dialog.FindChild("ActivateDestinyPick", true, false) as Button;
                     if (relative == 0)
                     {
-                        if (activate is not { Disabled: true })
+                        if (activate is not { Disabled: true, Text: "Activar" })
                             throw new Exception("La activación debe estar visible y deshabilitada al inspeccionar el Ataque.");
                         ((HandCard)dialog.FindChild("CollectionCard1", true, false)).EmitSignal(Button.SignalName.Pressed);
                         if (activate.Disabled) throw new Exception("Seleccionar Púa debe habilitar su efecto de memoria.");

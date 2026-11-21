@@ -80,9 +80,9 @@ public partial class OnlineArena
                     var card = _handCards[2];
                     _hand!.EnsureControlVisible(card); await Layout();
                     card.Disabled = false; GuiInputTestDriver.Click(card); await Layout();
-                    Check(PresentedButton(combo) is CardActionButton { Text: "Jugar" } play && play.GetParent() == _cardActions &&
+                    Check(PresentedButton(combo) is CardActionButton { Text: "Activar" } play && play.GetParent() == _cardActions &&
                         _cardActions.Visible && _cardActionAnchor == card && _decisionPopup is { Visible: false },
-                        "Al tocar un COMBO durante el turno rival, Jugar debe aparecer junto a su carta.");
+                        "Al tocar un COMBO durante el turno rival, Activar debe aparecer junto a su carta.");
                     ClearContext();
                 }
                 if (own && size.X == 1820)
@@ -142,13 +142,33 @@ public partial class OnlineArena
                         "La defensa debe dejar Recibir daño en el aviso y Esquivar en la mano.");
                     SelectCard(2); await Layout(); PositionCardActions();
                     var dodge = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode);
-                    Check(PresentedButton(dodge) is CardActionButton { Text: "Jugar" } && _cardActions.Visible &&
+                    Check(PresentedButton(dodge) is CardActionButton { Text: "Activar" } && _cardActions.Visible &&
                         _decisionPopup is { Visible: true } && PresentsKind(DuelMoveKind.PassDefense),
                         "Seleccionar Esquivar debe conservar la decisión de recibir daño.");
                     Check(!_cardActions.GetGlobalRect().Intersects(_decisionPopup!.GetGlobalRect()),
                         $"El aviso de defensa tapa el menú de Esquivar en {size}: {_decisionPopup.GetGlobalRect()}, {_cardActions.GetGlobalRect()}.");
                     continue;
                 }
+                var roll = Fixture();
+                roll.State.Players[actor].Hand.AddRange([CardCatalog.Agility.Id, CardCatalog.Reroll.Id, CardCatalog.MindReset.Id]);
+                foreach (var player in roll.State.Players) player.Memory.Add(CardCatalog.Attack.Id);
+                Check(roll.Attack(actor, 0, 0).Success && roll.State.Phase == Phase.AttackRerollChoice,
+                    "Falta el dado propio para probar el menú COMBO.");
+                PresentTestSnapshot(DuelSnapshot.For(roll, seat, 703)); await Layout();
+                var options = _snapshot!.Options.Where(o => o.Move.Kind == DuelMoveKind.PlayCode).ToArray();
+                Check(options.Length == 4 && options.All(o => !PresentsOption(o)) && PresentsKind(DuelMoveKind.AttackDie),
+                    "El dado propio debe dejar Conservar en su panel y los COMBO en la mano.");
+                foreach (var option in options)
+                {
+                    var card = _handCards[option.Move.Index];
+                    _hand!.EnsureControlVisible(card); await Layout();
+                    card.Disabled = false; GuiInputTestDriver.Click(card); await Layout(); PositionCardActions();
+                    Check(PresentedButton(option) is CardActionButton { Text: "Activar" } activate && activate.IsVisibleInTree() &&
+                        activate.GetParent() == _cardActions && _cardActionAnchor == card && PresentsKind(DuelMoveKind.AttackDie),
+                        "La carta seleccionada debe ofrecer Activar y conservar disponible el dado.");
+                    Check(!_cardActions.GetGlobalRect().Intersects(_decisionPopup!.GetGlobalRect()), $"El panel del dado tapa Activar en {size}.");
+                }
+                PresentTestSnapshot(DuelSnapshot.For(game, seat, 704)); await Layout();
                 if (Short) continue;
 
                 // A skill card in hand has no copy yet: base values, labelled as such.

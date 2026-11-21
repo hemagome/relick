@@ -57,8 +57,10 @@ public partial class OnlineArena
             var response = DuelSnapshot.For(game, 1 - actor, 3);
             PresentTestSnapshot(response);
             var parryOption = response.Options.Single(option => option.Move.Kind == DuelMoveKind.PlayCode);
-            if (PresentedButton(parryOption)?.Text != parry.Name || _contextTitle.Text != parry.Name)
-                throw new Exception("La respuesta debe identificar Combo Parry.");
+            SelectCard(parryOption.Move.Index);
+            if (PresentedButton(parryOption) is not CardActionButton { Text: "Activar" } activate ||
+                activate.GetParent() != _cardActions || _contextTitle.Text != parry.Name || _decisionPopup is { Visible: true })
+                throw new Exception("La respuesta debe ofrecer Activar junto a Combo Parry.");
         }
         GD.Print("PVP_COMBO_PARRY_PASS");
     }

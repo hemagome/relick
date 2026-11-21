@@ -13,7 +13,7 @@ public partial class OnlineArena
     private bool ViewingBoardDuringGallery => _pausedGallery.HasValue;
 
     private bool NeedsDecisionPrompt(DuelSnapshot s) => _choosingAttackSkill || ChoosingEffectCards ||
-        s.DecisionPlayer == s.MySeat && (!(s.Phase.IsTurnStage() || s.Phase == Phase.Finished) ||
+        s.DecisionPlayer == s.MySeat && (!(s.Phase.IsTurnStage() || s.Phase is Phase.Finished or Phase.ErrorResponse) ||
             s.Options.Any(o => o.Move.Kind == DuelMoveKind.Discard));
 
     private void BuildDecisionPrompt(VBoxContainer? gallery)

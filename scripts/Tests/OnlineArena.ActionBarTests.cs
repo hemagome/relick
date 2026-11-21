@@ -206,10 +206,16 @@ public partial class OnlineArena
                     PresentedButton(drawChoices.Single(o => o.Primary))?.Text.Contains("200 PR") == true &&
                     _contextTitle.Text == CardCatalog.BlueEgg.Name, "El robo opcional de Huevo no muestra ambas decisiones.");
                 Check(drawChoices.Single(o => !o.Primary).Move.Apply(game, actor).Success, "No se puede omitir el robo de Huevo.");
+                p.ActionsLeft = 2;
                 p.Hand.Add(CardCatalog.TimeBomb.Id); Check(game.PlayCode(actor, p.Hand.Count - 1).Success, "No empieza Bomba en el fixture de mano.");
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 314)); await Layout(); await TapCard(0);
                 var ownHand = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } f && f.Owner == actor);
                 Check(PresentedButton(ownHand)?.Text == "Destruir" && _selection.Text.Contains("azar"), "Bomba confunde la mano al azar con la carta tocada.");
+                var star = _snapshot.Options.Single(o => IsComboActivation(o, _snapshot));
+                await TapCard(star.Move.Index);
+                Check(PresentedButton(star) is CardActionButton { Text: "Activar" } && PresentedButton(ownHand)?.GetParent() == _moves &&
+                    _decisionTitle.Text == CardCatalog.TimeBomb.Name,
+                    "Elegir un COMBO en la mano debe mantener disponible la decisión de Bomba.");
 
                 var memoryGame = new GameEngine(41); memoryGame.State.Phase = Phase.Actions; memoryGame.State.CurrentPlayer = actor;
                 memoryGame.State.Active.Relikia = 500; memoryGame.State.Active.Memory.Add(CardCatalog.Senshuni.Id);
@@ -318,19 +324,23 @@ public partial class OnlineArena
                         Check(!PresentsKind(DuelMoveKind.PlayCode) && !PresentsKind(DuelMoveKind.PassError), "El jugador en espera puede responder con Error.");
                         continue;
                     }
-                    void CheckResponse()
-                    {
-                        Check(PresentsKind(DuelMoveKind.PlayCode) && PresentsKind(DuelMoveKind.PassError),
-                            "Error de Carga no ofrece Anular y Dejar resolver sin depender de la selección de mano.");
-                        Check(_contextCost.Text == "1 acción", "Error de Carga oculta el coste de anular.");
-                    }
-                    CheckResponse();
-                    foreach (var index in new[] { 0, error.State.Players[seat].Hand.IndexOf(CardCatalog.LoadError.Id) })
+                    var code = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode);
+                    var pass = _snapshot.Options.Single(o => o.Move.Kind == DuelMoveKind.PassError);
+                    var passButton = PresentedButton(pass);
+                    Check(!PresentsOption(code) && passButton is { Text: "Dejar resolver" } &&
+                        passButton.GetParent() == _passResponseSlot && passButton.IsVisibleInTree() && _decisionPopup is { Visible: false },
+                        "La RAM debe dejar resolver desde la barra y anunciar Error de Carga con el halo.");
+                    foreach (var index in new[] { 0, code.Move.Index }.Distinct())
                     {
                         var card = _handCards[index]; _hand!.EnsureControlVisible(card); await Layout();
-                        card.Disabled = false; GuiInputTestDriver.Click(card); await Layout(); CheckResponse();
+                        card.Disabled = false; GuiInputTestDriver.Click(card); await Layout(); PositionCardActions();
+                        var activate = PresentedButton(code);
+                        Check(index == code.Move.Index
+                            ? activate is CardActionButton { Text: "Activar" } && activate.IsVisibleInTree() &&
+                                activate.GetParent() == _cardActions && _cardActionAnchor == card && _contextCost.Text == "1 acción"
+                            : activate == null, "Solo la copia autorizada de Error de Carga debe mostrar Activar y su coste.");
+                        Check(PresentsOption(pass) && _decisionPopup is { Visible: false }, "Seleccionar una carta abre un popup en la RAM.");
                     }
-                    var pass = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PassError);
                     var copy = GameEngine.FromSnapshot(error.SaveSnapshot(), new SeededRandom(32));
                     Check(pass.Move.Apply(copy, responder).Success && copy.State.Phase == Phase.Actions, "Dejar resolver no cierra la ventana de Error.");
                 }

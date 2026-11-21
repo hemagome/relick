@@ -13,8 +13,8 @@ public partial class OnlineArena
     private void RememberPlayAnchor(DuelOption option)
     {
         var move = option.Move;
-        var anchor = _cardActionAnchor;
-        if (anchor == null && _fieldSelection is { } field && MatchesField(option, field)) anchor = FieldActionAnchor(field);
+        Control? anchor = null;
+        if (_fieldSelection is { } field && MatchesField(option, field)) anchor = FieldActionAnchor(field);
         if (anchor == null && IsHandAction(move.Kind) && !ChoosingEffectCards && !ChoosingRecycling)
             anchor = _handCards.ElementAtOrDefault(move.Index);
         if (anchor == null && move.Kind is DuelMoveKind.ProtectDestruction or DuelMoveKind.DestinyDefense)

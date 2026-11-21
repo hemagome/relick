@@ -111,10 +111,10 @@ inventada para resultados antiguos sin ese dato.
 ## Distribución horizontal
 
 Al pulsar una carta aparecen junto a ella las acciones disponibles, con iconos y
-etiquetas breves como Jugar, Equipar, Canjear o Atacar. Si hay varias habilidades
+etiquetas breves como Activar, Equipar, Canjear o Atacar. Si hay varias habilidades
 para atacar, Atacar permite elegir una de las que se resaltan en el tablero.
-Las decisiones pendientes, las respuestas y las confirmaciones se abren en el
-centro. «Ver tablero» recoge el aviso temporalmente y «Volver a la decisión»
+Las decisiones de efectos, como elegir un objetivo o conservar un dado, se abren
+en el centro. «Ver tablero» recoge el aviso temporalmente y «Volver a la decisión»
 recupera sus opciones y la selección. Las galerías para elegir cartas llevan
 su confirmación en el pie del panel.
 El inspector acrílico muestra el nombre, el efecto y el coste de la carta.
@@ -186,7 +186,7 @@ cartas ni durante el envío. El cero sigue visible con tratamiento atenuado y el
 contador se omite durante la preparación. Los costes de cartas conservan su
 campo único; el título contextual no repite el presupuesto disponible.
 
-El aviso central da la instrucción de descartes, objetivos, respuestas y dados. Fuera de la cadena de respuestas, el halo amarillo señala los códigos COMBO disponibles durante el turno rival y al seleccionar la carta aparece «Jugar» en su menú. La mano y el campo se pueden seguir consultando mientras se decide.
+El aviso central da la instrucción de descartes, objetivos y dados. Un halo amarillo señala los COMBO disponibles y al seleccionar la carta aparece «Activar» junto a ella, también durante el turno rival y en las respuestas de RAM. En la RAM, «Dejar resolver» está en la barra de turno. Si el efecto pide elegir después de activarse, el aviso o la galería muestra esa decisión.
 
 `ArenaGuidance.SuggestAdvance` consulta todas las opciones del snapshot, independientemente de la carta seleccionada. Solo sugiere avanzar al jugador de turno que debe decidir, en robo, combate, acciones o final, si existe `Advance` y las únicas otras opciones son abandonar. Un COMBO legal, evolución, aprendizaje, Bonus/canje o Relikia impiden la sugerencia. Un COMBO sin sus condiciones cumplidas no la impide.
 

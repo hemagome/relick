@@ -11,6 +11,7 @@ public partial class OnlineArena
     private ScrollContainer _movesScroll = null!;
     private VBoxContainer _actionDock = null!;
     private AdvancePhaseButton? _advanceButton;
+    private HBoxContainer? _passResponseSlot;
     private string _decisionHint = "";
     private string _selectionCost = "";
     private readonly List<MenuButton> _actionMenus = [];
@@ -98,12 +99,17 @@ public partial class OnlineArena
             var fontSize = Short ? 13 : 15;
             button.MouseDefaultCursorShape = CursorShape.PointingHand;
             button.AddThemeFontSizeOverride("font_size", fontSize);
-            button.CustomMinimumSize = new(Math.Clamp(ThemeDB.FallbackFont.GetStringSize(button.Text, HorizontalAlignment.Left, -1, fontSize).X + 30, 64, Short ? 240 : 320), 48);
-            button.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            var lines = button.Text.Split('\n');
+            var width = lines.Max(line => ThemeDB.FallbackFont.GetStringSize(line, HorizontalAlignment.Left, -1, fontSize).X);
+            button.CustomMinimumSize = new(Math.Clamp(width + 30, 64, Short ? 240 : 320), 48);
+            if (lines.Length > 1) button.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            else button.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             if (primary) RelickVisuals.Primary(button);
         }
         var cost = ArenaActionText.Cost(option, s);
         button.TooltipText = button is CardActionButton && cost.Length > 0 ? button.Text + " · " + cost : cost;
+        if (s.Phase == Phase.ErrorResponse && option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id)
+            button.TooltipText += ArenaActionText.SingleCopyTargetName(s) is { } target ? $"\nCopiar {target}" : "\nElige qué carta de la RAM copiar.";
         button.SetMeta("option_index", index); button.SetMeta("discards", option.RequiredDiscards);
         _moveButtons.Add(button); return button;
     }
@@ -140,11 +146,19 @@ public partial class OnlineArena
         };
     }
 
-    private void BuildAdvanceControl(Node header)
+    private void BuildTurnControl(Node header)
     {
         var s = _snapshot!;
         _advanceButton = null;
+        _passResponseSlot = null;
         if (_preparing) return;
+        if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat)
+        {
+            _passResponseSlot = new HBoxContainer { Name = "ResponseControls", MouseFilter = MouseFilterEnum.Ignore,
+                CustomMinimumSize = new(header.Name == "TurnDock" ? 192 : 0, 0) };
+            header.AddChild(_passResponseSlot);
+            return;
+        }
         var advance = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Advance);
         if (advance < 0)
         {
@@ -159,26 +173,35 @@ public partial class OnlineArena
             ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.";
     }
 
+    private static bool IsComboActivation(DuelOption option, DuelSnapshot s) =>
+        option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.IsCombo == true;
+
     private void BuildContextMoves()
     {
         var s = _snapshot!;
         var indices = Enumerable.Range(0, s.Options.Count).Where(i => s.Options[i].Move.Kind is not
-            (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve or DuelMoveKind.DestinyPickMemory or DuelMoveKind.PrepareD10)).ToList();
-        var rivalCombo = -1;
-        if (s.CurrentPlayer != s.MySeat && s.Phase != Phase.ErrorResponse && ShowCardActivations)
+            (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve or DuelMoveKind.DestinyPickMemory or
+                DuelMoveKind.PrepareD10 or DuelMoveKind.PassError)).ToList();
+        bool IsCombo(int index) => IsComboActivation(s.Options[index], s);
+        var selectedCombo = ShowCardActivations ? indices.FirstOrDefault(i => IsCombo(i) &&
+            (_fieldSelection is { } source ? MatchesField(s.Options[i], source) :
+                !_skillContext && _selected.Count == 1 && s.Options[i].Field == null && _selected.Contains(s.Options[i].Move.Index)), -1) : -1;
+        indices.RemoveAll(IsCombo);
+        var cardAnchoring = !NeedsDecisionPrompt(s);
+        if (ViewingBoardDuringGallery)
+            indices.Clear();
+        else if (s.Phase == Phase.ErrorResponse)
         {
-            rivalCombo = indices.FirstOrDefault(i =>
+            indices.Clear();
+            var pass = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.PassError);
+            if (_passResponseSlot != null && pass >= 0)
             {
-                var option = s.Options[i];
-                return option.Move.Kind == DuelMoveKind.PlayCode && (_fieldSelection is { } source
-                    ? MatchesField(option, source)
-                    : !_skillContext && _selected.Count == 1 && option.Field == null && _selected.Contains(option.Move.Index));
-            }, -1);
-            indices.RemoveAll(i => s.Options[i].Move.Kind == DuelMoveKind.PlayCode);
+                var button = AddOption(_passResponseSlot, pass);
+                button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                button.TooltipText = (s.ErrorAfterDie ? $"Dado final: {s.Die}. " : "") +
+                    "Selecciona un COMBO iluminado para responder o deja que se resuelva la activación.";
+            }
         }
-        // The activation chain presents its response choices together.
-        if (s.Phase == Phase.ErrorResponse)
-            indices = indices.Where(i => s.Options[i].Move.Kind is DuelMoveKind.PlayCode or DuelMoveKind.PassError).ToList();
         else if (s.Phase == Phase.TrapCraftChoice)
             indices = indices.Where(i => s.Options[i].Move.Kind == DuelMoveKind.TrapCraft).ToList();
         else if (Deciding == DecisionKind.Confirm)
@@ -186,12 +209,13 @@ public partial class OnlineArena
         else if (ChoosingEffectCards)
             indices = indices.Where(i => _selected.Count == 1 && ReferenceEquals(_deckSearchOptions[_selected.Single()], s.Options[i]) ||
                 Deciding == DecisionKind.ChooseCard && s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].CardId == null).ToList();
-        else if (rivalCombo < 0 && _fieldSelection is { } field)
+        else if (_fieldSelection is { } field && (selectedCombo < 0 || cardAnchoring))
             indices = indices.Where(i => MatchesField(s.Options[i], field)).ToList();
         else
         {
             indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.Relikia or DuelMoveKind.FieldCode or DuelMoveKind.Magnet or DuelMoveKind.UsePurpleRing ||
-                s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].Field != null);
+                s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].Field is { } target &&
+                !(selectedCombo >= 0 && target.Zone == FieldZone.Hand && target.Owner == s.MySeat));
             indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind) && !_selected.Contains(s.Options[i].Move.Index));
             if (_selected.Count > 1 || _skillContext) indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind));
             if (!_skillContext && indices.Any(i => IsHandAction(s.Options[i].Move.Kind)))
@@ -203,7 +227,6 @@ public partial class OnlineArena
             else indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.DestinyDefense || s.Options[i].Move.Kind == DuelMoveKind.ProtectDestruction && s.Options[i].Move.Index >= 0);
         }
         var chooseAttackSkill = !_choosingAttackSkill && _selectedSkill < 0 && SelectedAttacks().Any();
-        var cardAnchoring = !NeedsDecisionPrompt(s);
         var handActions = cardAnchoring && !ChoosingEffectCards && !ChoosingRecycling &&
             !_skillContext && _fieldSelection == null && _selected.Count == 1;
         if (handActions)
@@ -252,29 +275,32 @@ public partial class OnlineArena
             {
                 var option = s.Options[index];
                 var besideCard = _cardActionAnchor != null && (handActions ? IsHandAction(option.Move.Kind) : _fieldSelection != null);
-                AddOption(besideCard ? _cardActions : _moves, index, primary: index == main);
+                AddOption(besideCard ? _cardActions : _moves, index, primary: index == main && (!besideCard || selectedCombo < 0));
             }
         }
-        if (!_skillContext && _fieldSelection == null && !ChoosingEffectCards && !indices.Any(i => IsHandAction(s.Options[i].Move.Kind)))
+        if (!_skillContext && _fieldSelection == null && !ChoosingEffectCards && !ViewingBoardDuringGallery &&
+            !indices.Any(i => IsHandAction(s.Options[i].Move.Kind)))
         {
             AddChoiceMenu(_moves, s.Phase == Phase.DestructionResponse ? "Sustituir…" : "Defender…",
                 s.Options.Select((o, i) => (o, i)).Where(c => c.o.Move.Kind == DuelMoveKind.DestinyDefense || c.o.Move.Kind == DuelMoveKind.ProtectDestruction && c.o.Move.Index >= 0).Select(c => c.i), true);
         }
-        if (rivalCombo >= 0)
+        if (selectedCombo >= 0)
         {
             _cardActionAnchor = _fieldSelection is { } source
-                ? FieldActionAnchor(source) : _handCards.ElementAtOrDefault(s.Options[rivalCombo].Move.Index);
-            if (_cardActionAnchor != null) AddOption(_cardActions, rivalCombo, "Jugar", primary: true);
+                ? FieldActionAnchor(source) : _handCards.ElementAtOrDefault(s.Options[selectedCombo].Move.Index);
+            if (_cardActionAnchor != null)
+                _cardActions.MoveChild(AddOption(_cardActions, selectedCombo, primary: true), 0);
         }
         PositionCardActions();
         var costs = indices.Select(i => ArenaActionText.Cost(s.Options[i], s)).Where(v => v.Length > 0).Distinct().ToArray();
         _selectionCost = main >= 0 ? (costs.Length > 1 ? ArenaActionText.Label(s.Options[main], s) + ": " : "") + ArenaActionText.Cost(s.Options[main], s)
             : costs.Length == 1 ? costs[0] : "";
-        if (rivalCombo >= 0) _selectionCost = ArenaActionText.Cost(s.Options[rivalCombo], s);
+        if (selectedCombo >= 0) _selectionCost = ArenaActionText.Cost(s.Options[selectedCombo], s);
         if (_selectionCost.Length == 0 && !_skillContext && _fieldSelection == null && _selected.Count == 1 &&
             s.Phase.IsStageBeforeFinal() && SelectedCardId() is { } selected)
             _selectionCost = ArenaActionText.CardCost(CardCatalog.Get(selected));
-        _selection.Text = ContextHint(); _selection.TooltipText = _selection.Text;
+        _selection.Text = ViewingBoardDuringGallery || selectedCombo >= 0 && !cardAnchoring ? ArenaGuidance.Instruction(s) : ContextHint();
+        _selection.TooltipText = _selection.Text;
         _decisionHint = _selection.Text;
         RefreshDecisionPrompt();
         RefreshInspector();
@@ -412,25 +438,10 @@ public partial class OnlineArena
         return _selected.Count == 1 ? SelectableCards.ElementAtOrDefault(_selected.Single()) : null;
     }
 
-    private static bool OffersParryResponse(DuelSnapshot s) => s.Options.Any(option =>
-        option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.Id == CardCatalog.ComboParry.Id);
-
-    private static bool OffersCopyResponse(DuelSnapshot s) => s.Options.Any(option =>
-        option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id);
-
-    private static string ActivationResponseCard(DuelSnapshot s)
-    {
-        if (s.Options.Any(option => option.Move.Kind == DuelMoveKind.PlayCode &&
-            ArenaActionText.HandCard(option, s)?.CancelActivation == true)) return CardCatalog.LoadError.Id;
-        if (OffersCopyResponse(s)) return CardCatalog.CopyHelmet.Id;
-        return OffersParryResponse(s) ? CardCatalog.ComboParry.Id : CardCatalog.LoadError.Id;
-    }
-
     private string? InspectorActivationId() =>
         !_preparing && _snapshot is { } s && s.DecisionPlayer == s.MySeat
             ? s.Phase switch
             {
-                Phase.ErrorResponse => ActivationResponseCard(s),
                 Phase.TrapCraftChoice => s.TrapCardId,
                 Phase.Decision when s.Decision?.Source == CardCatalog.Robotize.Id =>
                     s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId,
@@ -527,23 +538,23 @@ public partial class OnlineArena
     {
         var s = _snapshot!;
         if (s.Phase == Phase.TurnBuffDiscard && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name;
-        // The card that asks names the decision until the player picks what to answer with.
-        if (s.Phase == Phase.Decision && s.Decision is { } decision && (Deciding == DecisionKind.Confirm || _fieldSelection == null && _selected.Count == 0))
+        // A COMBO has its own card menu, so the popup retains the pending effect's title.
+        if (s.Phase == Phase.Decision && s.Decision is { } decision &&
+            (Deciding == DecisionKind.Confirm || _cardActionAnchor != null || _fieldSelection == null && _selected.Count == 0))
             return decision.Title;
         if (s.Phase is Phase.TrapCraftChoice && InspectorActivationId() is { } trap)
             return CardCatalog.Get(trap).Name;
-        if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat) return CardCatalog.Get(ActivationResponseCard(s)).Name;
-        var id = SelectedCardId(); if (id != null) return CardCatalog.Get(id).Name;
         if (s.Winner != null) return "Duelo terminado";
-        if (_selected.Count > 1) return $"{_selected.Count} cartas seleccionadas";
         return s.Phase switch
         {
             Phase.AttackRerollChoice or Phase.DieRerollChoice => $"Tu dado · {s.Die}",
             Phase.TurnBuffDiscard => CardCatalog.Get(s.DiscardActivationCard ?? CardCatalog.PlumberStar.Id).Name,
             Phase.SniperChoice => "Mira de Sniper",
             Phase.DefenseChoice or Phase.EffectDamageChoice => "Defensa", Phase.DestructionResponse => "Proteger carta",
-            Phase.CodeResponse or Phase.ErrorResponse => "Respuesta", Phase.RecycleChoice => "Reciclar memoria",
+            Phase.CodeResponse => "Respuesta", Phase.RecycleChoice => "Reciclar memoria",
             Phase.MagnetChoice => "Crítico de Magnet",
+            _ when SelectedCardId() is { } id => CardCatalog.Get(id).Name,
+            _ when _selected.Count > 1 => $"{_selected.Count} cartas seleccionadas",
             _ => ChoosingEffectCards ? "Elige una carta" : _fieldSelection?.Zone == FieldZone.Hand ? _fieldSelection.Value.Owner == s.MySeat ? "Mi mano" : "Mano rival" : s.DecisionPlayer != s.MySeat ? "Decisión del rival" : s.Phase switch
             { Phase.Combat => "Tu combate", Phase.Actions => "Tus acciones", Phase.Draw => "Fase de robo", Phase.Final => "Cierre del turno", _ => "Tu decisión" }
         };
@@ -553,13 +564,7 @@ public partial class OnlineArena
     {
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
-        if (s.Phase == Phase.ErrorResponse && myTurn && OffersCopyResponse(s))
-            return ArenaActionText.SingleCopyTargetName(s) is { } target
-                ? $"Casco de Copias clonará {target}." : "Con Casco de Copias puedes elegir qué carta de la RAM clonar.";
-        if (s.Phase == Phase.ErrorResponse && myTurn && OffersParryResponse(s))
-            return "Elige cómo responder a la activación o deja que se resuelva.";
-        if (s.Phase == Phase.ErrorResponse && myTurn) return s.ErrorAfterDie
-            ? $"Dado final: {s.Die}. Anula el código ahora o deja que termine su efecto." : "Anula la activación o deja que se resuelva.";
+        if (s.Phase == Phase.ErrorResponse) return "";
         if (s.Phase is Phase.TrapCraftChoice) return ArenaGuidance.Instruction(s);
         if (myTurn && s.Decision?.Source == CardCatalog.Robotize.Id &&
             s.Options.FirstOrDefault(o => o.Move.Kind == DuelMoveKind.Choose)?.CardId is { } top)

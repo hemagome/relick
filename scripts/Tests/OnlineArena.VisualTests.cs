@@ -77,6 +77,17 @@ public partial class OnlineArena
         if (_contextCost.Text != "Canje de dos Personajes" || !_moveButtons.Any(button => button.Text == "Crear Zahira Flair"))
             throw new Exception("Falta la creación de Zahira Flair en la interfaz.");
         if (!game.ResolveTrapCraft(0, true).Success) throw new Exception("Falta la selección de destino.");
+        var rival = game.State.Players[1];
+        rival.Skills.AddRange([CardCatalog.Destiny.Id, CardCatalog.Destiny.Id]);
+        rival.SkillPositions = new() { [0] = 0, [1] = 3 };
+        rival.Equipment = CardCatalog.Totem.Id;
+        rival.EquipmentStackedCopies = 1;
+        rival.Exchange.Add(CardCatalog.MagicTome.Id);
+        game.State.TomeCards =
+        [
+            new(7, CardCatalog.MagicTome.Id, CardCatalog.Attack.Id, 1, false),
+            new(9, CardCatalog.MagicTome.Id, CardCatalog.Attack.Id, 1, false)
+        ];
         foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
         {
             GetWindow().Size = size; GetWindow().ContentScaleSize = size;
@@ -84,18 +95,29 @@ public partial class OnlineArena
             if (PresentsKind(DuelMoveKind.Choose) || !_selection.Text.Contains("rival"))
                 throw new Exception("El rival puede elegir el destino de Zahira Flair.");
             await Layout(0);
+            var destinations = _moveButtons.Where(button => PresentedOption(button) is { Move.Kind: DuelMoveKind.Choose, Field: not null }).ToArray();
+            var labels = destinations.Select(button => button.Text).ToHashSet();
+            var tomeLabel = $"Tomo en canje 1 · carta 2 · Campo rival\n{CardCatalog.Attack.Name}";
+            if (destinations.Length != game.ZahiraTargets(0).Count() || labels.Count != destinations.Length ||
+                destinations.Any(button => button.AutowrapMode != TextServer.AutowrapMode.WordSmart) ||
+                !labels.Contains($"Habilidad 4 · Campo rival\n{CardCatalog.Destiny.Name}") ||
+                !labels.Contains($"Equipo 2 · Campo rival\n{CardCatalog.Totem.Name}") ||
+                !labels.Contains(tomeLabel))
+                throw new Exception($"Los botones de Zahira Flair deben distinguir campo, zona, carta y copia en {size}.");
             var target = _moveButtons.Single(button => PresentedOption(button) is
                 { Move.Kind: DuelMoveKind.Choose, Field: { Owner: 1, Zone: FieldZone.Relikario } });
-            _movesScroll.EnsureControlVisible(target);
-            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            foreach (var destination in new[] { destinations.Single(button => button.Text == tomeLabel), target })
+            {
+                _movesScroll.EnsureControlVisible(destination);
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!RectVisible(destination, destination.GetGlobalRect()))
+                    throw new Exception($"El destino de Zahira Flair debe verse completo al desplazar la lista en {size}.");
+            }
             target.Disabled = false;
             GuiInputTestDriver.Click(target);
         }
         if (!game.ResolveZahiraTarget(0, 1, FieldZone.Relikario, -1).Success)
             throw new Exception("No se coloca Zahira Flair.");
-        var rival = game.State.Players[1];
-        rival.Skills.AddRange([CardCatalog.Destiny.Id, CardCatalog.Destiny.Id]);
-        rival.SkillPositions = new() { [0] = 0, [1] = 3 };
         game.State.Players[0].ZahiraHost2 = new(1, FieldZone.Skill, 1, CardCatalog.Destiny.Id);
         rival.ZahiraHost = new(0, FieldZone.Zahira, 1, CardCatalog.ZahiraFlair.Id);
         foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
@@ -1537,8 +1559,9 @@ public partial class OnlineArena
                         if (!_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Move.Kind == DuelMoveKind.Choose))
                             throw new Exception("Falta el botón para confirmar la carta de Resetear.");
                     }
-                    if (seat == actor && step == 0 && !_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Button == "Mano rival"))
-                        throw new Exception("Falta el botón para mirar la mano rival.");
+                    if (seat == actor && step == 0 && (_decisionPopup is not { Visible: true } ||
+                        !_moves.GetChildren().OfType<Button>().Any(b => PresentedOption(b)?.Button == "Mano rival")))
+                        throw new Exception("Falta el panel para elegir qué mano mira Resetear.");
                     if (seat != actor && (Deciding != null || _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose)))
                         throw new Exception("El rival recibe las selecciones privadas de Resetear.");
                 }
@@ -1619,7 +1642,7 @@ public partial class OnlineArena
         {
             var game = new GameEngine(43); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
             foreach (var p in game.State.Players) { p.Hand.Clear(); p.Hand.Add(CardCatalog.Attack.Id); }
-            var player = game.State.Active; player.Hand.Clear(); player.Hand.AddRange([CardCatalog.KonamyCode.Id, CardCatalog.Bonfire.Id]); player.Deck.Clear();
+            var player = game.State.Active; player.Hand.Clear(); player.Hand.AddRange([CardCatalog.KonamyCode.Id, CardCatalog.ComboParry.Id]); player.Deck.Clear();
             player.Deck.AddRange(new[] { CardCatalog.Magnet.Id, CardCatalog.Attack.Id, CardCatalog.DiamondHelmet.Id, CardCatalog.ExtraLife.Id,
                 CardCatalog.PointsIncrease.Id, CardCatalog.BlueEgg.Id, CardCatalog.TimeBomb.Id, CardCatalog.Reroll.Id, CardCatalog.LoadError.Id,
                 CardCatalog.KonamyCode.Id, CardCatalog.CardboardBox.Id, CardCatalog.Pendant.Id, CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id });
@@ -1692,13 +1715,15 @@ public partial class OnlineArena
                         throw new Exception($"No se puede ver el tablero desde la galería en {size}.");
                     open.EmitSignal(Button.SignalName.Pressed);
                     await Layout();
-                    if (FindChild("ChoicePanel", true, false) != null || _handCards.Single().Card.Id != CardCatalog.Bonfire.Id ||
+                    if (FindChild("ChoicePanel", true, false) != null || _handCards.Single().Card.Id != CardCatalog.ComboParry.Id ||
                         _decisionBar.IsVisibleInTree() || _decisionToggle is not { Text: "Volver a la decisión" } resume ||
                         !resume.IsVisibleInTree() || !GetGlobalRect().Grow(1).Encloses(resume.GetGlobalRect()))
                         throw new Exception($"La galería no deja ver el tablero y la mano en {size}.");
                     SelectCard(0);
-                    if (_contextTitle.Text != CardCatalog.Bonfire.Name || _decisionTitle.Text != CardCatalog.KonamyCode.Name)
-                        throw new Exception("La mano debe poder consultarse desde el tablero y la decisión debe seguir identificada.");
+                    var combo = _snapshot!.Options.Single(o => IsComboActivation(o, _snapshot));
+                    if (_contextTitle.Text != CardCatalog.ComboParry.Name || _decisionTitle.Text != CardCatalog.KonamyCode.Name ||
+                        PresentedButton(combo) is not CardActionButton { Text: "Activar" } activate || activate.GetParent() != _cardActions)
+                        throw new Exception("Desde el tablero se debe poder activar el COMBO sin perder la búsqueda pendiente.");
                     ClearContext();
                     if (!resume.IsVisibleInTree() || resume.Text != "Volver a la decisión")
                         throw new Exception("Limpiar la selección del tablero cierra el acceso al selector.");

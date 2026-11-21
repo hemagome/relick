@@ -393,7 +393,7 @@ public partial class OnlineArena : Control
             if (!_preparing && s.Winner == null && stage != s.Phase) barDetail += " · " + PhaseName(s);
             var (lane, bar) = ArenaPresentation.PhaseBar(canvas, stage, barDetail, turnAccent);
             _combatCenter = lane;
-            BuildAdvanceControl(bar);
+            BuildTurnControl(bar);
             BindStageStatus(bar);
 
             // Choices among cards outside the hand open over the board; the hand itself stays low.
@@ -453,7 +453,7 @@ public partial class OnlineArena : Control
             _status.Visible = !Short; brandColumn.AddChild(_status);
             ArenaPresentation.StageIndicator(Short ? _root : header, stage, stageDetail, Short);
             BuildComboResponseToggle(header);
-            BuildAdvanceControl(header);
+            BuildTurnControl(header);
             BuildArenaMenu(header);
             if (Compact && !Short) ArenaPresentation.Scoreline(_root, [s.Players[s.MySeat], s.Players[1 - s.MySeat]]);
             var body = ArenaPresentation.Body(_root, Short && Size.X >= 700);
@@ -699,9 +699,11 @@ public partial class OnlineArena : Control
             SyncOpeningSelection(); RefreshSelection(); return;
         }
         if (IsAnimating || index < 0 || index >= SelectableCards.Count) return;
-        if (!ChoosingEffectCards && !ChoosingRecycling && _snapshot!.Options.Any(o =>
-            o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } own && own.Owner == _snapshot.MySeat))
-        { SelectField(_snapshot.MySeat, FieldZone.Hand, -1); return; }
+        var s = _snapshot!;
+        if (!ChoosingEffectCards && !ChoosingRecycling && s.Options.Any(o =>
+            o.Move.Kind == DuelMoveKind.Choose && o.Field is { Zone: FieldZone.Hand } own && own.Owner == s.MySeat) &&
+            !s.Options.Any(o => o.Field == null && o.Move.Index == index && IsComboActivation(o, s)))
+        { SelectField(s.MySeat, FieldZone.Hand, -1); return; }
         ToggleHandSelection(index);
     }
 
@@ -724,8 +726,9 @@ public partial class OnlineArena : Control
     }
     private void BuildMoves()
     {
-        foreach (var node in new[] { (Node)_moves, _cardActions })
-            foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); }
+        foreach (var node in new Control?[] { _moves, _cardActions, _passResponseSlot })
+            if (node != null)
+                foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); }
         _cardActionAnchor = null;
         _cardActions.Hide();
         _moveButtons.Clear(); _actionMenus.Clear();
@@ -736,13 +739,7 @@ public partial class OnlineArena : Control
             RefreshDecisionPrompt(); RefreshInspector(); return;
         }
         RefreshBoardTargets();
-        if (ViewingBoardDuringGallery)
-        {
-            _selectionCost = "";
-            _selection.Text = _decisionHint = ArenaGuidance.Instruction(_snapshot!);
-            RefreshDecisionPrompt(); RefreshInspector();
-        }
-        else BuildContextMoves();
+        BuildContextMoves();
         RefreshPlayableHand();
         _lastDisabled = null; UpdateEnabled();
     }
@@ -824,10 +821,11 @@ public partial class OnlineArena : Control
                     .ToDictionary(entry => entry.option.Move.Index, entry => entry.index);
                 if (options.Count > 0)
                 {
-                    var activate = dialog.AddButton("Activar Púa · 1 acción", false);
+                    var activate = dialog.AddButton("Activar", false);
                     activate.Name = "ActivateDestinyPick";
                     activate.Disabled = true;
                     activate.CustomMinimumSize = new(0, 48);
+                    activate.TooltipText = "1 acción";
                     view.SelectionChanged += slot => activate.Disabled = !options.ContainsKey(slot);
                     activate.Pressed += () =>
                     {
