@@ -128,6 +128,8 @@ public static class CardCatalog
         "Lado A: cuando llega a ser el Área, puedes colocar 1 Ataque de la memoria del adversario debajo de tu Relikario. Añade ¡Dame ese equipo! de tu mazo o memoria a tu mano.\nLado B: cuando llega a ser el Área, equípate un Equipo de tu mazo. Si tu adversario añade a su campo o mano un Equipo del que eres dueño original, él gana 1500 PR, mira tu mano y añade una de esas cartas a su mano. Luego, destruye esta Área.");
     public static readonly CardDefinition BlackHole = new("agujero-negro", "Agujero Negro", CardKind.Area,
         "Lado A: al convertirse en el Área, envíala a tu mano o lanza 1D6. Con 1–5, destruye todas las cartas de tu campo excepto una. Luego destruye esta carta.\nLado B: si esta carta no fue enviada a la mano por su efecto, lanza 1D6. Con 1–5, destruye todas las cartas de tu campo excepto una.");
+    public static readonly CardDefinition Platforms = new("escenario-plataformas", "Escenario Plataformas", CardKind.Area,
+        "Lado A: Gana una acción extra en tu turno.\nLado B: Pierde todas tus acciones en el turno del adversario.");
     public static readonly CardDefinition DiamondHelmet = new("diamond-helmet", "Casco de Diamantes", CardKind.Equipment,
         "Resta 2 puntos a cualquier daño que recibas. Si en el dado de ataque alguien saca 1: destruye esta carta.",
         DestroyOnAttackOne: true);
@@ -203,6 +205,8 @@ public static class CardCatalog
         CodeType: CodeType.Object, IsCombo: true);
     public static readonly CardDefinition GlassFlute = new("flauta-de-vidrio", "Flauta de Vidrio", CardKind.Code,
         "Envía una carta del campo a la mano de su dueño.", CodeType: CodeType.Object);
+    public static readonly CardDefinition Compass16Bit = new("brujula-16bits", "Brújula 16 Bits", CardKind.Code,
+        "Baraja todas las cartas en tu Bonus al mazo y envía una carta de tu mazo a tu zona de Bonus.", CodeType: CodeType.Object);
     public static readonly CardDefinition ThiefGhost = new("fantasma-ladron", "Fantasma Ladrón", CardKind.Equipment,
         "Equipa esta carta a tu adversario. Al equipar o cuando quien la lleva saca 1, 2 o 3 en un dado, revela su mano y entrega un Objeto al adversario.");
     public static readonly CardDefinition GhostDog = new("perro-fantasma", "Perro Fantasma", CardKind.Code,
@@ -210,7 +214,7 @@ public static class CardCatalog
         CodeType: CodeType.Character);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, ThiefGhost, GhostDog }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog }.ToDictionary(c => c.Id);
 
     // A field instance can carry copied text and a different physical card.
     internal static string TextId(string id)

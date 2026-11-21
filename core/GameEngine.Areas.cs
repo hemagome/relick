@@ -1,13 +1,47 @@
 namespace Relick.Core;
 
+internal interface IAreaActionModifier
+{
+    (int Extra, bool Blocked) ActionModifier(bool sideA, bool ownTurn);
+}
+
 public sealed partial class GameEngine
 {
-    /// <summary>Who gets side A of a two-sided Area; Era Futurista, Robo de Equipos and Agujero Negro ask it.</summary>
+    /// <summary>Who gets side A of a two-sided Area.</summary>
     internal static DecisionChoice[] AreaSideChoices(int actor) =>
     [
         new() { Label = "Lado A para mí · Lado B para el rival", Value = actor, Public = "elige el lado A para sí." },
         new() { Label = "Lado B para mí · Lado A para el rival", Value = 1 - actor, Public = "elige el lado B para sí." }
     ];
+
+    private void AskAreaOrientation(int holder, bool moved = false)
+    {
+        var card = CardCatalog.Get(State.Players[holder].Area!);
+        if (card == CardCatalog.BlackHole)
+            AskBlackHole(holder, holder, moved ? BlackHoleOrient : BlackHoleSides, DecisionKind.Confirm, "Elige qué lado del Área se aplica a ti");
+        else if (card == CardCatalog.EquipmentRaid)
+            AskRaid(holder, holder, moved ? RaidOrientMovedArea : RaidSides, DecisionKind.Confirm, "Elige qué lado del Área se aplica a ti");
+        else
+            AskDecision(new PendingDecision
+            {
+                Source = card.Id, Step = moved ? "moved" : "orient", Decider = holder,
+                Kind = DecisionKind.Confirm, Instruction = $"Elige qué lado de {card.Name} se aplica a ti."
+            });
+    }
+
+    private int ActionsWithAreas(int actor, int actions)
+    {
+        for (var holder = 0; holder < State.Players.Length; holder++)
+        {
+            var player = State.Players[holder];
+            if (player.AreaSideA is not int sideA || CardEffects.For(player.Area) is not IAreaActionModifier modifier ||
+                EffectsSuppressed(holder, FieldZone.Area)) continue;
+            var (extra, blocked) = modifier.ActionModifier(sideA == actor, State.CurrentPlayer == actor);
+            if (blocked) return 0;
+            actions += extra;
+        }
+        return actions;
+    }
 
     public bool CanActivateArea(int actor, int index) => ValidateAction(actor) == null &&
         State.Players[actor] is { Area: null } p && IsArea(PlayableHandCard(p, index));
@@ -28,6 +62,44 @@ public sealed partial class GameEngine
     }
 
     internal static bool IsArea(string? id) => id != null && CardCatalog.Get(id).Kind == CardKind.Area;
+
+    private void ShuffleBonusZoneIntoDecks(PlayerState p)
+    {
+        var actor = Seat(p);
+        var decks = new HashSet<int>();
+        // Empty the Bonus first so removing the Area cannot promote a waiting Area out of it.
+        if (p.Bonus is { } bonus) ReturnToDeck(new(actor, FieldZone.Bonus, -1, bonus));
+        if (p.Area is { } area) ReturnToDeck(new(actor, FieldZone.Area, -1, area));
+        foreach (var owner in decks.Order())
+        {
+            Shuffle(State.Players[owner]);
+            CardsReturnedToDeck?.Invoke(owner);
+        }
+
+        void ReturnToDeck(FieldTarget target)
+        {
+            var (state, borrowed, marked) = DetachFieldCard(p, target, null);
+            var owner = borrowed ? 1 - actor : actor;
+            MoveToDeck(target.CardId, MovementCardZone(target.Zone), target.Index, owner, marked);
+            if (state?.ShieldCharges is { } charges)
+                foreach (var charge in charges)
+                    MoveToDeck(charge.CardId, CardZone.ShieldCharge, target.Index, actor, charge.CorruptOnMemory);
+            if (TakeTomeAttachments(target.CardId) is { } children)
+                foreach (var child in children)
+                    MoveToDeck(child.CardId, CardZone.TomeCard, child.Slot, child.OriginalOwner, child.Marked);
+        }
+
+        void MoveToDeck(string id, CardZone source, int slot, int owner, bool marked)
+        {
+            if (CardCatalog.PhysicalId(id) is not { } physical || DeckRules.IsTrap(CardCatalog.Get(physical)))
+            {
+                NotifyPileMove(p, id, source, slot, CardZone.OutOfGame);
+                return;
+            }
+            PutFieldCardInDeck(p, physical, source, slot, owner, marked);
+            decks.Add(owner);
+        }
+    }
 
     private void PromoteInitialAreas()
     {

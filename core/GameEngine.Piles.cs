@@ -20,6 +20,14 @@ public sealed partial class GameEngine
         int memoryOwner = -1, int? destinationPlayer = null, int sourceIndex = 0, bool fieldMove = false)
         => CardMovedToPile?.Invoke(new(Seat(p), id, source, index, destination, memoryOwner, destinationPlayer, sourceIndex, fieldMove));
 
+    private void PutFieldCardInDeck(PlayerState source, string id, CardZone zone, int slot, int owner, bool marked)
+    {
+        var recipient = State.Players[owner];
+        if (marked) recipient.MarkForCorruption(CardZone.Deck, recipient.Deck.Count);
+        recipient.Deck.Add(id);
+        NotifyPileMove(source, id, zone, slot, CardZone.Deck, destinationPlayer: owner);
+    }
+
     private void AttachAttackFromDeck(PlayerState p, int index)
     {
         var id = p.Deck[index];

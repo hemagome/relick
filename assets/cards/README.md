@@ -1,5 +1,31 @@
 # Cartas
 
+## Brújula 16 Bits
+
+La imagen adjunta `brujula-16bits.png` (NS-15/150, ilustración de Stivart) se restauró con la herramienta integrada `image_gen` y se incorporó como `brujula-16bits-clean.png`.
+
+El Código Objeto cuesta una acción. «Todas las cartas en tu Bonus» abarca el Bonus, el Área activa y sus anexos. Las cartas vuelven a los mazos de sus dueños. Después de barajar, quien jugó la Brújula elige en privado cualquier carta de su mazo para colocarla como Bonus. [Reglamento oficial, §§ 4.5 y 4.8](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Edit target: the attached full Spanish Relick card scan of Brújula 16 Bits. Remove only the repeated translucent diagonal RELICK watermark on the face of the user-supplied scan. Restore obscured areas following the supplied map and pixel-art exactly: keep the silhouette and pixel clusters of the yellow-gold, maroon and gray open compass, its needle and ring, the sepia map, red X and all grayscale circuitry, framing, color blocks, lettering, full borders and original portrait aspect ratio (697:987). Preserve the original printed text verbatim in its original locations: 'OBJETO', 'CÓDIGO', 'BRÚJULA 16 BITS', 'BARAJA TODAS LAS CARTAS EN TU BONUS AL MAZO Y ENVÍA UNA CARTA DE TU MAZO A TU ZONA DE BONUS.', 'NS-15/150', 'ILUS. STIVART' and '©2018 FG'. Keep the original flat edge-to-edge card, with no added padding, cropping, recoloring, new illustration or text changes. Return only the restored scan.
+
+</details>
+
+## Escenario Plataformas
+
+La imagen adjunta `escenario-plataformas.jpg` (NS-34/150, ilustración de Stivart) se restauró con la herramienta integrada `image_gen` y se incorporó como `escenario-plataformas-clean.png`.
+
+La orientación se elige al colocar el Área. Mientras esté activa, el lado A suma una acción al presupuesto del turno propio y el lado B deja en cero las acciones disponibles durante el turno rival. Al salir del Área o quedar suprimida, deja de modificar las acciones disponibles.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Asset: user-supplied Spanish Relick game card scan for the Relick project. Edit the attached scan of Escenario Plataformas in place. Remove only the large translucent diagonal gray watermark overlay crossing the face of the supplied image. Preserve the underlying original printed artwork, purple circuitry, ornamental frame and platform illustration, gameplay panels, both purple badges and orientation, margins, card outline and proportions. Do not redraw or restyle the card, crop it or add details. Keep every original printed letter, accent, punctuation, code and credit exactly in its original position and orientation. Top panel reads 'PIERDE TODAS TUS ACCIONES EN EL TURNO DEL ADVERSARIO.' Bottom panel reads 'GANA UNA ACCIÓN EXTRA EN TU TURNO.' Both titles read 'ESCENARIO PLATAFORMAS' (the upper title and LADO B label are upside down in the original). Preserve NS-34/150, ILUS. STIVART and ©2018 FG, and preserve the entire border. Return a flat, front-facing, edge-to-edge 697 × 987 proportion image of the edited scan only.
+
+</details>
+
 ## Game y Over
 
 `game-clean.png` (LR-65/82) y `over-clean.png` (LR-64/82) se restauraron con

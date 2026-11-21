@@ -152,10 +152,7 @@ public sealed partial class GameEngine
     private void ReturnIronwingFieldCard(PlayerState p, string id, CardZone source, bool borrowed)
     {
         var owner = borrowed ? 1 - Seat(p) : Seat(p);
-        var deck = State.Players[owner];
-        if (p.CorruptsOnMemory(source, -1)) deck.MarkForCorruption(CardZone.Deck, deck.Deck.Count);
-        deck.Deck.Add(id);
-        NotifyPileMove(p, id, source, destination: CardZone.Deck, destinationPlayer: owner);
+        PutFieldCardInDeck(p, id, source, -1, owner, p.CorruptsOnMemory(source, -1));
         CardsReturnedToDeck?.Invoke(owner);
     }
 

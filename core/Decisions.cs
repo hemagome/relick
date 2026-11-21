@@ -197,8 +197,8 @@ internal static class CardEffects
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
-            new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new GhostDogEffect(),
-            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
+            new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new Compass16BitEffect(), new GhostDogEffect(),
+            new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new PlatformsEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
             GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect(), new SalvationTotemEffect() }.ToDictionary(e => e.CardId);
 
     public static CardRules? For(string? cardId) => cardId != null && Registered.TryGetValue(cardId, out var effect) ? effect : null;
@@ -439,6 +439,10 @@ public sealed partial class GameEngine
         /// <summary>Once the effect commits to a result, Error de Carga can no longer cancel it.</summary>
         public void CloseErrorWindow() { if (_engine._activeActivation != null) _engine._activeActivation.CanInterrupt = false; }
         public void RefillBonus(int owner, EngineContinuation? then) => _engine.RefillBonus(State.Players[owner], then);
+        public void ShuffleBonusZoneIntoDecks() => _engine.ShuffleBonusZoneIntoDecks(Player);
+        public void MoveDeckCardToBonus(int deckIndex) => _engine.MoveDeckCard(Player, deckIndex, true,
+            new EngineContinuation { Kind = ContinuationKind.RefillDone, Actor = Actor,
+                Next = new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = Actor } });
         public void MoveDeckCardToHand(int deckIndex, EngineContinuation? then = null) => _engine.MoveDeckCard(Player, deckIndex, false, then);
         public int Random(int exclusiveMax) => _engine._random.Next(exclusiveMax);
         /// <summary>Ends the activation before the effect's last move, as a search does before taking its card.</summary>

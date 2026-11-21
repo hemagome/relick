@@ -5,8 +5,11 @@ public enum PendantEffect { Reroll, AddOne, AddTwo }
 public sealed partial class GameEngine
 {
     private int DamageWithEquipmentBonus(int actor, int damage) => damage + (ActiveEquipment(actor)?.DamageBonus ?? 0);
-    public int AvailableActions(int actor) =>
-        Math.Max(0, State.Players[actor].ActionsLeft - (ActiveEquipment(actor)?.Id == CardCatalog.MetalHood.Id ? 1 : 0));
+    public int AvailableActions(int actor)
+    {
+        var actions = State.Players[actor].ActionsLeft - (ActiveEquipment(actor)?.Id == CardCatalog.MetalHood.Id ? 1 : 0);
+        return Math.Max(0, ActionsWithAreas(actor, actions));
+    }
 
     public CommandResult Equip(int actor, int handIndex) => Equip(actor, handIndex, onOpponent: false);
 

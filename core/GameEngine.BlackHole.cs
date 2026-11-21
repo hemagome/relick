@@ -7,19 +7,6 @@ public sealed partial class GameEngine
     private const string BlackHoleStart = "black-hole-start";
     private const string BlackHoleKeep = "black-hole-keep";
 
-    private void AskAreaOrientation(int holder, bool moved = false)
-    {
-        if (State.Players[holder].Area == CardCatalog.FutureEra.Id)
-            AskDecision(new PendingDecision
-            {
-                Source = CardCatalog.FutureEra.Id, Step = moved ? "moved" : "orient", Decider = holder,
-                Kind = DecisionKind.Confirm, Instruction = "Elige qué lado de Era Futurista se aplica a ti."
-            });
-        else if (State.Players[holder].Area == CardCatalog.BlackHole.Id)
-            AskBlackHole(holder, holder, moved ? BlackHoleOrient : BlackHoleSides, DecisionKind.Confirm, "Elige qué lado del Área se aplica a ti");
-        else AskRaid(holder, holder, moved ? RaidOrientMovedArea : RaidSides, DecisionKind.Confirm, "Elige qué lado del Área se aplica a ti");
-    }
-
     private void AskBlackHole(int holder, int actor, string step, DecisionKind kind, string instruction, EngineContinuation? completed = null) =>
         AskDecision(new PendingDecision { Source = CardCatalog.BlackHole.Id, Step = step, Decider = actor, Value = holder,
             Kind = kind, Instruction = instruction, Continuation = completed });

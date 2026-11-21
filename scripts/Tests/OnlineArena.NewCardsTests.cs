@@ -7,8 +7,8 @@ public partial class OnlineArena
 {
     internal async Task CheckNewCardsLayout()
     {
-        foreach (var card in new[] { CardCatalog.MagicTome, CardCatalog.CopyHelmet, CardCatalog.FutureEra,
-            CardCatalog.MouseBike, CardCatalog.GlassFlute, CardCatalog.ThiefGhost, CardCatalog.GhostDog })
+        foreach (var card in new[] { CardCatalog.MagicTome, CardCatalog.CopyHelmet, CardCatalog.FutureEra, CardCatalog.Platforms,
+            CardCatalog.MouseBike, CardCatalog.GlassFlute, CardCatalog.Compass16Bit, CardCatalog.ThiefGhost, CardCatalog.GhostDog })
             if (BoardArt.LoadCardArtwork(card) == null)
                 throw new Exception($"No se puede cargar el arte de {card.Name}.");
 
@@ -95,7 +95,35 @@ public partial class OnlineArena
         _die.AdvancePlayback(DiceFace.RollSeconds);
         if (_die.IsD10 || _die.TopFaceValue != 3)
             throw new Exception("Una nueva tirada D6 debe recuperar el dado cúbico.");
+        CheckCompassBonusGallery();
         GD.Print("PVP_NEW_CARDS_PASS");
+    }
+
+    private void CheckCompassBonusGallery()
+    {
+        var attack = CardCatalog.Attack.Id;
+        var skill = CardCatalog.Game.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[CardCatalog.Compass16Bit.Id], [attack]],
+            Decks = [[attack, skill], [attack, attack]], Bonuses = [attack, attack]
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.Actions;
+        if (!game.PlayCode(0, 0).Success) throw new Exception("No se pudo activar Brújula 16 Bits.");
+
+        ResetAnimations();
+        PresentTestSnapshot(DuelSnapshot.For(game, 1, 1));
+        if (ChoosingDeckGallery || _deckSearchOptions.Length != 0)
+            throw new Exception("El rival no debe ver la búsqueda de la Brújula.");
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 1));
+        var index = Array.FindIndex(_deckSearchOptions, option => option.CardId == skill);
+        if (!ChoosingDeckGallery || index < 0) throw new Exception("La galería de la Brújula debe incluir las habilidades.");
+        _selected.Clear();
+        SelectCard(index);
+        var choice = _deckSearchOptions[index];
+        if (PresentedButton(choice)?.Text != "Colocar como Bonus" || !choice.Move.Apply(game, 0).Success || game.State.Active.Bonus != skill)
+            throw new Exception("La opción de la galería debe colocar la carta elegida como Bonus.");
+        _selected.Clear();
     }
 
     private void CheckIronwingDieChoices()
