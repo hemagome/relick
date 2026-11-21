@@ -194,13 +194,12 @@ public static class ArenaPresentation
         {
             null => "",
             _ when owner.EquipmentStackedCopies > 0 => $"×{owner.EquipmentStackedCopies + 1}",
-            _ when owner.Equipment == CardCatalog.SuperMagnet.Id => $"{owner.EquipmentCounters}/{CardCatalog.SuperMagnetCounterLimit}",
-            _ when owner.Equipment == CardCatalog.Sniper.Id => $"{owner.EquipmentCounters}/3",
             _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
             _ => ""
         };
         var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
-            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W,
+            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Counters = owner.EquipmentCounters,
+            Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W,
             StackCopies = canvas.TableView ? owner.EquipmentStackedCopies + 1 : 0 };
         equipment.Pressed += actions.Equipment; Put(equipment, 306, bottom, W, H);
         if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W, canvas.TableView) is { } lights)
@@ -418,13 +417,11 @@ public static class ArenaPresentation
         {
             null => "",
             _ when owner.EquipmentStackedCopies > 0 => $"×{owner.EquipmentStackedCopies + 1}",
-            _ when owner.Equipment == CardCatalog.SuperMagnet.Id => $"{owner.EquipmentCounters}/{CardCatalog.SuperMagnetCounterLimit}",
-            _ when owner.Equipment == CardCatalog.Sniper.Id => $"{owner.EquipmentCounters}/3",
             _ when owner.EquipmentDie > 0 => $"D6: {owner.EquipmentDie}",
             _ => ""
         };
         var equipment = new ZoneCardButton { Name = $"EquipmentZone{index}", Caption = "EQUIPO", StatusText = equipmentStatus,
-            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Accent = new("81c8ef"),
+            Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Counters = owner.EquipmentCounters, Accent = new("81c8ef"),
             Compact = compact, LargePreview = true, SizeFlagsVertical = compact ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill };
         equipment.Pressed += actions.Equipment; permanent.AddChild(equipment);
         if (LightEquipmentZone(owner, index, actions.LightEquipment, compact) is { } lights)

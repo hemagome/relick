@@ -94,7 +94,7 @@ public partial class OnlineArena
         if (_stageStatusIcon != null) { _stageStatusIcon.Icon = icon; _stageStatusIcon.Color = color; _stageStatusIcon.QueueRedraw(); }
     }
 
-    private bool ShowCardActivations => _snapshot is { Winner: null } && !_preparing && !ChoosingRecycling && !ChoosingEffectCards;
+    private bool ShowCardActivations => _snapshot is { Winner: null } && !_preparing && !ChoosingRecycling && !ChoosingEffectCards && !ViewingBoardDuringGallery;
 
     /// <summary>Marks hand cards that have at least one play the server authorized for this snapshot.</summary>
     private void RefreshPlayableHand()

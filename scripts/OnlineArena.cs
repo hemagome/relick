@@ -94,17 +94,19 @@ public partial class OnlineArena : Control
     private bool ChoosingDeckSearch => Deciding == DecisionKind.ChooseCard;
     /// <summary>The kind of card decision this player must answer now, or null. Every card decision is drawn from it alone.</summary>
     private DecisionKind? Deciding => _snapshot is { Phase: Phase.Decision, Decision: { } decision } s && decision.Decider == s.MySeat ? decision.Kind : null;
-    /// <summary>The gallery header of a card decision: the card and what to do, as the server describes them.</summary>
-    private string? DecisionGalleryTitle => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } d ? $"{d.Title} · {d.Instruction}".ToUpperInvariant() : null;
+    /// <summary>The gallery header of a card decision.</summary>
+    private string? DecisionGalleryTitle => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } d
+        ? (ChoosingCopyTarget ? d.Title : $"{d.Title} · {d.Instruction}").ToUpperInvariant() : null;
     private bool ChoosingOsamuCards => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } decision &&
         (RelikarioCatalog.Find(decision.Source)?.Family == RelikarioCatalog.Osamu.Id || decision.Source == CardCatalog.TurboOverlap.Id);
-    private bool ChoosingDeckGallery => ChoosingDeckSearch && (ChoosingOsamuCards ||
-        _snapshot!.Decision?.Source == CardCatalog.KonamyCode.Id || _snapshot.Decision?.Source == CardCatalog.EquipmentRaid.Id ||
+    private bool ChoosingCopyTarget => Deciding == DecisionKind.ChooseCard && _snapshot!.Decision?.Source == CardCatalog.CopyHelmet.Id;
+    private bool ChoosingDeckGallery => !ViewingBoardDuringGallery && ChoosingDeckSearch && (ChoosingOsamuCards ||
+        ChoosingCopyTarget || _snapshot!.Decision?.Source == CardCatalog.KonamyCode.Id || _snapshot.Decision?.Source == CardCatalog.EquipmentRaid.Id ||
         _snapshot.Decision?.Source == CardCatalog.Ellie.Id || _snapshot.Decision?.Source == CardCatalog.Compass16Bit.Id ||
         _snapshot.Decision?.Source == RelikarioCatalog.IronwingLv2.Id);
     private bool ChoosingMemoryRecovery => Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingCorruption => _snapshot is { Phase: Phase.RelikiaChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Corrupt);
-    private bool ChoosingEffectCards => ChoosingDeckSearch || ChoosingMemoryRecovery || ChoosingCorruption || _showReplayMemory;
+    private bool ChoosingEffectCards => !ViewingBoardDuringGallery && (ChoosingDeckSearch || ChoosingMemoryRecovery || ChoosingCorruption || _showReplayMemory);
     private DuelOption[] _deckSearchOptions = [];
     private IReadOnlyList<string?> SelectableCards => ChoosingRecycling
         ? _snapshot!.Players[_snapshot.MySeat].Memory : ChoosingEffectCards
@@ -259,14 +261,14 @@ public partial class OnlineArena : Control
             (_readerRail.GlobalPosition.X - origin.X) / Size.X, active);
     }
 
-    private void Render(bool animateActions = false, DuelSnapshot? previous = null)
+    private void Render(bool animateActions = false, DuelSnapshot? previous = null, Vector2I? handScroll = null)
     {
         _relikiaMenu = null;
         _inspectorPreview = null; _relikarioPreview = null;
         ClearStageStatus();
         _fieldPress = null;
-        var handPosition = _hand?.ScrollHorizontal ?? 0;
-        var handVerticalPosition = _hand?.ScrollVertical ?? 0;
+        var handPosition = handScroll?.X ?? _hand?.ScrollHorizontal ?? 0;
+        var handVerticalPosition = handScroll?.Y ?? _hand?.ScrollVertical ?? 0;
         var boardPosition = _arenaScroll?.ScrollVertical ?? 0;
         foreach (var node in _portraits.Cast<Node>().Concat(_life).Concat(_actionPools)) node.GetParent()?.RemoveChild(node);
         if (_root != null) { RemoveChild(_root); _root.QueueFree(); }
@@ -288,7 +290,7 @@ public partial class OnlineArena : Control
         GetNodeOrNull<MusicDirector>("/root/MusicDirector")?.PresentDuel(RoomCode, s);
         RefreshEffectCardOptions();
         var deckChoices = ChoosingDeckGallery;
-        var sections = MemorySections();
+        var sections = choiceGallery ? MemorySections() : null;
         var deckColumns = 0;
         if (_selectedSkill >= s.Players[s.MySeat].Skills.Length) _selectedSkill = -1;
         var stage = StageAppearance.Current(s);
@@ -519,7 +521,7 @@ public partial class OnlineArena : Control
                 _root.Resized += FitArenaScroll;
             }
         }
-        var galleryTitle = ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR"
+        var galleryTitle = !choiceGallery ? null : ChoosingRecycling ? "TU MEMORIA · ELIGE PARA RECICLAR"
             : _showReplayMemory ? "TU MEMORIA · ELIGE UN CÓDIGO"
             : ChoosingCorruption ? "MEMORIAS · ELIGE PARA CORROMPER"
             : DecisionGalleryTitle ?? (ChoosingMemoryRecovery ? "DISQUETE · ELIGE DE CUALQUIER MEMORIA"
@@ -553,6 +555,9 @@ public partial class OnlineArena : Control
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, handVerticalPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
+        if (choiceGallery && ChoosingCopyTarget)
+            for (var i = 0; i < _handCards.Count; i++)
+                _handCards[i].TooltipText = _deckSearchOptions[i].Label + "\n" + _handCards[i].Card.Text;
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());
         _ownSkills.Clear(); _ownSkills.AddRange(_root.FindChildren("Skill0_*", "Button", true, false).OfType<SkillTile>());
         _evolveButton = _root.FindChild("EvolveRelikario", true, false) as Button;
@@ -730,7 +735,15 @@ public partial class OnlineArena : Control
             BuildPreparationMoves(); _decisionHint = _selection.Text;
             RefreshDecisionPrompt(); RefreshInspector(); return;
         }
-        RefreshBoardTargets(); BuildContextMoves(); RefreshPlayableHand();
+        RefreshBoardTargets();
+        if (ViewingBoardDuringGallery)
+        {
+            _selectionCost = "";
+            _selection.Text = _decisionHint = ArenaGuidance.Instruction(_snapshot!);
+            RefreshDecisionPrompt(); RefreshInspector();
+        }
+        else BuildContextMoves();
+        RefreshPlayableHand();
         _lastDisabled = null; UpdateEnabled();
     }
 

@@ -189,10 +189,11 @@ public partial class OnlineArena
         {
             await Present(seat);
             var equipment = (ZoneCardButton)ZoneNode(seat == 1 ? 0 : 1, CardZone.Equipment, -1)!;
-            if (equipment.Card?.Id != CardCatalog.SuperMagnet.Id || equipment.StatusText != "1/3")
+            var counters = new CardCounters(1, CardCatalog.SuperMagnetCounterLimit);
+            if (equipment.Card?.Id != CardCatalog.SuperMagnet.Id || equipment.PresentedCounters != counters)
                 throw new Exception("El equipo no muestra públicamente el contador de Súper Imán.");
             SelectEquipment(1);
-            if (_inspector.CounterLabel.Text != "Contadores: 1/3")
+            if (_inspector.CounterBadge.Counters != counters)
                 throw new Exception("El inspector omite los contadores de Súper Imán.");
         }
         GD.Print("PVP_SUPER_MAGNET_PASS · decisión privada, receta, arte y contadores públicos.");
@@ -1618,7 +1619,7 @@ public partial class OnlineArena
         {
             var game = new GameEngine(43); game.State.CurrentPlayer = actor; game.State.Phase = Phase.Actions;
             foreach (var p in game.State.Players) { p.Hand.Clear(); p.Hand.Add(CardCatalog.Attack.Id); }
-            var player = game.State.Active; player.Hand.Clear(); player.Hand.Add(CardCatalog.KonamyCode.Id); player.Deck.Clear();
+            var player = game.State.Active; player.Hand.Clear(); player.Hand.AddRange([CardCatalog.KonamyCode.Id, CardCatalog.Bonfire.Id]); player.Deck.Clear();
             player.Deck.AddRange(new[] { CardCatalog.Magnet.Id, CardCatalog.Attack.Id, CardCatalog.DiamondHelmet.Id, CardCatalog.ExtraLife.Id,
                 CardCatalog.PointsIncrease.Id, CardCatalog.BlueEgg.Id, CardCatalog.TimeBomb.Id, CardCatalog.Reroll.Id, CardCatalog.LoadError.Id,
                 CardCatalog.KonamyCode.Id, CardCatalog.CardboardBox.Id, CardCatalog.Pendant.Id, CardCatalog.Senshuni.Id, CardCatalog.Destiny.Id });
@@ -1657,7 +1658,7 @@ public partial class OnlineArena
                 var chooser = FindChild("ChoicePanel", true, false) as Control;
                 if (seat != actor)
                 {
-                    if (chooser != null) throw new Exception("El rival ve el selector privado del mazo.");
+                    if (chooser != null || _decisionToggle!.IsVisibleInTree()) throw new Exception("El rival ve el selector privado del mazo.");
                     continue;
                 }
                 var normalSize = chooser!.Size;
@@ -1683,6 +1684,30 @@ public partial class OnlineArena
                     if (!RectVisible(last, last.GetGlobalRect()) || !_decisionBar.GetGlobalRect().IsEqualApprox(footer) ||
                         !GetGlobalRect().Grow(1).Encloses(footer) || PresentedButton(_deckSearchOptions[^1]) == null)
                         throw new Exception($"La última carta o su confirmación queda fuera de vista en {size}.");
+
+                    var selected = _deckSearchOptions[^1];
+                    var scroll = _hand.ScrollVertical;
+                    if (_decisionToggle is not { Text: "Ver tablero", Disabled: false } open ||
+                        !RectVisible(open, open.GetGlobalRect()) || !GetGlobalRect().Grow(1).Encloses(open.GetGlobalRect()))
+                        throw new Exception($"No se puede ver el tablero desde la galería en {size}.");
+                    open.EmitSignal(Button.SignalName.Pressed);
+                    await Layout();
+                    if (FindChild("ChoicePanel", true, false) != null || _handCards.Single().Card.Id != CardCatalog.Bonfire.Id ||
+                        _decisionBar.IsVisibleInTree() || _decisionToggle is not { Text: "Volver a la decisión" } resume ||
+                        !resume.IsVisibleInTree() || !GetGlobalRect().Grow(1).Encloses(resume.GetGlobalRect()))
+                        throw new Exception($"La galería no deja ver el tablero y la mano en {size}.");
+                    SelectCard(0);
+                    if (_contextTitle.Text != CardCatalog.Bonfire.Name || _decisionTitle.Text != CardCatalog.KonamyCode.Name)
+                        throw new Exception("La mano debe poder consultarse desde el tablero y la decisión debe seguir identificada.");
+                    ClearContext();
+                    if (!resume.IsVisibleInTree() || resume.Text != "Volver a la decisión")
+                        throw new Exception("Limpiar la selección del tablero cierra el acceso al selector.");
+                    resume.EmitSignal(Button.SignalName.Pressed);
+                    await Layout();
+                    var restored = _deckSearchOptions[^1];
+                    if (!ChoosingDeckGallery || _handCards.Count != count || _selected.Single() != count - 1 ||
+                        restored.Label != selected.Label || PresentedButton(restored) == null || _hand!.ScrollVertical != scroll)
+                        throw new Exception($"Volver a la búsqueda pierde la selección o la posición de la galería en {size}.");
                 }
                 player.Deck.Clear();
                 player.Deck.AddRange(originalDeck);

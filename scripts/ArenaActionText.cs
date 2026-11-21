@@ -12,7 +12,8 @@ internal static class ArenaActionText
         DuelMoveKind.Attack when option.Field?.Zone == FieldZone.TomeCard =>
             $"Atacar con {CardCatalog.Get(s.Players[s.MySeat].Skills[option.Move.Value]).Name}",
         DuelMoveKind.Attack => "Atacar",
-        DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id => "Casco de Copias",
+        DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.CopyHelmet.Id =>
+            SingleCopyTargetName(s) is { } target ? $"Copiar {target}" : "Elegir carta para copiar",
         DuelMoveKind.PlayCode when s.Phase == Phase.ErrorResponse && HandCard(option, s)?.Id == CardCatalog.ComboParry.Id => "Combo Parry",
         DuelMoveKind.PlayCode => HandCard(option, s)?.CancelActivation == true ? "Anular" : HandCard(option, s)?.IsCombo == true ? "Activar" : "Jugar",
         DuelMoveKind.Equip when option.Move.Flag => "Equipar al rival",
@@ -63,6 +64,14 @@ internal static class ArenaActionText
             s.Players[s.MySeat].Hand.ElementAtOrDefault(option.Move.Index);
         return id == null ? null : CardCatalog.Get(id);
     }
+
+    // An authorized helmet can always copy the opening activation. Subsequent RAM links are
+    // Error de Carga counters or copies, which the public resolution shows as the copied card.
+    public static string? SingleCopyTargetName(DuelSnapshot s) =>
+        s.Resolution is { } live && CardCatalog.All.TryGetValue(CardCatalog.TextId(live.CardId), out var source) &&
+        source.CodeType is CodeType.Object or CodeType.Character &&
+        live.Responses.All(response => CardCatalog.All.TryGetValue(CardCatalog.TextId(response.CardId), out var card) && card.CancelActivation)
+            ? source.Name : null;
 
     public static string CardCost(CardDefinition card) => card.Kind switch
     {

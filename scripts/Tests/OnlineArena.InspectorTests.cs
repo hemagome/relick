@@ -33,6 +33,8 @@ public partial class OnlineArena
             player.AttachedCards.AddRange([CardCatalog.Pendant.Id, CardCatalog.Sniper.Id, CardCatalog.TimeBomb.Id]);
             var rival = game.State.Players[1 - seat];
             rival.Equipment = CardCatalog.Pc.Id; rival.EquipmentDie = 4;
+            rival.Skills.AddRange([CardCatalog.IronwingRoll.Id, CardCatalog.TurboSword.Id]);
+            rival.SkillCounters[1] = CardCatalog.TurboSwordCounterLimit;
             ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 401)); await Layout();
             var attached = (AttachmentStack)ZoneNode(0, CardZone.Attached, -1)!;
             var equipment = (ZoneCardButton)ZoneNode(1, CardZone.Equipment, -1)!;
@@ -94,6 +96,7 @@ public partial class OnlineArena
                 var definition = CardCatalog.Get(player.Hand[index]);
                 Check(_contextTitle.Text == definition.Name, "El inspector no sigue la carta seleccionada.");
                 Check(_inspector.Attributes.Visible == (definition.Kind == CardKind.Skill), "Se duplican valores del efecto como atributos de equipo o código.");
+                Check(!_inspector.CounterBadge.Visible, "Una carta de la mano se muestra con los contadores de otra copia.");
                 if (definition.Kind == CardKind.Skill)
                     Check(!_inspector.DescriptionLabel.Text.Contains("Daño normal:") && !_inspector.DescriptionLabel.Text.Contains("Premio:"), "El inspector repite los atributos en la descripción.");
                 else Check(_inspector.DescriptionLabel.Text == definition.Text, "El inspector pierde condiciones de la carta.");
@@ -109,7 +112,7 @@ public partial class OnlineArena
                 }
                 Check(_inspector.Size.Y > compactHeight && _inspector.ReadingViewport.Visible, "Consultar una carta no amplía el inspector.");
                 var viewport = new Rect2(Vector2.Zero, Size);
-                foreach (var field in new Control[] { _selection, _contextTitle, _inspector.Attributes, _inspector.CounterLabel, _contextCost })
+                foreach (var field in new Control[] { _selection, _contextTitle, _inspector.Attributes, _inspector.CounterBadge, _contextCost })
                     if (field.IsVisibleInTree()) Check(viewport.Encloses(field.GetGlobalRect()), "Una cabecera o coste queda fuera de pantalla.");
                 Check(_contextTitle.GetGlobalRect().End.Y <= _inspector.ReadingViewport.GetGlobalRect().Position.Y + 1,
                     "La identidad de la carta comparte el desplazamiento de la descripción.");
@@ -166,10 +169,23 @@ public partial class OnlineArena
             SelectSkill(0); await Layout();
             var values = _inspector.Attributes.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text).ToArray();
             Check(values.Contains("4") && values.Contains("6"), "Reverse no muestra el daño de su copia con contadores.");
+            void CheckCounters(int relative, int slot, CardCounters expected)
+            {
+                var skill = (SkillTile)ZoneNode(relative, CardZone.Skill, slot)!;
+                Check(skill.PresentedCounters == expected && _inspector.CounterBadge is { Visible: true } badge &&
+                    badge.Counters == expected && badge.TooltipText == expected.Description,
+                    $"La carta y el inspector de {skill.Skill!.Name} deben mostrar el mismo recuento.");
+            }
+            CheckCounters(0, 0, new(2, null));
             SelectSkill(1); await Layout();
-            Check(_inspector.CounterLabel.Visible && _inspector.CounterLabel.Text == "Contadores: 1/2", "Destiny no muestra los contadores autorizados de su copia.");
+            CheckCounters(0, 1, new(1, CardCatalog.DestinyCounterLimit));
+            SelectField(1 - seat, FieldZone.Skill, 0);
+            CheckCounters(1, 0, new(0, CardCatalog.IronwingRollCounterLimit));
+            SelectField(1 - seat, FieldZone.Skill, 1);
+            CheckCounters(1, 1, new(CardCatalog.TurboSwordCounterLimit, CardCatalog.TurboSwordCounterLimit));
+            if (seat == 0 && size.X is 1440 or 844) await Capture($"card-counters-{size.X}x{size.Y}");
             SelectField(1 - seat, FieldZone.Equipment, -1);
-            Check(_contextTitle.Text == CardCatalog.Pc.Name && !_inspector.Attributes.Visible && !_inspector.CounterLabel.Visible,
+            Check(_contextTitle.Text == CardCatalog.Pc.Name && !_inspector.Attributes.Visible && !_inspector.CounterBadge.Visible,
                 "Consultar un equipo rival conserva atributos o contadores de otra carta.");
             Check(_moves.FindChildren("*", "Button", true, false).OfType<Button>().All(button => button.TooltipText != "Limpiar selección"),
                 "Sigue apareciendo el botón para limpiar la selección.");
@@ -181,7 +197,7 @@ public partial class OnlineArena
             ClickEmptyField(); await Layout();
             CheckPanelSize();
             Check(_fieldSelection == null && _selected.Count == 0 && !_inspector.ClassificationLabel.Visible &&
-                !_inspector.Attributes.Visible && !_inspector.DescriptionLabel.Visible && !_inspector.CounterLabel.Visible,
+                !_inspector.Attributes.Visible && !_inspector.DescriptionLabel.Visible && !_inspector.CounterBadge.Visible,
                 $"El clic en el campo no limpia la selección o deja datos antiguos en {size}.");
             if (!Compact && !Short)
             {
@@ -194,9 +210,17 @@ public partial class OnlineArena
                 _root!.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().All(c => c.IsFaceDown), "El inspector revela cartas privadas del rival.");
             Check(game.SaveSnapshot() == before, "Consultar una carta o habilidad ejecuta una jugada.");
 
+            rival.Equipment = CardCatalog.Sniper.Id; rival.EquipmentDie = 0; rival.EquipmentCounters = 2;
             player.Relikario = seat == 0 ? RelikarioCatalog.Yuno : RelikarioCatalog.Osamu;
             var lv2 = RelikarioCatalog.EvolutionFor(player.Relikario)!;
             PresentTestSnapshot(DuelSnapshot.For(game, seat, 402)); await Layout();
+            equipment = (ZoneCardButton)ZoneNode(1, CardZone.Equipment, -1)!;
+            SelectEquipment(1 - seat);
+            var sniper = new CardCounters(2, CardCatalog.SniperCounterLimit);
+            Check(equipment.PresentedCounters == sniper && CardCounterBadge.OnCard(equipment.CardRect, sniper) is var counterRect &&
+                counterRect.HasArea() && equipment.CardRect.Encloses(counterRect) && _inspector.CounterBadge.Counters == sniper,
+                "Mira de Sniper pierde el recuento al consultar una copia equipada.");
+            ClearContext();
             Check(_evolveButton is { Disabled: true }, "La prueba requiere que el botón de Lv 2 esté desactivado.");
             var evolve = _evolveButton!;
             _arenaScroll?.EnsureControlVisible(evolve); await Layout();

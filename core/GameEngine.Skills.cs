@@ -39,7 +39,7 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         if (PlayableCards(actor).Count() < DefenseDiscardCost) return Array.Empty<int>();
         return Enumerable.Range(0, p.Skills.Count)
-            .Where(i => p.Skills[i] == CardCatalog.Destiny.Id && p.CountersOnSkill(i) < 2 && !EffectsSuppressed(actor, FieldZone.Skill, i));
+            .Where(i => p.Skills[i] == CardCatalog.Destiny.Id && p.CountersOnSkill(i) < CardCatalog.DestinyCounterLimit && !EffectsSuppressed(actor, FieldZone.Skill, i));
     }
 
     private bool CanDefend(int actor, bool critical) =>
@@ -87,7 +87,7 @@ public sealed partial class GameEngine
             if (sniper && discarded != null) sniperIndices.Add(discarded);
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
-        Log($"{p.Name} activa Relick Destiny Shuffle (espacio {p.SkillPosition(skillSlot) + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/2.");
+        Log($"{p.Name} activa Relick Destiny Shuffle (espacio {p.SkillPosition(skillSlot) + 1}): descarta {indices.Length} cartas y cancela el daño. Contadores: {p.CountersOnSkill(skillSlot)}/{CardCatalog.DestinyCounterLimit}.");
         ResolveAttackDamage(true, deferCompletion: sniperIndices.Count > 0, cardId: p.Skills[skillSlot]);
         BeginSniperChoices(actor, sniperIndices);
         return CommandResult.Ok();

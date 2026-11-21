@@ -7,8 +7,6 @@ namespace Relick.Core;
 /// </summary>
 internal sealed class SniperScopeEffect : CardRules, IDamageTrigger
 {
-    private const int CounterLimit = 3;
-
     public override string CardId => CardCatalog.Sniper.Id;
 
     public DamageStep Step => DamageStep.Counters;
@@ -16,7 +14,7 @@ internal sealed class SniperScopeEffect : CardRules, IDamageTrigger
     public bool TryPause(GameEngine.EffectContext ctx, DamageEvent damage, EngineContinuation? completed)
     {
         if (ctx.ActiveEquipment()?.Id != CardId) return false;
-        if (++ctx.Player.EquipmentCounters < CounterLimit) return false;
+        if (++ctx.Player.EquipmentCounters < CardCatalog.SniperCounterLimit) return false;
         // Destroying the only equipment slot also rules out Tótem de Salvación, so the damage skips that step.
         ctx.DestroyEquipment(ctx.HealthDamage(damage, completed));
         return true;

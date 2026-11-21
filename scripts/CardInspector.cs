@@ -86,7 +86,7 @@ public partial class CardInspector : PanelContainer
     internal Label HintLabel { get; private set; } = null!;
     internal Label ClassificationLabel { get; private set; } = null!;
     internal Label DescriptionLabel { get; private set; } = null!;
-    internal Label CounterLabel { get; private set; } = null!;
+    internal CardCounterBadge CounterBadge { get; private set; } = null!;
     internal HBoxContainer Attributes { get; private set; } = null!;
     internal VBoxContainer Outlook { get; private set; } = null!;
     internal HBoxContainer Recipe { get; private set; } = null!;
@@ -130,7 +130,8 @@ public partial class CardInspector : PanelContainer
             var value = ArenaPresentation.Text("", ShortScreen ? 17 : 23, BoardArt.Gold);
             attribute.AddChild(value); _attributeValues.Add(value);
         }
-        CounterLabel = Wrapped("InspectorCounters", 12, BoardArt.Gold); header.AddChild(CounterLabel);
+        CounterBadge = new CardCounterBadge { Name = "InspectorCounters", SizeFlagsHorizontal = SizeFlags.ShrinkBegin, MouseFilter = MouseFilterEnum.Pass };
+        header.AddChild(CounterBadge);
         BuildRecipe(header);
         BuildOutlook(header);
         _reading = new ScrollContainer { Name = "InspectorReading",
@@ -270,15 +271,7 @@ public partial class CardInspector : PanelContainer
             _attributeValues[1].Text = card.CriticalDamageText(counters ?? 0);
             _attributeValues[2].Text = card.Reward + " PR";
         }
-        var counterLimit = card?.Id switch
-        {
-            var id when id == CardCatalog.Destiny.Id || id == CardCatalog.TurboSword.Id => 2,
-            var id when id == CardCatalog.IronwingRoll.Id => CardCatalog.IronwingRollCounterLimit,
-            var id when id == CardCatalog.SuperMagnet.Id => CardCatalog.SuperMagnetCounterLimit,
-            _ => 0
-        };
-        CounterLabel.Text = counters.HasValue && counterLimit > 0 ? $"Contadores: {counters}/{counterLimit}" : "";
-        CounterLabel.Visible = CounterLabel.Text.Length > 0;
+        CounterBadge.Present(CardCounters.For(card, counters));
         CostLabel.Text = cost; _cost.Visible = cost.Length > 0;
         SetHint(hint);
     }

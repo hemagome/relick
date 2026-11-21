@@ -22,9 +22,15 @@ public partial class OnlineArena
 
     private void ResetInteraction()
     {
+        _decisionMinimized = false;
+        _pausedGallery = null;
+        ClearSelection();
+    }
+
+    private void ClearSelection()
+    {
         _selected.Clear(); _selectedSkill = -1; _skillContext = false;
         _choosingAttackSkill = false;
-        _decisionMinimized = false;
         _fieldSelection = null; _showReplayMemory = false;
         _inspectorPreview = null; _relikarioPreview = null;
     }
@@ -282,7 +288,8 @@ public partial class OnlineArena
 
     private void ClearContext()
     {
-        var gallery = _showReplayMemory; ResetInteraction();
+        var gallery = _showReplayMemory;
+        if (ViewingBoardDuringGallery) ClearSelection(); else ResetInteraction();
         if (gallery) Render(); else RefreshSelection();
     }
 
@@ -360,7 +367,12 @@ public partial class OnlineArena
             if (card == null && control is SkillTile or ZoneCardButton)
                 control.GuiInput += ClearContextOnFieldClick;
             if (card == null && control is not OpponentHandCard) continue;
-            int? counters = control is SkillTile skill ? skill.Counters : null;
+            int? counters = control switch
+            {
+                SkillTile skill => skill.Counters,
+                ZoneCardButton zone => zone.PresentedCounters?.Count,
+                _ => null
+            };
             var owner = SkillTileOwner(control);
             var relikario = control switch
             {
@@ -453,7 +465,7 @@ public partial class OnlineArena
         int? counters = null;
         if (_fieldSelection is { Zone: FieldZone.Skill } field)
             counters = s.Players[field.Owner].Counters.ElementAtOrDefault(field.Index);
-        else if (activation == null && _fieldSelection is { Zone: FieldZone.Equipment } equipment && card?.Id == CardCatalog.SuperMagnet.Id)
+        else if (activation == null && _fieldSelection is { Zone: FieldZone.Equipment } equipment)
             counters = s.Players[equipment.Owner].EquipmentCounters;
         else if (_skillContext && _selectedSkill >= 0)
             counters = s.Players[s.MySeat].Counters.ElementAtOrDefault(_selectedSkill);
@@ -541,7 +553,10 @@ public partial class OnlineArena
     {
         var s = _snapshot!; var myTurn = s.DecisionPlayer == s.MySeat;
         if (s.Winner != null) return "El duelo terminó.";
-        if (s.Phase == Phase.ErrorResponse && myTurn && (OffersParryResponse(s) || OffersCopyResponse(s)))
+        if (s.Phase == Phase.ErrorResponse && myTurn && OffersCopyResponse(s))
+            return ArenaActionText.SingleCopyTargetName(s) is { } target
+                ? $"Casco de Copias clonará {target}." : "Con Casco de Copias puedes elegir qué carta de la RAM clonar.";
+        if (s.Phase == Phase.ErrorResponse && myTurn && OffersParryResponse(s))
             return "Elige cómo responder a la activación o deja que se resuelva.";
         if (s.Phase == Phase.ErrorResponse && myTurn) return s.ErrorAfterDie
             ? $"Dado final: {s.Die}. Anula el código ahora o deja que termine su efecto." : "Anula la activación o deja que se resuelva.";
@@ -556,6 +571,8 @@ public partial class OnlineArena
         if (s.Phase == Phase.Discard && myTurn) return $"Descarta {s.DiscardsRemaining} carta(s) para resolver el efecto.";
         if (s.Phase == Phase.Final && myTurn) return s.Players[s.MySeat].HandCount > GameEngine.MaxHandSize
             ? $"Descarta {s.Players[s.MySeat].HandCount - GameEngine.MaxHandSize} carta(s) para terminar el turno." : ArenaGuidance.Instruction(s);
+        if (ChoosingCopyTarget) return _selected.Count == 1
+            ? $"Vas a copiar {_deckSearchOptions[_selected.Single()].Label}." : "Selecciona un Objeto o Personaje de la RAM.";
         if (ChoosingEffectCards) return _selected.Count == 1 ? ChoiceOrigin(_deckSearchOptions[_selected.Single()]) : "Elige una carta y confirma.";
         if (s.Phase == Phase.DefenseChoice && myTurn)
         {

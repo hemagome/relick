@@ -90,6 +90,7 @@ public static class CardCatalog
         "Busca 3 ataques de tu mazo a tu mano.", CodeType: CodeType.Play);
     public static readonly CardDefinition Sniper = new("sniper-scope", "Mira de Sniper", CardKind.Equipment,
         "Si esta carta es descartada: equipa esta carta gratis o coloca en canje. Equipada: +1 a los daños. Si recibes daño coloca 1 contador en esta carta; con 3 contadores se destruye.", DamageBonus: 1, EquipOnDiscard: true);
+    public const int SniperCounterLimit = 3;
     public static readonly CardDefinition Pc = new("pc-8bits", "PC 8BITS", CardKind.Equipment,
         "Al equipar: lanza 1D6 y colócalo sobre esta carta. Al lanzar un dado puedes destruir este equipo: si guardó 1–3, suma ese valor al dado (máx. 5); si guardó 4–6, cambia el resultado del dado por el valor guardado.", StoreDie: true);
     public static readonly CardDefinition Dodge = new("dodge", "Esquivar", CardKind.Code,
@@ -158,9 +159,11 @@ public static class CardCatalog
         "Daño normal: 1D6 · Crítico: 5 · Premio: 500 PR. Al realizar un crítico puedes mirar la mano del adversario y tomar una carta de ella o de su Bonus.", 0, 5, 500, Relikario: RelikarioCatalog.Yuno.Id);
     public static readonly CardDefinition Destiny = new("destiny-shuffle", "Relick Destiny Shuffle", CardKind.Skill,
         "Daño normal: 3 · Crítico: 5 · Premio: 600 PR. Coloca 1 contador sobre esta copia y descarta 3 cartas para cancelar el daño de un ataque (4 cartas si es crítico). Con 2 contadores esta copia no puede volver a activar el efecto.", 3, 5, 600, Relikario: RelikarioCatalog.Yuno.Id);
+    public const int DestinyCounterLimit = 2;
     public static readonly CardDefinition TurboSword = new("turbo-sword", "Relick Turbo Sword", CardKind.Skill,
         "Antes de recibir daño, lanza 1D6. Con 5, cancela el daño y pon 1 contador en esta copia. Con 6, cancela el daño y el oponente recibe la mitad. Con 2 contadores o más, esta copia no activa su efecto.",
         Reward: 500, Relikario: RelikarioCatalog.Osamu.Id);
+    public const int TurboSwordCounterLimit = 2;
     public static readonly CardDefinition TurboOverlap = new("turbo-overlap", "Relick Turbo Overlap", CardKind.Skill,
         "Al enseñar esta carta o realizar un crítico con ella, añade una Agilidad al 100% de tu mazo o memoria a tu mano.",
         NormalDamage: 3, Reward: 300, Relikario: RelikarioCatalog.Osamu.Id);

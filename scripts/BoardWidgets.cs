@@ -607,6 +607,7 @@ public partial class SkillTile : Button
     public bool Targetable { get; set; }
     internal bool Playable { get; set; }
     public int Counters { get; set; }
+    internal CardCounters? PresentedCounters => AwaitingLesson ? null : CardCounters.For(Skill, Counters);
     /// <summary>The empty space the next skill would be taught in, lit only while teaching is authorized.</summary>
     public bool NextLesson { get; set; }
     public bool HasSkillArtwork => _skillArt != null;
@@ -630,10 +631,9 @@ public partial class SkillTile : Button
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
         FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
         _skillArt = SkillArtwork.Load(Skill);
-        TooltipText = Skill == null ? $"Enseñar una habilidad · {GameEngine.SkillSlotCosts[Slot]} PR." : Skill.Text +
-            (Skill.Id == CardCatalog.Destiny.Id || Skill.Id == CardCatalog.TurboSword.Id ? $"\nEsta copia: {Counters}/2 contadores." :
-                Skill.Id == CardCatalog.IronwingRoll.Id ? $"\nEsta copia: {Counters}/{CardCatalog.IronwingRollCounterLimit} contadores." :
-                Skill.DamagePerReroll > 0 ? $"\nEsta copia: {Counters} aumentos · {Skill.NormalDamageAt(Counters)} normal / {Skill.CriticalDamageAt(Counters)} crítico." : "");
+        var count = PresentedCounters is { } counters ? $" · {counters.Description}" : "";
+        AccessibilityName = Skill == null ? $"Enseñar una habilidad · {GameEngine.SkillSlotCosts[Slot]} PR" : Skill.Name + count;
+        TooltipText = Skill == null ? AccessibilityName : $"{AccessibilityName}\n{Skill.Text}";
     }
     public override void _Draw()
     {
@@ -666,12 +666,7 @@ public partial class SkillTile : Button
             RelickVisuals.Shadow(this, new Rect2(art.Position + new Vector2(0, 3), art.Size).Grow(-2), new Color(0, 0, 0, 0.55f), 9);
             DrawTextureRect(_skillArt, art, false);
 
-            if (Skill.Id == CardCatalog.Destiny.Id || Skill.Id == CardCatalog.TurboSword.Id)
-            {
-                BoardArt.Plate(this, new Rect2(8, size.Y - 24, 114, 20), RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 4);
-                BoardArt.Text(this, $"CONTADORES {Counters}/2", new(14, size.Y - 10), 10, Counters >= 2 ? new Color("ef7890") : BoardArt.Ink);
-            }
-            else if (Skill.DamagePerReroll > 0)
+            if (Skill.DamagePerReroll > 0)
             {
                 BoardArt.Plate(this, new Rect2(8, size.Y - 24, 156, 20), RelickVisuals.Playmat.Raised, RelickVisuals.Playmat.Frame, 4);
                 BoardArt.Text(this, $"NORMAL {Skill.NormalDamageAt(Counters)} · CRÍTICO {Skill.CriticalDamageAt(Counters)}", new(14, size.Y - 10), 10, BoardArt.Ink);
@@ -691,6 +686,7 @@ public partial class SkillTile : Button
             BoardArt.Text(this, Skill.Reward.ToString(), new(size.X - 42, 107), 12, BoardArt.Gold);
         }
         if (Playable && !AwaitingLesson) RelickVisuals.Playable(this, cardRect);
+        if (PresentedCounters is { } counters) CardCounterBadge.Paint(this, CardCounterBadge.OnCard(cardRect, counters), counters);
         RelickVisuals.Interaction(this, bounds, Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
     }
 }
@@ -815,6 +811,7 @@ public partial class ZoneCardButton : Button
     public string? RelikarioId { get; init; }
     public string Caption { get; set; } = "";
     public string StatusText { get; init; } = "";
+    internal int? Counters { get; init; }
     public Color Accent { get; set; }
     private Texture2D? _artwork;
     private CardDefinition? _departingCard;
@@ -833,11 +830,13 @@ public partial class ZoneCardButton : Button
     internal bool HasDeparturePreview => _departingCard != null;
     internal CardDefinition? PresentedCard => AwaitingEquipment && _previousEquipmentStatus == null
         ? null : _departingCard ?? (AwaitingArrival ? null : Card);
+    internal CardCounters? PresentedCounters => AwaitingEquipment || HasDeparturePreview ? null : CardCounters.For(PresentedCard, Counters);
 
     internal void SetEquipmentPending(bool pending, string? previousStatus)
     {
         AwaitingEquipment = pending;
         _previousEquipmentStatus = pending ? previousStatus : null;
+        DescribeCard();
         QueueRedraw();
     }
 
@@ -905,6 +904,7 @@ public partial class ZoneCardButton : Button
         var status = PresentedStatus;
         var caption = PresentedShieldCharges is int charges ? $"{charges} cartas boca abajo" : Caption;
         AccessibilityName = card == null ? caption : $"{caption} · {card.Name}" + (status is { Length: > 0 } ? $" · {status}" : "");
+        if (PresentedCounters is { } counters) AccessibilityName += $" · {counters.Description}";
         TooltipText = card == null ? "" : $"{AccessibilityName}\n{card.Text}\nPulsa para ampliar y consultar el efecto.";
     }
 
@@ -941,6 +941,7 @@ public partial class ZoneCardButton : Button
             BoardArt.Icon(this, BoardArt.CardIcon(card), Size / 2, 32, Accent);
         if (Playable && showCard) RelickVisuals.Playable(this, CardRect);
         if (showCard && PresentedStatus is { Length: > 0 } status) BoardArt.CardBadge(this, Size, status);
+        if (PresentedCounters is { } counters) CardCounterBadge.Paint(this, CardCounterBadge.OnCard(CardRect, counters), counters);
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), Chosen, Targetable, !Disabled && IsHovered(), HasFocus());
     }
 }

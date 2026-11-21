@@ -63,6 +63,7 @@ public partial class OnlineArena
                 throw new Exception("La carta usada se debe mostrar invertida en la galería del Tomo.");
             dialog.QueueFree();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await CheckCopyHelmetTargets();
         }
 
         await CheckAreaAndDeckArrivals();
@@ -97,6 +98,62 @@ public partial class OnlineArena
             throw new Exception("Una nueva tirada D6 debe recuperar el dado cúbico.");
         CheckCompassBonusGallery();
         GD.Print("PVP_NEW_CARDS_PASS");
+    }
+
+    private async Task CheckCopyHelmetTargets()
+    {
+        var source = CardCatalog.ExtraLife;
+        var helmet = CardCatalog.CopyHelmet.Id;
+        var counter = CardCatalog.LoadError.Id;
+        var attack = CardCatalog.Attack.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[source.Id, helmet, counter], [helmet]],
+            Decks = [[attack, attack], [attack, attack]], Bonuses = [null, null], StartingSeat = 0
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.Actions;
+        game.State.Turn = 2;
+        var revision = 30UL;
+        async Task Present(int seat)
+        {
+            ResetAnimations();
+            PresentTestSnapshot(DuelSnapshot.For(game, seat, revision++));
+            for (var frame = 0; frame < 4; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        if (!game.PlayCode(0, 0).Success) throw new Exception("No se prepara el objetivo de Casco de Copias.");
+        await Present(1);
+        var reply = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode);
+        if (PresentedButton(reply)?.Text != $"Copiar {source.Name}" || !_selection.Text.Contains(source.Name))
+            throw new Exception("El objetivo único debe aparecer antes de jugar Casco de Copias.");
+        if (!reply.Move.Apply(game, 1).Success || game.State.Phase != Phase.ErrorResponse)
+            throw new Exception("El objetivo único debe copiarse directamente y devolver la prioridad.");
+
+        await Present(0);
+        reply = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(o, _snapshot)?.Id == helmet);
+        var actions = game.State.Players[0].ActionsLeft;
+        if (PresentedButton(reply)?.Text != "Elegir carta para copiar" || !reply.Move.Apply(game, 0).Success ||
+            game.State.Players[0].ActionsLeft != actions || !game.State.Players[0].Hand.Contains(helmet))
+            throw new Exception("Con dos objetivos, abrir el selector debe conservar la acción y el Casco.");
+
+        await Present(1);
+        if (ChoosingCopyTarget || _deckSearchOptions.Length != 0)
+            throw new Exception("El rival no debe ver el selector de copias.");
+        await Present(0);
+        if (!ChoosingCopyTarget || _handCards.Count != 2 || _moves.GetChildren().OfType<Button>().Single() is not { Text: "Copiar", Disabled: true })
+            throw new Exception("La galería debe mostrar los dos eslabones y esperar una selección para copiar.");
+
+        for (var seat = 0; seat < game.State.Players.Length; seat++)
+        {
+            SelectCard(seat);
+            var choice = _deckSearchOptions[seat];
+            var label = $"{source.Name} · {game.State.Players[seat].Name} · RAM {seat + 1}";
+            if (PresentedButton(choice) is not { Text: "Copiar" } || _contextTitle.Text != source.Name ||
+                !_selection.Text.Contains(label) || !_handCards[seat].TooltipText.StartsWith(label))
+                throw new Exception("La confirmación debe identificar qué eslabón se copiará aunque ambos tengan la misma carta.");
+        }
+        if (!_deckSearchOptions[1].Move.Apply(game, 0).Success || game.State.Players[0].ActionsLeft != actions - 1)
+            throw new Exception("Confirmar el eslabón elegido debe consumir la acción del Casco.");
     }
 
     private void CheckCompassBonusGallery()
