@@ -357,6 +357,7 @@ try
         if (combatSteps % 20 == 0) Console.WriteLine($"PROGRESS combate: {combatSteps} jugadas, turno {fighterA.Duel.Turn}, fase {fighterA.Duel.Phase}");
     }
     Check(fighterA.Duel.Winner != null && b.Duel!.Winner == fighterA.Duel.Winner, "Duelo completo resuelto por el servidor con ganador consistente");
+    Until(() => service.Duel?.Winner != null); // Leave() is silently refused until this client sees the result.
     Check(!string.IsNullOrEmpty(fighterA.Duel.EndReason) && fighterA.Duel.EndReason == b.Duel!.EndReason,
         "Ambos jugadores reciben la misma causa pública del resultado");
     Check(fighterA.Duel.History!.Count == DuelHistory.Capacity,
@@ -474,6 +475,7 @@ try
     Check(resultView.Winner != null && resultView.Players.Select(p => p.Health).Order().SequenceEqual(new[] { 6, 8 }) &&
         resultView.Players[resultView.Winner.Value].Health == 8 && b.Duel!.Winner == resultView.Winner,
         "El segundo agotamiento resta dos vidas y gana quien conserva más vida");
+    Until(() => service.Duel?.Winner != null);
     service.Leave(); Until(() => service.Room == null && b.Room == null && fighterA.Duel == null);
     Console.WriteLine($"SEARCH_TRANSPORT · {verifiedSearches} búsquedas privadas verificadas.");
     Console.WriteLine($"HAND_SWAP_TRANSPORT · {verifiedSwaps} intercambios con manos, destinatarios y revelaciones verificados.");
