@@ -70,6 +70,14 @@ public partial class OnlineArena
         if (_diceOverlay.Visible && _diceOverlay.GetChildCount() > 0 && _diceOverlay.GetChild(0) is Control dice) soft.Add(Local(dice));
         var board = desktop && soft.Count > 0 ? new Rect2(bounds.Position, new Vector2(Math.Max(0, soft[0].Position.X - bounds.Position.X - 8), bounds.Size.Y)) : bounds;
         if (board.Size.X < bounds.Size.X * 0.5f) board = bounds;
+        if (_floatingReader is { Visible: true } floating)
+        {
+            // Beside the card being answered, never behind it or across it.
+            var reader = Local(floating);
+            var from = reader.GetCenter().X < board.GetCenter().X ? reader.End.X + 8 : board.Position.X;
+            var to = reader.GetCenter().X < board.GetCenter().X ? board.End.X : reader.Position.X - 8;
+            if (to - from >= board.Size.X * 0.5f) board = new(new Vector2(from, board.Position.Y), new Vector2(to - from, board.Size.Y));
+        }
         var anchor = desktop && lane is { } center ? center.GetCenter() : board.GetCenter();
         foreach (var obstacles in new[] { buttons.Concat(soft).ToList(), buttons })
         {

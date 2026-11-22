@@ -80,8 +80,21 @@ public partial class OnlineArena
                 _moves.GetChildren().SequenceEqual(initialMoves),
                 "Pasar el cursor no abre el inspector o cambia las jugadas disponibles.");
             if (seat == 0 && size.X is 1440 or 844) await Capture($"inspector-hover-{size.X}x{size.Y}");
-            GuiInputTestDriver.Hover(_inspector.ReadingViewport); await Layout();
-            Check(_contextTitle.Text == hoverCard.Card.Name, "Mover el cursor al texto cierra la vista previa.");
+            if (_floatingReader is { } hoverReader)
+            {
+                // Over the board a hover is only looking: it waits a moment and yields to the pointer.
+                _previewSince = 1; UpdateRail(); await Layout();
+                Check(hoverReader.Visible && hoverReader.MouseBehaviorRecursive == MouseBehaviorRecursiveEnum.Disabled,
+                    $"El lector flotante no aparece al señalar o captura los clics del tablero en {size}.");
+                GetViewport().PushInput(new InputEventMouseMotion { Position = hoverReader.GetGlobalRect().GetCenter() }, true);
+                UpdateRail(); await Layout();
+                Check(!hoverReader.Visible && !_inspector.HasCard, $"El lector flotante no se aparta del cursor en {size}.");
+            }
+            else
+            {
+                GuiInputTestDriver.Hover(_inspector.ReadingViewport); await Layout(); UpdateRail();
+                Check(_contextTitle.Text == hoverCard.Card.Name, "Mover el cursor al texto cierra la vista previa.");
+            }
             void ClickEmptyField() => GuiInputTestDriver.Click(GetViewport(), panels[0].GlobalPosition + new Vector2(5, 5));
             ClickEmptyField(); await Layout();
             Check(!_inspector.HasCard, $"El campo vacío no cierra la vista previa en {size}.");
@@ -234,7 +247,7 @@ public partial class OnlineArena
                 (Desktop ? _showcase is { Visible: true } && _showcase.FaceTexture == artwork
                     : inlineArtwork is { Visible: true } && inlineArtwork.Texture == artwork),
                 $"Pasar el cursor sobre el botón desactivado no muestra la carta y los efectos de {lv2.Name} en {size}.");
-            GuiInputTestDriver.Hover(_inspector.ReadingViewport); await Layout();
+            if (_floatingReader == null) { GuiInputTestDriver.Hover(_inspector.ReadingViewport); await Layout(); }
             Check(evolve.Disabled && _contextTitle.Text == $"{lv2.Name} · Lv 2" && _moves.GetChildren().SequenceEqual(movesBeforeHover),
                 "La vista de Lv 2 se cierra al leer o altera las jugadas disponibles.");
             CheckPendingCodeBounds();

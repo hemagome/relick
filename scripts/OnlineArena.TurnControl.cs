@@ -41,6 +41,12 @@ public partial class OnlineArena
 
     public override void _Input(InputEvent input)
     {
+        if (input is InputEventMouseMotion motion) { _pointer = motion.Position; return; }
+        if (input is InputEventKey { Keycode: Key.Escape, Pressed: true, Echo: false } && _historyOpen && IsVisibleInTree() &&
+            _showcase != null && !GetViewport().GetEmbeddedSubwindows().Any(TakesKeys))
+        {
+            GetViewport().SetInputAsHandled(); SetHistoryOpen(false); return;
+        }
         if (input is not InputEventKey { Keycode: Key.Space, CtrlPressed: false, AltPressed: false, MetaPressed: false, ShiftPressed: false } key) return;
         if (TurnShortcutTarget() is not { } button) return;
         // Consumed even while held, so Space never falls through to the card that was clicked last.
@@ -58,11 +64,14 @@ public partial class OnlineArena
         if (button == null || !IsInstanceValid(button) || !button.IsVisibleInTree()) return null;
         if (_decisionPopup is { Visible: true } popup && popup.GetGlobalRect().Intersects(button.GetGlobalRect())) return null;
         var viewport = GetViewport();
-        if (viewport.GetEmbeddedSubwindows().Any(window => window.Visible)) return null;
+        if (viewport.GetEmbeddedSubwindows().Any(TakesKeys)) return null;
         // Focus placed with the keyboard keeps Space as the usual press; focus left behind by a click does not.
         if (viewport.GuiGetFocusOwner() is { } focus && focus != button && (focus is LineEdit or TextEdit || focus.HasFocus(true))) return null;
         return button;
     }
+
+    // A tooltip is a window too, and hovering the turn button shows one that names this very shortcut.
+    private static bool TakesKeys(Window window) => window.Visible && !window.Unfocusable;
 
     private Label AddClockLabel(Node parent, int size)
     {

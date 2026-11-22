@@ -197,6 +197,7 @@ public partial class OnlineArena : Control
         UpdateDiceOverlay();
         UpdateResolutionPresentation();
         UpdateRelikiaPreview();
+        UpdateRail();
         UpdateEnabled(); RefreshRuntimeGuidance();
         PositionCardActions(); RefreshDecisionFeedback(); RefreshTurnClock();
         PositionResponseChain();
@@ -265,7 +266,7 @@ public partial class OnlineArena : Control
     {
         _relikiaMenu = null;
         _inspectorPreview = null; _relikarioPreview = null;
-        ClearStageStatus(); ClearTurnClock();
+        ClearStageStatus(); ClearTurnClock(); ClearRail();
         _fieldPress = null;
         var handPosition = handScroll?.X ?? _hand?.ScrollHorizontal ?? 0;
         var handVerticalPosition = handScroll?.Y ?? _hand?.ScrollVertical ?? 0;
@@ -344,6 +345,8 @@ public partial class OnlineArena : Control
         {
             var columns = new HBoxContainer { Name = "ArenaColumns", SizeFlagsVertical = SizeFlags.ExpandFill };
             columns.AddThemeConstantOverride("separation", 0); _root.AddChild(columns);
+            ChooseRailMode(choiceGallery);
+            VBoxContainer? gallerySide = null;
             // One playmat: every zone has the same card size and the hands hang over its edges.
             var canvas = new BoardCanvas { Name = "DuelArena", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipContents = true, TableView = TableView };
             desktopBoard = canvas;
@@ -405,13 +408,29 @@ public partial class OnlineArena : Control
                 canvas.Place(shade, new Rect2(-3000, -3000, 7440, 7024), BoardAnchor.Top);
                 var chooser = new PanelContainer { Name = "ChoicePanel" };
                 chooser.AddThemeStyleboxOverride("panel", RelickVisuals.Surface(BoardArt.Gold));
-                var panelSize = new Vector2(BoardCanvas.DesignWidth - 260, 690);
-                if (deckChoices) (deckColumns, panelSize) = FitDeckChoicePanel(panelSize, sections, desktop: true);
+                // Beside a narrow rail the gallery carries its reader, so reading never covers a choice.
+                var readerRoom = _readerInGallery ? GalleryReaderWidth + 12 : 0;
+                var available = new Vector2(Math.Min(BoardCanvas.DesignWidth - 260, BoardCanvas.DesignWidth - 24 - readerRoom), 690);
+                var panelSize = available;
+                if (deckChoices) (deckColumns, panelSize) = FitDeckChoicePanel(available, sections, desktop: true);
+                if (_readerInGallery) panelSize = new(panelSize.X + readerRoom, Math.Max(panelSize.Y, GalleryReaderMinimum));
                 canvas.Place(chooser, new Rect2((BoardCanvas.DesignWidth - panelSize.X) / 2, BoardCanvas.Seam - panelSize.Y / 2, panelSize.X, panelSize.Y));
                 // A container can grow during its first measurement and must return to the board's fixed rectangle.
                 chooser.MinimumSizeChanged += () => chooser.SetDeferred(Control.PropertyName.Size, panelSize);
-                handColumn = new VBoxContainer { Name = "HandColumn" };
-                handColumn.AddThemeConstantOverride("separation", 10); chooser.AddChild(handColumn);
+                handColumn = new VBoxContainer { Name = "HandColumn", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+                handColumn.AddThemeConstantOverride("separation", 10);
+                if (_readerInGallery)
+                {
+                    var split = new HBoxContainer(); split.AddThemeConstantOverride("separation", 12); chooser.AddChild(split);
+                    split.AddChild(handColumn);
+                    // Outside the panel's measurement: wrapping text would grow it for a frame and lose the gallery's scroll.
+                    var side = new Control { Name = "GalleryReader", CustomMinimumSize = new(GalleryReaderWidth, 0), ClipContents = true,
+                        MouseFilter = MouseFilterEnum.Ignore };
+                    split.AddChild(side);
+                    gallerySide = new VBoxContainer { Name = "InspectorColumn" };
+                    side.AddChild(gallerySide); gallerySide.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                }
+                else chooser.AddChild(handColumn);
             }
             else
             {
@@ -421,30 +440,8 @@ public partial class OnlineArena : Control
                     BoardCanvas.DesignWidth, 330), BoardAnchor.Bottom);
             }
 
-            // Reading rail: menu, what is resolving, the card under the pointer or, with none, the history.
-            var railMargin = new MarginContainer { Name = "ReaderRailMargin" };
-            foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" }) railMargin.AddThemeConstantOverride(side, 12);
-            columns.AddChild(railMargin);
-            var rail = new PanelContainer { Name = "ReaderRail", CustomMinimumSize = new(310, 0) };
-            rail.AddThemeStyleboxOverride("panel", RelickVisuals.Surface());
-            railMargin.AddChild(rail); _readerRail = rail;
-            var inspectorColumn = new VBoxContainer { Name = "InspectorColumn" };
-            inspectorColumn.AddThemeConstantOverride("separation", 8); rail.AddChild(inspectorColumn);
-            var railHeader = new HBoxContainer { Name = "RailHeader" };
-            railHeader.AddThemeConstantOverride("separation", 6); inspectorColumn.AddChild(railHeader);
-            BuildComboResponseToggle(railHeader);
-            if (_comboResponsesToggle != null) _comboResponsesToggle.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            else railHeader.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
-            BuildArenaMenu(railHeader);
-            // A gallery dims the board and its plate; the rail stays lit.
-            if (choiceGallery) AddClockLabel(inspectorColumn, 16).HorizontalAlignment = HorizontalAlignment.Center;
-            BuildRailResolution(inspectorColumn, combatMessage);
-            _showcase = new CardShowcase { Name = "CardShowcase", CustomMinimumSize = new(0, 330), Visible = false };
-            inspectorColumn.AddChild(_showcase);
-            var reading = new VBoxContainer { Name = "RailReading" };
-            inspectorColumn.AddChild(reading); _railReading = reading;
-            BuildInspector(reading);
-            BuildHistoryFeed(inspectorColumn);
+            // The rail: the strip of plays always; the reader docked, floating or inside the gallery.
+            BuildRail(columns, combatMessage, choiceGallery, gallerySide);
         }
         else
         {

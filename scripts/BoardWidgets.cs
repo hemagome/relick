@@ -1250,6 +1250,8 @@ public partial class ComboToggle : Button
     private static readonly Color AskFace = new("f2f2f0"), AskEdge = new("4a4f59"), AskInk = new("1b1d22");
     private static readonly Color PassFace = new("b9bcc3"), PassEdge = new("2c3038"), PassInk = new("4b4f57");
     public bool Compact { get; init; }
+    /// <summary>The desktop strip is too narrow for the plate: the badge stands over the word.</summary>
+    public bool Stacked { get; init; }
     private float PlateWidth => Compact ? 132 : 160;
     /// <summary>The plate is drawn shorter than the 48 px touch target.</summary>
     private const float PlateHeight = 40;
@@ -1257,7 +1259,7 @@ public partial class ComboToggle : Button
     public override void _Ready()
     {
         ToggleMode = true;
-        CustomMinimumSize = new(PlateWidth + 6, 48);
+        CustomMinimumSize = Stacked ? new(0, 64) : new(PlateWidth + 6, 48);
         MouseDefaultCursorShape = CursorShape.PointingHand;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus", "hover_pressed" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         Toggled += _ => Describe();
@@ -1277,6 +1279,7 @@ public partial class ComboToggle : Button
 
     public override void _Draw()
     {
+        if (Stacked) { DrawStacked(); return; }
         var asking = ButtonPressed;
         var h = Math.Min(Size.Y, PlateHeight); var top = (Size.Y - h) / 2; var bottom = top + h;
         var radius = h * 0.44f; var slant = h * 0.3f;
@@ -1302,6 +1305,20 @@ public partial class ComboToggle : Button
         DrawCircle(center, radius - 3, A(asking ? RelickVisuals.State.Own : RelickVisuals.State.Rival, true));
         BoardArt.Icon(this, asking ? GameIcon.Hand : GameIcon.Skip, center, radius * 1.05f, A(AskInk));
         if (HasFocus()) DrawFocus(Slanted(0, top, right, bottom), center, radius);
+    }
+
+    private void DrawStacked()
+    {
+        var asking = ButtonPressed;
+        var fade = Disabled ? 0.45f : 1;
+        Color A(Color c) { if (!Disabled && IsHovered()) c = c.Lightened(0.12f); return new(c, c.A * fade); }
+        const float radius = 18;
+        var center = new Vector2(Size.X / 2, radius + 5);
+        DrawCircle(center, radius, A(AskInk), antialiased: true);
+        DrawCircle(center, radius - 3, A(asking ? RelickVisuals.State.Own : RelickVisuals.State.Rival), antialiased: true);
+        BoardArt.Icon(this, asking ? GameIcon.Hand : GameIcon.Skip, center, radius * 1.05f, A(AskInk));
+        DrawString(RelickVisuals.Display, new(0, Size.Y - 6), "COMBO", HorizontalAlignment.Center, Size.X, 13, A(asking ? AskFace : PassFace));
+        if (HasFocus()) DrawArc(center, radius + 2.5f, 0, Mathf.Tau, 32, BoardArt.Gold, 2, true);
     }
 
     /// <summary>The focus ring follows the plate and the badge together, so it never cuts across the symbol.</summary>
