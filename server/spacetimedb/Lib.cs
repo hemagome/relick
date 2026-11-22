@@ -79,6 +79,8 @@ public static partial class Module
         // Retrying after a lost acknowledgement does not create extra rooms or cards.
         if (ctx.Db.Member.Player.Find(ctx.Sender) is not null) return;
         RequireNoQuickSearch(ctx);
+        RequireNoRankedSearch(ctx);
+        RequireNotCheckedIn(ctx);
         CreateRoomFor(ctx, ctx.Sender, name);
     }
 
@@ -107,6 +109,8 @@ public static partial class Module
             throw new Exception("Ya estás en una sala. Sal de ella antes de entrar a otra.");
         }
         RequireNoQuickSearch(ctx);
+        RequireNoRankedSearch(ctx);
+        RequireNotCheckedIn(ctx);
         if (ctx.Db.Room.Code.Find(code) is not Room room) throw new Exception("No se encontró la sala.");
         var members = ctx.Db.Member.RoomCode.Filter(code).ToList();
         if (room.Dealt || members.Count != 1) throw new Exception("La sala ya está completa.");
@@ -130,6 +134,7 @@ public static partial class Module
         if (ctx.Db.Member.Player.Find(ctx.Sender) is not Member me) return;
         if (ctx.Db.CurrentDuel.RoomCode.Find(me.RoomCode) is CurrentDuel live && live.Revision > 0 && !live.Finished)
             throw new Exception("Abandona el duelo antes de cerrar la sala.");
+        ForfeitOnLeave(ctx, me);
         DeleteRoom(ctx, me.RoomCode);
     }
 

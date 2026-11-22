@@ -148,13 +148,22 @@ public partial class OnlineArena
             PresentTestSnapshot(View(Game(), 0, 901));
             Check(_turnCore!.Time.Text == "–:––" && _turnCore.Remaining == null, "Sin hora del servidor el reloj inventa un tiempo.");
             TestServerNow = () => 25 * TestSecond;
+            var rated = View(Game(), 0, 903);
+            TestDecisionLimit = 300 * TestSecond;
+            TestServerNow = () => rated.Clock!.UpdatedAt + 255 * TestSecond;
+            PresentTestSnapshot(rated); RefreshTurnClock();
+            Check(_turnCore!.Time.Text == "¡0:45!" && _turnCore.TooltipText.Contains("lo pierde"), "Un duelo con puntuación no avisa de su último minuto.");
+            TestDecisionLimit = null;
+            RefreshTurnClock();
+            Check(!_turnCore!.Time.Text.StartsWith("¡") && _turnCore.TooltipText.Contains("informativo"), "Un duelo casual amenaza con un límite que no tiene.");
+            TestServerNow = () => 25 * TestSecond;
             var ended = View(Game(), 0, 902); ended.Winner = 0;
             PresentTestSnapshot(ended);
             Check(!_turnCore!.Time.Visible, "El reloj sigue visible al terminar.");
         }
         finally
         {
-            TestServerNow = null;
+            TestServerNow = null; TestDecisionLimit = null;
             (_tableView, _requestedTableView) = (saved.Item3, saved.Item4);
             GetWindow().Size = saved.Item1; GetWindow().ContentScaleSize = saved.Item2;
             ResetAnimations(); await Layout();

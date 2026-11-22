@@ -67,27 +67,31 @@ public partial class OnlineArena
         Check(profiles[0].Record() == "7 V · 3 D · 1 E · 64 % de victorias" && profiles[1].Record().StartsWith("Sin duelos"),
             "El resumen de resultados no es legible.");
 
-        // The editor: every choice changes the preview, and saving hands back exactly what was chosen.
+        // The wardrobe: every choice changes the preview, and saving hands back exactly what was chosen.
         string[]? saved = null;
-        var editor = new ProfileEditor { Current = profiles[0], Saved = (a, t, f, p) => saved = [a, t, f, p] };
-        AddChild(editor); editor.PopupCentered(new Vector2I(560, 0)); await Layout();
-        ProfileCard Preview() => (ProfileCard)editor.FindChild("ProfilePreviewCard", true, false)!;
-        Check(Preview().View == profiles[0], "La vista previa no parte del perfil actual.");
-        ((Button)editor.FindChild("ProfileAvatars", true, false)!.GetNode("yuno")).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
-        ((Button)editor.FindChild("ProfileFrames", true, false)!.GetNode("cian")).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
-        ((Button)editor.FindChild("ProfilePlaymats", true, false)!.GetNode("abismo")).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
-        var titles = (OptionButton)editor.FindChild("ProfileTitlePicker", true, false)!;
+        var editor = new Wardrobe { Connection = new(), PreviewProfile = profiles[0], PreviewDecks = [], PlayerName = profiles[0].Name,
+            SavedProfile = (a, t, f, p) => saved = [a, t, f, p] };
+        AddChild(editor); await Layout();
+        Check(editor.Preview == profiles[0] && !editor.Dirty, "La vista previa no parte del perfil actual.");
+        async Task Choose(WardrobeCategory category, string id)
+        {
+            editor.ShowCategory(category); await Layout();
+            ((Button)editor.FindChild("Option_" + id, true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
+        }
+        await Choose(WardrobeCategory.Avatar, "yuno");
+        await Choose(WardrobeCategory.Frame, "cian");
+        await Choose(WardrobeCategory.Playmat, "abismo");
         foreach (var (id, name) in new[] { ("artesanal", "Artesanal"), ("p2w", "P2W"), ("f2p", "F2P") })
         {
-            var index = Enumerable.Range(0, titles.ItemCount).Single(i => titles.GetItemText(i) == name);
-            titles.Select(index); titles.EmitSignal(OptionButton.SignalName.ItemSelected, (long)index); await Layout();
-            Check(Preview().View is { Avatar: "yuno", Frame: "cian", Playmat: "abismo", Name: "Ana", Wins: 7 } view && view.Title == id,
+            await Choose(WardrobeCategory.Title, id);
+            Check(editor.Preview is { Avatar: "yuno", Frame: "cian", Playmat: "abismo", Name: "Ana", Wins: 7 } view && view.Title == id,
                 $"La vista previa no muestra el título {name}.");
         }
+        Check(editor.Dirty, "El vestidor no avisa de los cambios sin guardar.");
         await Capture("profile-editor");
-        editor.EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
-        Check(saved != null && saved.SequenceEqual(["yuno", "f2p", "cian", "abismo"]), "Guardar no entrega las elecciones del editor.");
-        if (IsInstanceValid(editor)) editor.QueueFree();
+        ((Button)editor.FindChild("WardrobeSave", true, false)!).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
+        Check(saved != null && saved.SequenceEqual(["yuno", "f2p", "cian", "abismo"]) && !editor.Dirty, "Guardar no entrega las elecciones del vestidor.");
+        RemoveChild(editor); editor.QueueFree();
         TestProfiles = null; await Layout();
         Check(ProfilePlaymats.Of("abismo").Background == new Color("03100f") && ReferenceEquals(ProfilePlaymats.Of("no-existe"), RelickPlaymat.Classic),
             "El tapete elegido no se traduce a los colores de la arena.");

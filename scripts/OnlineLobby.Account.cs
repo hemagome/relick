@@ -19,25 +19,40 @@ public partial class OnlineLobby
     private Label _loginStatus = null!;
     private Button _signIn = null!;
     private Button _cancelSignIn = null!;
-    private MenuButton _account = null!;
 
     private bool AccountBusy => _accountStage is AccountStage.Restoring or AccountStage.WaitingBrowser;
 
     private void BuildLoginScreen()
     {
-        var screen = new CenterContainer { Name = "LoginScreen", Visible = false };
+        var screen = new MarginContainer { Name = "LoginScreen", Visible = false };
         _loginScreen = screen; AddChild(screen);
         screen.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var panel = Surface(screen, 32);
-        panel.SizeFlagsHorizontal = SizeFlags.ShrinkCenter; panel.CustomMinimumSize = new(Math.Min(460, Math.Max(280, Size.X - 48)), 0);
-        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 18); panel.AddChild(column);
-        var logo = RelickVisuals.Logo(); logo.SizeFlagsHorizontal = SizeFlags.ShrinkCenter; column.AddChild(logo);
-        var title = Text("Inicia sesión", 34); title.HorizontalAlignment = HorizontalAlignment.Center;
+        var row = new HBoxContainer(); screen.AddChild(row);
+        row.AddChild(new LoginArt { Name = "LoginArt", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.15f });
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddChild(column);
+        var logo = RelickVisuals.Logo(); column.AddChild(logo);
+        var title = Text("Elige tu Relikario.\nArma tu mazo. Duela.", MenuVisuals.Type.Hero);
+        title.Name = "LoginTitle";
         title.AddThemeFontOverride("font", RelickVisuals.Display); column.AddChild(title);
         _signIn = AddButton(column, "Iniciar sesión", StartSignIn);
-        _signIn.Name = "SignIn"; AccentButton(_signIn, LobbyMint);
-        _loginStatus = Description(""); _loginStatus.Name = "LoginStatus"; _loginStatus.HorizontalAlignment = HorizontalAlignment.Center;
+        _signIn.Name = "SignIn"; RelickVisuals.Primary(_signIn);
+        column.AddChild(Description("Se abrirá tu navegador. Puedes entrar con correo, Discord u otra cuenta."));
+        _loginStatus = Description(""); _loginStatus.Name = "LoginStatus";
         column.AddChild(_loginStatus);
+        void Arrange()
+        {
+            var shortScreen = ArenaViewport.Short(this);
+            var side = (int)Math.Max(shortScreen ? 16 : 48, (Size.X - 1280) / 2);
+            foreach (var edge in new[] { "left", "right" }) screen.AddThemeConstantOverride("margin_" + edge, side);
+            foreach (var edge in new[] { "top", "bottom" }) screen.AddThemeConstantOverride("margin_" + edge, shortScreen ? 12 : 64);
+            column.AddThemeConstantOverride("separation", shortScreen ? 10 : 22);
+            row.AddThemeConstantOverride("separation", shortScreen ? 16 : 56);
+            logo.CustomMinimumSize = shortScreen ? new(172, 40) : new(330, 76);
+            title.AddThemeFontSizeOverride("font_size",
+                shortScreen || Size.X < 900 ? MenuVisuals.Type.Subtitle : Size.X < 1300 ? MenuVisuals.Type.Title : MenuVisuals.Type.Hero);
+        }
+        Resized += Arrange; Arrange();
         _cancelSignIn = AddButton(column, "Cancelar", () => _authCancel?.Cancel());
         _cancelSignIn.Name = "CancelSignIn"; _cancelSignIn.Visible = false;
     }
@@ -56,7 +71,6 @@ public partial class OnlineLobby
         }
         _auth = new AuthSession(client);
         _sessionPath = ProjectSettings.GlobalizePath("user://auth-" + profileKey + ".session");
-        _account.Visible = true;
         if (System.IO.File.Exists(_sessionPath)) Connect();
         else ShowLogin("");
     }
@@ -152,27 +166,31 @@ public partial class OnlineLobby
     private void ConfirmDeleteAccount()
     {
         if (_auth == null || _accountStage != AccountStage.SignedIn || !_lobby.Ready || _lobby.Room != null || _lobby.Searching) return;
-        var decks = _lobby.Decks.Count;
+        ShowDeleteAccount(_lobby.Decks.Count);
+    }
+
+    private void ShowDeleteAccount(int decks)
+    {
         var dialog = new ConfirmationDialog { Name = "DeleteAccountDialog", Title = "Eliminar cuenta",
             OkButtonText = "Eliminar mi cuenta", CancelButtonText = "Conservar mi cuenta" };
-        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 12); dialog.AddChild(column);
-        var explanation = Text(DeleteAccountExplanation(decks), 15);
-        explanation.Name = "DeleteAccountExplanation"; explanation.CustomMinimumSize = new(Math.Min(540, Math.Max(260, Size.X - 96)), 0);
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 12);
+        var explanation = Text(DeleteAccountExplanation(decks), MenuVisuals.Type.Body);
+        explanation.Name = "DeleteAccountExplanation";
         column.AddChild(explanation);
         var confirm = new LineEdit { Name = "DeleteAccountConfirm", PlaceholderText = "Escribe ELIMINAR para confirmar", CustomMinimumSize = new(0, 48) };
         column.AddChild(confirm);
+        MenuDialog.Fill(dialog, column, 540, destructive: true);
         dialog.GetOkButton().Disabled = true;
         confirm.TextChanged += typed => dialog.GetOkButton().Disabled = typed.Trim() != "ELIMINAR";
         dialog.Confirmed += () => { _localError = ""; _lobby.DeleteAccount(); };
         dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
         AddChild(dialog);
-        dialog.PopupCentered();
-        ArenaViewport.FitDialog(dialog, Size);
+        MenuDialog.Show(dialog);
     }
 
     internal static string DeleteAccountExplanation(int decks) =>
         "Se borrará de Relick, de forma permanente y sin posibilidad de recuperarlo:\n" +
-        "• Tu cuenta, tu nombre de jugador, tu perfil y tus estadísticas.\n" +
+        "• Tu cuenta, tu nombre de jugador, tu perfil y tus estadísticas.\n• Tu ELO, tus emblemas y los premios que ganaste.\n" +
         $"• {(decks == 1 ? "Tu mazo guardado" : $"Tus {decks} mazos guardados")}{(decks == 0 ? " (ahora no tienes ninguno)" : "")}.\n\n" +
         "Lo que Relick no puede borrar desde el juego: el registro de tu inicio de sesión en el servicio de cuentas (SpacetimeAuth), " +
         "que conserva tu correo y el método con el que entraste, por ejemplo Discord o Google. Para eliminarlo también, pídeselo al equipo de Relick.\n\n" +
@@ -198,8 +216,8 @@ public partial class OnlineLobby
     {
         var signedOut = _accountStage is AccountStage.SignedOut or AccountStage.WaitingBrowser;
         _loginScreen.Visible = signedOut;
-        if (signedOut) CloseDecks();
-        if (_arena == null && _deckScreen == null) _content.Visible = !signedOut;
+        if (signedOut) { ReturnToPlay(); _joinDialog.Hide(); }
+        if (_arena == null) _content.Visible = !signedOut;
         if (signedOut) _connectionNotice.Hide();
         var waiting = _accountStage == AccountStage.WaitingBrowser;
         _signIn.Disabled = waiting;
@@ -212,8 +230,6 @@ public partial class OnlineLobby
     {
         if (_auth == null) return;
         var account = _lobby.Account;
-        // Leaving the account, either way, waits until no room or search depends on it.
-        _account.Disabled = !_lobby.Ready || _lobby.Room != null || _lobby.Searching || _lobby.PendingRoomRequest != RoomRequest.None || _lobby.AccountPending;
         if (_lobby.TakeAccountError() is { Length: > 0 } refused) _localError = refused;
         if (account == null || account.Name.Length == 0) return;
         if (!_name.HasFocus() && _name.Text != account.Name && editable) _name.Text = account.Name;

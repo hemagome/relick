@@ -6,11 +6,8 @@ namespace Relick;
 
 public partial class DeckEditor
 {
-    private static readonly Color EditorBackground = new("100e20");
-    private static readonly Color EditorSurface = new("171329");
-    private static readonly Color EditorEdge = new("3e3357");
     private readonly StyleBoxFlat _copiesBadge = BadgeStyle(BoardArt.Gold);
-    private readonly StyleBoxFlat _benchBadge = BadgeStyle(new Color("c0acf7"));
+    private readonly StyleBoxFlat _benchBadge = BadgeStyle(RelickVisuals.State.Target);
     private readonly StyleBoxFlat _activeTabStyle = TabStyle(true);
     private readonly StyleBoxFlat _inactiveTabStyle = TabStyle(false);
     private const int TileGap = 7;
@@ -63,12 +60,12 @@ public partial class DeckEditor
 
     private void BuildView()
     {
-        AddThemeConstantOverride("separation", 0);
+        var gap = ShortScreen ? 4 : 6;
+        AddThemeConstantOverride("separation", gap);
         BuildHeader();
-        BuildOverview();
 
         var workspace = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        workspace.AddThemeConstantOverride("separation", 0);
+        workspace.AddThemeConstantOverride("separation", gap);
         AddChild(workspace);
         BuildInspector(workspace);
         BuildDeck(workspace);
@@ -83,72 +80,86 @@ public partial class DeckEditor
 
     private void BuildHeader()
     {
-        var header = Panel(this, EditorBackground, 10, 4);
-        var row = Row(header, 10);
-        _back = EditorButton(row, "EditorBack", "‹ Mazos", RequestClose, 40);
-        var logo = RelickVisuals.Logo(compact: true);
-        logo.CustomMinimumSize = ShortScreen ? new(90, 24) : new(120, 30);
-        row.AddChild(logo);
-        var title = ArenaPresentation.Text("Editor de mazos", ShortScreen ? 13 : 16, BoardArt.Muted);
-        title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        title.VerticalAlignment = VerticalAlignment.Center;
-        row.AddChild(title);
-        _save = EditorButton(row, "SaveDeck", "Guardar", Save, 40);
-        _save.CustomMinimumSize = new(ShortScreen ? 130 : 160, 40);
-        RelickVisuals.Primary(_save, BoardArt.Gold);
-    }
+        var header = Panel(this, MenuVisuals.Tone.Background, ShortScreen ? 6 : 10, ShortScreen ? 2 : 4);
+        var row = Row(header, ShortScreen ? 6 : 12);
+        _back = MenuVisuals.Back(row, "EditorBack", "Mis mazos", RequestClose);
+        // A short screen has room for one bar, so the deck's identity takes the place of the screen's title.
+        if (ShortScreen) BuildIdentity(row);
+        else
+        {
+            var title = ArenaPresentation.Heading("Editor de mazos", MenuVisuals.Type.Title, BoardArt.Ink);
+            title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            title.VerticalAlignment = VerticalAlignment.Center;
+            row.AddChild(title);
+        }
+        _save = EditorButton(row, "SaveDeck", "Guardar", Save, MenuVisuals.TouchTarget);
+        _save.CustomMinimumSize = new(ShortScreen ? 140 : 160, MenuVisuals.TouchTarget);
+        _save.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        if (ShortScreen) _save.AddThemeFontSizeOverride("font_size", MenuVisuals.Type.Body);
+        RelickVisuals.Primary(_save);
+        if (ShortScreen) return;
 
-    private void BuildOverview()
-    {
         var hero = new PanelContainer();
-        var style = RelickVisuals.Glass(new Color("382750"), new Color("211831"), new Color("6b4e84"), 4);
-        style.ContentMarginLeft = style.ContentMarginRight = ShortScreen ? 10 : 16;
-        style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 5 : 9;
+        var style = RelickVisuals.Glass(MenuVisuals.Tone.Raised.Lightened(0.06f), MenuVisuals.Tone.Surface, MenuVisuals.Tone.Edge, MenuVisuals.Cut.Panel);
+        style.ContentMarginLeft = style.ContentMarginRight = 16;
+        style.ContentMarginTop = style.ContentMarginBottom = 9;
         hero.AddThemeStyleboxOverride("panel", style);
         AddChild(hero);
+        BuildIdentity(Row(hero, 13));
+    }
 
-        var row = Row(hero, ShortScreen ? 8 : 13);
-        if (DeckScreen.Thumbnail(Relikario) is { } portrait)
+    private void BuildIdentity(HBoxContainer row)
+    {
+        if (DeckScreen.Thumbnail(Relikario) is { } portrait && (!ShortScreen || GetViewportRect().Size.X >= 800))
         {
-            var side = ShortScreen ? 43 : 61;
+            var side = ShortScreen ? 40 : 61;
             row.AddChild(Artwork(portrait, new(side, side), "DeckRelikario"));
         }
 
         var identity = Column(row, 0);
         identity.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        identity.Alignment = BoxContainer.AlignmentMode.Center;
         var nameRow = Row(identity, 1);
-        var pencil = new IconButton
+        if (!ShortScreen)
         {
-            Symbol = GameIcon.Pencil, TooltipText = "Cambiar nombre", AccessibilityName = "Cambiar nombre del mazo",
-            CustomMinimumSize = new(ShortScreen ? 27 : 32, 27)
-        };
-        pencil.Pressed += () => { _name.GrabFocus(); _name.SelectAll(); };
-        nameRow.AddChild(pencil);
+            var pencil = new IconButton
+            {
+                Symbol = GameIcon.Pencil, TooltipText = "Cambiar nombre", AccessibilityName = "Cambiar nombre del mazo",
+                CustomMinimumSize = new(Target(32), Target(27))
+            };
+            pencil.Pressed += () => { _name.GrabFocus(); _name.SelectAll(); };
+            nameRow.AddChild(pencil);
+        }
         _name = new LineEdit
         {
             Name = "DeckName", Text = DeckName, PlaceholderText = "Nombre del mazo", MaxLength = 32,
             AccessibilityName = "Nombre del mazo", SizeFlagsHorizontal = SizeFlags.ExpandFill, EmojiMenuEnabled = false
         };
         _name.AddThemeFontOverride("font", RelickVisuals.Strong);
-        _name.AddThemeFontSizeOverride("font_size", ShortScreen ? 17 : 25);
+        _name.AddThemeFontSizeOverride("font_size", ShortScreen ? MenuVisuals.Type.Control : MenuVisuals.Type.Title);
+        _name.CustomMinimumSize = new(0, Touch ? MenuVisuals.TouchTarget : 0);
         foreach (var state in new[] { "normal", "read_only" })
             _name.AddThemeStyleboxOverride(state, new StyleBoxEmpty { ContentMarginLeft = 2, ContentMarginRight = 2 });
         nameRow.AddChild(_name);
         var relikario = RelikarioCatalog.Find(Relikario)?.Name ?? "Relikario";
-        var subtitle = ArenaPresentation.Text(relikario, ShortScreen ? 12 : 14, new Color("d3c2e8"));
-        subtitle.ClipText = true;
-        identity.AddChild(subtitle);
+        if (ShortScreen) _name.TooltipText = relikario;
+        else
+        {
+            var subtitle = ArenaPresentation.Text(relikario, MenuVisuals.Type.Body, MenuVisuals.Tone.Reading);
+            subtitle.ClipText = true;
+            identity.AddChild(subtitle);
+        }
 
-        var totals = Row(row, ShortScreen ? 6 : 13);
+        var totals = Row(row, ShortScreen ? 4 : 13);
         totals.Name = "DeckTotals";
         totals.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         Label Metric(string caption)
         {
             totals.AddChild(new VSeparator());
             var metric = Column(totals, 0);
-            metric.CustomMinimumSize = new(ShortScreen ? 68 : 91, 0);
-            metric.AddChild(ArenaPresentation.Text(caption, ShortScreen ? 11 : 12, new Color("cdbbdf")));
-            var value = ArenaPresentation.Text("", ShortScreen ? 14 : 20);
+            metric.CustomMinimumSize = new(ShortScreen ? 60 : 91, 0);
+            metric.AddChild(ArenaPresentation.Text(caption, MenuVisuals.Type.Caption, BoardArt.Muted));
+            var value = ArenaPresentation.Text("", ShortScreen ? MenuVisuals.Type.Body : MenuVisuals.Type.Subtitle);
             value.AddThemeFontOverride("font", RelickVisuals.Strong);
             metric.AddChild(value);
             return value;
@@ -160,7 +171,7 @@ public partial class DeckEditor
 
     private void BuildInspector(HBoxContainer workspace)
     {
-        _inspectorPanel = Panel(workspace, EditorSurface, ShortScreen ? 7 : 11, ShortScreen ? 5 : 9);
+        _inspectorPanel = Panel(workspace, MenuVisuals.Tone.Surface, ShortScreen ? 7 : 11, ShortScreen ? 5 : 9);
         _inspectorPanel.Name = "InspectorPanel";
         var column = Column(_inspectorPanel, ShortScreen ? 5 : 9);
         var heading = Row(column, 3);
@@ -170,7 +181,7 @@ public partial class DeckEditor
         _inspectorTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _move = new FramedIconButton
         {
-            Name = "Move", Symbol = GameIcon.Exchange, CustomMinimumSize = new(36, 33), SizeFlagsVertical = SizeFlags.ShrinkCenter
+            Name = "Move", Symbol = GameIcon.Exchange, CustomMinimumSize = new(Target(36), Target(33)), SizeFlagsVertical = SizeFlags.ShrinkCenter
         };
         _move.Pressed += () =>
         {
@@ -189,18 +200,18 @@ public partial class DeckEditor
 
         _reading = Scroll(column, "EditorInspector", reserve: false);
         var text = Column(_reading, ShortScreen ? 2 : 5);
-        _classification = Wrapped(text, "InspectorClassification", ShortScreen ? 11 : 13, RelickVisuals.State.Target);
-        _cardName = Wrapped(text, "ContextCardName", ShortScreen ? 14 : 18, BoardArt.Ink);
+        _classification = Wrapped(text, "InspectorClassification", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, RelickVisuals.State.Target);
+        _cardName = Wrapped(text, "ContextCardName", ShortScreen ? MenuVisuals.Type.Body : MenuVisuals.Type.Control, BoardArt.Ink);
         _cardName.AddThemeFontOverride("font", RelickVisuals.Strong);
-        _description = Wrapped(text, "InspectorDescription", ShortScreen ? 12 : 14, new Color("c6bdd9"));
+        _description = Wrapped(text, "InspectorDescription", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, MenuVisuals.Tone.Reading);
 
         _stepper = Row(column, 4);
         _minus = EditorButton(_stepper, "Less", "−", () =>
         {
             if (_selected is { } card) Remove(card, _section);
-        }, 39, "Quitar una copia de esta sección");
-        _minus.CustomMinimumSize = new(36, 39);
-        _copies = ArenaPresentation.Text("", ShortScreen ? 12 : 14);
+        }, Target(39), "Quitar una copia de esta sección");
+        _minus.CustomMinimumSize = new(Target(36), Target(39));
+        _copies = ArenaPresentation.Text("", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body);
         _copies.Name = "InspectorCopies";
         _copies.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _copies.HorizontalAlignment = HorizontalAlignment.Center;
@@ -209,20 +220,18 @@ public partial class DeckEditor
         _plus = EditorButton(_stepper, "More", "+", () =>
         {
             if (_selected is { } card) Add(card, _section);
-        }, 39, "Añadir una copia a esta sección");
-        _plus.CustomMinimumSize = new(36, 39);
+        }, Target(39), "Añadir una copia a esta sección");
+        _plus.CustomMinimumSize = new(Target(36), Target(39));
     }
 
     private void BuildDeck(HBoxContainer workspace)
     {
-        var panel = Panel(workspace, EditorBackground, ShortScreen ? 7 : 11, ShortScreen ? 5 : 9);
+        var panel = Panel(workspace, MenuVisuals.Tone.Background, ShortScreen ? 7 : 11, ShortScreen ? 5 : 9);
         panel.Name = "DeckPanel";
         panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var column = Column(panel, ShortScreen ? 5 : 8);
-        var title = Row(column, 6);
-        Heading(title, "Tu mazo");
-        _undo = EditorButton(title, "UndoDeck", "↶ Deshacer", Undo, 33, "Deshacer el último cambio de cartas (Ctrl+Z)");
-        _undo.Flat = true;
+        var title = ShortScreen ? null : Row(column, 6);
+        if (title != null) Heading(title, "Tu mazo");
 
         var tabs = Row(column, ShortScreen ? 2 : 5);
         tabs.Name = "ListTabs";
@@ -235,13 +244,15 @@ public partial class DeckEditor
             (Section.Style, "StyleTab", "Mica y dado")
         })
         {
-            var tab = EditorButton(tabs, name, "", () => SelectSection(section), ShortScreen ? 35 : 39, hint);
+            var tab = EditorButton(tabs, name, "", () => SelectSection(section), Target(ShortScreen ? 35 : 39), hint);
             tab.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            tab.SizeFlagsStretchRatio = section switch { Section.Side => 1.25f, Section.Style => 0.76f, _ => 1 };
-            tab.ClipText = true;
+            if (Touch) tab.CustomMinimumSize = new(MenuVisuals.TouchTarget, MenuVisuals.TouchTarget);
+            tab.SizeFlagsStretchRatio = section switch { Section.Side => 1.25f, Section.Traps => 1.12f, Section.Style => 0.70f, _ => 0.96f };
+            // Short screens give each tab the width of its own text before sharing what is left.
+            tab.ClipText = !ShortScreen;
             tab.ToggleMode = true;
             tab.ButtonGroup = group;
-            tab.AddThemeFontSizeOverride("font_size", ShortScreen ? 11 : 14);
+            tab.AddThemeFontSizeOverride("font_size", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body);
             tab.AddThemeStyleboxOverride("normal", _inactiveTabStyle);
             tab.AddThemeStyleboxOverride("pressed", _activeTabStyle);
             tab.AddThemeColorOverride("font_pressed_color", BoardArt.Gold);
@@ -252,15 +263,21 @@ public partial class DeckEditor
         _deckContent = Column(column, 5);
         _deckContent.SizeFlagsVertical = SizeFlags.ExpandFill;
         var toolbar = Row(_deckContent, 4);
-        _deckTotal = ArenaPresentation.Text("", ShortScreen ? 11 : 13, BoardArt.Muted);
+        // Without a title row, Deshacer shares the toolbar and the count gives it the room.
+        _undo = EditorButton(title ?? toolbar, "UndoDeck", "↶ Deshacer", Undo, Target(ShortScreen ? 30 : 33), "Deshacer el último cambio de cartas (Ctrl+Z)");
+        _undo.Flat = true;
+        if (ShortScreen) _undo.AddThemeFontSizeOverride("font_size", MenuVisuals.Type.Caption);
+        _deckTotal = ArenaPresentation.Text("", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, BoardArt.Muted);
+        if (ShortScreen) _deckTotal.SelfModulate = Colors.Transparent;
         _deckTotal.ClipText = true;
         _deckTotal.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _deckTotal.VerticalAlignment = VerticalAlignment.Center;
         toolbar.AddChild(_deckTotal);
-        var groupCopies = new CheckButton { Name = "GroupCopies", Text = "Agrupar copias", ButtonPressed = true, Flat = true };
+        var groupCopies = new CheckButton { Name = "GroupCopies", Text = "Agrupar copias", ButtonPressed = true, Flat = true,
+            CustomMinimumSize = new(0, Touch ? MenuVisuals.TouchTarget : 0) };
         var flat = new StyleBoxEmpty();
         foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed" }) groupCopies.AddThemeStyleboxOverride(state, flat);
-        groupCopies.AddThemeFontSizeOverride("font_size", ShortScreen ? 11 : 13);
+        groupCopies.AddThemeFontSizeOverride("font_size", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body);
         groupCopies.Toggled += grouped =>
         {
             _grouped = grouped;
@@ -270,7 +287,7 @@ public partial class DeckEditor
         toolbar.AddChild(groupCopies);
 
         var board = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        var gridFrame = RelickVisuals.Frame(new Color("151125"), EditorEdge, 3);
+        var gridFrame = RelickVisuals.Frame(MenuVisuals.Tone.Well, MenuVisuals.Tone.Divider, MenuVisuals.Cut.Control);
         gridFrame.ContentMarginLeft = gridFrame.ContentMarginRight = 5;
         gridFrame.ContentMarginTop = gridFrame.ContentMarginBottom = 4;
         board.AddThemeStyleboxOverride("panel", gridFrame);
@@ -279,7 +296,7 @@ public partial class DeckEditor
         var guides = new Control { MouseFilter = MouseFilterEnum.Ignore };
         guides.Draw += () =>
         {
-            var line = new Color(0.49f, 0.40f, 0.67f, 0.10f);
+            var line = BoardArt.Tint(MenuVisuals.Tone.Trace, 0.08f);
             const int spacing = 23;
             for (var x = spacing; x < guides.Size.X; x += spacing)
                 guides.DrawLine(new(x, 0), new(x, guides.Size.Y), line);
@@ -292,7 +309,7 @@ public partial class DeckEditor
         SetDropTarget(_deckScroll, () => _section);
         var deck = Column(_deckScroll, 4);
         _deckGrid = Grid(deck, "DeckCards");
-        _deckEmpty = Wrapped(deck, "DeckEmpty", ShortScreen ? 12 : 14, BoardArt.Muted);
+        _deckEmpty = Wrapped(deck, "DeckEmpty", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, BoardArt.Muted);
         _deckEmpty.HorizontalAlignment = HorizontalAlignment.Center;
 
         _styleScroll = Scroll(column, "DeckStyle");
@@ -302,43 +319,43 @@ public partial class DeckEditor
     private void BuildStyle()
     {
         var styleColumn = Column(_styleScroll, 8);
-        BuildStyleSection(styleColumn, "Mica", "Sleeve", CosmeticCatalog.Sleeves.Select(sleeve => (sleeve.Id, sleeve.Name)),
+        BuildStyleSection(styleColumn, "Mica", "Sleeve", CosmeticCatalog.Sleeves.Where(sleeve => sleeve.Id == _sleeve || Owns(RewardKind.Sleeve, sleeve.Id)).Select(sleeve => (sleeve.Id, sleeve.Name)),
             id => Artwork(SleeveArt.Back(id), Vector2.Zero), id => ChooseStyle(sleeve: id));
-        BuildStyleSection(styleColumn, "Dado", "Dice", CosmeticCatalog.Dice.Select(dice => (dice.Id, dice.Name)),
+        BuildStyleSection(styleColumn, "Dado", "Dice", CosmeticCatalog.Dice.Where(dice => dice.Id == _dice || Owns(RewardKind.Dice, dice.Id)).Select(dice => (dice.Id, dice.Name)),
             id => new DiceSwatch { Style = id }, id => ChooseStyle(dice: id));
         PresentStyle();
     }
 
     private void BuildCatalog(HBoxContainer workspace)
     {
-        _catalogPanel = Panel(workspace, EditorSurface, ShortScreen ? 7 : 10, ShortScreen ? 5 : 9);
+        _catalogPanel = Panel(workspace, MenuVisuals.Tone.Surface, ShortScreen ? 7 : 10, ShortScreen ? 5 : 9);
         _catalogPanel.Name = "CatalogPanel";
         var column = Column(_catalogPanel, 6);
         var header = Row(column, 2);
         Heading(header, "Colección");
-        _catalogTotal = ArenaPresentation.Text("", ShortScreen ? 10 : 12, BoardArt.Muted);
+        _catalogTotal = ArenaPresentation.Text("", MenuVisuals.Type.Caption, BoardArt.Muted);
         _catalogTotal.VerticalAlignment = VerticalAlignment.Center;
         header.AddChild(_catalogTotal);
 
         _search = new LineEdit
         {
             Name = "CatalogSearch", PlaceholderText = "Buscar carta…", ClearButtonEnabled = true, EmojiMenuEnabled = false,
-            AccessibilityName = "Buscar carta por nombre", CustomMinimumSize = new(0, 35)
+            AccessibilityName = "Buscar carta por nombre", CustomMinimumSize = new(0, Target(35))
         };
-        _search.AddThemeFontSizeOverride("font_size", ShortScreen ? 12 : 14);
+        _search.AddThemeFontSizeOverride("font_size", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body);
         _search.TextChanged += _ => FilterChanged();
         column.AddChild(_search);
         _filter = new OptionButton { Name = "CatalogFilters", AccessibilityName = "Tipo de carta", FitToLongestItem = false,
-            CustomMinimumSize = new(0, 34), ClipText = true, MouseDefaultCursorShape = CursorShape.PointingHand };
-        _filter.AddThemeFontSizeOverride("font_size", ShortScreen ? 12 : 14);
+            CustomMinimumSize = new(0, Target(34)), ClipText = true, MouseDefaultCursorShape = CursorShape.PointingHand };
+        _filter.AddThemeFontSizeOverride("font_size", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body);
         _filter.ItemSelected += _ => FilterChanged();
         column.AddChild(_filter);
-        if (OS.HasFeature("mobile")) ArenaViewport.TouchMenu(_filter.GetPopup());
+        if (Touch) ArenaViewport.TouchMenu(_filter.GetPopup());
 
         _gallery = Scroll(column, "CatalogGallery");
         var gallery = Column(_gallery, 4);
         _catalogGrid = Grid(gallery, "CatalogCards", 3);
-        _catalogEmpty = Wrapped(gallery, "CatalogEmpty", ShortScreen ? 12 : 14, BoardArt.Muted);
+        _catalogEmpty = Wrapped(gallery, "CatalogEmpty", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, BoardArt.Muted);
         _catalogEmpty.Text = "No hay cartas que coincidan.";
         var defaultAttack = DeckRules.DefaultAttackArt(Relikario);
         foreach (var card in OrderedCards.Where(card => DeckRules.Compatible(card, Relikario) &&
@@ -353,26 +370,26 @@ public partial class DeckEditor
 
     private void BuildFooter()
     {
-        var footer = Panel(this, EditorSurface, 10, 2);
+        var footer = Panel(this, MenuVisuals.Tone.Surface, 10, ShortScreen ? 0 : 2);
         var row = Row(footer, 8);
-        _notice = ArenaPresentation.Text("", ShortScreen ? 11 : 13, BoardArt.Muted);
+        _notice = ArenaPresentation.Text("", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, BoardArt.Muted);
         _notice.Name = "EditorNotice";
         _notice.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _notice.ClipText = true;
         _notice.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _notice.VerticalAlignment = VerticalAlignment.Center;
         row.AddChild(_notice);
-        _requirements = EditorButton(row, "DeckProblems", "", ShowRequirements, ShortScreen ? 27 : 33);
+        _requirements = EditorButton(row, "DeckProblems", "", ShowRequirements, Target(ShortScreen ? 27 : 33));
         _requirements.Flat = true;
         _requirements.Alignment = HorizontalAlignment.Right;
-        _requirements.AddThemeFontSizeOverride("font_size", ShortScreen ? 11 : 13);
+        _requirements.AddThemeFontSizeOverride("font_size", ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body);
         _requirements.AddThemeColorOverride("font_disabled_color", ArenaPresentation.Mint);
     }
 
     private void BuildStyleSection(Node parent, string title, string prefix, IEnumerable<(string Id, string Name)> options,
         Func<string, Control> picture, Action<string> choose)
     {
-        parent.AddChild(ArenaPresentation.Text(title, 13, BoardArt.Muted));
+        parent.AddChild(ArenaPresentation.Text(title, MenuVisuals.Type.Body, BoardArt.Muted));
         var grid = new HFlowContainer { Name = prefix + "Options" };
         grid.AddThemeConstantOverride("h_separation", 8);
         grid.AddThemeConstantOverride("v_separation", 8);
@@ -391,7 +408,7 @@ public partial class DeckEditor
             art.MouseFilter = MouseFilterEnum.Ignore;
             art.SizeFlagsVertical = SizeFlags.ExpandFill;
             content.AddChild(art);
-            var text = ArenaPresentation.Text(label, 12);
+            var text = ArenaPresentation.Text(label, MenuVisuals.Type.Caption);
             text.HorizontalAlignment = HorizontalAlignment.Center;
             text.MouseFilter = MouseFilterEnum.Ignore;
             content.AddChild(text);
@@ -450,7 +467,7 @@ public partial class DeckEditor
     private static void Counter(Label label, string value, bool valid)
     {
         label.Text = value;
-        label.AddThemeColorOverride("font_color", valid ? BoardArt.Ink : new Color("ffb2ad"));
+        label.AddThemeColorOverride("font_color", valid ? BoardArt.Ink : ArenaPresentation.Coral);
     }
 
     private void PresentDeck()
@@ -514,7 +531,7 @@ public partial class DeckEditor
             SizeFlagsHorizontal = SizeFlags.ShrinkBegin, AccessibilityName = label
         };
         face.Ready += () => face.TooltipText = label;
-        var badge = ArenaPresentation.Text("", ShortScreen ? 10 : 12, BoardArt.Gold);
+        var badge = ArenaPresentation.Text("", MenuVisuals.Type.Caption, BoardArt.Gold);
         badge.Name = "Copies";
         badge.MouseFilter = MouseFilterEnum.Ignore;
         badge.AddThemeFontOverride("font", RelickVisuals.Strong);
@@ -532,9 +549,9 @@ public partial class DeckEditor
             bench.AddThemeStyleboxOverride("panel", _benchBadge);
             var row = Row(bench, 2);
             row.MouseFilter = MouseFilterEnum.Ignore;
-            row.AddChild(new IconView { Icon = GameIcon.Bench, Color = new Color("e2d5ff"), CustomMinimumSize = new(11, 11),
+            row.AddChild(new IconView { Icon = GameIcon.Bench, Color = RelickVisuals.State.Target, CustomMinimumSize = new(11, 11),
                 MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter });
-            var count = ArenaPresentation.Text("", ShortScreen ? 10 : 12, new Color("e2d5ff"));
+            var count = ArenaPresentation.Text("", MenuVisuals.Type.Caption, RelickVisuals.State.Target);
             count.Name = "BenchCount";
             count.MouseFilter = MouseFilterEnum.Ignore;
             row.AddChild(count);
@@ -563,7 +580,7 @@ public partial class DeckEditor
 
     private static StyleBoxFlat BadgeStyle(Color color)
     {
-        var plate = RelickVisuals.Frame(new Color("171022"), color.Darkened(0.38f), 3);
+        var plate = RelickVisuals.Frame(MenuVisuals.Tone.Background, color.Darkened(0.38f), MenuVisuals.Cut.Badge);
         plate.ContentMarginLeft = plate.ContentMarginRight = 4;
         plate.ContentMarginTop = plate.ContentMarginBottom = 1;
         return plate;
@@ -650,35 +667,27 @@ public partial class DeckEditor
     {
         if (_selected is not { } card || _art.Texture is not { } texture) return;
         var available = GetViewportRect().Size;
-        var extent = BoardArt.FitArtwork(texture, new Rect2(Vector2.Zero, new(available.X * 0.83f, available.Y - 128))).Size;
-        ShowDetails("DeckCardZoom", CardWithArtwork(card), Artwork(texture, extent, "EnlargedCard"));
+        var extent = BoardArt.FitArtwork(texture, new Rect2(Vector2.Zero, new(available.X * 0.83f, available.Y - MenuDialog.TitleBar - MenuDialog.Edge - 92))).Size;
+        ShowDetails("DeckCardZoom", CardWithArtwork(card), Artwork(texture, extent, "EnlargedCard"), Math.Max(280, extent.X));
     }
 
     private void ShowRequirements()
     {
         var problems = Problems;
         if (problems.Count == 0) return;
-        var label = ArenaPresentation.Text("• " + string.Join("\n\n• ", problems), 15);
+        var label = ArenaPresentation.Text("• " + string.Join("\n\n• ", problems), MenuVisuals.Type.Body);
         label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var scroll = new ScrollContainer
-        {
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            CustomMinimumSize = new(Math.Min(GetViewportRect().Size.X - 70, 500), Math.Min(Size.Y - 120, 225))
-        };
-        scroll.AddChild(label);
-        ShowDetails("DeckRequirements", "Requisitos del mazo", scroll);
+        ShowDetails("DeckRequirements", "Requisitos del mazo", label, 500);
     }
 
-    private void ShowDetails(string name, string title, Control content)
+    private void ShowDetails(string name, string title, Control content, float width)
     {
         if (GetChildren().OfType<Window>().Any(window => window.Visible)) return;
         var dialog = new AcceptDialog { Name = name, Title = title, OkButtonText = "Cerrar" };
-        dialog.AddChild(content);
+        MenuDialog.Fill(dialog, content, width);
         AddChild(dialog);
-        dialog.GetOkButton().CustomMinimumSize = new(90, 40);
         dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
-        ArenaViewport.FitDialog(dialog, GetViewportRect().Size);
+        MenuDialog.Show(dialog);
     }
 
     private bool InCatalogSection(CardDefinition card) => _section switch
@@ -775,16 +784,17 @@ public partial class DeckEditor
         _layoutQueued = false;
         if (!IsInsideTree()) return;
         _inspectorPanel.CustomMinimumSize = new(Math.Clamp(Mathf.Floor(Size.X * 0.185f), 141, 235), 0);
-        _catalogPanel.CustomMinimumSize = new(Math.Clamp(Mathf.Floor(Size.X * 0.254f), 172, 333), 0);
+        _catalogPanel.CustomMinimumSize = new(Math.Clamp(Mathf.Floor(Size.X * 0.254f), Touch ? 192 : 172, 333), 0);
         UpdateInspectorLayout();
         int Width(ScrollContainer scroll) => (int)Mathf.Floor(scroll.Size.X - scroll.GetVScrollBar().GetCombinedMinimumSize().X - 2);
         var deckWidth = Width(_deckScroll);
         if (deckWidth > 0)
         {
             var minimum = Size.Y < 460 ? 55 : 73;
+            var narrowest = Touch ? MenuVisuals.TouchTarget : 44;
             var columns = Math.Clamp((deckWidth + TileGap) / (minimum + TileGap), 1, 8);
             _deckGrid.Columns = columns;
-            var maxWidth = Size.Y < 460 ? Math.Clamp((int)((_deckScroll.Size.Y - 3) * 126 / 184), 44, 105) : 105;
+            var maxWidth = Size.Y < 460 ? Math.Clamp((int)((_deckScroll.Size.Y - 3) * 126 / 184), narrowest, 105) : 105;
             _deckScale = ResizeTiles(_deckTiles.Values, deckWidth, columns, maxWidth);
         }
         var catalogWidth = Width(_gallery);
@@ -796,7 +806,7 @@ public partial class DeckEditor
         var compact = Size.Y < 460;
         _inspectorTitle.Text = compact ? _selected?.Name ?? "Inspector" : "Inspector";
         _inspectorTitle.TooltipText = compact ? _selected?.Name ?? "" : "";
-        _inspectorTitle.AddThemeFontSizeOverride("font_size", compact ? 12 : ShortScreen ? 14 : 17);
+        _inspectorTitle.AddThemeFontSizeOverride("font_size", compact ? MenuVisuals.Type.Caption : ShortScreen ? MenuVisuals.Type.Body : MenuVisuals.Type.Control);
         _cardName.Visible = !compact;
         _classification.Visible = !compact;
         var available = compact ? 77 : Math.Clamp(Size.Y * 0.30f, 130, 285);
@@ -822,10 +832,12 @@ public partial class DeckEditor
         return scale;
     }
 
+    private int Target(int size) => Touch ? Math.Max(size, MenuVisuals.TouchTarget) : size;
+
     private static PanelContainer Panel(Node parent, Color color, int horizontal, int vertical)
     {
         var panel = new PanelContainer();
-        var style = RelickVisuals.Frame(color, EditorEdge, 2);
+        var style = RelickVisuals.Frame(color, MenuVisuals.Tone.Divider, MenuVisuals.Cut.Panel);
         style.ContentMarginLeft = style.ContentMarginRight = horizontal;
         style.ContentMarginTop = style.ContentMarginBottom = vertical;
         panel.AddThemeStyleboxOverride("panel", style);
@@ -879,7 +891,7 @@ public partial class DeckEditor
 
     private Label Heading(Node parent, string title)
     {
-        var label = ArenaPresentation.Text(title, ShortScreen ? 14 : 17);
+        var label = ArenaPresentation.Text(title, ShortScreen ? MenuVisuals.Type.Body : MenuVisuals.Type.Control);
         label.AddThemeFontOverride("font", RelickVisuals.Strong);
         label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         label.VerticalAlignment = VerticalAlignment.Center;
@@ -909,7 +921,7 @@ public partial class DeckEditor
 
     private static StyleBoxFlat TabStyle(bool selected)
     {
-        var style = RelickVisuals.Frame(selected ? new Color("302342") : EditorSurface, selected ? BoardArt.Gold : EditorEdge, 2);
+        var style = RelickVisuals.Frame(selected ? MenuVisuals.Tone.Chosen : MenuVisuals.Tone.Surface, selected ? BoardArt.Gold : MenuVisuals.Tone.Divider, MenuVisuals.Cut.Control);
         style.BorderWidthBottom = selected ? 2 : 1;
         style.ContentMarginLeft = style.ContentMarginRight = 4;
         style.ContentMarginTop = style.ContentMarginBottom = 3;

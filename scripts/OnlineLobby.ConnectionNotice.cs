@@ -32,24 +32,24 @@ public partial class OnlineLobby
         _connectionNoticePanel = Surface(center, 28);
         _connectionNoticePanel.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         _connectionNoticePanel.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(
-            RelickVisuals.Playmat.Surface, ArenaPresentation.Coral, 12));
+            MenuVisuals.Tone.Surface, ArenaPresentation.Coral, MenuVisuals.Cut.Panel));
         var style = (StyleBoxFlat)_connectionNoticePanel.GetThemeStylebox("panel");
         style.ContentMarginLeft = style.ContentMarginRight = 28;
         style.ContentMarginTop = style.ContentMarginBottom = 28;
         var column = new VBoxContainer();
         column.AddThemeConstantOverride("separation", 20);
         _connectionNoticePanel.AddChild(column);
-        _connectionNoticeTitle = Text("Sin conexión", 36);
+        _connectionNoticeTitle = Text("Sin conexión", MenuVisuals.Type.Title);
         _connectionNoticeTitle.HorizontalAlignment = HorizontalAlignment.Center;
         _connectionNoticeTitle.AddThemeColorOverride("font_color", ArenaPresentation.Coral);
         column.AddChild(_connectionNoticeTitle);
-        _connectionNoticeDescription = Text("", 20);
+        _connectionNoticeDescription = Text("", MenuVisuals.Type.Control);
         _connectionNoticeDescription.HorizontalAlignment = HorizontalAlignment.Center;
         column.AddChild(_connectionNoticeDescription);
         _reconnect = AddButton(column, "Reconectar", Connect);
         _reconnect.Name = "Reconnect";
         overlay.Retry = _reconnect;
-        AccentButton(_reconnect, LobbyMint);
+        RelickVisuals.Primary(_reconnect);
         _reconnect.FocusNeighborTop = _reconnect.GetPath();
         _reconnect.FocusNeighborBottom = _reconnect.GetPath();
         _reconnect.FocusNeighborLeft = _reconnect.FocusNeighborRight = _reconnect.GetPath();
@@ -62,7 +62,6 @@ public partial class OnlineLobby
     private void AdjustConnectionNotice()
     {
         _connectionNoticePanel.CustomMinimumSize = new(Math.Min(600, Math.Max(280, Size.X - 48)), 0);
-        _connectionNoticeTitle.AddThemeFontSizeOverride("font_size", ArenaViewport.Short(this) ? 30 : 36);
     }
 
     private void PresentConnectionNotice(bool ready, bool connecting)
@@ -84,6 +83,10 @@ public partial class OnlineLobby
                 _focusBeforeConnectionNotice?.ReleaseFocus();
                 // Embedded/native windows render above CanvasLayers and would
                 // otherwise hide the notice or keep consuming input.
+                _joinDialog.Hide();
+                if (_arena == null)
+                    foreach (var window in _content.FindChildren("*", "Window", true, false).OfType<Window>())
+                        window.Hide();
                 if (_arena != null)
                     foreach (var window in _arena.FindChildren("*", "Window", true, false).OfType<Window>())
                     {

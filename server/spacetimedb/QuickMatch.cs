@@ -34,6 +34,8 @@ public static partial class Module
         name = PlayerName(ctx, name);
         if (!Guid.TryParseExact(searchId, "N", out _)) throw new Exception("Identificador de búsqueda inválido.");
         if (ctx.Db.Member.Player.Find(ctx.Sender) != null) return;
+        RequireNoRankedSearch(ctx);
+        RequireNotCheckedIn(ctx);
         var now = ctx.Timestamp.MicrosecondsSinceUnixEpoch;
         if (ctx.Db.QuickSearch.Player.Find(ctx.Sender) is QuickSearch own)
         {
@@ -47,6 +49,7 @@ public static partial class Module
             if (candidate.ExpiresAt <= now || ctx.Db.Member.Player.Find(candidate.Player) != null)
             { ctx.Db.QuickSearch.ScheduledId.Delete(candidate.ScheduledId); continue; }
             var room = CreateRoomFor(ctx, candidate.Player, candidate.Name);
+            MarkQuickRoom(ctx, room.Code);
             CompleteRoom(ctx, room, ctx.Db.Member.Player.Find(candidate.Player)!.Value, ctx.Sender, name);
             ctx.Db.QuickSearch.ScheduledId.Delete(candidate.ScheduledId);
             return;
@@ -98,6 +101,8 @@ public static partial class Module
     {
         if (ctx.Db.QuickSearch.Player.Find(ctx.Sender) is QuickSearch search && search.Connection == ctx.ConnectionId)
             ctx.Db.QuickSearch.ScheduledId.Delete(search.ScheduledId);
+        if (ctx.Db.RankedSearch.Player.Find(ctx.Sender) is RankedSearch ranked && ranked.Connection == ctx.ConnectionId)
+            ctx.Db.RankedSearch.Player.Delete(ctx.Sender);
     }
 
     private static void RequireNoQuickSearch(ReducerContext ctx)

@@ -33,6 +33,8 @@ public partial class RelikarioPicker : VBoxContainer
     internal RelikarioEntry Selected => _selected;
     internal int Level => _level;
     internal IReadOnlyDictionary<string, Button> Tiles => _tiles;
+    /// <summary>Side by side, but tall enough for the filters and the specific skills.</summary>
+    private bool Roomy => !ShortScreen || GetViewportRect().Size.Y >= 720;
     private float TileWidth => ShortScreen ? 96 : 132;
 
     /// <summary>The square portrait shown on a Relikario's tile, or null while it has no art.</summary>
@@ -59,29 +61,28 @@ public partial class RelikarioPicker : VBoxContainer
             ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool();
 
         var header = new HBoxContainer(); header.AddThemeConstantOverride("separation", 16); AddChild(header);
-        var back = ArenaPresentation.Button(header, "← Mazos", () => Closed?.Invoke());
-        back.Name = "PickerBack"; back.CustomMinimumSize = new(120, 48);
+        MenuVisuals.Back(header, "PickerBack", "Mis mazos", () => Closed?.Invoke());
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; titles.AddThemeConstantOverride("separation", 0); header.AddChild(titles);
-        var title = ArenaPresentation.Text("Nuevo mazo", ShortScreen ? 26 : 36); title.AddThemeFontOverride("font", RelickVisuals.Display); titles.AddChild(title);
-        if (!ShortScreen)
+        var title = ArenaPresentation.Text("Nuevo mazo", ShortScreen ? MenuVisuals.Type.Title : MenuVisuals.Type.Hero); title.AddThemeFontOverride("font", RelickVisuals.Display); titles.AddChild(title);
+        if (Roomy)
         {
-            var subtitle = ArenaPresentation.Text("Elige el Relikario del mazo. Sus habilidades específicas solo funcionan con él.", 15, BoardArt.Muted);
+            var subtitle = ArenaPresentation.Text("Elige el Relikario del mazo. Sus habilidades específicas solo funcionan con él.", MenuVisuals.Type.Body, BoardArt.Muted);
             subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart; titles.AddChild(subtitle);
         }
 
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; body.AddThemeConstantOverride("separation", ShortScreen ? 10 : 16); AddChild(body);
         var roster = Panel("RosterPanel"); roster.SizeFlagsHorizontal = SizeFlags.ExpandFill; body.AddChild(roster);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 10); roster.AddChild(column);
-        var filters = new HBoxContainer { Name = "RosterFilters", Visible = !ShortScreen }; filters.AddThemeConstantOverride("separation", 8); column.AddChild(filters);
+        var filters = new HBoxContainer { Name = "RosterFilters", Visible = Roomy }; filters.AddThemeConstantOverride("separation", 8); column.AddChild(filters);
         var group = new ButtonGroup();
         foreach (var (text, only) in new[] { ("Todos", false), ("Disponibles", true) })
         {
-            var filter = new Button { Name = only ? "FilterAvailable" : "FilterAll", Text = text, ToggleMode = true, ButtonGroup = group, ButtonPressed = !only, CustomMinimumSize = new(0, 40) };
+            var filter = new Button { Name = only ? "FilterAvailable" : "FilterAll", Text = text, ToggleMode = true, ButtonGroup = group, ButtonPressed = !only, CustomMinimumSize = new(0, MenuVisuals.TouchTarget) };
             filter.Pressed += () => { _availableOnly = only; ApplyFilter(); };
             filters.AddChild(filter);
         }
         filters.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        _count = ArenaPresentation.Text($"{RelikarioCatalog.Roster.Count(r => r.Playable)} de {RelikarioCatalog.Roster.Count} disponibles", 13, BoardArt.Muted);
+        _count = ArenaPresentation.Text($"{RelikarioCatalog.Roster.Count(r => r.Playable)} de {RelikarioCatalog.Roster.Count} disponibles", MenuVisuals.Type.Caption, BoardArt.Muted);
         _count.Name = "RosterCount"; _count.SizeFlagsVertical = SizeFlags.ShrinkCenter; filters.AddChild(_count);
         _gallery = new ScrollContainer { Name = "RosterGallery", SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true };
         column.AddChild(_gallery);
@@ -102,7 +103,7 @@ public partial class RelikarioPicker : VBoxContainer
     private static PanelContainer Panel(string name)
     {
         var panel = new PanelContainer { Name = name, SizeFlagsVertical = SizeFlags.ExpandFill };
-        var frame = RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 8);
+        var frame = RelickVisuals.Frame(MenuVisuals.Tone.Surface, MenuVisuals.Tone.Edge, MenuVisuals.Cut.Panel);
         frame.ContentMarginLeft = frame.ContentMarginRight = 14; frame.ContentMarginTop = frame.ContentMarginBottom = 12;
         panel.AddThemeStyleboxOverride("panel", frame);
         return panel;
@@ -115,23 +116,23 @@ public partial class RelikarioPicker : VBoxContainer
         var content = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; content.AddThemeConstantOverride("separation", 2);
         tile.AddChild(content); content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var plate = new PanelContainer { Name = "Art", MouseFilter = MouseFilterEnum.Ignore, ClipContents = true };
-        plate.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new("0e1529"), CornerRadiusTopLeft = 6, CornerRadiusTopRight = 6 });
+        plate.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = MenuVisuals.Tone.Well, CornerDetail = 1, CornerRadiusTopLeft = MenuVisuals.Cut.Control, CornerRadiusTopRight = MenuVisuals.Cut.Control });
         content.AddChild(plate);
         if (Portrait(entry.Id) is { } portrait)
             plate.AddChild(new TextureRect { Name = "Portrait", Texture = portrait, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, MouseFilter = MouseFilterEnum.Ignore });
         else
         {
-            var mono = ArenaPresentation.Text(Monogram(entry.Name), ShortScreen ? 24 : 34, new Color("3b4a74"));
+            var mono = ArenaPresentation.Text(Monogram(entry.Name), ShortScreen ? MenuVisuals.Type.Subtitle : MenuVisuals.Type.Title, MenuVisuals.Tone.Edge);
             mono.HorizontalAlignment = HorizontalAlignment.Center; mono.VerticalAlignment = VerticalAlignment.Center;
             mono.AddThemeFontOverride("font", RelickVisuals.Strong); plate.AddChild(mono);
         }
         if (!entry.Playable)
         {
-            var soon = ArenaPresentation.Text("Próximamente", ShortScreen ? 10 : 11, BoardArt.Muted);
+            var soon = ArenaPresentation.Text("Próximamente", MenuVisuals.Type.Caption, BoardArt.Muted);
             soon.Name = "Soon"; soon.MouseFilter = MouseFilterEnum.Ignore;
             soon.SizeFlagsHorizontal = SizeFlags.ShrinkEnd; soon.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-            var badge = RelickVisuals.Frame(new Color("0b1020cc"), RelickVisuals.Playmat.Frame, 4);
+            var badge = RelickVisuals.Frame(BoardArt.Tint(MenuVisuals.Tone.Background, 0.8f), MenuVisuals.Tone.Edge, MenuVisuals.Cut.Badge);
             badge.ContentMarginLeft = badge.ContentMarginRight = 6; badge.ContentMarginTop = badge.ContentMarginBottom = 1;
             soon.AddThemeStyleboxOverride("normal", badge);
             var corner = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
@@ -139,7 +140,7 @@ public partial class RelikarioPicker : VBoxContainer
             corner.AddChild(soon); plate.AddChild(corner);
             plate.Modulate = new Color(1, 1, 1, 0.55f);
         }
-        var name = ArenaPresentation.Text(entry.Name, ShortScreen ? 13 : 15, entry.Playable ? BoardArt.Ink : BoardArt.Muted);
+        var name = ArenaPresentation.Text(entry.Name, ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, entry.Playable ? BoardArt.Ink : BoardArt.Muted);
         name.Name = "TileName"; name.ClipText = true; name.MouseFilter = MouseFilterEnum.Ignore; name.AddThemeFontOverride("font", RelickVisuals.Strong);
         var labels = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
         labels.AddThemeConstantOverride("margin_left", 8); labels.AddThemeConstantOverride("margin_right", 8); labels.AddThemeConstantOverride("margin_bottom", 6);
@@ -166,8 +167,8 @@ public partial class RelikarioPicker : VBoxContainer
         foreach (var (state, fill) in new[] { ("normal", RelickVisuals.Playmat.Raised), ("hover", RelickVisuals.Playmat.Raised.Lightened(0.06f)),
                      ("pressed", RelickVisuals.Playmat.Raised.Darkened(0.1f)), ("focus", new Color(0, 0, 0, 0)) })
         {
-            var style = RelickVisuals.Frame(state == "focus" ? fill : selected ? new Color("2a2a3e") : fill,
-                state == "focus" ? RelickVisuals.State.Focus : state == "hover" && !selected ? BoardArt.Muted : edge, 8, selected || state == "focus" ? 2 : 1);
+            var style = RelickVisuals.Frame(state == "focus" ? fill : selected ? MenuVisuals.Tone.Chosen : fill,
+                state == "focus" ? RelickVisuals.State.Focus : state == "hover" && !selected ? BoardArt.Muted : edge, MenuVisuals.Cut.Control, selected || state == "focus" ? 2 : 1);
             style.DrawCenter = state != "focus";
             style.ContentMarginLeft = style.ContentMarginRight = style.ContentMarginTop = style.ContentMarginBottom = 0;
             tile.AddThemeStyleboxOverride(state, style);
@@ -204,7 +205,7 @@ public partial class RelikarioPicker : VBoxContainer
         // Short screens put the card beside its details; tall ones stack them.
         BoxContainer layout = ShortScreen ? new HBoxContainer() : new VBoxContainer();
         layout.AddThemeConstantOverride("separation", 12); _detail.AddChild(layout);
-        var cardSize = ShortScreen ? new Vector2(180, 255) : new Vector2(330, 467);
+        var cardSize = !ShortScreen ? new Vector2(330, 467) : GetViewportRect().Size.Y >= 600 ? new Vector2(230, 326) : new Vector2(180, 255);
         var side = new VBoxContainer { Name = "DetailSide", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         side.AddThemeConstantOverride("separation", ShortScreen ? 8 : 10);
 
@@ -214,7 +215,7 @@ public partial class RelikarioPicker : VBoxContainer
             var stage = new Button { Name = "CardButton", CustomMinimumSize = cardSize, SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
                 TooltipText = "Girar la carta", MouseDefaultCursorShape = CursorShape.PointingHand, FocusMode = FocusModeEnum.All };
             foreach (var state in new[] { "normal", "hover", "pressed", "disabled" }) stage.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
-            var focus = RelickVisuals.Frame(Colors.Transparent, RelickVisuals.State.Focus, 10, 2); focus.DrawCenter = false;
+            var focus = RelickVisuals.Frame(Colors.Transparent, RelickVisuals.State.Focus, MenuVisuals.Cut.Control, 2); focus.DrawCenter = false;
             stage.AddThemeStyleboxOverride("focus", focus);
             _card = new TextureRect { Name = "RelikarioCard", Texture = front, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
@@ -226,16 +227,16 @@ public partial class RelikarioPicker : VBoxContainer
         else
         {
             var placeholder = new PanelContainer { Name = "CardPlaceholder", CustomMinimumSize = cardSize, SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
-            var dashed = RelickVisuals.Frame(new Color("0e1529"), RelickVisuals.Playmat.Frame, 12);
+            var dashed = RelickVisuals.Frame(MenuVisuals.Tone.Well, MenuVisuals.Tone.Edge, MenuVisuals.Cut.Panel);
             placeholder.AddThemeStyleboxOverride("panel", dashed);
-            var mono = ArenaPresentation.Text(Monogram(_selected.Name), ShortScreen ? 44 : 72, new Color("3b4a74"));
+            var mono = ArenaPresentation.Text(Monogram(_selected.Name), MenuVisuals.Type.Hero, MenuVisuals.Tone.Edge);
             mono.HorizontalAlignment = HorizontalAlignment.Center; mono.VerticalAlignment = VerticalAlignment.Center;
             mono.AddThemeFontOverride("font", RelickVisuals.Strong); placeholder.AddChild(mono);
             layout.AddChild(placeholder);
         }
         layout.AddChild(side);
 
-        var name = ArenaPresentation.Text(_selected.Definition?.Name ?? _selected.Name, ShortScreen ? 20 : 24);
+        var name = ArenaPresentation.Text(_selected.Definition?.Name ?? _selected.Name, ShortScreen ? MenuVisuals.Type.Subtitle : MenuVisuals.Type.Title);
         name.Name = "DetailName"; name.AddThemeFontOverride("font", RelickVisuals.Display);
         name.HorizontalAlignment = HorizontalAlignment.Center; name.AutowrapMode = TextServer.AutowrapMode.WordSmart; side.AddChild(name);
 
@@ -245,7 +246,7 @@ public partial class RelikarioPicker : VBoxContainer
             var group = new ButtonGroup();
             _levels = new[] { 1, 2 }.Select(level =>
             {
-                var button = new Button { Name = "Level" + level, Text = "Nivel " + level, ToggleMode = true, ButtonGroup = group, ButtonPressed = level == 1, CustomMinimumSize = new(0, 40) };
+                var button = new Button { Name = "Level" + level, Text = "Nivel " + level, ToggleMode = true, ButtonGroup = group, ButtonPressed = level == 1, CustomMinimumSize = new(0, MenuVisuals.TouchTarget) };
                 button.Pressed += () => SetLevel(level, manual: true);
                 levels.AddChild(button);
                 return button;
@@ -262,17 +263,17 @@ public partial class RelikarioPicker : VBoxContainer
             }
         }
 
-        if (_selected.Playable && !ShortScreen)
+        if (_selected.Playable && Roomy)
         {
             var skills = CardCatalog.All.Values.Where(card => card.Kind == CardKind.Skill && card.Relikario == _selected.Id).OrderBy(card => card.Name).ToList();
             if (skills.Count > 0)
             {
-                side.AddChild(ArenaPresentation.Text("HABILIDADES ESPECÍFICAS", 11, BoardArt.Muted));
+                side.AddChild(ArenaPresentation.Text("HABILIDADES ESPECÍFICAS", MenuVisuals.Type.Caption, BoardArt.Muted));
                 var flow = new HFlowContainer { Name = "SpecificSkills" }; flow.AddThemeConstantOverride("h_separation", 6); flow.AddThemeConstantOverride("v_separation", 6); side.AddChild(flow);
                 foreach (var skill in skills)
                 {
-                    var chip = ArenaPresentation.Text(skill.Name, 13, RelickVisuals.State.Target);
-                    var plate = RelickVisuals.Frame(Colors.Transparent, new Color("3a6f82"), 4);
+                    var chip = ArenaPresentation.Text(skill.Name, MenuVisuals.Type.Caption, RelickVisuals.State.Target);
+                    var plate = RelickVisuals.Frame(Colors.Transparent, MenuVisuals.Tone.Surface.Lerp(RelickVisuals.State.Target, 0.4f), MenuVisuals.Cut.Badge);
                     plate.ContentMarginLeft = plate.ContentMarginRight = 8; plate.ContentMarginTop = plate.ContentMarginBottom = 2;
                     chip.AddThemeStyleboxOverride("normal", plate); flow.AddChild(chip);
                 }
@@ -280,7 +281,7 @@ public partial class RelikarioPicker : VBoxContainer
         }
         if (!_selected.Playable)
         {
-            var note = ArenaPresentation.Text("Este Relikario todavía no está programado. Sus cartas y su efecto llegarán en una próxima versión.", 14, BoardArt.Muted);
+            var note = ArenaPresentation.Text("Este Relikario todavía no está programado. Sus cartas y su efecto llegarán en una próxima versión.", MenuVisuals.Type.Body, BoardArt.Muted);
             note.Name = "ComingSoonNote"; note.AutowrapMode = TextServer.AutowrapMode.WordSmart; side.AddChild(note);
         }
 

@@ -7,7 +7,9 @@ public sealed partial class LobbyConnection
 {
     public bool QuickMatchAvailable { get; private set; }
     public string? QuickSearchId => _connection?.Db.MyQuickSearch.Iter().SingleOrDefault()?.SearchId;
-    public bool Searching => QuickSearchId != null && Room == null;
+    public bool SearchingQuick => QuickSearchId != null && Room == null;
+    /// <summary>Waiting for a rival in either queue.</summary>
+    public bool Searching => SearchingQuick || SearchingRanked;
     private long _quickSearchRefreshed;
     private string? _cancelQuickSearchId;
     private string? _quickSearchSession;
@@ -21,7 +23,7 @@ public sealed partial class LobbyConnection
 
     public void CancelQuickMatch()
     {
-        if (!Ready || PendingRoomRequest != RoomRequest.None || !Searching) return;
+        if (!Ready || PendingRoomRequest != RoomRequest.None || !SearchingQuick) return;
         _cancelQuickSearchId = QuickSearchId;
         _quickSearchSession = _sessionToken;
         RequestRoom(RoomRequest.CancelQuickMatch, () => _connection!.Reducers.CancelQuickMatch(_cancelQuickSearchId!));
@@ -49,7 +51,7 @@ public sealed partial class LobbyConnection
 
     private void TickQuickMatch()
     {
-        if (!Ready || !Searching || PendingRoomRequest != RoomRequest.None || _cancelQuickSearchId != null) return;
+        if (!Ready || !SearchingQuick || PendingRoomRequest != RoomRequest.None || _cancelQuickSearchId != null) return;
         if (_quickSearchRefreshed != 0 && Stopwatch.GetElapsedTime(_quickSearchRefreshed).TotalSeconds < 5) return;
         _quickSearchRefreshed = Stopwatch.GetTimestamp();
         try { _connection!.Reducers.KeepQuickMatchAlive(QuickSearchId!); }

@@ -84,6 +84,8 @@ public static partial class Module
         if (!ProfileCatalog.IsTitle(title)) throw new Exception("Ese título no existe.");
         if (!ProfileCatalog.IsFrame(frame)) throw new Exception("Ese marco no existe.");
         if (!ProfileCatalog.IsPlaymat(playmat)) throw new Exception("Ese tapete no existe.");
+        RequireUnlocked(ctx, RewardKind.Title, title);
+        RequireUnlocked(ctx, RewardKind.Frame, frame);
         var row = new Profile { Player = ctx.Sender, Avatar = avatar, Title = title, Frame = frame, Playmat = playmat };
         if (ctx.Db.Profile.Player.Find(ctx.Sender) is Profile old)
         {
@@ -104,5 +106,7 @@ public static partial class Module
             if (winner == -1) row.Draws++; else if (winner == member.Seat) row.Wins++; else row.Losses++;
             if (existing == null) ctx.Db.PlayerRecord.Insert(row); else ctx.Db.PlayerRecord.Id.Update(row);
         }
+        // The totals above count every duel; rating and brackets only move in their own modes.
+        SettleRoom(ctx, roomCode, winner.Value);
     }
 }

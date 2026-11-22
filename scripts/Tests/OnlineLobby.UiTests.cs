@@ -25,6 +25,10 @@ public partial class OnlineLobby
                 GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
                 GD.Print("PVP_DECKS_ONLY_PASS"); QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--style-only"))
+            {
+                await CheckMenuStyle(); await Layout(); GD.Print("PVP_STYLE_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--account-only"))
             {
                 await CheckAccountScreens(); await Layout(); GD.Print("PVP_ACCOUNT_ONLY_PASS"); QuitWithAudio(); return;
@@ -32,6 +36,7 @@ public partial class OnlineLobby
             if (OS.GetCmdlineUserArgs().Contains("--lobby-only"))
             {
                 await CheckAccountScreens(); await CheckDeckScreens(); await CheckLobbyPolish(); await CheckMatchmakingAnimation();
+                await CheckMenuStyle();
                 await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); QuitWithAudio(); return;
             }
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
@@ -453,7 +458,7 @@ public partial class OnlineLobby
             await online.CheckChoiceBounds();
             await CheckArenaConnectionNotice(online);
             await online.CheckStageAnnouncements();
-            online.Hide(); await CheckLobbyPolish(); await CheckMatchmakingAnimation();
+            online.Hide(); await CheckLobbyPolish(); await CheckMatchmakingAnimation(); await CheckMenuStyle();
             online.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
             GD.Print("PVP_UI_PASS · solo PvP, cuatro tamaños, ambos asientos, selección inicial, mulligan, recuperación y animaciones.");

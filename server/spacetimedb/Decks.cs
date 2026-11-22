@@ -135,6 +135,8 @@ public static partial class Module
         string sleeve, string dice, string commandId)
     {
         if (!CosmeticCatalog.IsSleeve(sleeve) || !CosmeticCatalog.IsDice(dice)) throw new Exception("Esa mica o ese dado no existen.");
+        RequireUnlocked(ctx, RewardKind.Sleeve, sleeve);
+        RequireUnlocked(ctx, RewardKind.Dice, dice);
         StoreDeck(ctx, id, name, relikario, cards, traps, side, commandId, (sleeve, dice));
     }
 
@@ -187,6 +189,7 @@ public static partial class Module
         ctx.Db.Deck.Id.Delete(id);
         ctx.Db.DeckSide.Deck.Delete(id);
         ctx.Db.DeckStyle.Deck.Delete(id);
+        ctx.Db.DeckCover.Deck.Delete(id);
         if (ctx.Db.Account.Player.Find(ctx.Sender) is Account account && account.ActiveDeck == id) SetActive(ctx, account, 0);
     }
 

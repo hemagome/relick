@@ -67,30 +67,35 @@ public partial class OnlineLobby
             var screen = new DeckScreen { Connection = _lobby, PreviewDecks = samples };
             AddChild(screen); await Frames();
             var rows = screen.FindChild("DeckRows", true, false)!.GetChild(0);
-            Expect(rows.GetChildCount() == 3, "faltan el mazo de entrenamiento o los guardados.");
-            var active = (Control)rows.GetNode("Deck1"); var draft = (Control)rows.GetNode("Deck2"); var builtIn = (Control)rows.GetNode("Training");
+            Expect(rows.GetChildCount() == 4, "faltan el mazo de entrenamiento, los guardados o la casilla para crear otro.");
+            var active = (Button)rows.GetNode("Deck1"); var draft = (Button)rows.GetNode("Deck2"); var builtIn = (Button)rows.GetNode("Training");
             Expect(active.FindChild("ActiveBadge", true, false) != null && builtIn.FindChild("ActiveBadge", true, false) == null, "el mazo activo no se distingue.");
-            Expect(((Button)active.FindChild("Use", true, false)).Disabled && ((Button)draft.FindChild("Use", true, false)).Disabled &&
-                !((Button)builtIn.FindChild("Use", true, false)).Disabled, "Usar debe ofrecerse solo en mazos legales que no están en uso.");
-            foreach (var (deckRow, sleeveId, diceId) in new[] { (active, "oro", "obsidiana"), (draft, "medianoche", "violeta"),
-                (builtIn, CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice) })
+            Expect(draft.FindChild("DeckState", true, false) is Label progress && progress.Text.StartsWith("Borrador"), "el borrador no muestra su avance.");
+            Expect(new[] { builtIn, active, draft }.All(tile => tile.FindChild("RelikarioThumbnail", true, false) is TextureRect { Texture: not null } thumb &&
+                tile.GetGlobalRect().Grow(1).Encloses(thumb.GetGlobalRect())), "los mazos deben mostrar su portada dentro de la ficha.");
+            foreach (var (tile, sleeveId, diceId) in new[] { (draft, "medianoche", "violeta"),
+                (builtIn, CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice), (active, "oro", "obsidiana") })
             {
-                var back = deckRow.FindChild("DeckSleeve", true, false) as TextureRect;
-                var die = deckRow.FindChild("DeckDice", true, false) as DiceSwatch;
-                Expect(back?.Texture.NativeId() == SleeveArt.Back(sleeveId).NativeId() && die?.Style == diceId, "la fila no muestra la mica y el dado del mazo.");
-                Expect(deckRow.GetGlobalRect().Encloses(back!.GetGlobalRect()) && deckRow.GetGlobalRect().Encloses(die!.GetGlobalRect()),
-                    "la mica o el dado se salen de la fila.");
-                Expect(deckRow.FindChild("ReadyMark", true, false) == null && deckRow.FindChild("DeckSummary", true, false) == null,
-                    "la fila conserva el check o los conteos.");
+                tile.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+                var detail = (Control)screen.FindChild("DeckDetail", true, false)!;
+                var back = detail.FindChild("DeckSleeve", true, false) as TextureRect;
+                var die = detail.FindChild("DeckDice", true, false) as DiceSwatch;
+                Expect(back?.Texture.NativeId() == SleeveArt.Back(sleeveId).NativeId() && die?.Style == diceId, "el detalle no muestra la mica y el dado del mazo.");
+                Expect(detail.GetGlobalRect().End.Y <= size.Y + 1 && detail.GetGlobalRect().End.X <= size.X + 1 &&
+                    detail.GetGlobalRect().Grow(1).Encloses(back!.GetGlobalRect()) && detail.GetGlobalRect().Grow(1).Encloses(die!.GetGlobalRect()),
+                    "el detalle, la mica o el dado se salen de la pantalla.");
+                var use = detail.FindChild("Use", true, false) as Button;
+                Expect(tile == active ? use == null : tile == draft ? use is { Disabled: true } : use is { Disabled: false },
+                    "Usar debe ofrecerse solo en mazos legales que no están en uso.");
+                if (tile == builtIn)
+                    Expect(detail.FindChild("Delete", true, false) == null && detail.FindChild("Edit", true, false) == null &&
+                        detail.FindChild("DeckStyleNames", true, false) is Label names && names.Text.Contains("Mica Transparente"),
+                        "el mazo de entrenamiento se presenta mal o no llama Transparente a su mica.");
+                if (tile == draft)
+                    Expect(detail.FindChild("DeckProblem", true, false) is Label problem && problem.Text.StartsWith("Borrador"), "el borrador no dice qué le falta.");
+                if (tile == active)
+                    Expect(detail.FindChild("Style", true, false) is Button && detail.FindChild("Edit", true, false) is Button, "el mazo activo no ofrece editarse ni su estilo.");
             }
-            Expect(builtIn.FindChildren("*", "Label", true, false).OfType<Label>().Any(label => label.Text == "Mica Transparente"),
-                "la lista no llama Transparente a la mica predeterminada.");
-            Expect(draft.FindChild("DeckProblem", true, false) is Label problem && problem.Text.StartsWith("Borrador") &&
-                builtIn.FindChild("Delete", true, false) == null &&
-                builtIn.FindChild("Edit", true, false) == null, "el borrador o el mazo de entrenamiento se presentan mal.");
-            Expect(new[] { builtIn, active, draft }.All(row => row.FindChild("RelikarioThumbnail", true, false) is TextureRect { Texture: not null } thumb &&
-                thumb.GetGlobalRect().Position.X >= row.GetGlobalRect().Position.X && thumb.GetGlobalRect().End.X <= row.GetGlobalRect().End.X),
-                "los mazos de Yuno deben mostrar su miniatura dentro de la fila.");
             foreach (var button in screen.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
             {
                 Inside(button, "Un botón de la lista");
@@ -108,6 +113,8 @@ public partial class OnlineLobby
                 picker.Tiles["wd"].FindChild("Soon", true, false) != null, "Yuno y Osamu deben mostrar sus retratos, y WD debe marcarse como próximamente.");
             foreach (var name in new[] { "PickerBack", "RosterGallery", "RelikarioDetail", "CreateDeck", "CardButton" })
                 Inside((Control)picker.FindChild(name, true, false), name);
+            Expect(((Control)picker.FindChild("CreateDeck", true, false)).GetGlobalRect().End.Y <= size.Y + 1,
+                $"Crear mazo queda bajo la pantalla en {size.X}x{size.Y}.");
             var gallery = (Control)picker.FindChild("RosterGallery", true, false);
             foreach (var tile in picker.Tiles.Values.Where(tile => tile.IsVisibleInTree() && tile.GetGlobalRect().Position.Y < gallery.GetGlobalRect().End.Y))
             {
@@ -282,8 +289,12 @@ public partial class OnlineLobby
             var cardsBefore = editor.Main.Count;
             ((Button)editor.FindChild("StyleTab", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Expect(editor.EditingStyle && editor.FindChild("SleeveOptions", true, false) is HFlowContainer sleeves &&
-                sleeves.GetChildCount() == CosmeticCatalog.Sleeves.Count && editor.FindChild("DiceOptions", true, false) is HFlowContainer dice &&
-                dice.GetChildCount() == CosmeticCatalog.Dice.Count, "la pestaña Estilo no ofrece todas las micas y dados.");
+                sleeves.GetChildCount() == CosmeticCatalog.Sleeves.Count(sleeve => RewardCatalog.Of(RewardKind.Sleeve, sleeve.Id) == null) &&
+                editor.FindChild("DiceOptions", true, false) is HFlowContainer dice &&
+                dice.GetChildCount() == CosmeticCatalog.Dice.Count(die => RewardCatalog.Of(RewardKind.Dice, die.Id) == null) &&
+                editor.FindChild("Sleeve_" + RewardCatalog.SeasonSleeve.Id, true, false) == null &&
+                editor.FindChild("Dice_" + RewardCatalog.ChampionDice.Id, true, false) == null,
+                "la pestaña Estilo no ofrece todas las micas y dados libres, o regala los que se ganan.");
             Expect(editor.FindChild("StyleHelp", true, false) == null, "la pestaña Estilo conserva el texto explicativo.");
             Expect(editor.FindChild("Sleeve_" + CosmeticCatalog.DefaultSleeve, true, false) is Button { TooltipText: "Transparente" },
                 "el selector no llama Transparente a la mica predeterminada.");
@@ -339,8 +350,8 @@ public partial class OnlineLobby
             var guest = new DeckScreen { Connection = _lobby, PreviewDecks = [], Guest = true };
             AddChild(guest); await Frames();
             var guestRows = guest.FindChild("DeckRows", true, false)!.GetChild(0);
-            Expect(guestRows.GetChildCount() == 1 && guest.FindChild("Copy", true, false) == null && guest.FindChild("GuestNotice", true, false) is Label { Visible: true } &&
-                !((Control)guest.FindChild("NewDeck", true, false)).Visible && guest.FindChild("ActiveBadge", true, false) != null,
+            Expect(guestRows.GetChildCount() == 2 && guest.FindChild("Copy", true, false) == null && guest.FindChild("GuestNotice", true, false) is Label { Visible: true } &&
+                ((Button)guest.FindChild("NewDeck", true, false)).Disabled && guest.FindChild("ActiveBadge", true, false) != null,
                 "un invitado debe ver solo el mazo de entrenamiento, sin crear ni duplicar.");
             Inside((Control)guest.FindChild("GuestNotice", true, false), "El aviso de invitado");
             await Capture("deck-guest");
@@ -396,12 +407,12 @@ public partial class OnlineLobby
             Expect(saved.Sleeve == "oro" && saved.Dice == "obsidiana" && saved.Relikario == RelikarioCatalog.Osamu.Id &&
                 saved.Cards.Order().SequenceEqual(cards.Order()), "la lista no recuperó el mazo de Osamu con las cartas y el estilo guardados.");
             Expect(saveSounds == 1, "crear el mazo debe sonar una sola vez.");
-            Press((Control)screen.FindChild("Deck" + saved.Id, true, false)!, "Edit");
+            screen.SelectDeck(saved.Id); Press(screen, "Edit");
             editor = screen.Editor!;
             Press(editor, "EditorBack");
             Expect(screen.Editor == null && !Warns(editor), "volver sin editar el mazo guardado muestra el aviso.");
 
-            Press((Control)screen.FindChild("Deck" + saved.Id, true, false)!, "Edit");
+            screen.SelectDeck(saved.Id); Press(screen, "Edit");
             editor = screen.Editor!;
             editor.ChooseStyle(sleeve: CosmeticCatalog.DefaultSleeve);
             Press(editor, "SaveDeck");

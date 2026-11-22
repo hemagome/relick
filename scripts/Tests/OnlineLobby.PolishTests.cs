@@ -23,7 +23,7 @@ public partial class OnlineLobby
         _content.Show();
         try
         {
-            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(1000, 600), new(844, 390), new(700, 390) })
             {
                 GetWindow().ContentScaleSize = size; await Layout(); _localError = _lobbyNotice = "";
                 PresentLobbyState(null, false, true, RoomRequest.None, "", "Conectando…"); await Layout();
@@ -35,8 +35,16 @@ public partial class OnlineLobby
                 Check(notice.Position.X >= 0 && notice.Position.Y >= 0 && notice.End.X <= Size.X && notice.End.Y <= Size.Y,
                     "El cuadro de desconexión sale de la pantalla.");
                 Check(_reconnect.HasFocus(), "El aviso no toma el foco del teclado.");
-                GuiInputTestDriver.Click(_name);
-                Check(!_name.HasFocus(), "El aviso deja pasar clics a los campos de la sala.");
+                var leaked = 0;
+                void Leak() => leaked++;
+                _create.Pressed += Leak;
+                try
+                {
+                    var point = _create.GetGlobalRect().GetCenter();
+                    GuiInputTestDriver.Click(GetViewport(), point);
+                    Check(leaked == 0, "El aviso deja pasar clics a los controles de la sala.");
+                }
+                finally { _create.Pressed -= Leak; }
                 var retryClicks = 0;
                 void Retry() => retryClicks++;
                 _reconnect.Pressed -= Connect; _reconnect.Pressed += Retry;
@@ -55,6 +63,17 @@ public partial class OnlineLobby
                 Check(!_connectionNotice.Visible && !_status.GetParent<Control>().Visible && _status.Text.Length == 0,
                     "La recuperación no retira el cuadro o sigue anunciando Conectado.");
                 Check(!_quickMatch.Disabled && _quickMatch.Text == "Buscar rival", "No se puede iniciar partida rápida.");
+                _lobbyPage.ScrollVertical = 0; await Layout();
+                Check(_plannedSlots.Count == 2 && _plannedModes.IsVisibleInTree(), "La sala no anuncia ELO y Torneo.");
+                foreach (var slot in _plannedSlots)
+                {
+                    Check(_lobbyPage.GetGlobalRect().Grow(1).Encloses(slot.GetGlobalRect()), $"{slot.Name} no se ve completo sin desplazar la sala en {size}.");
+                    var parts = slot.FindChildren("*", "Control", true, false).OfType<Control>().Prepend(slot).ToArray();
+                    Check(parts.All(part => part is not BaseButton && part.FocusMode == FocusModeEnum.None && part.MouseFilter == MouseFilterEnum.Ignore),
+                        $"{slot.Name} parece accesible: recibe clics o foco.");
+                    Check(parts.OfType<Label>().Any(label => label.Text == PlannedModeSlot.Badge && label.IsVisibleInTree()) && slot.AccessibilityName.Contains("no disponible"),
+                        $"{slot.Name} no dice que todavía no está disponible.");
+                }
                 PresentLobbyState(null, true, false, RoomRequest.None, "", "Conectado", quickMatchAvailable: false);
                 Check(_quickMatch.Disabled && !_create.Disabled && !_join.Disabled,
                     "Un servidor sin cola impide usar las salas privadas.");
@@ -92,10 +111,11 @@ public partial class OnlineLobby
                 var room = new RoomInfo { Code = "AB12CD34", MySeat = 0, PlayerOne = "Ana", PlayerTwo = "", Dealt = false };
                 PresentLobbyState(room, true, false, RoomRequest.None, "", "Sala creada."); await Layout();
                 PresentLobbyState(room, false, false, RoomRequest.None, "", "Sin conexión"); await Layout();
+                Check(!_plannedModes.Visible, "Los modos planeados siguen visibles dentro de una sala.");
                 Check(_connectionNotice.Visible && _copy.Disabled && _leave.Disabled && _roomPanel.Visible,
                     "Perder conexión en una sala borra la vista o permite operaciones.");
                 PresentLobbyState(room, true, false, RoomRequest.None, "", "Conectado"); await Layout();
-                var scroll = (ScrollContainer)_content.GetChild(0); scroll.EnsureControlVisible(_copy); await Layout();
+                _lobbyPage.EnsureControlVisible(_copy); await Layout();
                 GuiInputTestDriver.Click(_copy);
                 Check(clipboardAvailable ? _copy.Text == "Copiado ✓" && DisplayServer.ClipboardGet() == room.Code : _copy.Text != "Copiado ✓" && _localError.Length > 0,
                     "Copiar no confirma el código exacto o anuncia éxito sin portapapeles.");
@@ -106,11 +126,11 @@ public partial class OnlineLobby
                 PresentLobbyState(room, true, false, RoomRequest.Leave, "", "Cerrando sala…");
                 Check(_copy.Disabled && _leave.Disabled && _leave.Text.Contains("Cerrando"), "Cerrar permite enviar o compartir otra vez.");
                 PresentLobbyState(null, true, false, RoomRequest.None, "", "Sala cerrada."); await Layout();
-                Check(!_roomPanel.Visible && _entryCards.Visible && _name.Text.Length > 0 && !_create.Disabled && !_join.Disabled, "El cierre no recupera la entrada al lobby.");
+                Check(!_roomPanel.Visible && _entryCards.Visible && _plannedModes.Visible && _name.Text.Length > 0 && !_create.Disabled && !_join.Disabled, "El cierre no recupera la entrada al lobby.");
                 Check(_entryCards.GetGlobalRect().End.X <= Size.X + 1, "El lobby desborda horizontalmente.");
             }
         }
         finally { if (clipboardAvailable) DisplayServer.ClipboardSet(previousClipboard); _localError = ""; _content.Hide(); }
-        GD.Print("PVP_LOBBY_POLISH_PASS · sin mensaje Conectado, cuadro de desconexión y reintentos, recuperación, solicitudes bloqueadas, errores accionables, copia y cierre; cuatro tamaños.");
+        GD.Print("PVP_LOBBY_POLISH_PASS · sin mensaje Conectado, cuadro de desconexión y reintentos, recuperación, solicitudes bloqueadas, errores accionables, copia y cierre, ELO y Torneo visibles e inactivos; cinco tamaños.");
     }
 }

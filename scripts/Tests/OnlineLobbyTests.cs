@@ -48,7 +48,7 @@ public partial class OnlineLobby
             for (var frame = 0; frame < 4; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             GuiInputTestDriver.Click(_arena.InitialSkillConfirmButton!);
             rival.ChooseInitialSkill("magnet-shuffle");
-            await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false);
+            await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false && !_arena.IsAnimating);
             var preparationArena = _arena;
             if (_content.Visible || !_arena!.IsPreparing) throw new Exception("El mulligan no se abrió dentro del tablero.");
             foreach (var card in _arena!.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>().Take(2)) GuiInputTestDriver.Click(card);

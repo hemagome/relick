@@ -188,7 +188,7 @@ Consulta [el informe de escalabilidad](SCALABILITY.md) para el diseño, polític
 
 El recorrido funcional es sala → preparación → duelo completo → resultado. La arena PvP usa componentes de presentación separados del motor; véase [interfaz adaptable, animaciones y optimizaciones](UI.md). Se probaron tamaños móviles simulados y capturas; la exportación y validación en Android/iOS físicos siguen pendientes.
 
-Las identidades son de dispositivo con token persistente. La reconexión es manual con Reconectar o reabriendo PvP con el mismo perfil; los envíos pendientes en la misma sesión reutilizan su identificador. El emparejamiento casual usa orden de llegada, sin estimación de habilidad. Aún faltan cuentas entre dispositivos, controles de tráfico/conexiones en infraestructura y clasificación. La auditoría reciente no garantiza conservar una repetición completa de cada partida.
+Las identidades son de dispositivo con token persistente. La reconexión es manual con Reconectar o reabriendo PvP con el mismo perfil; los envíos pendientes en la misma sesión reutilizan su identificador. El emparejamiento casual usa orden de llegada, sin estimación de habilidad; la clasificatoria tiene [su propia cola](COMPETITIVE.md). Aún faltan cuentas entre dispositivos y controles de tráfico/conexiones en infraestructura. La auditoría reciente no garantiza conservar una repetición completa de cada partida.
 
 ## Estado de la elección inicial de habilidad
 
@@ -518,3 +518,9 @@ de resultados no cambiaron. El programa pasó de `abeadcbe…` a `3a28823f…`; 
 conservó en `artifacts/maincloud-backup/` (fuera de Git) y su restauración se ensayó en
 local. La batería PvP no se ejecutó contra Maincloud: el módulo real exige iniciar sesión
 con SpacetimeAuth, así que el reloj se validó contra un servidor local con el mismo código.
+
+## Personalización y competencias
+
+Las tablas de inicio, portadas, temporadas, ELO, premios y torneos, su administración y
+sus pruebas están en [Competencias](COMPETITIVE.md). Son tablas, vistas y reductores
+nuevos: no cambia ninguna tabla anterior. Todavía no están publicados en Maincloud.

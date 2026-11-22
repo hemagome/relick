@@ -199,6 +199,21 @@ public static class RelickVisuals
         return theme;
     }
 
+    private static readonly Color OnPrimary = new("06141a");
+    private static readonly string[] PrimaryBoxes = ["normal", "hover", "pressed", "hover_pressed", "disabled"];
+    // Every state that can draw text on the bright plate, focus included: the theme's focus colour is white.
+    private static readonly string[] PrimaryInks = ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"];
+
+    public static bool IsPrimary(Button button) =>
+        button.HasThemeColorOverride("font_color") && button.GetThemeColor("font_color") == OnPrimary;
+
+    /// <summary>Back to an ordinary button.</summary>
+    public static void Secondary(Button button)
+    {
+        foreach (var state in PrimaryBoxes) button.RemoveThemeStyleboxOverride(state);
+        foreach (var state in PrimaryInks) button.RemoveThemeColorOverride(state);
+    }
+
     public static void Primary(Button button, Color? accent = null)
     {
         var color = accent ?? State.Own;
@@ -206,8 +221,7 @@ public static class RelickVisuals
         button.AddThemeStyleboxOverride("hover", Glass(color.Lightened(0.42f), color, Colors.White, 8, 7, BoardArt.Tint(color, 0.65f)));
         button.AddThemeStyleboxOverride("pressed", Glass(color.Darkened(0.12f), color.Darkened(0.26f), color, 8, 7, BoardArt.Tint(color, 0.25f)));
         button.AddThemeStyleboxOverride("disabled", Glass(BoardArt.Tint(Playmat.Surface, 0.8f), BoardArt.Tint(Playmat.Surface, 0.8f), BoardArt.Tint(Playmat.Frame, 0.5f), 8, 7, Colors.Transparent));
-        foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color" })
-            button.AddThemeColorOverride(state, new("06141a"));
+        foreach (var state in PrimaryInks) button.AddThemeColorOverride(state, OnPrimary);
     }
 
     public static TextureRect Logo(bool compact = false) => new()

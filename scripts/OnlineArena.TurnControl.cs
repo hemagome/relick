@@ -117,7 +117,21 @@ public partial class OnlineArena
                 fraction = clock.Reference > 0 ? (float)remaining / clock.Reference : null;
                 // Whole seconds of the total, without a sign: it is time spent, not time left.
                 string Total(int player) => ClockText(-clock.DuelTime(player, now)).TrimStart('+');
-                tip = $"Tiempo de decisión {(mine ? "tuyo" : "del rival")} en este turno. Es informativo: al agotarse no ocurre nada.\n" +
+                var limit = RatedLimit;
+                if (limit > 0)
+                {
+                    // In a rated duel the decision itself runs out: its last minute takes the place of the reference.
+                    var left = clock.UpdatedAt + limit - now;
+                    if (left <= LimitShownFrom)
+                    {
+                        text = $"¡{ClockText(Math.Max(0, left))}!";
+                        color = RelickVisuals.State.Danger;
+                        fraction = Math.Max(0, (float)left / LimitShownFrom);
+                    }
+                }
+                var rule = limit > 0 ? $"Este duelo cuenta: pasar {limit / 60_000_000} min sin decidir lo pierde."
+                    : "Es informativo: al agotarse no ocurre nada.";
+                tip = $"Tiempo de decisión {(mine ? "tuyo" : "del rival")} en este turno. {rule}\n" +
                     $"En el duelo: tú {Total(s.MySeat)} · rival {Total(1 - s.MySeat)}";
             }
         }

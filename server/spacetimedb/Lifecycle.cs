@@ -81,6 +81,8 @@ public static partial class Module
     }
     private static void DeleteRoom(ReducerContext ctx, string code)
     {
+        // A rated room settles while its members still exist.
+        ForgetRoomMode(ctx, code);
         foreach (var card in ctx.Db.Card.RoomCode.Filter(code).ToList()) ctx.Db.Card.Id.Delete(card.Id);
         foreach (var member in ctx.Db.Member.RoomCode.Filter(code).ToList())
         {

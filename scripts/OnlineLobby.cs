@@ -11,7 +11,6 @@ public partial class OnlineLobby : Control
     private readonly LobbyConnection _lobby = new();
     private Label _status = null!;
     private Label _room = null!;
-    private Label _players = null!;
     private LineEdit _name = null!;
     private LineEdit _code = null!;
     private Button _create = null!;
@@ -41,6 +40,8 @@ public partial class OnlineLobby : Control
 #if RELICK_DEV_TOOLS
         if (StartOfflineDevTool()) return;
 #endif
+        InterfacePreferences.Load();
+        _matchLink.ReducedMotion = InterfacePreferences.ReducedMotion;
         var config = new ConfigFile();
         config.Load("res://network/server.cfg");
         _server = OS.GetEnvironment("RELICK_SERVER");
@@ -82,21 +83,22 @@ public partial class OnlineLobby : Control
         var room = _lobby.Room;
         if (HoldForQuickMatch(room, _lobby.Ready, _lobby.Searching, _lobby.PendingRoomRequest, delta)) return;
         if (_presentedRoomCode.Length > 0 && room == null && _lobby.Ready)
-            _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
+            _lobbyNotice = ClosedRoomNotice(_presentedRoomCode);
         if (_arena == null && room == null && _lobby.LastResult != null && !_resultExitRequested)
             OpenArena(_lobby.LastResultRoom);
         if (_arena != null && _lobby.Ready && (room == null && !_arena.HasFinishedResult && _lobby.LastResult == null ||
             _resultExitRequested && room?.Code != _arena.RoomCode))
         {
+            var closedCode = _arena.RoomCode;
             RemoveChild(_arena); _arena.QueueFree(); _arena = null; _content.Visible = true;
             // The lobby keeps the classic cloth; the chosen playmat dresses only the arena.
             RelickVisuals.Playmat = RelickPlaymat.Classic;
             GetNode<MusicDirector>("/root/MusicDirector").ShowMenu();
             _lobby.ClearResult(); _resultExitRequested = false;
-            _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
+            _lobbyNotice = ClosedRoomNotice(closedCode);
         }
         // A room recovered while browsing decks takes the player back to it.
-        if (room != null) CloseDecks();
+        if (room != null) ReturnToPlay();
         if (_arena == null && room != null && (room.Dealt || _lobby.Duel != null))
         {
             OpenArena(room!.Code);
@@ -116,39 +118,64 @@ public partial class OnlineLobby : Control
             _resultExitRequested = true;
             if (_lobby.Room?.Code == roomCode) _lobby.Leave(roomCode);
         };
-        _arena = arena; _content.Visible = false; AddChild(arena);
+        _arena = arena; _joinDialog.Hide(); _content.Visible = false; AddChild(arena);
     }
+
+    private bool TightLobby => Size.Y < 720;
 
     private void AdjustLobbyLayout()
     {
         if (_content == null) return;
-        var horizontal = (int)Math.Max(16, (Size.X - 1060) / 2);
-        foreach (var side in new[] { "left", "right" }) _content.AddThemeConstantOverride("margin_" + side, horizontal);
-        foreach (var side in new[] { "top", "bottom" }) _content.AddThemeConstantOverride("margin_" + side, ArenaViewport.Short(this) ? 12 : 28);
+        // The rail sits at the edge, where a phone in landscape has its notch.
+        if (OS.HasFeature("mobile")) ArenaViewport.ApplyInsets(_content, 0, 0);
         var shortScreen = ArenaViewport.Short(this);
-        _matchLink.Compact = shortScreen;
-        _quickMatchStatus.AddThemeFontSizeOverride("font_size", shortScreen ? 14 : 16);
-        if (_lobbyHeading != null) _lobbyHeading.Visible = !shortScreen;
-        if (_lobbyColumn != null) _lobbyColumn.AddThemeConstantOverride("separation", shortScreen ? 12 : 18);
-        foreach (var description in _entryDescriptions) description.Visible = !shortScreen;
-        _quickExplanation.Visible = _matchLink.State == MatchmakingLinkState.Idle && !shortScreen;
-        foreach (var title in _entryTitles) title.AddThemeFontSizeOverride("font_size", shortScreen ? 20 : 24);
-        foreach (var panel in _entryPanels)
-        {
-            panel.CustomMinimumSize = new(0, shortScreen ? 200 : 264);
-            var style = (StyleBoxFlat)panel.GetThemeStylebox("panel");
-            style.ContentMarginLeft = style.ContentMarginRight = shortScreen ? 16 : 24;
-            style.ContentMarginTop = style.ContentMarginBottom = shortScreen ? 16 : 24;
-        }
-        if (_identityPanel != null)
-        {
-            var style = (StyleBoxFlat)_identityPanel.GetThemeStylebox("panel");
-            style.ContentMarginTop = style.ContentMarginBottom = shortScreen ? 8 : 16;
-        }
+        var tight = TightLobby;
+        _matchLink.Compact = tight;
+        _quickMatchStatus.AddThemeFontSizeOverride("font_size", tight ? MenuVisuals.Type.Body : MenuVisuals.Type.Control);
+        _quickExplanation.Visible = _matchLink.State == MatchmakingLinkState.Idle && !tight;
+        foreach (var description in _entryDescriptions) description.Visible = !tight;
+        foreach (var title in _entryTitles) title.AddThemeFontSizeOverride("font_size", tight ? MenuVisuals.Type.Control : Size.Y >= 900 ? MenuVisuals.Type.Title : MenuVisuals.Type.Subtitle);
+        foreach (var column in _entryColumns) column.AddThemeConstantOverride("separation", tight ? 6 : 12);
+        foreach (var symbol in _entrySymbols) symbol.CustomMinimumSize = tight ? new(28, 28) : new(48, 48);
+        foreach (var slot in _plannedSlots) slot.Compact = tight;
+        _rankedCard.Compact = _tournamentCard.Compact = tight;
+        _plannedModes.AddThemeConstantOverride("separation", tight ? 8 : 14);
+        foreach (var panel in _entryPanels) Pad(panel, shortScreen ? 10 : tight ? 14 : 22);
+        Pad(_deckPanel, tight ? 8 : 16);
+        Pad((PanelContainer)_roomPanel, shortScreen ? 10 : 24);
+        // Tall enough for the search feedback, so searching never moves the button.
+        var tall = Size.Y >= 900;
+        _quickMatch.CustomMinimumSize = new(150, tall ? 64 : 48);
+        _quickMatch.AddThemeFontSizeOverride("font_size", tall ? MenuVisuals.Type.Subtitle : MenuVisuals.Type.Control);
+        _quickPanel.CustomMinimumSize = new(0, shortScreen ? 168 : tight ? 178 : 246);
+        _deckName.AddThemeFontSizeOverride("font_size", tight ? MenuVisuals.Type.Body : MenuVisuals.Type.Subtitle);
+        _deckState.Visible = !shortScreen;
+        _modesColumn.AddThemeConstantOverride("separation", tight ? 8 : 16);
+        _stageColumn.AddThemeConstantOverride("separation", tight ? 8 : 16);
+        _playMain.AddThemeConstantOverride("separation", tight ? 10 : 32);
+        _waitingColumn.AddThemeConstantOverride("separation", shortScreen ? 6 : 24);
+        AdjustPlayLayout();
+    }
+
+    private void AdjustPlayLayout()
+    {
+        if (_lobbyPage == null || _playMargin == null) return;
+        var area = _lobbyPage.Size;
+        var shortScreen = ArenaViewport.Short(this);
+        var side = (int)Math.Max(shortScreen ? 10 : 24, (area.X - 1240) / 2);
+        var above = (int)Math.Max(shortScreen ? 8 : 20, (area.Y - 800) / 2);
+        foreach (var edge in new[] { "left", "right" }) _playMargin.AddThemeConstantOverride("margin_" + edge, side);
+        foreach (var edge in new[] { "top", "bottom" }) _playMargin.AddThemeConstantOverride("margin_" + edge, above);
+    }
+
+    private static void Pad(PanelContainer panel, int padding)
+    {
+        if (panel.GetThemeStylebox("panel") is not StyleBoxFlat style) return;
+        style.ContentMarginLeft = style.ContentMarginRight = style.ContentMarginTop = style.ContentMarginBottom = padding;
     }
 
     public override void _ExitTree() { _authCancel?.Cancel(); _lobby.Dispose(); }
-    private static Label Text(string text, int size = 16)
+    private static Label Text(string text, int size = MenuVisuals.Type.Control)
     {
         var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };
         label.AddThemeFontSizeOverride("font_size", size);

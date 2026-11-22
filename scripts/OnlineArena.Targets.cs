@@ -44,7 +44,7 @@ public partial class OnlineArena
         {
             if (id == TableViewMenuId) ToggleTableView(popup);
             if (id == 3) ShowDuelHistory();
-            if (id == 2) { if (s.Winner != null) RequestResultExit(); else Connection.Leave(RoomCode); }
+            if (id == 2) { if (s.Winner != null) RequestResultExit(); else if (RatedRoom) ConfirmRatedLeave(); else Connection.Leave(RoomCode); }
             if (id == 4) { _resultDismissed = false; UpdateResultPresentation(); }
             if (futureDice.TryGetValue((int)id, out var die)) PlayOption(die.index, s);
         };

@@ -35,6 +35,7 @@ public partial class OnlineLobby
         var args = OS.GetCmdlineUserArgs();
         if (args.Contains("--pvp-preparation-test")) CallDeferred(nameof(PreparationSmokeTest));
         if (args.Contains("--pvp-combat-test")) CallDeferred(nameof(CombatSmokeTest));
+        if (args.Any(a => a.StartsWith("--pvp-competitive-peer="))) CallDeferred(nameof(CompetitivePeerSmokeTest));
         if (args.Any(a => a.StartsWith("--pvp-input-peer="))) CallDeferred(nameof(InputPeerSmokeTest));
     }
 }

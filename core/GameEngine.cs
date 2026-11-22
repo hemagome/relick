@@ -62,6 +62,14 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
+    /// <summary>Ends the duel against <paramref name="actor"/> for a reason outside the rules, such as the clock of a rated duel.</summary>
+    public CommandResult Forfeit(int actor, string reason)
+    {
+        if (actor is < 0 or > 1 || State.IsOver) return CommandResult.Fail("La partida terminó.");
+        Finish(1 - actor, reason);
+        return CommandResult.Ok();
+    }
+
     public GameEngine(IGameRandom random)
     {
         _random = random;

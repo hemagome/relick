@@ -1,3 +1,5 @@
+using Relick.Core;
+
 namespace Relick;
 
 // Tapping a player's name, in preparation or in the duel, shows their public profile.
@@ -12,6 +14,12 @@ public partial class OnlineArena
     {
         if (GetNodeOrNull("ProfilePopup") != null) return;
         var view = TestProfiles?.Invoke(seat) ?? (Connection?.RoomProfile(seat) is { } info ? ProfileView.From(info) : null) ?? ProfileView.Default(name);
+        if (TestProfiles == null && Connection?.RoomStanding(seat) is { } standing)
+            view = view with
+            {
+                Standing = standing.Rated ? CompetitiveRules.Standing(standing.Value, standing.Played) : "",
+                Emblems = string.Join('\n', standing.Emblems.Select(emblem => $"{emblem.Title}: {emblem.Detail}"))
+            };
         ProfileCard.Show(this, view, own ? ArenaPresentation.Mint : ArenaPresentation.Coral);
     }
 }

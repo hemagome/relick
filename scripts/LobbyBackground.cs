@@ -1,4 +1,5 @@
 using Godot;
+using Relick.Core;
 
 namespace Relick;
 
@@ -6,19 +7,42 @@ namespace Relick;
 public partial class LobbyBackground : Control
 {
     private GradientTexture2D _wash = null!;
+    private string _backdrop = ProfileCatalog.DefaultPlaymat;
+
+    /// <summary>The player's backdrop tints the wash only: accents and reading surfaces keep their meaning.</summary>
+    public string Backdrop
+    {
+        get => _backdrop;
+        set
+        {
+            if (_backdrop == value) return;
+            _backdrop = value;
+            if (_wash == null) return;
+            _wash.Gradient.Colors = Wash();
+            QueueRedraw();
+        }
+    }
+
+    private Color[] Wash()
+    {
+        var background = MenuVisuals.Tone.Background;
+        if (ProfileCatalog.Playmat(_backdrop).Id == ProfileCatalog.DefaultPlaymat)
+            return [background.Lerp(new("35556f"), 0.72f), background.Lerp(new("203145"), 0.8f), background.Lerp(new("412638"), 0.6f)];
+        var cloth = ProfilePlaymats.Of(_backdrop);
+        return [cloth.Raised.Lerp(cloth.Trace, 0.14f), cloth.Raised, cloth.Background];
+    }
 
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Ignore;
         SetProcess(false);
-        var background = RelickVisuals.Playmat.Background;
         _wash = new GradientTexture2D
         {
             Width = 128, Height = 128, FillFrom = Vector2.Zero, FillTo = Vector2.One,
             Gradient = new Gradient
             {
                 Offsets = [0, 0.58f, 1],
-                Colors = [background.Lerp(new("35556f"), 0.72f), background.Lerp(new("203145"), 0.8f), background.Lerp(new("412638"), 0.6f)]
+                Colors = Wash()
             }
         };
         Resized += QueueRedraw;

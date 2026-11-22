@@ -27,7 +27,7 @@ public partial class OnlineLobby
         _content.Show();
         try
         {
-            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(1000, 600), new(844, 390), new(700, 390) })
             foreach (var reduced in new[] { false, true })
             {
                 GetWindow().ContentScaleSize = size; await Layout();
@@ -52,7 +52,7 @@ public partial class OnlineLobby
                 Check(_matchLink.PlaybackSeconds == preserved, "Actualizar el estado reinicia el ciclo de búsqueda.");
                 Check(_matchLink.Thumbnail.NativeId() == yuno.NativeId(), "La búsqueda con el mazo de entrenamiento no muestra a Yuno.");
                 PresentEquippedDeck(equipped);
-                Check(_matchLink.Thumbnail.NativeId() == osamu.NativeId() && _decks.Icon.NativeId() == osamu.NativeId() && _matchLink.PlaybackSeconds == preserved,
+                Check(_matchLink.Thumbnail.NativeId() == osamu.NativeId() && _hero.Relikario == RelikarioCatalog.Osamu.Id && _matchLink.PlaybackSeconds == preserved,
                     "La búsqueda no muestra el mismo Relikario que el mazo equipado o reinicia la animación al cambiar el retrato.");
                 if (!reduced && size.X is 1440 or 700) { await Layout(); await Capture($"match-searching-{size.X}x{size.Y}"); }
                 PresentLobbyState(null, false, false, RoomRequest.None, "", "", true); await Layout();
@@ -88,6 +88,6 @@ public partial class OnlineLobby
             _quickMatchRequested = false; _matchConfirmationRoom = ""; _matchConfirmationRemaining = 0;
             PresentLobbyState(null, true, false, RoomRequest.None, "", ""); _content.Hide();
         }
-        GD.Print("PVP_MATCHMAKING_ANIMATION_PASS · miniatura de Yuno y Osamu, cancelación fija, pausa/desconexión, movimiento reducido, emparejamiento inmediato y confirmado, transición acotada y sin repetición; cuatro tamaños.");
+        GD.Print("PVP_MATCHMAKING_ANIMATION_PASS · miniatura de Yuno y Osamu, cancelación fija, pausa/desconexión, movimiento reducido, emparejamiento inmediato y confirmado, transición acotada y sin repetición; cinco tamaños.");
     }
 }

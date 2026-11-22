@@ -41,7 +41,9 @@ public static class ProfileCatalog
         new("guardian", "Guardián del Relikario"),
         new("artesanal", "Artesanal"),
         new("p2w", "P2W"),
-        new("f2p", "F2P")
+        new("f2p", "F2P"),
+        new("clasificado", "Clasificado"),
+        new("campeon", "Campeón")
     ];
 
     public static readonly IReadOnlyList<ProfileFrame> Frames =
@@ -51,7 +53,9 @@ public static class ProfileCatalog
         new("coral", "Coral", "ff6f8e", "ff6f8e"),
         new("oro", "Oro", "ffc86b", "ffc86b"),
         new("violeta", "Violeta", "b5a2fa", "b5a2fa"),
-        new("cian", "Cian", "5fe0f2", "5fe0f2")
+        new("cian", "Cian", "5fe0f2", "5fe0f2"),
+        new("liga", "Liga", "e8eefc", "e8eefc"),
+        new("campeon", "Campeón", "ff9f43", "ff9f43")
     ];
 
     public static readonly IReadOnlyList<ProfilePlaymat> Playmats =
