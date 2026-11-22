@@ -10,10 +10,10 @@ public partial class OnlineArena
         void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
         var blue = RelikarioArt.Load("osamu", "attack-card");
         var red = BoardArt.LoadCardArtwork(CardCatalog.Attack, "yuno");
-        Check(blue != null && red != null && blue != red && BoardArt.LoadCardArtwork(CardCatalog.Attack, "osamu-lv2") == blue,
+        Check(blue != null && red != null && blue.NativeId() != red.NativeId() && BoardArt.LoadCardArtwork(CardCatalog.Attack, "osamu-lv2").NativeId() == blue.NativeId(),
             "Falta la carta azul de Ataque de Osamu o su evolución muestra otro arte.");
         var super = BoardArt.LoadCardArtwork(CardCatalog.SuperAttack, "osamu");
-        Check(super != null && super != blue && super == BoardArt.LoadCardArtwork(CardCatalog.SuperAttack, "yuno"),
+        Check(super != null && super.NativeId() != blue.NativeId() && super.NativeId() == BoardArt.LoadCardArtwork(CardCatalog.SuperAttack, "yuno").NativeId(),
             "Súper Ataque debe conservar su propia ilustración.");
 
         CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt];
@@ -29,14 +29,14 @@ public partial class OnlineArena
         GetWindow().ContentScaleSize = new(1820, 1024);
         for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, 0, 103));
-        Check(_handCards.Single(card => card.Name == "HandCard0").FaceTexture == blue &&
-            _handCards.Single(card => card.Name == "HandCard1").FaceTexture == red,
+        Check(_handCards.Single(card => card.Name == "HandCard0").FaceTexture.NativeId() == blue.NativeId() &&
+            _handCards.Single(card => card.Name == "HandCard1").FaceTexture.NativeId() == red.NativeId(),
             "Ataques de dos dueños en una mano deben conservar su arte de origen.");
-        Check(_opponentCards.Single().GetNode<HandCard>("RevealedFront").FaceTexture == red &&
-            _root!.FindChild("MemoryTopCard", true, false) is HandCard memory && memory.FaceTexture == blue,
+        Check(_opponentCards.Single().GetNode<HandCard>("RevealedFront").FaceTexture.NativeId() == red.NativeId() &&
+            _root!.FindChild("MemoryTopCard", true, false) is HandCard memory && memory.FaceTexture.NativeId() == blue.NativeId(),
             "El rival revelado y la memoria deben usar el arte de sus dueños.");
         SelectCard(0);
-        Check(_showcase?.FaceTexture == blue, "El inspector no amplía el Ataque azul que se seleccionó.");
+        Check(_showcase?.FaceTexture.NativeId() == blue.NativeId(), "El inspector no amplía el Ataque azul que se seleccionó.");
         for (var i = 0; i < variants.Length; i++)
         {
             var index = i + 2;
@@ -146,10 +146,10 @@ public partial class OnlineArena
     {
         var glove = RelikarioArt.Load(RelikarioCatalog.Yuno.Id, "attack-projectile");
         var bomb = RelikarioArt.Load(RelikarioCatalog.Osamu.Id, "attack-projectile");
-        if (glove == null || bomb == null || glove == bomb)
+        if (glove == null || bomb == null || glove.NativeId() == bomb.NativeId())
             throw new Exception("Yuno y Osamu necesitan proyectiles propios.");
         var leftGlove = RelikarioArt.Load(RelikarioCatalog.Yuno.Id, "attack-projectile-left");
-        if (leftGlove == null || leftGlove == glove || leftGlove.GetSize() != glove.GetSize())
+        if (leftGlove == null || leftGlove.NativeId() == glove.NativeId() || leftGlove.GetSize() != glove.GetSize())
             throw new Exception("El guantelete necesita una imagen hacia la izquierda con los botones legibles y el mismo tamaño.");
         var directory = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--ui-screenshot-dir="))?.Split('=', 2)[1];
         var reducedMotion = _impacts.ReducedMotion;

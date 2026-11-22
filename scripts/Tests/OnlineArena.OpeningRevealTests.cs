@@ -149,7 +149,8 @@ public partial class OnlineArena
                     "La elección inicial acepta interacción durante la presentación.");
                 SelectInitialSkillCandidate(skills.Options[0]);
                 Check(_initialSkillCandidate == null, "Se cambió la habilidad detrás de la presentación.");
-                Check(_openingRelikarios.Cards.SequenceEqual(expected.Select(form => RelikarioArt.Card(form.Id, 1))) &&
+                Check(_openingRelikarios.Cards.Select(card => card.NativeId())
+                        .SequenceEqual(expected.Select(form => RelikarioArt.Card(form.Id, 1).NativeId())) &&
                     _openingRelikarios.Cards.All(card => card != null) && _openingRelikarios.Portraits.All(portrait => !portrait.Visible),
                     "La escena no empieza con las cartas Lv 1 de ambos asientos.");
                 var meters = _openingRelikarios.Meters;

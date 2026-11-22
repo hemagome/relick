@@ -37,14 +37,14 @@ public partial class OnlineArena
             for (var relative = 0; relative < 2; relative++)
             {
                 var sleeve = SleeveArt.Back(Own(relative));
-                Check(_root!.FindChild("DeckStack" + relative, true, false) is DeckStack { BackTexture: var deck } && deck == sleeve,
+                Check(_root!.FindChild("DeckStack" + relative, true, false) is DeckStack { BackTexture: var deck } && deck.NativeId() == sleeve.NativeId(),
                     $"El mazo no muestra la mica de su dueño ({size}, asiento {seat}).");
-                Check(_root.FindChild("MemoryButton" + relative, true, false) is MemoryZoneButton { DisplayedFaceUp: 0, DisplayedFaceDown: 1, BackTexture: var corrupt } && corrupt == sleeve,
+                Check(_root.FindChild("MemoryButton" + relative, true, false) is MemoryZoneButton { DisplayedFaceUp: 0, DisplayedFaceDown: 1, BackTexture: var corrupt } && corrupt.NativeId() == sleeve.NativeId(),
                     "Las cartas corruptas no muestran la mica de su dueño.");
             }
             var rivalBacks = _opponentCards.Select(card => card.BackTexture).ToArray();
-            Check(rivalBacks.Length > 0 && rivalBacks.All(back => back == SleeveArt.Back(Own(1))), "La mano rival no muestra la mica del rival.");
-            Check(SleeveArt.Back("oro") != SleeveArt.Back("violeta") && SleeveArt.Back(CosmeticCatalog.DefaultSleeve) != SleeveArt.Back("oro"),
+            Check(rivalBacks.Length > 0 && rivalBacks.All(back => back.NativeId() == SleeveArt.Back(Own(1)).NativeId()), "La mano rival no muestra la mica del rival.");
+            Check(SleeveArt.Back("oro").NativeId() != SleeveArt.Back("violeta").NativeId() && SleeveArt.Back(CosmeticCatalog.DefaultSleeve).NativeId() != SleeveArt.Back("oro").NativeId(),
                 "Las micas no se distinguen entre sí.");
 
             // Each roll: the roller's die, even when the other player rolls during the turn.

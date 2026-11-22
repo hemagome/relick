@@ -244,8 +244,8 @@ public partial class OnlineArena
             var effects = _inspector.DescriptionLabel.Text;
             Check(artwork != null && _contextTitle.Text == $"{lv2.Name} · Lv 2" && effects.Contains(lv2.AbilityText) &&
                 (seat != 0 || effects.Contains("2 vidas") && effects.Contains("+1 al D6 de ataque")) &&
-                (Desktop ? _showcase is { Visible: true } && _showcase.FaceTexture == artwork
-                    : inlineArtwork is { Visible: true } && inlineArtwork.Texture == artwork),
+                (Desktop ? _showcase is { Visible: true } && _showcase.FaceTexture.NativeId() == artwork.NativeId()
+                    : inlineArtwork is { Visible: true } && inlineArtwork.Texture.NativeId() == artwork.NativeId()),
                 $"Pasar el cursor sobre el botón desactivado no muestra la carta y los efectos de {lv2.Name} en {size}.");
             if (_floatingReader == null) { GuiInputTestDriver.Hover(_inspector.ReadingViewport); await Layout(); }
             Check(evolve.Disabled && _contextTitle.Text == $"{lv2.Name} · Lv 2" && _moves.GetChildren().SequenceEqual(movesBeforeHover),

@@ -154,7 +154,7 @@ public partial class OnlineArena
         var pile = ZoneNode(1, CardZone.Attached, -1)!;
         var covered = pile.GetChildren().OfType<TextureRect>().SingleOrDefault();
         var overlay = pile.GetNode<TextureButton>(ZahiraNodeName(0, 0));
-        if (covered == null || covered.Texture != BoardArt.LoadCardArtwork(CardCatalog.Attack, rival.Relikario.Id) ||
+        if (covered == null || covered.Texture.NativeId() != BoardArt.LoadCardArtwork(CardCatalog.Attack, rival.Relikario.Id).NativeId() ||
             !covered.GetGlobalRect().Intersects(overlay.GetGlobalRect()))
             throw new Exception("Zahira Flair debe mostrar la carta cubierta aunque esté debajo de otra en su pila.");
         game.State.Players[0].ZahiraHost2 = game.State.Players[0].ZahiraHost;

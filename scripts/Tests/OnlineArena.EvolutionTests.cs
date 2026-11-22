@@ -27,7 +27,7 @@ public partial class OnlineArena
                 var evolved = RelikarioCatalog.EvolutionFor(form)!;
                 var oldArt = RelikarioArt.Card(form.Id, form.Level);
                 var newArt = RelikarioArt.Card(evolved.Id, evolved.Level);
-                Check(oldArt != null && newArt != null && oldArt != newArt, "Falta el arte de una forma del Relikario.");
+                Check(oldArt != null && newArt != null && oldArt.NativeId() != newArt.NativeId(), "Falta el arte de una forma del Relikario.");
                 var game = GameEngine.FromOpening(new DuelOpening
                 {
                     Names = ["Ana", "Beto"], Relikarios = [actor == 0 ? form.Id : RelikarioCatalog.Yuno.Id, actor == 1 ? form.Id : RelikarioCatalog.Osamu.Id], StartingSeat = actor,
@@ -60,7 +60,7 @@ public partial class OnlineArena
                     var relative = actor == seat ? 0 : 1;
                     Check(!IsAnimating, "La forma base reproduce una evolución.");
                     PresentDuelSnapshot(after);
-                    Check(IsAnimating && _evolution.RelativePlayer == relative && _evolution.FaceTexture == oldArt,
+                    Check(IsAnimating && _evolution.RelativePlayer == relative && _evolution.FaceTexture.NativeId() == oldArt.NativeId(),
                         "La evolución no bloquea las jugadas desde la carta de origen del asiento correcto.");
                     await Layout();
                     var landing = EvolutionAnchor(relative);
@@ -71,7 +71,7 @@ public partial class OnlineArena
                     _evolution.AdvancePlayback(.36, landing);
                     if (size.X == 1440 && seat == actor) await Capture($"evolucion-{form.Id}-lv1");
                     _evolution.AdvancePlayback(.52, landing);
-                    Check(_evolution.FaceTexture == newArt, "La carta no cambia al arte del nivel evolucionado.");
+                    Check(_evolution.FaceTexture.NativeId() == newArt.NativeId(), "La carta no cambia al arte del nivel evolucionado.");
                     if (seat == actor && size.X is 1440 or 700) await Capture($"evolucion-{form.Id}-lv2-{size.X}");
                     _evolution.AdvancePlayback(EvolutionReveal.Duration, landing);
                     Check(!IsAnimating && _portraits[relative].RelikarioId == evolved.Id && (!ownGallery || ChoosingDeckGallery),

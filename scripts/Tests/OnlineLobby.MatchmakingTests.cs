@@ -22,7 +22,7 @@ public partial class OnlineLobby
         var originalReducedMotion = _matchLink.ReducedMotion;
         var yuno = RelikarioArt.Thumbnail(RelikarioCatalog.Yuno.Id);
         var osamu = RelikarioArt.Thumbnail(RelikarioCatalog.Osamu.Id);
-        Check(yuno != null && osamu != null && yuno != osamu, "Faltan las miniaturas distintas de Yuno y Osamu.");
+        Check(yuno != null && osamu != null && yuno.NativeId() != osamu.NativeId(), "Faltan las miniaturas distintas de Yuno y Osamu.");
         var equipped = new DeckInfo { Name = "Mazo de Osamu", Relikario = RelikarioCatalog.Osamu.Id, Sleeve = "oro", Active = true };
         _content.Show();
         try
@@ -50,9 +50,9 @@ public partial class OnlineLobby
                 var preserved = _matchLink.PlaybackSeconds;
                 PresentLobbyState(null, true, false, RoomRequest.None, "", "", true);
                 Check(_matchLink.PlaybackSeconds == preserved, "Actualizar el estado reinicia el ciclo de búsqueda.");
-                Check(_matchLink.Thumbnail == yuno, "La búsqueda con el mazo de entrenamiento no muestra a Yuno.");
+                Check(_matchLink.Thumbnail.NativeId() == yuno.NativeId(), "La búsqueda con el mazo de entrenamiento no muestra a Yuno.");
                 PresentEquippedDeck(equipped);
-                Check(_matchLink.Thumbnail == osamu && _decks.Icon == osamu && _matchLink.PlaybackSeconds == preserved,
+                Check(_matchLink.Thumbnail.NativeId() == osamu.NativeId() && _decks.Icon.NativeId() == osamu.NativeId() && _matchLink.PlaybackSeconds == preserved,
                     "La búsqueda no muestra el mismo Relikario que el mazo equipado o reinicia la animación al cambiar el retrato.");
                 if (!reduced && size.X is 1440 or 700) { await Layout(); await Capture($"match-searching-{size.X}x{size.Y}"); }
                 PresentLobbyState(null, false, false, RoomRequest.None, "", "", true); await Layout();

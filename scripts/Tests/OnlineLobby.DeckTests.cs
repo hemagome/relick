@@ -77,7 +77,7 @@ public partial class OnlineLobby
             {
                 var back = deckRow.FindChild("DeckSleeve", true, false) as TextureRect;
                 var die = deckRow.FindChild("DeckDice", true, false) as DiceSwatch;
-                Expect(back?.Texture == SleeveArt.Back(sleeveId) && die?.Style == diceId, "la fila no muestra la mica y el dado del mazo.");
+                Expect(back?.Texture.NativeId() == SleeveArt.Back(sleeveId).NativeId() && die?.Style == diceId, "la fila no muestra la mica y el dado del mazo.");
                 Expect(deckRow.GetGlobalRect().Encloses(back!.GetGlobalRect()) && deckRow.GetGlobalRect().Encloses(die!.GetGlobalRect()),
                     "la mica o el dado se salen de la fila.");
                 Expect(deckRow.FindChild("ReadyMark", true, false) == null && deckRow.FindChild("DeckSummary", true, false) == null,
@@ -138,7 +138,7 @@ public partial class OnlineLobby
             Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: false } create && create.Text.Contains("Yuno"), "no se ofrece crear el mazo de Yuno.");
             ((Button)picker.FindChild("CardButton", true, false)).EmitSignal(BaseButton.SignalName.Pressed);
             await ToSignal(GetTree().CreateTimer(0.6), SceneTreeTimer.SignalName.Timeout);
-            Expect(picker.Level == 2 && ((TextureRect)picker.FindChild("RelikarioCard", true, false)).Texture == RelikarioPicker.Card("yuno", 2) &&
+            Expect(picker.Level == 2 && ((TextureRect)picker.FindChild("RelikarioCard", true, false)).Texture.NativeId() == RelikarioPicker.Card("yuno", 2).NativeId() &&
                 ((Button)picker.FindChild("Level2", true, false)).ButtonPressed, "tocar la carta no la gira al nivel 2.");
             Expect(RelikarioPicker.Monogram("Yuno 8 bits") == "Y8B" && RelikarioPicker.Monogram("Zii Jay") == "ZJ", "las iniciales de los Relikarios sin retrato son incorrectas.");
             foreach (var button in picker.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree() && b.GetGlobalRect().Position.Y < size.Y))
@@ -182,7 +182,7 @@ public partial class OnlineLobby
             var attackInDeck = (HandCard)mainGrid.GetNode("Deck_attack");
             var attackInCatalog = (HandCard)editor.FindChild("Catalog_attack", true, false)!;
             GuiInputTestDriver.Click(attackInDeck);
-            Expect(artwork.Texture == attackInDeck.FaceTexture && inspectorCopies.Text == "12 copias" && editor.Main.Count == 42,
+            Expect(artwork.Texture.NativeId() == attackInDeck.FaceTexture.NativeId() && inspectorCopies.Text == "12 copias" && editor.Main.Count == 42,
                 "el clic izquierdo no inspecciona la carta completa o cambia el mazo.");
             RightClick(attackInDeck);
             Expect(editor.Main.Count == 41 && inspectorCopies.Text == "11 copias" && editor.Problems.Count > 0,
@@ -204,7 +204,7 @@ public partial class OnlineLobby
             Expect(mainGrid.GetChildCount() == 16, "agrupar no devuelve una ficha por carta.");
             GuiInputTestDriver.Click((Button)editor.FindChild("InspectArtwork", true, false)!);
             Expect(editor.FindChild("DeckCardZoom", true, false) is AcceptDialog { Visible: true } &&
-                editor.FindChild("EnlargedCard", true, false) is TextureRect enlarged && enlarged.Texture == artwork.Texture,
+                editor.FindChild("EnlargedCard", true, false) is TextureRect enlarged && enlarged.Texture.NativeId() == artwork.Texture.NativeId(),
                 "la ampliación no muestra el arte seleccionado.");
             ((AcceptDialog)editor.FindChild("DeckCardZoom", true, false)!).Hide();
             await Frames();
@@ -215,7 +215,7 @@ public partial class OnlineLobby
                 "la colección de Yuno debe mostrar solo sus tres artes.");
             var alternates = variants.Select(card => (HandCard)editor.FindChild("Catalog_" + card.Id, true, false)!).ToArray();
             Expect(alternates.All(tile => tile.FaceTexture?.ResourcePath == $"res://assets/cards/{tile.Card.Id}-clean.png") &&
-                alternates.Append(attackInCatalog).Select(tile => tile.FaceTexture).Distinct().Count() == variants.Length + 1,
+                alternates.Append(attackInCatalog).Select(tile => tile.FaceTexture.NativeId()).Distinct().Count() == variants.Length + 1,
                 "la colección no distingue todos los artes de Ataque.");
             Expect(variants.All(card => editor.AddBlocked(card) != null),
                 "un arte alternativo permite superar los doce Ataques.");
@@ -225,7 +225,7 @@ public partial class OnlineLobby
                 RightClick(attackInDeck);
                 catalogScroll.EnsureControlVisible(alternate); await Frames();
                 RightClick(alternate); await Frames();
-                Expect(artwork.Texture == alternate.FaceTexture && inspectorCopies.Text == "1 copia" && mainGrid.HasNode("Deck_" + alternate.Card.Id),
+                Expect(artwork.Texture.NativeId() == alternate.FaceTexture.NativeId() && inspectorCopies.Text == "1 copia" && mainGrid.HasNode("Deck_" + alternate.Card.Id),
                     "el editor no cuenta ni muestra el arte elegido en su propia ficha.");
             }
             Expect(editor.Main.Count == 42 && editor.Problems.Count == 0 && editor.AddBlocked(CardCatalog.Attack) != null,
@@ -250,7 +250,7 @@ public partial class OnlineLobby
             await Frames();
             var catalogTile = (HandCard)editor.FindChild("Catalog_" + benchable[0].Id, true, false)!;
             GuiInputTestDriver.Click(catalogTile);
-            Expect(editor.Side.Count == 0 && artwork.Texture == catalogTile.FaceTexture, "el clic en la colección debe servir para inspeccionar.");
+            Expect(editor.Side.Count == 0 && artwork.Texture.NativeId() == catalogTile.FaceTexture.NativeId(), "el clic en la colección debe servir para inspeccionar.");
             Drag(catalogTile, (Control)editor.FindChild("DeckList", true, false)!);
             Expect(editor.Side.SequenceEqual([benchable[0].Id]), "no se puede arrastrar a una cuadrícula vacía.");
             GuiInputTestDriver.Click((Button)editor.FindChild("UndoDeck", true, false)!);
@@ -329,7 +329,7 @@ public partial class OnlineLobby
                 var ownerEditor = screen.Editor!;
                 var tiles = AttackTiles(ownerEditor);
                 Expect(tiles.Select(tile => tile.Card).ToHashSet().SetEquals([initial, ns, dt]) &&
-                    tiles.All(tile => tile.FaceTexture != null) && tiles.Select(tile => tile.FaceTexture).Distinct().Count() == 3,
+                    tiles.All(tile => tile.FaceTexture != null) && tiles.Select(tile => tile.FaceTexture.NativeId()).Distinct().Count() == 3,
                     $"la colección de {relikario} debe mostrar sus tres artes sin duplicados.");
                 Expect(ownerEditor.Main.SequenceEqual([initial.Id, initial.Id, ns.Id]) && ownerEditor.AddBlocked(CardCatalog.AttackYuno) != null,
                     $"un mazo anterior de {relikario} debe sustituir los artes ajenos por el inicial.");
