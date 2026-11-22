@@ -84,6 +84,9 @@ public partial class OnlineLobby
                 // Embedded/native windows render above CanvasLayers and would
                 // otherwise hide the notice or keep consuming input.
                 _joinDialog.Hide();
+                if (_arena == null)
+                    foreach (var window in _content.FindChildren("*", "Window", true, false).OfType<Window>())
+                        window.Hide();
                 if (_arena != null)
                     foreach (var window in _arena.FindChildren("*", "Window", true, false).OfType<Window>())
                     {

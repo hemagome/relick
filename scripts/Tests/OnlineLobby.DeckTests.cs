@@ -113,6 +113,8 @@ public partial class OnlineLobby
                 picker.Tiles["wd"].FindChild("Soon", true, false) != null, "Yuno y Osamu deben mostrar sus retratos, y WD debe marcarse como próximamente.");
             foreach (var name in new[] { "PickerBack", "RosterGallery", "RelikarioDetail", "CreateDeck", "CardButton" })
                 Inside((Control)picker.FindChild(name, true, false), name);
+            Expect(((Control)picker.FindChild("CreateDeck", true, false)).GetGlobalRect().End.Y <= size.Y + 1,
+                $"Crear mazo queda bajo la pantalla en {size.X}x{size.Y}.");
             var gallery = (Control)picker.FindChild("RosterGallery", true, false);
             foreach (var tile in picker.Tiles.Values.Where(tile => tile.IsVisibleInTree() && tile.GetGlobalRect().Position.Y < gallery.GetGlobalRect().End.Y))
             {
@@ -287,8 +289,12 @@ public partial class OnlineLobby
             var cardsBefore = editor.Main.Count;
             ((Button)editor.FindChild("StyleTab", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Expect(editor.EditingStyle && editor.FindChild("SleeveOptions", true, false) is HFlowContainer sleeves &&
-                sleeves.GetChildCount() == CosmeticCatalog.Sleeves.Count && editor.FindChild("DiceOptions", true, false) is HFlowContainer dice &&
-                dice.GetChildCount() == CosmeticCatalog.Dice.Count, "la pestaña Estilo no ofrece todas las micas y dados.");
+                sleeves.GetChildCount() == CosmeticCatalog.Sleeves.Count(sleeve => RewardCatalog.Of(RewardKind.Sleeve, sleeve.Id) == null) &&
+                editor.FindChild("DiceOptions", true, false) is HFlowContainer dice &&
+                dice.GetChildCount() == CosmeticCatalog.Dice.Count(die => RewardCatalog.Of(RewardKind.Dice, die.Id) == null) &&
+                editor.FindChild("Sleeve_" + RewardCatalog.SeasonSleeve.Id, true, false) == null &&
+                editor.FindChild("Dice_" + RewardCatalog.ChampionDice.Id, true, false) == null,
+                "la pestaña Estilo no ofrece todas las micas y dados libres, o regala los que se ganan.");
             Expect(editor.FindChild("StyleHelp", true, false) == null, "la pestaña Estilo conserva el texto explicativo.");
             Expect(editor.FindChild("Sleeve_" + CosmeticCatalog.DefaultSleeve, true, false) is Button { TooltipText: "Transparente" },
                 "el selector no llama Transparente a la mica predeterminada.");

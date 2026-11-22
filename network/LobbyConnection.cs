@@ -8,7 +8,7 @@ using System.Diagnostics;
 
 namespace Relick.Network;
 
-public enum RoomRequest { None, Create, Join, Leave, FindQuickMatch, CancelQuickMatch }
+public enum RoomRequest { None, Create, Join, Leave, FindQuickMatch, CancelQuickMatch, FindRankedMatch, CancelRankedMatch }
 
 /// <summary>Only receives authorized views; it never runs the practice engine.</summary>
 public sealed partial class LobbyConnection : IDisposable
@@ -151,6 +151,7 @@ public sealed partial class LobbyConnection : IDisposable
                 connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_room_relikarios"]);
                 SubscribeProfiles(connection);
                 SubscribePersonalization(connection);
+                SubscribeCompetitive(connection);
             })
             .OnConnectError(error => { Ready = Connecting = false; Message = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; })
             .OnDisconnect((_, error) => { Ready = Connecting = false; Message = "Se perdió la conexión. Pulsa Reconectar para recuperar tu sala."; });
@@ -181,6 +182,7 @@ public sealed partial class LobbyConnection : IDisposable
         RegisterDeckReplies();
         RegisterProfileReplies();
         RegisterPersonalizationReplies();
+        RegisterCompetitiveReplies();
         void BoardResult(string json, string roomCode)
         {
             var packet = JsonSerializer.Deserialize(json, DuelJson.Default.DuelBoardPacket)!;
@@ -298,6 +300,7 @@ public sealed partial class LobbyConnection : IDisposable
         _connection?.FrameTick();
         CheckConnectionHealth();
         TickQuickMatch();
+        TickRankedMatch();
         ResolvePlayResult();
         if (Duel is { Winner: not null } final && Room is { } finalRoom)
         { LastResult = final; LastResultRoom = finalRoom.Code; }
@@ -371,8 +374,8 @@ public sealed partial class LobbyConnection : IDisposable
                 {
                     RoomRequest.Leave => "Sala cerrada.",
                     RoomRequest.Create => "Sala creada. Comparte el código con tu rival.",
-                    RoomRequest.FindQuickMatch => Room == null ? "Buscando rival…" : "Rival encontrado.",
-                    RoomRequest.CancelQuickMatch => Room == null ? "" : "Rival encontrado.",
+                    RoomRequest.FindQuickMatch or RoomRequest.FindRankedMatch => Room == null ? "Buscando rival…" : "Rival encontrado.",
+                    RoomRequest.CancelQuickMatch or RoomRequest.CancelRankedMatch => Room == null ? "" : "Rival encontrado.",
                     _ => "Te uniste a la sala."
                 };
                 break;
@@ -392,7 +395,8 @@ public sealed partial class LobbyConnection : IDisposable
         Message = request switch
         {
             RoomRequest.Create => "Creando sala…", RoomRequest.Join => "Entrando a la sala…",
-            RoomRequest.FindQuickMatch => "Iniciando búsqueda…", RoomRequest.CancelQuickMatch => "Cancelando búsqueda…",
+            RoomRequest.FindQuickMatch or RoomRequest.FindRankedMatch => "Iniciando búsqueda…",
+            RoomRequest.CancelQuickMatch or RoomRequest.CancelRankedMatch => "Cancelando búsqueda…",
             _ => "Cerrando sala…"
         };
         try { send(); }
@@ -507,5 +511,6 @@ public sealed partial class LobbyConnection : IDisposable
         _decks = null; DeckPending = false; DeckRevision++;
         ProfilesAvailable = ProfilePending = false; ProfileRevision++;
         ForgetPersonalization();
+        ForgetCompetitive();
     }
 }

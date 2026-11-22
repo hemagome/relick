@@ -35,6 +35,7 @@ public partial class OnlineLobby
         {
             // The tab of the current page is also the way back to its first screen.
             if (page == MenuPage.Decks) _deckScreen?.ShowDecks();
+            if (page == MenuPage.Play) CloseCompetition();
             return;
         }
         if (_page == MenuPage.Customize && _wardrobe?.Dirty == true && !_leavingWardrobe)
@@ -42,6 +43,7 @@ public partial class OnlineLobby
             ConfirmLeavingWardrobe(page);
             return;
         }
+        CloseCompetition();
         if (_page == MenuPage.Decks) FreeDecks();
         if (_page == MenuPage.Customize) FreeWardrobe();
         _page = page;
@@ -131,7 +133,9 @@ public partial class OnlineLobby
         _shell.Navigation.Lock(MenuPage.Profile, reason);
         var profile = _lobby.Profile;
         var name = _auth != null && _lobby.Account?.Name is { Length: > 0 } saved ? saved : _name.Text;
-        var detail = _lobby.Account?.Guest == true ? "Invitado" : ProfileCatalog.Title(profile?.Title).Name;
+        var detail = _lobby.Account?.Guest == true ? "Invitado"
+            : _lobby.Season is { Open: true } && _lobby.Standing is { Played: > 0 } standing ? CompetitiveRules.Standing(standing.Value, standing.Played)
+            : ProfileCatalog.Title(profile?.Title).Name;
         _shell.Navigation.Present(name, detail, profile?.Avatar ?? ProfileCatalog.DefaultAvatar, profile?.Frame ?? ProfileCatalog.DefaultFrame);
     }
 

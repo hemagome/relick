@@ -15,6 +15,8 @@ public partial class DeckEditor : VBoxContainer
     public string InitialDice { get; init; } = CosmeticCatalog.DefaultDice;
     public bool ShortScreen { get; init; }
     public bool Touch { get; init; }
+    /// <summary>Whether the player may wear a cosmetic; earned ones are listed only once won.</summary>
+    public Func<RewardKind, string, bool> Owns { get; init; } = (kind, id) => RewardCatalog.Of(kind, id) == null;
 
     /// <summary>Name, main deck, Trap deck, side deck, sleeve and die.</summary>
     public event Action<string, List<string>, List<string>, List<string>, string, string>? SaveRequested;

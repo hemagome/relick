@@ -135,6 +135,8 @@ public static partial class Module
         string sleeve, string dice, string commandId)
     {
         if (!CosmeticCatalog.IsSleeve(sleeve) || !CosmeticCatalog.IsDice(dice)) throw new Exception("Esa mica o ese dado no existen.");
+        RequireUnlocked(ctx, RewardKind.Sleeve, sleeve);
+        RequireUnlocked(ctx, RewardKind.Dice, dice);
         StoreDeck(ctx, id, name, relikario, cards, traps, side, commandId, (sleeve, dice));
     }
 

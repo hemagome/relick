@@ -28,7 +28,8 @@ public static class CosmeticCatalog
         new("coral", "Coral", "ff6f8e", "2a0812", "ff6f8e"),
         new("oro", "Oro", "ffc86b", "2b1a02", "ffc86b"),
         new("violeta", "Violeta", "b5a2fa", "171034", "b5a2fa"),
-        new("medianoche", "Medianoche", "7c8fbf", "070a14", "ffc86b")
+        new("medianoche", "Medianoche", "7c8fbf", "070a14", "ffc86b"),
+        new("temporada", "Temporada", "e8eefc", "1a2233", "5fe0f2")
     ];
 
     public static readonly IReadOnlyList<DiceStyle> Dice =
@@ -38,7 +39,8 @@ public static class CosmeticCatalog
         new("coral", "Coral", "ff6f8e", "2a0812"),
         new("oro", "Oro", "ffc86b", "2b1a02"),
         new("violeta", "Violeta", "b5a2fa", "171034"),
-        new("obsidiana", "Obsidiana", "1d2130", "ffc86b")
+        new("obsidiana", "Obsidiana", "1d2130", "ffc86b"),
+        new("campeon", "Campeón", "ff9f43", "2b1402")
     ];
 
     public static bool IsSleeve(string? id) => Sleeves.Any(style => style.Id == id);

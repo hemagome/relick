@@ -319,9 +319,9 @@ public partial class DeckEditor
     private void BuildStyle()
     {
         var styleColumn = Column(_styleScroll, 8);
-        BuildStyleSection(styleColumn, "Mica", "Sleeve", CosmeticCatalog.Sleeves.Select(sleeve => (sleeve.Id, sleeve.Name)),
+        BuildStyleSection(styleColumn, "Mica", "Sleeve", CosmeticCatalog.Sleeves.Where(sleeve => sleeve.Id == _sleeve || Owns(RewardKind.Sleeve, sleeve.Id)).Select(sleeve => (sleeve.Id, sleeve.Name)),
             id => Artwork(SleeveArt.Back(id), Vector2.Zero), id => ChooseStyle(sleeve: id));
-        BuildStyleSection(styleColumn, "Dado", "Dice", CosmeticCatalog.Dice.Select(dice => (dice.Id, dice.Name)),
+        BuildStyleSection(styleColumn, "Dado", "Dice", CosmeticCatalog.Dice.Where(dice => dice.Id == _dice || Owns(RewardKind.Dice, dice.Id)).Select(dice => (dice.Id, dice.Name)),
             id => new DiceSwatch { Style = id }, id => ChooseStyle(dice: id));
         PresentStyle();
     }

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The development module with six-second competitive limits, to test forfeits by time. Never publish it to Maincloud. -->
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework><RuntimeIdentifier>wasi-wasm</RuntimeIdentifier><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><DefineConstants>$(DefineConstants);RELICK_DEV_AUTH;RELICK_SHORT_COMPETITION</DefineConstants></PropertyGroup>
+  <ItemGroup><PackageReference Include="SpacetimeDB.Runtime" Version="2.16.1" />
+    <Compile Include="../dev/CompetitionFixture.cs" Link="CompetitionFixture.cs" />
+    <Compile Include="../../../server/spacetimedb/*.cs" Link="Module/%(Filename)%(Extension)" />
+    <Compile Include="../../../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

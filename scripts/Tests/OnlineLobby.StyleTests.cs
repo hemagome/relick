@@ -7,6 +7,40 @@ namespace Relick;
 
 public partial class OnlineLobby
 {
+    // Every state of the two modes, including the largest bracket.
+    private static IEnumerable<(string Name, CompetitionView View)> CompetitionSamples()
+    {
+        const long now = 1_800_000_000_000_000, day = 86_400_000_000;
+        var season = new SeasonInfo { Id = 1, Name = "Temporada de inauguración", Open = true, StartsAt = now - day, EndsAt = now + 12 * day };
+        var closed = new SeasonInfo { Id = 1, Name = "Temporada de inauguración", Open = false, StartsAt = now - 30 * day, EndsAt = now };
+        var standing = new StandingInfo { Season = 1, Value = 1180, Peak = 1204, Played = 14, Wins = 9, Losses = 4, Draws = 1 };
+        List<EntrantInfo> Entrants(int count) => Enumerable.Range(1, count)
+            .Select(i => new EntrantInfo { Id = (ulong)i, Name = i == 1 ? "Jugador" : $"Duelista {i}", Seed = (uint)i }).ToList();
+        List<BracketInfo> FirstRound(int count)
+        {
+            var places = CompetitiveRules.FirstRound(count);
+            return Enumerable.Range(0, places.Length / 2).Select(i => new BracketInfo
+            {
+                Id = (ulong)i + 1, Round = 1, Position = (uint)i, EntryA = (ulong)places[2 * i], EntryB = (ulong)places[2 * i + 1],
+                Result = (byte)(places[2 * i + 1] == 0 ? 1 : places[2 * i] == 0 ? 2 : 0)
+            }).ToList();
+        }
+        TournamentInfo Cup(byte state, uint entered, uint rounds = 0, string champion = "") => new()
+        {
+            Id = 1, State = state, Name = "Copa Relick de primavera", Capacity = 32, Entered = entered, StartsAt = now + day,
+            Round = rounds > 0 ? 1u : 0, Rounds = rounds, Champion = champion
+        };
+        yield return ("inscripción", new(season, null, Cup(CompetitionView.Signup, 6), null, Entrants(6), [], now));
+        yield return ("en curso", new(season, standing, Cup(CompetitionView.Running, 8, 3),
+            new MyTournamentInfo { Tournament = 1, Entry = 1, Match = 1, Rival = "Duelista 8", RivalReady = true, Deadline = now + 480_000_000 },
+            Entrants(8), FirstRound(8), now));
+        yield return ("cupo máximo", new(season, standing, Cup(CompetitionView.Running, 32, 5),
+            new MyTournamentInfo { Tournament = 1, Entry = 1, Match = 1, Rival = "Duelista 32", Ready = true, Deadline = now + 480_000_000 },
+            Entrants(32), FirstRound(32), now));
+        yield return ("cerrado", new(closed, standing, Cup(CompetitionView.Finished, 8, 3, "Duelista 4"),
+            new MyTournamentInfo { Tournament = 1, Entry = 1, OutRound = 2, Rival = "" }, Entrants(8), FirstRound(8), now));
+    }
+
     // The screens outside the duel share one palette, type scale, set of corners, main action and way back.
     private async Task CheckMenuStyle()
     {
@@ -107,6 +141,30 @@ public partial class OnlineLobby
                     Expect(GetViewportRect().Grow(1).Encloses(button.GetGlobalRect()) && button.Size.X >= MenuVisuals.TouchTarget && button.Size.Y >= MenuVisuals.TouchTarget,
                         $"la pestaña {page} no cabe o es pequeña en {size}.");
                 ShowPage(MenuPage.Play); await Frames();
+                foreach (var (name, view) in CompetitionSamples())
+                {
+                    PreviewCompetition = view;
+                    PresentLobbyState(null, true, false, RoomRequest.None, "", ""); await Frames();
+                    Expect(_rankedCard.IsVisibleInTree() && _tournamentCard.IsVisibleInTree() && _plannedSlots.All(slot => !slot.Visible),
+                        "los modos abiertos siguen como planeados.");
+                    _lobbyPage.ScrollVertical = 0;
+                    Expect(GetViewportRect().Grow(1).Encloses(_rankedCard.GetGlobalRect()) && GetViewportRect().Grow(1).Encloses(_tournamentCard.GetGlobalRect()),
+                        $"los modos abiertos no caben en {size} ({name}).");
+                    Inspect(_content, "la sala con modos abiertos · " + name);
+                    foreach (var open in new Action[] { OpenRanked, OpenTournamentPanel })
+                    {
+                        open(); await Frames();
+                        var bounds = _competition!.GetGlobalRect();
+                        Expect(bounds.End.X <= Size.X + 1 && bounds.End.Y <= Size.Y + 1, $"{_competition.Name} desborda {size} ({name}).");
+                        foreach (var button in _competition.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree()))
+                            Expect(GetViewportRect().Grow(1).Encloses(button.GetGlobalRect()) && button.Size.Y >= MenuVisuals.TouchTarget, $"«{button.Text}» no cabe en {size} ({name}).");
+                        Inspect(_competition, $"{_competition.Name} · {name}");
+                        CloseCompetition(); await Frames();
+                    }
+                }
+                PreviewCompetition = null;
+                PresentLobbyState(null, true, false, RoomRequest.None, "", ""); await Frames();
+                Expect(_plannedSlots.All(slot => slot.Visible) && !_rankedCard.Visible && !_tournamentCard.Visible, "sin servidor competitivo los modos deben seguir planeados.");
                 OpenJoinDialog();
                 await Dialog(_joinDialog, "Tengo un código", 480);
                 _content.Hide(); _loginScreen.Show(); await Frames();
@@ -147,6 +205,8 @@ public partial class OnlineLobby
 
                         screen.ChooseRelikario(); await Frames();
                         Inspect(screen, "el selector");
+                        Expect(GetViewportRect().Grow(1).Encloses(((Control)screen.FindChild("CreateDeck", true, false)!).GetGlobalRect()),
+                            $"Crear mazo queda fuera de la pantalla en {size}.");
                         Expect(screen.FindChild("PickerBack", true, false) is Button { Text: "‹ Volver" }, "el selector no usa el botón de volver común.");
 
                         screen.Edit(2, "Otro mazo", training.Take(30).ToList(), [], relikario: "yuno"); await Frames();
@@ -182,7 +242,7 @@ public partial class OnlineLobby
                 _content.Show();
             }
         }
-        finally { _content.Hide(); }
+        finally { PreviewCompetition = null; _content.Hide(); }
         GD.Print("PVP_MENU_STYLE_PASS · sin morado, escalas de letra y esquinas, una acción principal, foco legible, diálogos ajustados y editor táctil; cinco tamaños.");
     }
 }

@@ -13,7 +13,7 @@ Los significados de `RelickVisuals.State` son independientes del tapete: selecci
 ## Sistema visual de los menús
 
 Las pantallas fuera del duelo (sala, inicio de sesión, mazos, editor, selector de
-Relikario, perfil, sonido y sus diálogos) toman sus colores, letras y esquinas de
+Relikario, vestidor, perfil, ajustes, competencias y sus diálogos) toman sus colores, letras y esquinas de
 `MenuVisuals`. No escribas colores ni tamaños propios en ellas.
 
 | Elemento | Regla |
@@ -29,6 +29,11 @@ Relikario, perfil, sonido y sus diálogos) toman sus colores, letras y esquinas 
 | Volver | `MenuVisuals.Back`: «‹ Volver», con el destino en el tooltip. |
 | Diálogos | `MenuDialog.Fill` y `MenuDialog.Show`: miden lo que su contenido y solo desplazan si no caben. |
 | Táctil | Los controles del editor miden al menos 48 unidades cuando `Touch` está activo (móvil). |
+
+`MenuShell` aloja las pantallas: Jugar, Mazos, Personalizar, Perfil y Ajustes. La
+navegación es una barra superior o, con menos de 600 de alto, un riel a la izquierda.
+El editor y el selector de Relikario la ocultan y vuelven con «‹ Volver». Durante una
+búsqueda o una sala solo quedan Jugar y Ajustes.
 
 `ArenaViewport.FitDialog` queda para los lectores del duelo (Memoria, Historial), que
 aprovechan toda la pantalla. `RelickVisuals.Primary` fija el color del texto en todos
@@ -88,10 +93,13 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --rail-only`, tambi
 
 ## Salas y preparación
 
-La entrada agrupa el nombre del jugador y dos tarjetas: Partida rápida y Sala privada.
-La primera ofrece Buscar rival y, durante la espera, un contador y Cancelar búsqueda.
-La segunda conserva Crear sala y Unirse mediante código. Buscar bloquea el nombre,
-el código y las acciones privadas hasta cancelar o encontrar rival. El fondo propio
+Jugar muestra el Relikario del mazo en uso (o el que el jugador eligió para su inicio),
+el mazo con «Cambiar», y los cuatro modos: Partida rápida, Sala privada, Clasificatoria
+ELO y Torneo. El nombre se edita en Perfil. Partida rápida ofrece Buscar rival y, durante
+la espera, un contador y Cancelar búsqueda, con tu tarjeta frente a una silueta en lugar
+del Relikario. Sala privada ofrece Crear sala y «Tengo un código», que pide el código en
+un diálogo. Buscar bloquea la navegación y las demás partidas hasta cancelar o encontrar
+rival. La sala en espera muestra el código y los dos asientos. El fondo propio
 del lobby combina un degradado gris azulado, tramas de manga, diagonales y los
 chevrones del logotipo en cian/rojo de bajo contraste. La decoración se concentra
 en los bordes; las superficies de lectura conservan su contraste. Es estático,
@@ -99,11 +107,11 @@ se adapta al tamaño y deja pasar los clics a los controles. Los acentos de las
 acciones y el foco visible conservan sus significados. En pantallas cortas se
 reducen márgenes y descripciones. Enter en el código permite unirse cuando hay conexión.
 
-Debajo de las dos tarjetas, dos espacios inactivos anuncian Clasificatoria ELO y Torneo,
-que están planeados y aún no existen: contorno discontinuo, color atenuado y
-«Próximamente». No son botones, no reciben clics ni foco, no consultan al servidor y se
-ocultan dentro de una sala. En ventanas de menos de 720 de alto quedan en una línea sin
-descripción y se ven sin desplazar la sala.
+Mientras el servidor no tenga una temporada o un torneo, Clasificatoria ELO y Torneo son
+espacios inactivos: contorno discontinuo, color atenuado y «Próximamente». No son
+botones, no reciben clics ni foco y no consultan al servidor. Cuando existen, los
+sustituye una `ModeCard` que abre su pantalla (`RankedPanel`, `TournamentPanel`). En
+ventanas de menos de 720 de alto los cuatro modos se ven sin desplazar la sala.
 
 Durante la partida rápida, el centro del panel muestra la miniatura del Relikario
 del mazo equipado, la silueta rival y tres flechas con un ciclo suave de dos
@@ -291,6 +299,9 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. T
 
 ## Editor de mazos
 
+Mis mazos es una vitrina: una ficha con portada por mazo y, al lado, el elegido con su
+Relikario, mica, dado y acciones. «Estilo» abre el vestidor en ese mazo.
+
 El editor muestra el mazo en el centro, el inspector a la izquierda y la colección a la derecha. En pantallas cortas el nombre y los totales ocupan la barra superior y Deshacer pasa junto a «Agrupar copias», para dejar el alto a las cartas. Las pestañas Principal, Trampas y Banquillo tienen sus propias cuadrículas. «Agrupar copias» alterna entre una ficha con contador por carta y una ficha por copia. Los requisitos del mazo se actualizan al editar y se pueden consultar antes de guardar un borrador.
 
 - Pulsa una carta para ver su arte y su efecto. Pulsa el arte del inspector para ampliarlo.
@@ -324,10 +335,11 @@ Pruebas:
 
 - **Tarjeta (`ProfileCard`).** Retrato del Relikario dentro del marco elegido (`ProfileAvatar`), nombre con el color de su lado, título, resultados («7 V · 3 D · 1 E · 64 % de victorias»), Relikario favorito y tapete.
 - **Rival.** En la preparación y en el duelo, el nombre de cada jugador se puede tocar y abre su tarjeta en una ventana emergente que se cierra al tocar fuera. Sin perfiles en el servidor, el nombre no responde.
-- **Editor (`ProfileEditor`).** Se abre desde el retrato junto a «Tu nombre» en el lobby. Retratos con su imagen, títulos en un desplegable y muestras de color para marcos y tapetes; la vista previa sigue cada elección y solo se guarda al pulsar Guardar.
+- **Vestidor (`Wardrobe`).** La pestaña Personalizar reúne retrato, marco, título y tapete del perfil; Relikario y fondo del inicio; portada, mica y dado de cada mazo. La vista previa sigue cada elección y nada se guarda hasta pulsar Guardar. Salir con cambios pregunta antes. Lo que se gana aparece atenuado con «Se gana»; al pulsarlo dice cómo.
+- **Perfil.** Tarjeta, nombre, liga, emblemas y resultados por Relikario.
 - **Tapete.** Se aplica al abrir la arena y vuelve al Clásico al salir.
 
-Prueba enfocada: `--profile-only`. Abre la tarjeta del rival en dos tamaños y ambos asientos, comprueba que cabe en pantalla y que no se duplica, y recorre el editor. Forma parte de la matriz completa; con `--ui-screenshot-dir` guarda la tarjeta y el editor.
+Prueba enfocada: `--profile-only`. Abre la tarjeta del rival en dos tamaños y ambos asientos, comprueba que cabe en pantalla y que no se duplica, y recorre el vestidor. Forma parte de la matriz completa; con `--ui-screenshot-dir` guarda la tarjeta y el editor.
 
 ## Toques de animación
 
@@ -361,12 +373,12 @@ Un texto visible solo se mantiene si aporta algo que no dicen ya la forma, la po
   - Las galerías por memoria no suman un total.
 - **Sala.**
   - Las tarjetas no repiten con una frase lo que dicen sus botones.
-  - El botón del mazo dice «Mazo · nombre».
+  - El mazo en uso se lee junto al Relikario; su botón solo dice «Cambiar».
   - La sala muestra solo su código, sin «Sala ·» ni el número de asiento.
 - **Mazos.**
   - Un mazo legal muestra ✓ en lugar de «42 cartas · Listo para jugar».
   - El mazo activo no repite «En uso» en un botón desactivado.
-  - Editar, Duplicar y Borrar son iconos con tooltip (`FramedIconButton`).
+  - En pantallas cortas Estilo, Duplicar y Borrar son iconos con tooltip (`FramedIconButton`).
   - Los totales del editor no repiten los de las pestañas.
   - Las copias del banquillo llevan su propio distintivo con el icono del banquillo, en lugar de «B1».
 - **Selector de Relikario.** Sin «Disponible», «Aún no jugable», «Toca la carta para girarla» ni «Cambio automático»; el subtítulo es más corto.

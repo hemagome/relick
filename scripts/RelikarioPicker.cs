@@ -33,6 +33,8 @@ public partial class RelikarioPicker : VBoxContainer
     internal RelikarioEntry Selected => _selected;
     internal int Level => _level;
     internal IReadOnlyDictionary<string, Button> Tiles => _tiles;
+    /// <summary>Side by side, but tall enough for the filters and the specific skills.</summary>
+    private bool Roomy => !ShortScreen || GetViewportRect().Size.Y >= 720;
     private float TileWidth => ShortScreen ? 96 : 132;
 
     /// <summary>The square portrait shown on a Relikario's tile, or null while it has no art.</summary>
@@ -62,7 +64,7 @@ public partial class RelikarioPicker : VBoxContainer
         MenuVisuals.Back(header, "PickerBack", "Mis mazos", () => Closed?.Invoke());
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; titles.AddThemeConstantOverride("separation", 0); header.AddChild(titles);
         var title = ArenaPresentation.Text("Nuevo mazo", ShortScreen ? MenuVisuals.Type.Title : MenuVisuals.Type.Hero); title.AddThemeFontOverride("font", RelickVisuals.Display); titles.AddChild(title);
-        if (!ShortScreen)
+        if (Roomy)
         {
             var subtitle = ArenaPresentation.Text("Elige el Relikario del mazo. Sus habilidades específicas solo funcionan con él.", MenuVisuals.Type.Body, BoardArt.Muted);
             subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart; titles.AddChild(subtitle);
@@ -71,7 +73,7 @@ public partial class RelikarioPicker : VBoxContainer
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; body.AddThemeConstantOverride("separation", ShortScreen ? 10 : 16); AddChild(body);
         var roster = Panel("RosterPanel"); roster.SizeFlagsHorizontal = SizeFlags.ExpandFill; body.AddChild(roster);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 10); roster.AddChild(column);
-        var filters = new HBoxContainer { Name = "RosterFilters", Visible = !ShortScreen }; filters.AddThemeConstantOverride("separation", 8); column.AddChild(filters);
+        var filters = new HBoxContainer { Name = "RosterFilters", Visible = Roomy }; filters.AddThemeConstantOverride("separation", 8); column.AddChild(filters);
         var group = new ButtonGroup();
         foreach (var (text, only) in new[] { ("Todos", false), ("Disponibles", true) })
         {
@@ -203,7 +205,7 @@ public partial class RelikarioPicker : VBoxContainer
         // Short screens put the card beside its details; tall ones stack them.
         BoxContainer layout = ShortScreen ? new HBoxContainer() : new VBoxContainer();
         layout.AddThemeConstantOverride("separation", 12); _detail.AddChild(layout);
-        var cardSize = ShortScreen ? new Vector2(180, 255) : new Vector2(330, 467);
+        var cardSize = !ShortScreen ? new Vector2(330, 467) : GetViewportRect().Size.Y >= 600 ? new Vector2(230, 326) : new Vector2(180, 255);
         var side = new VBoxContainer { Name = "DetailSide", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         side.AddThemeConstantOverride("separation", ShortScreen ? 8 : 10);
 
@@ -261,7 +263,7 @@ public partial class RelikarioPicker : VBoxContainer
             }
         }
 
-        if (_selected.Playable && !ShortScreen)
+        if (_selected.Playable && Roomy)
         {
             var skills = CardCatalog.All.Values.Where(card => card.Kind == CardKind.Skill && card.Relikario == _selected.Id).OrderBy(card => card.Name).ToList();
             if (skills.Count > 0)

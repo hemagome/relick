@@ -16,8 +16,8 @@ public partial class OnlineLobby
 
     private void PresentMatchmakingFeedback(bool searching, bool ready, RoomRequest pending, bool matched = false)
     {
-        var state = matched ? MatchmakingLinkState.Matched : pending == RoomRequest.CancelQuickMatch ? MatchmakingLinkState.Canceling
-            : searching ? MatchmakingLinkState.Searching : pending == RoomRequest.FindQuickMatch ? MatchmakingLinkState.Starting : MatchmakingLinkState.Idle;
+        var state = matched ? MatchmakingLinkState.Matched : pending is RoomRequest.CancelQuickMatch or RoomRequest.CancelRankedMatch ? MatchmakingLinkState.Canceling
+            : searching ? MatchmakingLinkState.Searching : pending is RoomRequest.FindQuickMatch or RoomRequest.FindRankedMatch ? MatchmakingLinkState.Starting : MatchmakingLinkState.Idle;
         var visible = state != MatchmakingLinkState.Idle;
         _matchFeedback.Visible = visible; _quickIdleSpace.Visible = !visible;
         _quickExplanation.Visible = !visible && !ArenaViewport.Short(this);
@@ -41,7 +41,7 @@ public partial class OnlineLobby
         {
             if (ready)
             {
-                if (searching || pending == RoomRequest.FindQuickMatch) _quickMatchRequested = true;
+                if (searching || pending is RoomRequest.FindQuickMatch or RoomRequest.FindRankedMatch) _quickMatchRequested = true;
                 else if (pending == RoomRequest.None) _quickMatchRequested = false;
                 _matchConfirmationRoom = ""; _matchConfirmationRemaining = 0;
             }
@@ -60,7 +60,7 @@ public partial class OnlineLobby
         if (_matchConfirmationRemaining <= 0) return false;
         PresentLobbyState(null, ready, _lobby.Connecting, RoomRequest.None, "", "", matched: true);
         _quickMatch.Text = "Preparando duelo…";
-        _quickMatch.Disabled = _create.Disabled = _join.Disabled = true;
+        _quickMatch.Disabled = _create.Disabled = _join.Disabled = _openJoin.Disabled = true;
         _name.Editable = _code.Editable = false;
         return true;
     }

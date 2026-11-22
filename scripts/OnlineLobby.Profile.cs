@@ -11,6 +11,9 @@ public partial class OnlineLobby
     private VBoxContainer _profileResults = null!;
     private Control _profileResultsSection = null!;
     private Button _customize = null!;
+    private VBoxContainer _profileEmblems = null!;
+    private Control _profileEmblemsSection = null!;
+    private int _presentedEmblemsRevision = -1;
 
     private Control BuildProfilePage()
     {
@@ -28,6 +31,9 @@ public partial class OnlineLobby
         _customize.Name = "OpenProfile";
         identity.AddChild(Description("Es el nombre que lee tu rival."));
 
+        _profileEmblems = SettingsSection(column, "LIGA Y EMBLEMAS");
+        _profileEmblems.Name = "ProfileEmblems";
+        _profileEmblemsSection = (Control)_profileEmblems.GetParent();
         _profileResults = SettingsSection(column, "RESULTADOS POR RELIKARIO");
         _profileResults.Name = "ProfileResults";
         _profileResultsSection = (Control)_profileResults.GetParent();
@@ -49,6 +55,12 @@ public partial class OnlineLobby
             _presentedProfileRevision = _lobby.ProfileRevision;
             foreach (var child in _profilePreview.GetChildren()) { _profilePreview.RemoveChild(child); child.QueueFree(); }
             _profilePreview.AddChild(new ProfileCard { Name = "ProfileCard", View = OwnProfile(), Accent = RelickVisuals.State.Own });
+        }
+        _profileEmblemsSection.Visible = _lobby.CompetitiveAvailable;
+        if (_presentedEmblemsRevision != _lobby.CompetitiveRevision)
+        {
+            _presentedEmblemsRevision = _lobby.CompetitiveRevision;
+            PresentEmblems(_lobby.Standing is { } standing ? CompetitiveRules.Standing(standing.Value, standing.Played) : "", _lobby.Emblems);
         }
         _profileResultsSection.Visible = _lobby.PersonalizationAvailable;
         if (_presentedRecordsRevision == _lobby.PersonalizationRevision) return;
@@ -77,6 +89,26 @@ public partial class OnlineLobby
             var draws = record.Draws > 0 ? $" · {record.Draws} E" : "";
             var total = ArenaPresentation.Text($"{record.Wins} V · {record.Losses} D{draws} · {rate} %", MenuVisuals.Type.Body, MenuVisuals.Tone.Reading);
             total.SizeFlagsVertical = SizeFlags.ShrinkCenter; row.AddChild(total);
+        }
+    }
+
+    private void PresentEmblems(string league, IReadOnlyList<Relick.Network.Types.EmblemInfo> emblems)
+    {
+        foreach (var child in _profileEmblems.GetChildren().Skip(1)) { _profileEmblems.RemoveChild(child); child.QueueFree(); }
+        if (league.Length > 0)
+        {
+            var label = Text(league, MenuVisuals.Type.Subtitle);
+            label.AddThemeColorOverride("font_color", BoardArt.Gold);
+            _profileEmblems.AddChild(label);
+        }
+        if (emblems.Count == 0) _profileEmblems.AddChild(Description("Los emblemas se ganan al cerrar una temporada o ganar un torneo."));
+        foreach (var emblem in emblems)
+        {
+            var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", 12); _profileEmblems.AddChild(row);
+            row.AddChild(new LobbySymbol { Icon = emblem.Kind == "season" ? GameIcon.Ranking : GameIcon.Trophy, Accent = BoardArt.Gold, CustomMinimumSize = new(48, 48) });
+            var texts = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+            texts.AddThemeConstantOverride("separation", 0); row.AddChild(texts);
+            texts.AddChild(Text(emblem.Title)); texts.AddChild(Description(emblem.Detail));
         }
     }
 

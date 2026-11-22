@@ -83,18 +83,19 @@ public partial class OnlineLobby : Control
         var room = _lobby.Room;
         if (HoldForQuickMatch(room, _lobby.Ready, _lobby.Searching, _lobby.PendingRoomRequest, delta)) return;
         if (_presentedRoomCode.Length > 0 && room == null && _lobby.Ready)
-            _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
+            _lobbyNotice = ClosedRoomNotice(_presentedRoomCode);
         if (_arena == null && room == null && _lobby.LastResult != null && !_resultExitRequested)
             OpenArena(_lobby.LastResultRoom);
         if (_arena != null && _lobby.Ready && (room == null && !_arena.HasFinishedResult && _lobby.LastResult == null ||
             _resultExitRequested && room?.Code != _arena.RoomCode))
         {
+            var closedCode = _arena.RoomCode;
             RemoveChild(_arena); _arena.QueueFree(); _arena = null; _content.Visible = true;
             // The lobby keeps the classic cloth; the chosen playmat dresses only the arena.
             RelickVisuals.Playmat = RelickPlaymat.Classic;
             GetNode<MusicDirector>("/root/MusicDirector").ShowMenu();
             _lobby.ClearResult(); _resultExitRequested = false;
-            _lobbyNotice = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
+            _lobbyNotice = ClosedRoomNotice(closedCode);
         }
         // A room recovered while browsing decks takes the player back to it.
         if (room != null) ReturnToPlay();
@@ -125,6 +126,8 @@ public partial class OnlineLobby : Control
     private void AdjustLobbyLayout()
     {
         if (_content == null) return;
+        // The rail sits at the edge, where a phone in landscape has its notch.
+        if (OS.HasFeature("mobile")) ArenaViewport.ApplyInsets(_content, 0, 0);
         var shortScreen = ArenaViewport.Short(this);
         var tight = TightLobby;
         _matchLink.Compact = tight;
@@ -135,6 +138,7 @@ public partial class OnlineLobby : Control
         foreach (var column in _entryColumns) column.AddThemeConstantOverride("separation", tight ? 6 : 12);
         foreach (var symbol in _entrySymbols) symbol.CustomMinimumSize = tight ? new(28, 28) : new(48, 48);
         foreach (var slot in _plannedSlots) slot.Compact = tight;
+        _rankedCard.Compact = _tournamentCard.Compact = tight;
         _plannedModes.AddThemeConstantOverride("separation", tight ? 8 : 14);
         foreach (var panel in _entryPanels) Pad(panel, shortScreen ? 10 : tight ? 14 : 22);
         Pad(_deckPanel, tight ? 8 : 16);

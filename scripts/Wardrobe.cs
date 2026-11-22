@@ -31,8 +31,8 @@ public partial class Wardrobe : Control
     private readonly Queue<DeckInfo> _styleQueue = [];
     private ulong _deck;
     private WardrobeCategory _category;
-    private bool _saving;
-    private string _saveError = "";
+    private bool _saving, _savedADeck;
+    private string _saveError = "", _hint = "";
     private int _shownRevision = -1;
 
     private readonly Dictionary<WardrobeCategory, Button> _categories = [];
@@ -143,7 +143,7 @@ public partial class Wardrobe : Control
         if (revision != _shownRevision && !Dirty) Load();
     }
 
-    private int Revision() => HashCode.Combine(Connection.ProfileRevision, Connection.PersonalizationRevision, Connection.DeckRevision, Connection.Ready);
+    private int Revision() => HashCode.Combine(Connection.ProfileRevision, Connection.PersonalizationRevision, Connection.DeckRevision, Connection.UnlockRevision, Connection.Ready);
 
     private void Load()
     {
@@ -187,7 +187,7 @@ public partial class Wardrobe : Control
 
     internal void ShowCategory(WardrobeCategory category)
     {
-        _category = category;
+        _category = category; _hint = "";
         _categories[category].SetPressedNoSignal(true);
         foreach (var (key, button) in _categories) if (key != category) button.SetPressedNoSignal(false);
         _deckRow.Visible = category is WardrobeCategory.Cover or WardrobeCategory.Sleeve or WardrobeCategory.Dice;
@@ -252,11 +252,32 @@ public partial class Wardrobe : Control
             }
             else { text.ClipText = true; text.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; }
             content.AddChild(text);
+            if (Locked(id) != null)
+            {
+                // Earned ones stay pressable: a press is how a finger learns what they ask for.
+                content.Modulate = new Color(1, 1, 1, 0.45f);
+                text.Text = "Se gana";
+                tile.TooltipText = $"{label}: {Locked(id)!.HowToEarn}";
+            }
             tile.Pressed += () => Choose(option);
             _options.AddChild(tile);
         }
         _optionScroll.ScrollHorizontal = 0;
         MarkChosen();
+    }
+
+    /// <summary>The reward still to be earned behind an option, or null when it can be worn.</summary>
+    private Reward? Locked(string id)
+    {
+        RewardKind? kind = _category switch
+        {
+            WardrobeCategory.Title => RewardKind.Title,
+            WardrobeCategory.Frame => RewardKind.Frame,
+            WardrobeCategory.Sleeve => RewardKind.Sleeve,
+            WardrobeCategory.Dice => RewardKind.Dice,
+            _ => null
+        };
+        return kind is { } earned && RewardCatalog.Of(earned, id) is { } reward && (Offline || !Connection.Owns(earned, id)) ? reward : null;
     }
 
     private Control? Picture(string id)
@@ -296,6 +317,13 @@ public partial class Wardrobe : Control
     internal void Choose(string id)
     {
         if (_saving) return;
+        if (Locked(id) is { } reward)
+        {
+            _hint = reward.HowToEarn;
+            Present();
+            return;
+        }
+        _hint = "";
         var deck = StyleOfDeck;
         switch (_category)
         {
@@ -332,7 +360,7 @@ public partial class Wardrobe : Control
         _save.Disabled = _saving || !dirty || !Offline && !Connection.Ready;
         _discard.Disabled = _saving || !dirty;
         _save.Text = _saving ? "Guardando…" : Short ? "Guardar" : "Guardar cambios";
-        _note.Text = _saveError.Length > 0 ? _saveError : dirty && !_saving ? "Cambios sin guardar" : "";
+        _note.Text = _saveError.Length > 0 ? _saveError : _hint.Length > 0 ? _hint : dirty && !_saving ? "Cambios sin guardar" : "";
         _note.TooltipText = _note.Text;
         _note.AddThemeColorOverride("font_color", _saveError.Length > 0 ? ArenaPresentation.Coral : RelickVisuals.State.Target);
     }
@@ -358,7 +386,8 @@ public partial class Wardrobe : Control
             return;
         }
         if (!Connection.Ready) { _saveError = "No hay conexión con el servidor."; Present(); return; }
-        _saveError = "";
+        _saveError = ""; _savedADeck = false;
+        Connection.TakeProfileError(); Connection.TakePersonalizationError();
         if ((_draft.Avatar, _draft.Frame, _draft.Title, _draft.Playmat) != (_saved.Avatar, _saved.Frame, _saved.Title, _saved.Playmat))
             Connection.SetProfile(_draft.Avatar, _draft.Title, _draft.Frame, _draft.Playmat);
         if ((_draft.Backdrop, _draft.Hero) != (_saved.Backdrop, _saved.Hero)) Connection.SetHomeStyle(_draft.Hero, _draft.Backdrop);
@@ -380,10 +409,11 @@ public partial class Wardrobe : Control
     {
         if (!Connection.Ready) { EndSave("Se perdió la conexión antes de confirmar los cambios."); return; }
         if (Connection.DeckPending) return;
-        if (Connection.DeckError.Length > 0) { EndSave(Connection.DeckError); return; }
+        if (_savedADeck && Connection.DeckError.Length > 0) { EndSave(Connection.DeckError); return; }
         if (_styleQueue.TryDequeue(out var deck))
         {
             var style = _draftDecks[deck.Id];
+            _savedADeck = true;
             Connection.SaveDeck(deck.Id, deck.Name, deck.Relikario, deck.Cards, deck.Traps, deck.Side, style.Sleeve, style.Dice);
             return;
         }

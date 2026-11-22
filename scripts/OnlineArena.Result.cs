@@ -9,6 +9,7 @@ public partial class OnlineArena
     private CenterContainer? _resultControls;
     private Label? _resultStatus, _resultCloseHint;
     private Button? _resultReturn;
+    private Label? _resultRated;
     private bool _resultDismissed;
     private bool ResultSettled => !IsAnimating && _pendingPortraits.Count == 0 && _portraits.All(p => !p.IsActionPlaying);
 
@@ -30,6 +31,10 @@ public partial class OnlineArena
             winner == -1 ? BoardArt.Gold : winner == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral);
         title.Name = "DuelResultTitle"; title.HorizontalAlignment = HorizontalAlignment.Center;
         title.AddThemeFontOverride("font", RelickVisuals.Display); column.AddChild(title);
+        _resultRated = ArenaPresentation.Text("", Short ? 14 : 16, BoardArt.Gold);
+        _resultRated.Name = "DuelResultRated"; _resultRated.Visible = false;
+        _resultRated.HorizontalAlignment = HorizontalAlignment.Center;
+        _resultRated.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(_resultRated);
         var reading = new ScrollContainer { Name = "DuelResultReading", CustomMinimumSize = new(0, Short ? 104 : 132),
             SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         column.AddChild(reading);
@@ -68,6 +73,12 @@ public partial class OnlineArena
                 _resultPanel.CreateTween().TweenProperty(_resultPanel, "modulate:a", 1f, 0.25);
         }
         _resultPanel.Visible = visible;
+        if (_resultRated != null)
+        {
+            var rated = RatedOutcome();
+            // Closing the room forgets its mode; the line already shown stays.
+            if (rated.Length > 0) { _resultRated.Text = rated; _resultRated.Visible = true; }
+        }
         var closing = Connection.PendingRoomRequest == RoomRequest.Leave;
         _resultReturn!.Disabled = !Connection.Ready || Connection.PendingRoomRequest != RoomRequest.None || !ResultSettled;
         _resultReturn.Text = closing ? "Cerrando sala…" : "Volver al lobby";

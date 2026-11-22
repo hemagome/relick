@@ -87,7 +87,8 @@ public partial class DeckScreen : Control
     {
         Clear();
         FullScreenChanged?.Invoke(true);
-        Picker = new RelikarioPicker { ShortScreen = GetViewportRect().Size.Y < 720 };
+        // Stacking the card over its details takes about 940 of height; below it they sit side by side.
+        Picker = new RelikarioPicker { ShortScreen = GetViewportRect().Size.Y < 940 };
         Picker.Closed += ShowList;
         Picker.Chosen += relikario => Edit(0, "Mazo nuevo", Enumerable.Repeat(DeckRules.DefaultAttackArt(relikario), DeckRules.AttackCount).ToList(), [], relikario: relikario);
         _margin.AddChild(Picker);
@@ -98,7 +99,7 @@ public partial class DeckScreen : Control
     {
         Clear();
         FullScreenChanged?.Invoke(true);
-        var editor = new DeckEditor { DeckName = name, Relikario = relikario ?? RelikarioCatalog.Yuno.Id, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen, Touch = Touch,
+        var editor = new DeckEditor { DeckName = name, Relikario = relikario ?? RelikarioCatalog.Yuno.Id, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen, Touch = Touch, Owns = Connection.Owns,
             InitialSleeve = sleeve ?? CosmeticCatalog.DefaultSleeve, InitialDice = dice ?? CosmeticCatalog.DefaultDice };
         Editor = editor;
         editor.Closed += ShowList;

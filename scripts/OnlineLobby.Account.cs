@@ -190,7 +190,7 @@ public partial class OnlineLobby
 
     internal static string DeleteAccountExplanation(int decks) =>
         "Se borrará de Relick, de forma permanente y sin posibilidad de recuperarlo:\n" +
-        "• Tu cuenta, tu nombre de jugador, tu perfil y tus estadísticas.\n" +
+        "• Tu cuenta, tu nombre de jugador, tu perfil y tus estadísticas.\n• Tu ELO, tus emblemas y los premios que ganaste.\n" +
         $"• {(decks == 1 ? "Tu mazo guardado" : $"Tus {decks} mazos guardados")}{(decks == 0 ? " (ahora no tienes ninguno)" : "")}.\n\n" +
         "Lo que Relick no puede borrar desde el juego: el registro de tu inicio de sesión en el servicio de cuentas (SpacetimeAuth), " +
         "que conserva tu correo y el método con el que entraste, por ejemplo Discord o Google. Para eliminarlo también, pídeselo al equipo de Relick.\n\n" +

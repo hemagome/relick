@@ -6,7 +6,7 @@ namespace Relick;
 
 /// <summary>What a profile card shows, independent of where it came from (the server or a preview).</summary>
 public sealed record ProfileView(string Name, string Avatar, string Title, string Frame, string Playmat,
-    uint Wins = 0, uint Losses = 0, uint Draws = 0, string Favorite = "")
+    uint Wins = 0, uint Losses = 0, uint Draws = 0, string Favorite = "", string Standing = "", string Emblems = "")
 {
     public uint Played => Wins + Losses + Draws;
 
@@ -112,6 +112,18 @@ public partial class ProfileCard : PanelContainer
                 line.AddChild(new TextureRect { Texture = thumbnail, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, CustomMinimumSize = new(22, 22) });
             line.AddChild(ArenaPresentation.Text($"Favorito: {favorite.DisplayName}", MenuVisuals.Type.Caption, BoardArt.Muted));
+        }
+        if (view.Standing.Length > 0)
+        {
+            var league = ArenaPresentation.Text($"Clasificatoria: {view.Standing}", MenuVisuals.Type.Caption, BoardArt.Gold);
+            league.Name = "ProfileStanding"; column.AddChild(league);
+        }
+        // One emblem per line, for the reason given above.
+        foreach (var emblem in view.Emblems.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = new HBoxContainer(); line.AddThemeConstantOverride("separation", 6); column.AddChild(line);
+            line.AddChild(new IconView { Icon = GameIcon.Trophy, Color = BoardArt.Gold, CustomMinimumSize = new(14, 14), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+            line.AddChild(ArenaPresentation.Text(emblem, MenuVisuals.Type.Caption, MenuVisuals.Tone.Reading));
         }
         var mat = ProfileCatalog.Playmat(view.Playmat);
         var playmat = new HBoxContainer { Name = "ProfilePlaymat" }; playmat.AddThemeConstantOverride("separation", 6); column.AddChild(playmat);

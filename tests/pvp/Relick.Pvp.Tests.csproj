@@ -15,6 +15,7 @@
     <Compile Include="../../network/LobbyConnection.Decks.cs" Link="LobbyConnection.Decks.cs" />
     <Compile Include="../../network/LobbyConnection.Profile.cs" Link="LobbyConnection.Profile.cs" />
     <Compile Include="../../network/LobbyConnection.Personalization.cs" Link="LobbyConnection.Personalization.cs" />
+    <Compile Include="../../network/LobbyConnection.Competitive.cs" Link="LobbyConnection.Competitive.cs" />
     <Compile Include="../../network/DeckInfo.Style.cs" Link="DeckInfo.Style.cs" />
     <Compile Include="../../core/**/*.cs" Link="Core/%(Filename)%(Extension)" />
   </ItemGroup>

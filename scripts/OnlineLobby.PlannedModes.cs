@@ -2,7 +2,7 @@ using Godot;
 
 namespace Relick;
 
-// Modes on the roadmap: visible in the lobby, with nothing to press, focus or send to the server.
+// Modes the server has not opened: visible in the lobby, with nothing to press, focus or send. OnlineLobby.Competitive swaps in their cards.
 public partial class OnlineLobby
 {
     private HBoxContainer _plannedModes = null!;
@@ -14,6 +14,7 @@ public partial class OnlineLobby
         parent.AddChild(_plannedModes);
         AddPlannedMode("RankedSlot", GameIcon.Ranking, "Clasificatoria ELO", "Duelos con puntuación contra rivales de tu nivel.");
         AddPlannedMode("TournamentSlot", GameIcon.Trophy, "Torneo", "Competencias por rondas entre varios duelistas.");
+        BuildModeCards();
     }
 
     private void AddPlannedMode(string name, GameIcon icon, string title, string description)

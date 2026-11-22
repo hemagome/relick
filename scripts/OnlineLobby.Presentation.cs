@@ -166,6 +166,7 @@ public partial class OnlineLobby
     private void OpenJoinDialog()
     {
         _localError = _lobbyNotice = "";
+        _lobby.ForgetRefusals();
         _joinError.Visible = false;
         MenuDialog.Show(_joinDialog);
         _code.GrabFocus();
@@ -194,7 +195,9 @@ public partial class OnlineLobby
     private void QuickMatch()
     {
         _lobbyNotice = _localError = "";
-        if (_lobby.Searching) _lobby.CancelQuickMatch(); else { SaveAccountName(); _lobby.FindQuickMatch(_name.Text); }
+        if (_lobby.SearchingRanked) _lobby.CancelRankedMatch();
+        else if (_lobby.Searching) _lobby.CancelQuickMatch();
+        else { SaveAccountName(); _lobby.FindQuickMatch(_name.Text); }
         if (_lobby.PendingRoomRequest == RoomRequest.FindQuickMatch) _quickMatchRequested = true;
     }
 
@@ -233,11 +236,21 @@ public partial class OnlineLobby
         _status.Modulate = failed.Length > 0 ? ArenaPresentation.Coral : Colors.White;
         var busy = pending != RoomRequest.None;
         _create.Disabled = _join.Disabled = _openJoin.Disabled = !ready || busy || searching || room != null;
-        _quickMatch.Disabled = !ready || !quickMatchAvailable || busy || room != null;
+        // The same card follows either queue, so cancelling a ranked search needs no casual queue.
+        var rankedQueue = _lobby.SearchingRanked || pending is RoomRequest.FindRankedMatch or RoomRequest.CancelRankedMatch;
+        _quickMatch.Disabled = !ready || !quickMatchAvailable && !rankedQueue || busy || room != null;
+        var quickTitle = rankedQueue ? "Clasificatoria ELO" : "Partida rápida";
+        if (!matched && _entryQuickTitle != quickTitle)
+        {
+            _entryQuickTitle = quickTitle;
+            _entryTitles[0].Text = quickTitle;
+            ((Label)_entryDescriptions[0]).Text = rankedQueue ? "Con puntuación" : "Casual · Sin clasificación";
+        }
         _quickMatch.TooltipText = quickMatchAvailable ? "" : "La partida rápida no está disponible en este servidor.";
-        _quickMatch.Text = pending == RoomRequest.FindQuickMatch ? "Iniciando…" : pending == RoomRequest.CancelQuickMatch ? "Cancelando…" : searching ? "Cancelar búsqueda" : "Buscar rival";
+        _quickMatch.Text = pending is RoomRequest.FindQuickMatch or RoomRequest.FindRankedMatch ? "Iniciando…"
+            : pending is RoomRequest.CancelQuickMatch or RoomRequest.CancelRankedMatch ? "Cancelando…" : searching ? "Cancelar búsqueda" : "Buscar rival";
         // Searching is the action; calling it off is not.
-        var cancels = searching && !matched || pending == RoomRequest.CancelQuickMatch;
+        var cancels = searching && !matched || pending is RoomRequest.CancelQuickMatch or RoomRequest.CancelRankedMatch;
         if (cancels == RelickVisuals.IsPrimary(_quickMatch))
         {
             if (cancels) RelickVisuals.Secondary(_quickMatch); else RelickVisuals.Primary(_quickMatch);
@@ -251,6 +264,7 @@ public partial class OnlineLobby
         PresentProfileState(ready && !busy && !searching && room == null);
         PresentAccountSettings();
         PresentNavigation(ready, busy, searching || matched, room != null);
+        PresentCompetition(busy, room != null, searching || matched || pending == RoomRequest.FindRankedMatch);
         PresentEquippedDeck(_lobby.Decks.FirstOrDefault(deck => deck.Active));
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;
@@ -356,6 +370,6 @@ public partial class LobbySymbol : Control
     public override void _Draw()
     {
         BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), BoardArt.Tint(Accent, 0.09f), BoardArt.Tint(Accent, 0.25f), MenuVisuals.Cut.Control);
-        BoardArt.Icon(this, Icon, Size / 2, Math.Min(25, Size.Y * 0.6f), Accent);
+        BoardArt.Icon(this, Icon, Size / 2, Size.Y > 64 ? Size.Y * 0.5f : Math.Min(25, Size.Y * 0.6f), Accent);
     }
 }

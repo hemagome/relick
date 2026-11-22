@@ -111,6 +111,7 @@ tools/audio/          Generadores de la música y los efectos originales
 ## Documentación
 
 - [PvP: configuración, servidor y pruebas en línea](docs/PVP.md)
+- [Competencias: ELO, temporadas, torneos y premios](docs/COMPETITIVE.md)
 - [Interfaz, animaciones y validación](docs/UI.md)
 - [Stack y diseño del duelo en línea](docs/STACK.md)
 - [Audio](docs/MUSIC.md)
