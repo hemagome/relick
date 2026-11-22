@@ -64,8 +64,9 @@ static class DuelTests
 
     static void ReplayMatches()
     {
-        var phases = new HashSet<Phase>();
-        for (var seed = 0; seed < 24; seed++)
+        // Replaying grows with every move, so each seed's duel runs in parallel with the others.
+        var phases = new System.Collections.Concurrent.ConcurrentDictionary<Phase, byte>();
+        Parallel.For(0, 24, seed =>
         {
             var opening = Opening(seed);
             var resumed = DuelReplay.Restore(opening, []);
@@ -74,7 +75,7 @@ static class DuelTests
             var step = 0;
             while (!resumed.Game.State.IsOver && step++ < 1000)
             {
-                var game = resumed.Game; phases.Add(game.State.Phase);
+                var game = resumed.Game; phases.TryAdd(game.State.Phase, 0);
                 var actor = game.State.DecisionPlayer;
                 var choices = DuelOptions.For(game, actor).Where(o => o.Move.Kind != DuelMoveKind.Concede).ToList();
                 if (choices.Count == 0) throw new Exception($"Sin decisión en {game.State.Phase}, seed {seed}.");
@@ -97,9 +98,9 @@ static class DuelTests
                 if (count != 2 * CardCatalog.TrainingDeck().Count) throw new Exception("Se perdió una carta al ejecutar el duelo.");
             }
             if (!resumed.Game.State.IsOver) throw new Exception("El duelo reconstruido no termina.");
-        }
+        });
         foreach (var phase in new[] { Phase.AttackRerollChoice, Phase.DieRerollChoice, Phase.ErrorResponse, Phase.Decision, Phase.RecycleChoice })
-            if (!phases.Contains(phase)) throw new Exception("No se ejercitó una continuación de " + phase);
+            if (!phases.ContainsKey(phase)) throw new Exception("No se ejercitó una continuación de " + phase);
     }
 
     static void InvalidRandom()

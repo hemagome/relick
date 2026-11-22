@@ -140,17 +140,16 @@ Normalmente no hay que tocarla: el inspector muestra `Text`, y las decisiones y 
    - guardar y recargar a mitad de una decisión (`GameEngine.FromSnapshot(game.SaveSnapshot(), random)`);
    - que el rival no ve información privada (`DuelSnapshot.For(game, rival, …)`).
 3. Para responder decisiones en las pruebas, usa `game.ResolveDecision(actor, índice)` o los atajos de [scripts/Tests/DecisionCommands.cs](../scripts/Tests/DecisionCommands.cs). Añade uno ahí si tu carta lo necesita.
-4. Si tiene presentación propia, añade una comprobación en `scripts/Tests/` y llámala desde `ArenaUiSmokeTest`.
+4. Si tiene presentación propia, añade una comprobación en `scripts/Tests/` y regístrala en la tabla `checks` de `OnlineLobby.UiTests.cs`; debe pasar también ejecutada sola (`./pruebas.sh --checks=Nombre`).
 
 ## 7. Verificar
 
 ```bash
-dotnet run --project tests/Relick.Core.Tests.csproj
+./pruebas.sh
 dotnet build server/spacetimedb/StdbModule.csproj
-./jugar.sh --headless --pvp-ui-test
 ```
 
-Las tres deben pasar. El módulo del servidor compila el mismo `core/`, así que un fallo ahí suele ser código de Godot que se coló en el motor.
+Ambas deben pasar. El módulo del servidor compila el mismo `core/`, así que un fallo ahí suele ser código de Godot que se coló en el motor.
 
 ## Lista de comprobación
 

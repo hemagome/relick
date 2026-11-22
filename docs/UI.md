@@ -435,10 +435,10 @@ y rival encontrado en una ejecución gráfica. La prueba de dos procesos con
 `--pvp-input-quick` exige una sola confirmación visual en cada cliente.
 
 ```bash
-dotnet run --project tests/Relick.Core.Tests.csproj
-dotnet build Relick.csproj
-./jugar.sh --headless -- --pvp-ui-test
+./pruebas.sh
 ```
+
+`pruebas.sh` compila, ejecuta el motor y reparte la matriz de interfaz entre varios procesos de Godot; sus opciones están en el [README](../README.md#pruebas). La matriz es la tabla `checks` de `OnlineLobby.UiTests.cs`: cada comprobación tiene nombre, se ejecuta sola con `--pvp-ui-test --checks=Nombre` y debe pasar tanto sola como detrás de las demás, porque el script las agrupa según su duración. Una comprobación nueva se añade a esa tabla; si además quieres un filtro `--algo-only`, añádelo a `UiTestFlags`. Un filtro mal escrito hace fallar la prueba en lugar de recorrer toda la matriz. Cada comprobación imprime `PVP_UI_CHECK · Nombre · ms`, y el script muestra las diez más lentas.
 
 Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-search-only` a los argumentos de la prueba; para Cambio de Mentes, usa `--mind-swap-only`. Se puede combinar con `--ui-screenshot-dir=/tmp/relick-ui` para guardar las capturas de PC y móvil horizontal.
 
