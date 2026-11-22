@@ -96,6 +96,14 @@ public partial class OnlineArena
                     var deckCenter = table!.ScreenPoint(deck, deck.Size / 2).Y;
                     var columnCenter = table.ScreenPoint(memory, memory.Size / 2 + new Vector2(0, (BoardCanvas.CardHeight + 10) / 2)).Y;
                     Check(Math.Abs(deckCenter - columnCenter) < 9, "El mazo no está centrado en su columna.");
+                    var lift = table.ScreenPoint(deck, deck.TopRect.GetCenter()) - table.ScreenPoint(deck, deck.Size / 2);
+                    Check(lift.Y < -1 && (side == 0 ? lift.X > 1 : lift.X < -1),
+                        "La tapa del mazo debe elevarse hacia arriba y hacia fuera para descubrir su frente y su costado interior.");
+                    var (amount, fullTop) = (deck.Amount, deck.TopRect);
+                    deck.Amount = amount - 7;
+                    var lowerTop = deck.TopRect;
+                    deck.Amount = amount;
+                    Check(lowerTop.Size.X < fullTop.Size.X, "La altura del mazo debe seguir su número de cartas sin saturarse.");
                     var tl = table!.ScreenPoint(memory, Vector2.Zero);
                     var tr = table.ScreenPoint(memory, new Vector2(memory.Size.X, 0));
                     var bl = table.ScreenPoint(memory, new Vector2(0, memory.Size.Y));

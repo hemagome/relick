@@ -24,6 +24,14 @@ public partial class BoardCanvas : Control
     internal const float PerspectiveSlope = Depth / (NearEdge - FarEdge);
     internal const float PerspectiveRise = (NearY - RearRailY) * (1 + Depth) / (NearEdge - FarEdge);
     internal static Vector4 ProjectionParameters => new(DesignWidth / 2, NearEdge, NearY, PerspectiveSlope);
+    // The camera that this projection amounts to, looking through the centre of the design space.
+    private const float LensShift = NearY - DesignHeight / 2;
+    private static readonly float TiltCos = PerspectiveRise - LensShift * PerspectiveSlope;
+    private static readonly float TiltSin = Mathf.Sqrt(1 - TiltCos * TiltCos);
+    private static readonly float Focal = TiltSin / PerspectiveSlope;
+    /// <summary>The point of the tabletop right under the eye, and how high the eye is above it.</summary>
+    internal static readonly Vector2 EyeFoot = new(DesignWidth / 2, NearEdge + Focal * TiltSin - LensShift * TiltCos);
+    internal static readonly float EyeHeight = Focal * TiltCos + LensShift * TiltSin;
     private enum Layer { Screen, Hud, Figure }
 
     private readonly Control _stage = new() { Name = "BoardStage", MouseFilter = MouseFilterEnum.Ignore };

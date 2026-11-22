@@ -22,6 +22,8 @@ public partial class DeckStack : Control
         MouseFilter = MouseFilterEnum.Pass;
         DescribeDeck();
         _back = SleeveArt.Back(Sleeve);
+        // It stands on the table: the flat frames of the other field run under it.
+        if (RaisedPile) ZIndex = 1;
         Resized += QueueRedraw;
     }
 
@@ -35,15 +37,15 @@ public partial class DeckStack : Control
     private void DescribeDeck() => TooltipText = $"Mazo: {PresentedAmount} cartas restantes";
 
     // Legacy docks keep the 70×116 footprint; board rows stretch the pile to their height.
-    public Rect2 TopRect
+    // Flights use the final height, so a pending card cannot move their landing.
+    public Rect2 TopRect => RaisedPile ? RaisedStack.Top(this, Footprint, Amount) : Footprint;
+
+    private Rect2 Footprint
     {
         get
         {
             if (Board)
-            {
-                var fit = BoardArt.FitArtwork(new Vector2(54, 77), RaisedPile ? BoardArt.StackArea(Size) : new Rect2(4, 4, Size.X - 12, Size.Y - 12));
-                return fit;
-            }
+                return BoardArt.FitArtwork(new Vector2(54, 77), RaisedPile ? RaisedStack.Area(Size) : new Rect2(4, 4, Size.X - 12, Size.Y - 12));
             if (Size.Y <= 118) return new(new Vector2(5, 5), new Vector2(54, 77));
             var height = Math.Min(Size.Y - 34, (Size.X - 14) * 77 / 54);
             var extent = new Vector2(height * 54 / 77, height);
@@ -55,10 +57,10 @@ public partial class DeckStack : Control
     {
         var amount = PresentedAmount;
         BoardArt.Socket(this, new Rect2(Vector2.Zero, Size), Accent, amount == 0 ? 1 : 0.55f);
-        var top = TopRect;
+        var top = RaisedPile ? RaisedStack.Top(this, Footprint, amount) : Footprint;
         if (amount > 0 && _back != null)
         {
-            if (RaisedPile) BoardArt.StackEdges(this, top, amount, Accent, deck: true);
+            if (RaisedPile) RaisedStack.Draw(this, this, Footprint, amount, RaisedStack.SleeveColor(Sleeve));
             else
             {
                 var layers = Math.Min(5, Math.Max(1, amount / 6));
@@ -75,8 +77,10 @@ public partial class DeckStack : Control
         }
         var caption = amount.ToString();
         var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 10).X + 14;
-        var chip = new Rect2((Size.X - width) / 2, Size.Y - 22, width, 17);
+        var chip = RaisedPile
+            ? new Rect2(top.GetCenter().X - width / 2, top.End.Y - 24, width, 17)
+            : new Rect2((Size.X - width) / 2, Size.Y - 22, width, 17);
         BoardArt.Plate(this, chip, Board ? new Color("0b1020") : new Color(0, 0, 0, 0.45f), BoardArt.Tint(Accent, Board ? 0.6f : 0.4f), 4);
-        BoardArt.CenterText(this, caption, new(Size.X / 2, Size.Y - 10), 10, Accent);
+        BoardArt.CenterText(this, caption, new(chip.GetCenter().X, chip.Position.Y + 12), 10, Accent);
     }
 }

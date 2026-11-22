@@ -41,12 +41,13 @@ internal sealed partial class ProjectedTable : TextureRect
     {
         _zones.AddChild(node);
         node.Position = area.Position;
-        node.Size = area.Size;
         if (facingRival)
         {
-            node.PivotOffset = node.Size / 2;
+            node.PivotOffset = area.Size / 2;
             node.Rotation = Mathf.Pi;
         }
+        // Last, so that piles lay out their raised top with the orientation already known.
+        node.Size = area.Size;
     }
 
     internal static ProjectedTable? Of(Control node) => node.GetViewport()?.GetParent() as ProjectedTable;

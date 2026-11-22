@@ -239,7 +239,8 @@ public static class ArenaPresentation
         Put(MemoryPile(owner, index, accent, actions.Memory, board: true, raised: canvas.TableView), 996, top, W, H);
         // Center each deck vertically in the outer column, just beyond the opposing Bonus/Área frame.
         var deckRow = canvas.TableView ? (top + bottom) / 2 : bottom;
-        var deckInset = canvas.TableView ? 10 : 0;
+        // Room for a full deck's top, which appears displaced outward, inside the table's texture.
+        var deckInset = canvas.TableView ? 18 : 0;
         Put(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, Board = true,
             RaisedPile = canvas.TableView, Sleeve = owner.Sleeve }, BoardCanvas.DesignWidth - W - deckInset, deckRow, W, H);
     }

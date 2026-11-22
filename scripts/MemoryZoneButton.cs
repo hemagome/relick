@@ -15,6 +15,7 @@ public partial class MemoryZoneButton : Button
     public Color Accent { get; init; } = new("b5a2fa");
     private Texture2D? _back;
     private HandCard? _preview;
+    private Control? _body;
     private int _pendingArrivals;
     private int _pendingCorruptedArrivals;
     internal int DisplayedFaceUp => Math.Max(0, Cards.Length - _pendingArrivals);
@@ -26,15 +27,19 @@ public partial class MemoryZoneButton : Button
     internal bool RaisedPile { get; init; }
     // Legacy docks keep the compact counter; board rows show the top card as a real pile.
     private bool Tall => Size.Y > 96;
-    public Rect2 CardRect
+    // Flights land on the final height; the pile on screen only counts the cards that arrived.
+    public Rect2 CardRect => RaisedPile ? RaisedStack.Top(this, Footprint, Cards.Length + CorruptedCount) : Footprint;
+    private Rect2 PresentedRect => RaisedPile ? RaisedStack.Top(this, Footprint, DisplayedAmount) : Footprint;
+
+    public override bool _HasPoint(Vector2 point) =>
+        new Rect2(Vector2.Zero, Size).HasPoint(point) || RaisedPile && PresentedRect.HasPoint(point);
+
+    private Rect2 Footprint
     {
         get
         {
             if (Board)
-            {
-                var area = RaisedPile ? BoardArt.StackArea(Size) : new Rect2(4, 4, Size.X - 8, Size.Y - 8);
-                return BoardArt.FitArtwork(new Vector2(126, 175), area);
-            }
+                return BoardArt.FitArtwork(new Vector2(126, 175), new Rect2(4, 4, Size.X - 8, Size.Y - 8));
             if (!Tall) return new(6, 18, 26, 36.8f);
             var height = Size.Y - 48;
             var extent = new Vector2(height * 126 / 184, height);
@@ -45,7 +50,7 @@ public partial class MemoryZoneButton : Button
     private void PlacePreview()
     {
         if (_preview == null) return;
-        var rect = CardRect;
+        var rect = PresentedRect;
         var scale = rect.Size.Y / 175f;
         _preview.Scale = new(scale, scale);
         _preview.Position = rect.Position - new Vector2(1, 7) * scale;
@@ -56,9 +61,17 @@ public partial class MemoryZoneButton : Button
         CustomMinimumSize = new(Math.Max(70, CustomMinimumSize.X), 58);
         MouseDefaultCursorShape = CursorShape.PointingHand;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        if (RaisedPile)
+        {
+            // Behind the top card, which is itself drawn behind the pile's labels.
+            _body = new Control { Name = "PileBody", MouseFilter = MouseFilterEnum.Ignore, ShowBehindParent = true };
+            _body.Draw += () => RaisedStack.Draw(_body, this, Footprint, DisplayedAmount, RaisedStack.SleeveColor(Sleeve));
+            AddChild(_body);
+            ZIndex = 1;
+        }
         if (CorruptedCount > 0) _back = SleeveArt.Back(Sleeve);
         UpdatePile();
-        Resized += () => { PlacePreview(); QueueRedraw(); };
+        Resized += () => { PlacePreview(); _body?.QueueRedraw(); QueueRedraw(); };
         MouseEntered += QueueRedraw; MouseExited += QueueRedraw;
         FocusEntered += QueueRedraw; FocusExited += QueueRedraw;
     }
@@ -73,6 +86,8 @@ public partial class MemoryZoneButton : Button
     private void UpdatePile()
     {
         SetPreview(DisplayedFaceUp == 0 ? null : CardCatalog.Get(Cards[DisplayedFaceUp - 1]));
+        PlacePreview();
+        _body?.QueueRedraw();
         TooltipText = $"Memoria · {DisplayedFaceUp} boca arriba · {DisplayedFaceDown} boca abajo en el fondo. Pulsa para consultar.";
         QueueRedraw();
     }
@@ -140,7 +155,7 @@ public partial class MemoryZoneButton : Button
     {
         var bounds = new Rect2(Vector2.Zero, Size);
         const string caption = "MEMORIA";
-        var card = CardRect;
+        var card = PresentedRect;
         var amount = DisplayedAmount;
         if (amount == 0)
         {
@@ -150,19 +165,22 @@ public partial class MemoryZoneButton : Button
         }
         else
         {
-            if (RaisedPile) BoardArt.StackEdges(this, card, amount, Accent);
             if (ShowBack) DrawTextureRect(_back!, BoardArt.FitArtwork(_back!, card), false);
             BoardArt.Outline(this, card.Grow(2), BoardArt.Tint(RelickVisuals.Playmat.Frame, 0.55f), 6);
             var width = ThemeDB.FallbackFont.GetStringSize(caption, fontSize: 9).X + 14;
-            var tab = new Rect2((Size.X - width) / 2, 0, width, 16);
+            var tab = RaisedPile
+                ? new Rect2(card.GetCenter().X - width / 2, card.Position.Y - 4, width, 16)
+                : new Rect2((Size.X - width) / 2, 0, width, 16);
             BoardArt.Plate(this, tab, new Color("0b1020"), BoardArt.Tint(Accent, 0.7f), 4);
-            BoardArt.CenterText(this, caption, new(Size.X / 2, 12), 9, Accent);
+            BoardArt.CenterText(this, caption, new(tab.GetCenter().X, tab.Position.Y + 12), 9, Accent);
         }
         var text = CountText();
         var chipWidth = Math.Max(28, ThemeDB.FallbackFont.GetStringSize(text, fontSize: 14).X + 14);
-        var chip = new Rect2((Size.X - chipWidth) / 2, Size.Y - 26, chipWidth, 20);
+        var chip = RaisedPile && amount > 0
+            ? new Rect2(card.GetCenter().X - chipWidth / 2, card.End.Y - 24, chipWidth, 20)
+            : new Rect2((Size.X - chipWidth) / 2, Size.Y - 26, chipWidth, 20);
         BoardArt.Plate(this, chip, new Color("0b1020"), BoardArt.Tint(Accent, 0.6f), 4);
-        BoardArt.CenterText(this, text, new(Size.X / 2, Size.Y - 11), 14, BoardArt.Ink);
+        BoardArt.CenterText(this, text, new(chip.GetCenter().X, chip.Position.Y + 15), 14, BoardArt.Ink);
         RelickVisuals.Interaction(this, bounds, false, false, IsHovered(), HasFocus());
     }
 
