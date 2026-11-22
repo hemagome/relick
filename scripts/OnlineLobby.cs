@@ -30,6 +30,7 @@ public partial class OnlineLobby : Control
     public override void _Ready()
     {
         Name = "OnlineLobby";
+        ManagedShutdown.Install();
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         ArenaViewport.Configure(GetWindow());
         GetWindow().SizeChanged += () => ArenaViewport.Configure(GetWindow());

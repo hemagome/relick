@@ -20,6 +20,7 @@ public partial class OnlineLobby
         var args = OS.GetCmdlineUserArgs();
         string? tool = args.Any(a => a is "--music-test" or "--audio-test") ? nameof(MusicSmokeTest)
             : args.Any(a => a.StartsWith("--lobby-preview-dir=")) ? nameof(LobbyVisualPreview)
+            : args.Contains("--shutdown-test") ? nameof(ShutdownSmokeTest)
             : args.Contains("--pvp-ui-test") ? nameof(ArenaUiSmokeTest)
             : null;
         if (tool == null) return false;
