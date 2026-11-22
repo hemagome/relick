@@ -226,6 +226,22 @@ try
     b.Connection.Reducers.ConfirmPreparation(nextCode, [], Guid.NewGuid().ToString("N"));
     Until(() => service.Duel != null && b.Preparation?.Started == true);
     Check(service.Duel!.Players[service.Duel.MySeat].Hand[0] == "destiny-shuffle" && b.Hand[0].Definition == "magnet-shuffle", "Conservar la mano funciona en ambos lugares y con reintento del cliente real");
+    // Doblador de Tiempo in the starter's hand opens the draw stage, but the checks below teach at revision 0: deal again.
+    for (var deals = 1; service.Duel!.Phase == Phase.Draw; deals++)
+    {
+        if (deals == 20) throw new Exception("Veinte repartos seguidos empiezan en la etapa de robo.");
+        service.Leave();
+        Until(() => service.Room == null && service.Duel == null && b.Room == null && b.Duel == null);
+        service.Create("Solicitud repetida");
+        Until(() => service.Room != null);
+        nextCode = service.Room!.Code;
+        b.Connection.Reducers.JoinRoom(nextCode, "Beto");
+        Until(() => b.InitialSkills?.Selected == false && service.InitialSkills?.Selected == false);
+        b.Connection.Reducers.ChooseInitialSkill(nextCode, "magnet-shuffle", Guid.NewGuid().ToString("N")); service.ChooseInitialSkill("destiny-shuffle");
+        Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
+        service.Confirm([]); b.Connection.Reducers.ConfirmPreparation(nextCode, [], Guid.NewGuid().ToString("N"));
+        Until(() => service.Duel != null && b.Preparation?.Started == true);
+    }
 
     var fighterA = Connect(serviceToken);
     Until(() => fighterA.Duel != null && b.Duel != null);
