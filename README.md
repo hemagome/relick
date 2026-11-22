@@ -64,6 +64,8 @@ dotnet run --project tests/Relick.Core.Tests.csproj    # motor de reglas (sin Go
 
 En Windows, la prueba de interfaz es `dotnet build Relick.csproj` seguido de `Godot_…_mono_win64.exe --headless --path . -- --pvp-ui-test`. Termina con `PVP_UI_PASS` y código de salida 0. Los filtros (`--lobby-only`, `--decks-only`…) y las capturas renderizadas están en [Interfaz · Validación](docs/UI.md#validación).
 
+`./jugar.sh --headless --shutdown-test` cierra el juego con el finalizador de .NET cargado y debe terminar con código 0. Protege el arreglo de `ManagedShutdown` para una carrera de Godot .NET 4.7.2 que tumbaba el proceso al cerrar. Depende de un detalle interno del motor: repítela al actualizar Godot.
+
 Las pruebas de red necesitan un servidor local con el módulo de desarrollo, que **nunca** se publica en Maincloud:
 
 ```bash
