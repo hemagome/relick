@@ -34,8 +34,6 @@ public partial class OnlineLobby
         var logo = RelickVisuals.Logo(); logo.SizeFlagsHorizontal = SizeFlags.ShrinkCenter; column.AddChild(logo);
         var title = Text("Inicia sesión", 34); title.HorizontalAlignment = HorizontalAlignment.Center;
         title.AddThemeFontOverride("font", RelickVisuals.Display); column.AddChild(title);
-        var description = Description("Tu cuenta guarda tu nombre y tus mazos en cualquier dispositivo. Se abrirá tu navegador para entrar con correo, Discord u otra cuenta.");
-        description.HorizontalAlignment = HorizontalAlignment.Center; column.AddChild(description);
         _signIn = AddButton(column, "Iniciar sesión", StartSignIn);
         _signIn.Name = "SignIn"; AccentButton(_signIn, LobbyMint);
         _loginStatus = Description(""); _loginStatus.Name = "LoginStatus"; _loginStatus.HorizontalAlignment = HorizontalAlignment.Center;
