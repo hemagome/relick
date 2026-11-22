@@ -66,6 +66,9 @@ public sealed class DuelPlayerView
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int?[]? HandOwners { get; set; }
     public int CorruptedCount { get; set; }
+    // Both players may inspect the face-down portion, ordered from nearest the face-up cards to the bottom.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? CorruptedCards { get; set; }
 }
 
 public sealed class DuelSnapshot
@@ -203,7 +206,8 @@ public sealed class DuelSnapshot
                 MovedShieldCharges = p.MovedFieldCards?.Where(entry => entry.Value.ShieldCharges != null).ToDictionary(
                     entry => entry.Key, entry => entry.Value.ShieldCharges!.Count) is { Count: > 0 } charges ? charges : null,
                 Area = p.Area, AreaSide = p.AreaSideA is int sideA ? sideA == index ? "A" : "B" : null,
-                Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count
+                Memory = p.Memory.ToArray(), CorruptedCount = p.CorruptedMemory.Count,
+                CorruptedCards = p.CorruptedMemory.Count > 0 ? p.CorruptedMemory.Select(CardCatalog.TextId).ToArray() : null
             }).ToArray()
         };
     }

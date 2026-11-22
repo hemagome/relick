@@ -39,7 +39,7 @@ public partial class OnlineArena
                 var sleeve = SleeveArt.Back(Own(relative));
                 Check(_root!.FindChild("DeckStack" + relative, true, false) is DeckStack { BackTexture: var deck } && deck == sleeve,
                     $"El mazo no muestra la mica de su dueño ({size}, asiento {seat}).");
-                Check(_root.FindChild("CorruptedMemoryButton" + relative, true, false) is MemoryZoneButton { BackTexture: var corrupt } && corrupt == sleeve,
+                Check(_root.FindChild("MemoryButton" + relative, true, false) is MemoryZoneButton { DisplayedFaceUp: 0, DisplayedFaceDown: 1, BackTexture: var corrupt } && corrupt == sleeve,
                     "Las cartas corruptas no muestran la mica de su dueño.");
             }
             var rivalBacks = _opponentCards.Select(card => card.BackTexture).ToArray();

@@ -15,7 +15,7 @@ Los significados de `RelickVisuals.State` son independientes del tapete: selecci
 Con un lienzo de al menos 1400×980 unidades lógicas, `OnlineArena` construye el tablero completo; los tamaños menores conservan las distribuciones apiladas descritas más abajo, con el mismo acabado visual.
 
 - **Lienzo único.** `BoardCanvas` coloca todas las zonas en un espacio de diseño de 1440×1024 que se escala de forma uniforme a la ventana. Todas las cartas ocupan 138×193; las zonas apaisadas (habilidades y canje) usan esa misma carta girada. Con una ventana más estrecha que 16:9 el lienzo se reduce entero y el margen sobrante se reparte por encima y por debajo de los campos.
-- **Campos enfrentados.** `ArenaPresentation.Field` construye el campo propio en la mitad inferior; el rival es el mismo campo girado 180°. Desde el borde exterior: los dos espacios de canje apaisados, el Relikario (retrato, nombre, vidas, cristales de acción, Destreza y PR) sobre su equipo y las cartas sobre el Relikario, las cuatro habilidades en un bloque 2×2 (500 y 1000 PR arriba, 0 y 300 PR abajo), Memoria sobre Corruptas y el mazo en la esquina. El espacio junto al mazo queda libre para un Relikario que juegue con dos mazos. Un espacio de habilidad vacío solo muestra su coste, grande y centrado.
+- **Campos enfrentados.** `ArenaPresentation.Field` construye el campo propio en la mitad inferior y gira el rival 180°. Desde el borde exterior se ven los dos espacios de canje apaisados, el Relikario (retrato, nombre, vidas, cristales de acción, Destreza y PR) sobre su equipo y las cartas sobre el Relikario, y las cuatro habilidades en un bloque 2×2 (500 y 1000 PR arriba, 0 y 300 PR abajo). La Memoria ocupa una pila por jugador, con el mazo en la esquina. El espacio junto al mazo queda libre para un Relikario que juegue con dos mazos. Un espacio de habilidad vacío solo muestra su coste, grande y centrado.
 - **Bonus y Área.** Cada jugador tiene un marco con dos espacios, Bonus y Área, montado sobre la línea central y junto a sus canjes. El marco y los espacios se delinean en verde para el jugador y en rojo para el rival.
 - **Barra de fase.** Sobre la línea central, `ArenaPresentation.PhaseBar` muestra el turno, las cuatro etapas (las completadas con confirmación, la actual resaltada) y el botón de avance. Toma el color de quien tiene el turno; sus celdas tienen ancho fijo para que el botón no se mueva entre etapas. Conserva los nombres `CombatCenter`, `StageIndicator` y `TurnDock`.
 - **Manos.** La mano propia cuelga del borde inferior con las cartas al tamaño del tablero: en reposo solo el cuadro de efecto queda bajo la pantalla. La carta bajo el cursor, con foco o seleccionada sube hasta verse completa y sus acciones la acompañan; el área de pulsación no se mueve. Un borde rojo identifica las cartas del rival que tienes en mano. La mano rival cuelga del borde superior y solo asoma su franja inferior.
@@ -104,7 +104,7 @@ inventada para resultados antiguos sin ese dato.
 
 - Vida, PR, fase, dueño del turno y cantidades de zonas permanecen consultables.
 - Mano rival con reversos y únicamente las revelaciones autorizadas.
-- Cartas, habilidades, Memoria, Corruptas, equipo, cartas sobre el Relikario, Bonus y canje tienen sus consultas.
+- Cartas, habilidades, Memoria, equipo, cartas sobre el Relikario, Bonus y canje tienen sus consultas.
 - Las respuestas con descartes permiten selección múltiple y exigen la cantidad recibida del servidor.
 - El dado muestra el resultado confirmado; su animación no consume azar del duelo.
 
@@ -132,8 +132,10 @@ y un único inspector fijo a la derecha. Pasar el cursor sobre una carta o
 pulsarla cambia el inspector y marca esa copia. La galería y la descripción se desplazan
 por separado. Las columnas se ajustan al espacio disponible, con la misma escala
 compacta de cartas en pantallas cortas. La cabecera identifica al propietario de
-la memoria. Las corruptas conservan su consulta por cantidad sin identidades;
-elegir una carta oculta limpia el texto y los atributos del inspector anterior.
+la memoria. La pila muestra el total y cuántas cartas están boca abajo. Ambos
+jugadores pueden consultar las cartas corrompidas en «Fondo · Boca abajo» de
+cualquiera de las dos memorias. La consulta conserva la posición y orientación
+de cada carta en la partida.
 La clasificación incluye el subtipo actual —por ejemplo, Código Personaje— y
 COMBO cuando corresponde. Las habilidades muestran daño normal, daño crítico y
 premio en un orden fijo; su descripción omite el prefijo que ya repite esos datos.
@@ -209,7 +211,7 @@ Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas
   - Súper Ataque no tiene tabla, porque modifica el dado.
   - La nota final recuerda que no incluye respuestas, defensas ni el bonus de equipo.
 
-- **Contadores de mano.** En el tablero de escritorio, cada abanico lleva su propio contador junto a la última carta. El propio queda en la franja visible de la mano. El rival queda justo bajo el borde superior, porque las cartas colgantes ya se solapan con la primera fila de su campo. Así ningún contador cae sobre Corruptas, Memoria, Equipo u otra zona, ni siquiera con el lienzo de 16:10 o el panorámico. Una mano rival vacía centra su contador. Las composiciones compactas conservan el contador al principio de su franja.
+- **Contadores de mano.** En el tablero de escritorio, cada abanico lleva su propio contador junto a la última carta. El propio queda en la franja visible de la mano. El rival queda justo bajo el borde superior, porque las cartas colgantes ya se solapan con la primera fila de su campo. Así cada contador queda fuera de las zonas, incluso con el lienzo de 16:10 o el panorámico. Una mano rival vacía centra su contador. Las composiciones compactas conservan el contador al principio de su franja.
 - **Golpe final y segunda caída.** Con 0 vidas, el medidor apilado del escritorio rotula «GOLPE FINAL» sobre la barra vacía, igual que ya hacía la versión compacta. Si el jugador ya llegó a 0 y se curó, la barra conserva un borde rojo, porque volver a 0 termina el duelo. El tooltip explica ambas reglas, que usan `HasReachedZero` del snapshot.
 - **Habilidades por enseñar.** Las ranuras vacías muestran su coste pequeño y atenuado. Solo cuando el servidor ofrece enseñar, la primera ranura libre (donde se enseña la siguiente habilidad) se ilumina con el color del jugador y el rótulo «ENSEÑAR AQUÍ».
 
@@ -399,7 +401,7 @@ La vista previa de salas no se conecta a ningún servidor. Las pruebas de prepar
 
 `--memory-inspection-only` comprueba la galería y el único inspector actualizable
 de ambas memorias, 36 cartas con copias repetidas, desplazamiento independiente,
-visibilidad de corruptas/cartas ocultas, índices de selección de objetivos y
+consulta de cartas corrompidas, privacidad de cartas ocultas, índices de selección de objetivos y
 cierre sin modificar el duelo, en cuatro tamaños y ambos asientos. Con
 `--ui-screenshot-dir` guarda capturas de la galería en una ejecución gráfica.
 

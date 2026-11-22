@@ -77,12 +77,16 @@ public partial class OnlineArena
         ((Button)editor.FindChild("ProfileFrames", true, false)!.GetNode("cian")).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
         ((Button)editor.FindChild("ProfilePlaymats", true, false)!.GetNode("abismo")).EmitSignal(BaseButton.SignalName.Pressed); await Layout();
         var titles = (OptionButton)editor.FindChild("ProfileTitlePicker", true, false)!;
-        titles.Select(1); titles.EmitSignal(OptionButton.SignalName.ItemSelected, 1L); await Layout();
-        Check(Preview().View is { Avatar: "yuno", Frame: "cian", Playmat: "abismo", Title: "duelista", Name: "Ana", Wins: 7 },
-            "La vista previa no sigue las elecciones del editor.");
+        foreach (var (id, name) in new[] { ("artesanal", "Artesanal"), ("p2w", "P2W"), ("f2p", "F2P") })
+        {
+            var index = Enumerable.Range(0, titles.ItemCount).Single(i => titles.GetItemText(i) == name);
+            titles.Select(index); titles.EmitSignal(OptionButton.SignalName.ItemSelected, (long)index); await Layout();
+            Check(Preview().View is { Avatar: "yuno", Frame: "cian", Playmat: "abismo", Name: "Ana", Wins: 7 } view && view.Title == id,
+                $"La vista previa no muestra el título {name}.");
+        }
         await Capture("profile-editor");
         editor.EmitSignal(AcceptDialog.SignalName.Confirmed); await Layout();
-        Check(saved != null && saved.SequenceEqual(["yuno", "duelista", "cian", "abismo"]), "Guardar no entrega las elecciones del editor.");
+        Check(saved != null && saved.SequenceEqual(["yuno", "f2p", "cian", "abismo"]), "Guardar no entrega las elecciones del editor.");
         if (IsInstanceValid(editor)) editor.QueueFree();
         TestProfiles = null; await Layout();
         Check(ProfilePlaymats.Of("abismo").Background == new Color("03100f") && ReferenceEquals(ProfilePlaymats.Of("no-existe"), RelickPlaymat.Classic),

@@ -558,8 +558,7 @@ public partial class OnlineArena
                                 var view = expected.Players[player];
                                 var cartridge = cartridgeLanded && player == actor;
                                 var top = cartridge ? CardCatalog.ReloadCartridge.Id : view.Memory.LastOrDefault();
-                                AssertPile(relative, CardZone.Memory, view.Memory.Length + (cartridge ? 1 : 0), top);
-                                AssertPile(relative, CardZone.Corrupted, view.CorruptedCount, null);
+                                AssertPile(relative, view.Memory.Length + (cartridge ? 1 : 0), view.CorruptedCount, top);
                             }
                         }
                         if (step == 1) CheckPiles(previous!);
@@ -598,12 +597,12 @@ public partial class OnlineArena
         GD.Print("PVP_RELOAD_CARTRIDGE_LAYOUT_PASS · descarte de ambas manos, animación sin identidades, disparadores, reconexión y cuatro robos privados para ambos asientos y cuatro tamaños.");
     }
 
-    private void AssertPile(int relative, CardZone zone, int count, string? top)
+    private void AssertPile(int relative, int faceUp, int faceDown, string? top)
     {
-        if (ZoneNode(relative, zone, -1) is not MemoryZoneButton pile) return;
-        if (!pile.IsVisibleInTree() || pile.Modulate.A != 1 || pile.DisplayedAmount != count ||
+        var pile = (MemoryZoneButton)ZoneNode(relative, CardZone.Memory, -1)!;
+        if (!pile.IsVisibleInTree() || pile.Modulate.A != 1 || pile.DisplayedFaceUp != faceUp || pile.DisplayedFaceDown != faceDown ||
             pile.GetNodeOrNull<HandCard>("MemoryTopCard")?.Card.Id != top)
-            throw new Exception($"{zone} del jugador {relative} se oculta o muestra una carta antes de que llegue. Contador: {pile.DisplayedAmount}, esperado: {count}.");
+            throw new Exception($"La memoria del jugador {relative} tiene {pile.DisplayedFaceUp} boca arriba y {pile.DisplayedFaceDown} boca abajo. Se esperaban {faceUp} y {faceDown}.");
     }
 
     internal async Task CheckDiscardAnimation()
@@ -678,8 +677,8 @@ public partial class OnlineArena
                     var final = after.Players[playerSeat];
                     var arrivals = discards.Take(landed).Where(c => PileRecipient(c) == playerSeat).ToArray();
                     var count = original.Memory.Length + arrivals.Count(c => c.Destination == CardZone.Memory);
-                    AssertPile(relative, CardZone.Memory, count, final.Memory.Take(count).LastOrDefault());
-                    AssertPile(relative, CardZone.Corrupted, original.CorruptedCount + arrivals.Count(c => c.Destination == CardZone.Corrupted), null);
+                    var faceDown = original.CorruptedCount + arrivals.Count(c => c.Destination == CardZone.Corrupted);
+                    AssertPile(relative, count, faceDown, final.Memory.Take(count).LastOrDefault());
                 }
             }
 
@@ -914,7 +913,7 @@ public partial class OnlineArena
                 void CheckMemory(int arrivals)
                 {
                     var expected = after.Players[actor].Memory.Take(initialMemory.Length + arrivals).ToArray();
-                    AssertPile(relative, CardZone.Memory, expected.Length, expected.LastOrDefault());
+                    AssertPile(relative, expected.Length, before.Players[actor].CorruptedCount, expected.LastOrDefault());
                 }
                 Check(tile.AwaitingArrival && _flights.Peek() == placement && (index == 0 || first.HasDeparturePreview),
                     "El tablero adelanta el resultado antes de colocar la carta de canje.");

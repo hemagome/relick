@@ -28,48 +28,47 @@ public partial class OnlineArena
                 var game = new GameEngine(42);
                 game.State.Players[0].Memory.AddRange([CardCatalog.Magnet.Id, CardCatalog.Senshuni.Id]);
                 game.State.Players[1].Memory.AddRange([CardCatalog.Attack.Id, CardCatalog.Bonfire.Id]);
-                foreach (var p in game.State.Players) p.CorruptedMemory.Add(CardCatalog.Destiny.Id);
+                game.State.Players[0].CorruptedMemory.AddRange([CardCatalog.Destiny.Id, CardCatalog.ExtraLife.Id]);
+                game.State.Players[1].CorruptedMemory.AddRange([CardCatalog.Sniper.Id, CardCatalog.Pc.Id]);
                 ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, seat, 410)); await Layout();
                 var before = game.SaveSnapshot();
                 foreach (var relative in new[] { 0, 1 })
-                foreach (var corrupt in new[] { false, true })
                 {
-                    var button = (MemoryZoneButton)_root!.FindChild($"{(corrupt ? "CorruptedMemory" : "Memory")}Button{relative}", true, false);
+                    var button = (MemoryZoneButton)_root!.FindChild($"MemoryButton{relative}", true, false);
+                    Check(_root.FindChild($"CorruptedMemoryButton{relative}", true, false) == null &&
+                        button.DisplayedAmount == 4 && button.DisplayedFaceDown == 2,
+                        "El tablero no muestra una sola pila por jugador con el total y las cartas boca abajo.");
                     _arenaScroll?.EnsureControlVisible(button); await Layout();
                     GuiInputTestDriver.Click(button); await Layout();
                     var dialog = GetChildren().OfType<AcceptDialog>().SingleOrDefault();
-                    Check(dialog is { Visible: true }, $"No se abre la memoria {(corrupt ? "corrupta" : "normal")} del jugador {relative} en {size}, asiento {seat}.");
+                    Check(dialog is { Visible: true }, $"No se abre la memoria del jugador {relative} en {size}, asiento {seat}.");
                     var inspectors = dialog!.FindChildren("*", "PanelContainer", true, false).OfType<CardInspector>().ToArray();
                     var cards = dialog.FindChildren("*", "Button", true, false).OfType<HandCard>().ToArray();
-                    if (corrupt)
+                    var owner = game.State.Players[relative == 0 ? seat : 1 - seat];
+                    var ids = owner.Memory.Concat(owner.CorruptedMemory).ToArray();
+                    Check(cards.Select(c => c.Card.Id).SequenceEqual(ids), "La consulta cambia la memoria o el orden de sus cartas.");
+                    var faceDown = dialog.FindChild("FaceDownMemoryCards", true, false);
+                    Check(faceDown?.GetChildren().OfType<HandCard>().Select(c => c.Card.Id).SequenceEqual(owner.CorruptedMemory) == true
+                        && dialog.FindChild("FaceDownMemoryHeading", true, false) is Label { Text: "Fondo · Boca abajo" },
+                        "La consulta no identifica las cartas corrompidas del fondo.");
+                    Check(inspectors.Length == 1, "La memoria no utiliza un único inspector.");
+                    var view = (CardCollectionView)dialog.FindChild("CardCollectionView", true, false);
+                    var inspector = inspectors.Single(); var instance = inspector.GetInstanceId();
+                    for (var i = 0; i < cards.Length; i++)
                     {
-                        Check(inspectors.Length == 0 && cards.Length == 0, "Consultar corruptas revela sus identidades.");
-                        Check(dialog.FindChildren("*", "Label", true, false).OfType<Label>().Any(l => l.Text.StartsWith("1 cartas corruptas")), "Falta el número de cartas corruptas.");
+                        view.Gallery.EnsureControlVisible(cards[i]); await Layout();
+                        GuiInputTestDriver.Click(cards[i]); await Layout();
+                        Check(dialog.Visible && view.SelectedIndex == i && cards[i].Chosen && cards.Count(c => c.Chosen) == 1,
+                            "Consultar una carta cierra la memoria o pierde su selección única.");
+                        Check(inspector.GetInstanceId() == instance && inspector.TitleLabel.Text == CardCatalog.Get(ids[i]).Name &&
+                            inspector.DescriptionLabel.Text == CardInspectorText.Description(CardCatalog.Get(ids[i])), "Cambiar de carta no actualiza el mismo inspector.");
+                        Check((view.Showcase != null) == !Short && (view.Showcase == null || view.Showcase.Card?.Id == ids[i] && view.Showcase.FaceTexture != null),
+                            "La memoria no muestra la imagen de la carta consultada como el inspector del duelo.");
                     }
-                    else
-                    {
-                        var ids = game.State.Players[relative == 0 ? seat : 1 - seat].Memory;
-                        Check(cards.Select(c => c.Card.Id).SequenceEqual(ids), "La consulta muestra cartas de otra memoria.");
-                        Check(inspectors.Length == 1, "La memoria no utiliza un único inspector.");
-                        var view = (CardCollectionView)dialog.FindChild("CardCollectionView", true, false);
-                        var inspector = inspectors.Single(); var instance = inspector.GetInstanceId();
-                        for (var i = 0; i < cards.Length; i++)
-                        {
-                            view.Gallery.EnsureControlVisible(cards[i]); await Layout();
-                            GuiInputTestDriver.Click(cards[i]); await Layout();
-                            Check(dialog.Visible && view.SelectedIndex == i && cards[i].Chosen && cards.Count(c => c.Chosen) == 1,
-                                "Consultar una carta cierra la memoria o pierde su selección única.");
-                            Check(inspector.GetInstanceId() == instance && inspector.TitleLabel.Text == CardCatalog.Get(ids[i]).Name &&
-                                inspector.DescriptionLabel.Text == CardInspectorText.Description(CardCatalog.Get(ids[i])), "Cambiar de carta no actualiza el mismo inspector.");
-                            Check((view.Showcase != null) == !Short && (view.Showcase == null || view.Showcase.Card?.Id == ids[i] && view.Showcase.FaceTexture != null),
-                                "La memoria no muestra la imagen de la carta consultada como el inspector del duelo.");
-                        }
-                        if (seat == 0 && relative == 0) await Capture($"memory-inspector-{size.X}x{size.Y}");
-                    }
+                    if (seat == 0 && relative == 0) await Capture($"memory-inspector-{size.X}x{size.Y}");
                     if (dialog.Size.X > size.X || dialog.Size.Y > size.Y)
                     {
-                        var view = dialog.FindChild("CardCollectionView", true, false) as CardCollectionView;
-                        throw new Exception($"La consulta desborda {size}: diálogo {dialog.Size}, vista {view?.Size}/{view?.GetCombinedMinimumSize()}, galería {view?.Gallery.Size}/{view?.Gallery.GetCombinedMinimumSize()}, inspector {view?.Inspector.Size}/{view?.Inspector.GetCombinedMinimumSize()}, lectura {view?.Inspector.ReadingViewport.GetCombinedMinimumSize()}.");
+                        throw new Exception($"La consulta desborda {size}: diálogo {dialog.Size}, vista {view.Size}/{view.GetCombinedMinimumSize()}, galería {view.Gallery.Size}/{view.Gallery.GetCombinedMinimumSize()}, inspector {view.Inspector.Size}/{view.Inspector.GetCombinedMinimumSize()}, lectura {view.Inspector.ReadingViewport.GetCombinedMinimumSize()}.");
                     }
                     GuiInputTestDriver.Click(dialog.GetOkButton()); await Layout();
                     Check(!GodotObject.IsInstanceValid(dialog), "No se cierra la consulta de memoria.");
@@ -84,12 +83,12 @@ public partial class OnlineArena
                 var fullDialog = GetChildren().OfType<AcceptDialog>().Single();
                 var collection = (CardCollectionView)fullDialog.FindChild("CardCollectionView", true, false);
                 var allCards = fullDialog.FindChildren("*", "Button", true, false).OfType<HandCard>().ToArray();
-                Check(allCards.Select(c => c.Card.Id).SequenceEqual(memory) && fullDialog.FindChildren("*", "PanelContainer", true, false).OfType<CardInspector>().Count() == 1,
+                Check(allCards.Select(c => c.Card.Id).SequenceEqual(memory.Concat(game.State.Players[seat].CorruptedMemory)) && fullDialog.FindChildren("*", "PanelContainer", true, false).OfType<CardInspector>().Count() == 1,
                     "Una memoria grande pierde copias o crea inspectores adicionales.");
                 var fixedInspector = collection.Inspector.GetGlobalRect();
                 collection.Gallery.EnsureControlVisible(allCards[^1]); await Layout();
                 GuiInputTestDriver.Click(allCards[^1]); await Layout();
-                Check(collection.Gallery.ScrollVertical > 0 && collection.Inspector.GetGlobalRect() == fixedInspector && collection.SelectedIndex == memory.Count - 1,
+                Check(collection.Gallery.ScrollVertical > 0 && collection.Inspector.GetGlobalRect() == fixedInspector && collection.SelectedIndex == allCards.Length - 1,
                     "Desplazar una memoria grande mueve el inspector o confunde copias repetidas.");
                 Check(fullDialog.Size.X <= size.X && fullDialog.Size.Y <= size.Y && collection.Size.X + 1 >= collection.GetCombinedMinimumSize().X,
                     $"La galería de memoria desborda {size}: diálogo {fullDialog.Size}, vista {collection.Size}, mínimo {collection.GetCombinedMinimumSize()}.");
@@ -127,6 +126,7 @@ public partial class OnlineArena
                 GuiInputTestDriver.Click(otherCopy); await Layout();
                 Check(chosenCopy == 1 && !GodotObject.IsInstanceValid(selectable), "La galería confunde el índice de dos copias iguales al seleccionar un objetivo.");
                 game.State.Players[seat].Memory.Clear();
+                game.State.Players[seat].CorruptedMemory.Clear();
                 PresentTestSnapshot(DuelSnapshot.For(game, seat, 411)); await Layout();
                 var empty = (MemoryZoneButton)_root!.FindChild("MemoryButton0", true, false);
                 _arenaScroll?.EnsureControlVisible(empty); await Layout(); GuiInputTestDriver.Click(empty); await Layout();
@@ -136,6 +136,6 @@ public partial class OnlineArena
             }
         }
         finally { GetViewport().GuiEmbedSubwindows = embedded; }
-        GD.Print("PVP_MEMORY_INSPECTION_PASS · galería completa, inspector único actualizable, selección por copia, lectura y desplazamiento independientes, memoria rival, privacidad, objetivos, zona vacía y cierre; cuatro tamaños y ambos asientos.");
+        GD.Print("PVP_MEMORY_INSPECTION_PASS · galería completa, inspector único actualizable, selección por copia, lectura y desplazamiento independientes, ambas memorias, fondo consultable, privacidad de la mano, objetivos y zona vacía; cuatro tamaños y ambos asientos.");
     }
 }

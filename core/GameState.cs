@@ -214,7 +214,8 @@ public sealed class PlayerState
     }
     [JsonInclude]
     public List<string> Memory { get; internal set; } = new();
-    // Face-down cards at the bottom of memory; ineligible for activation and recycling.
+    // Face-down portion of the same memory. The last entry sits at the very bottom.
+    // Ordinary memory effects only address the face-up portion above it.
     [JsonInclude]
     public List<string> CorruptedMemory { get; internal set; } = new();
     [JsonInclude]

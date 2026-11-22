@@ -5,7 +5,7 @@ static class DuelTests
 {
     public static IEnumerable<(string Name, Action Run)> Cases => new (string, Action)[]
     {
-        ("PvP: proyección oculta mazos, manos rivales, corruptas y registros", Privacy),
+        ("PvP: ambos jugadores pueden consultar Bonus y cartas corrompidas; mazos, manos y registros conservan su privacidad", Privacy),
         ("PvP: reconstrucción conserva decisiones y continuaciones durante duelos completos", ReplayMatches),
         ("PvP: rechazo de un registro de azar incompleto", InvalidRandom),
         ("PvP: jugadas y fases viajan por nombre y rechazan valores numéricos", MovesTravelByName),
@@ -32,13 +32,29 @@ static class DuelTests
     {
         var opening = Opening(5);
         opening.Decks[0] = ["secret-deck-one"]; opening.Decks[1] = ["secret-deck-two"];
-        opening.Hands[1] = ["secret-opponent-hand"];
+        opening.Hands[1] = [CardCatalog.Attack.Id];
         var game = GameEngine.FromOpening(opening, new SeededRandom(1));
-        game.State.Players[1].CorruptedMemory.Add("secret-corrupted"); game.State.Log.Add("secret-log");
-        var view = DuelSnapshot.For(game, 0, 4);
-        var json = JsonSerializer.Serialize(view, DuelJson.Default.DuelSnapshot);
-        if (json.Contains("secret-") || view.Players[1].Hand.Any(id => id != null) || view.Players[1].CorruptedCount != 1)
-            throw new Exception("Una proyección contiene información oculta.");
+        game.State.Players[0].Bonus = CardCatalog.Bonfire.Id;
+        game.State.Players[1].Bonus = CardCatalog.Pc.Id;
+        game.State.Players[0].CorruptedMemory.Add(CardCatalog.Senshuni.Id);
+        game.State.Players[1].CorruptedMemory.AddRange([CardCatalog.Attack.Id, CardCatalog.Destiny.Id]);
+        game.State.Log.Add("secret-log");
+        foreach (var seat in new[] { -1, 0, 1 })
+        {
+            var json = JsonSerializer.Serialize(DuelSnapshot.For(game, seat, 4), DuelJson.Default.DuelSnapshot);
+            var view = JsonSerializer.Deserialize(json, DuelJson.Default.DuelSnapshot)!;
+            if (json.Contains("secret-deck-") || json.Contains("secret-log") ||
+                view.Players[1].Hand.Single() != (seat == 1 ? CardCatalog.Attack.Id : null))
+                throw new Exception("Una proyección contiene información oculta.");
+            for (var owner = 0; owner < view.Players.Length; owner++)
+            {
+                var player = view.Players[owner];
+                var state = game.State.Players[owner];
+                if (player.Bonus != state.Bonus || player.CorruptedCount != state.CorruptedMemory.Count ||
+                    player.CorruptedCards?.SequenceEqual(state.CorruptedMemory) != true)
+                    throw new Exception("La proyección cambia el Bonus o pierde cartas corrompidas o su orden.");
+            }
+        }
         game.State.Players[1].Hand[0] = CardCatalog.Attack.Id;
         game.State.Phase = Phase.MagnetChoice; game.State.CurrentPlayer = 0;
         if (DuelSnapshot.For(game, 0, 5).Players[1].Hand[0] != CardCatalog.Attack.Id) throw new Exception("Magnet no permite inspeccionar la mano.");

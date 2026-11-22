@@ -81,20 +81,21 @@ public partial class OnlineArena
                 {
                     var deck = Board<DeckStack>($"DeckStack{side}");
                     var memory = Board<MemoryZoneButton>($"MemoryButton{side}");
-                    var corrupted = Board<MemoryZoneButton>($"CorruptedMemoryButton{side}");
                     var orientation = side == 0 ? 0 : Mathf.Pi;
-                    Check(new Control?[] { deck, memory, corrupted, ZoneNode(side, CardZone.Equipment, -1), ZoneNode(side, CardZone.Bonus, -1),
+                    Check(ZoneNode(side, CardZone.Corrupted, -1) == memory && memory.DisplayedAmount == 7 && memory.DisplayedFaceDown == 3,
+                        "Las cartas boca abajo deben compartir la pila con las cartas boca arriba.");
+                    Check(new Control?[] { deck, memory, ZoneNode(side, CardZone.Equipment, -1), ZoneNode(side, CardZone.Bonus, -1),
                         ZoneNode(side, CardZone.Area, -1), ZoneNode(side, CardZone.Attached, -1), ZoneNode(side, CardZone.Skill, 0),
                         ZoneNode(side, CardZone.Exchange, 0) }.All(piece => piece != null && Facing(piece, orientation)),
                         "Las zonas del campo deben orientarse hacia su dueño.");
-                    Check(deck.RaisedPile && memory.RaisedPile && corrupted.RaisedPile &&
+                    Check(deck.RaisedPile && memory.RaisedPile &&
                         Board<AttachmentStack>($"AttachmentStack{side}").RaisedPile && Board<ZoneCardButton>($"EquipmentZone{side}").StackCopies == 3,
                         "Falta profundidad en una de las pilas.");
                     var table = ProjectedTable.Of(memory);
                     Check(table != null, "La memoria sigue dibujándose como un rectángulo de pantalla.");
-                    float CenterY(Control zone) => table!.ScreenPoint(zone, zone.Size / 2).Y;
-                    var mid = (CenterY(memory) + CenterY(corrupted)) / 2;
-                    Check(Math.Abs(CenterY(deck) - mid) < 9, "El mazo no está centrado en su columna.");
+                    var deckCenter = table!.ScreenPoint(deck, deck.Size / 2).Y;
+                    var columnCenter = table.ScreenPoint(memory, memory.Size / 2 + new Vector2(0, (BoardCanvas.CardHeight + 10) / 2)).Y;
+                    Check(Math.Abs(deckCenter - columnCenter) < 9, "El mazo no está centrado en su columna.");
                     var tl = table!.ScreenPoint(memory, Vector2.Zero);
                     var tr = table.ScreenPoint(memory, new Vector2(memory.Size.X, 0));
                     var bl = table.ScreenPoint(memory, new Vector2(0, memory.Size.Y));
@@ -132,7 +133,8 @@ public partial class OnlineArena
                 Check(!GetChildren().OfType<AcceptDialog>().Any(), "Un clic fuera del trapecio se registra en la memoria.");
                 GuiInputTestDriver.Click(plane.GetViewport(), Pointer(memoryButton.Size.X - 5, memoryButton.Size.Y - 12)); await Layout();
                 var dialog = GetChildren().OfType<AcceptDialog>().Single();
-                Check(dialog.Visible && dialog.FindChildren("*", "Button", true, false).OfType<HandCard>().Count() == 4,
+                Check(dialog.Visible && dialog.FindChild("CollectionCards", true, false)?.GetChildCount() == 4 &&
+                    dialog.FindChild("FaceDownMemoryCards", true, false)?.GetChildCount() == 3,
                     "El clic en la memoria inclinada no corresponde a su zona.");
                 GuiInputTestDriver.Click(dialog.GetOkButton()); await Layout();
 

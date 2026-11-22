@@ -51,7 +51,7 @@ public partial class OnlineArena
     private Control? ZoneNode(int relative, CardZone zone, int slot) => zone switch
     {
         CardZone.Hand => _root?.FindChild((relative == 0 ? "HandCard" : "OpponentHandCard") + slot, true, false) as Control,
-        CardZone.Memory or CardZone.Corrupted => _root?.FindChild((zone == CardZone.Corrupted ? "CorruptedMemory" : "Memory") + "Button" + relative, true, false) as Control,
+        CardZone.Memory or CardZone.Corrupted => _root?.FindChild("MemoryButton" + relative, true, false) as Control,
         CardZone.Bonus => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.BonusButton,
         CardZone.Area => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.AreaButton,
         CardZone.Exchange => (_root?.FindChild("BonusTrack" + relative, true, false) as ExchangeTrack)?.ExchangeButtons.ElementAtOrDefault(slot),
@@ -252,7 +252,9 @@ public partial class OnlineArena
             var before = previous.Players[player];
             var after = current.Players[player];
             CountArrivals(player, CardZone.Memory, NewMemoryCards(before.Memory, after.Memory));
-            CountArrivals(player, CardZone.Corrupted, after.CorruptedCount - before.CorruptedCount);
+            var corruptedArrivals = (before.CorruptedCount == 0 || before.CorruptedCards != null) && after.CorruptedCards is { } corrupted
+                ? NewMemoryCards(before.CorruptedCards ?? [], corrupted) : after.CorruptedCount - before.CorruptedCount;
+            CountArrivals(player, CardZone.Corrupted, corruptedArrivals);
         }
         if (lastPacket != null && packetArrivals.Count > 0)
             flights[lastPacket] = flights[lastPacket] with { MemoryArrivals = packetArrivals.ToArray() };
@@ -899,7 +901,7 @@ public partial class OnlineArena
         if (adjustCount && flight.MemoryArrivals is { } arrivals)
             foreach (var arrival in arrivals)
                 if (ZoneNode(arrival.Player == _snapshot!.MySeat ? 0 : 1, arrival.Zone, -1) is MemoryZoneButton pile)
-                    pile.ChangePendingArrivals(delta * arrival.Count);
+                    pile.ChangePendingArrivals(delta * arrival.Count, faceDown: arrival.Zone == CardZone.Corrupted);
 
         if (target is SkillTile skill) skill.SetLessonPending(pending);
         else if (flight.IsPlacement && flight.Event.Destination is CardZone.Equipment or CardZone.LightEquipment && target is ZoneCardButton equipment)

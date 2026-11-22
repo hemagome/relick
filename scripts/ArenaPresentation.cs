@@ -7,7 +7,7 @@ namespace Relick;
 public sealed class ArenaPlayerActions
 {
     public Action? Area { get; init; }
-    public Action<bool> Memory { get; init; } = _ => { };
+    public Action Memory { get; init; } = () => { };
     public Action Attached { get; init; } = () => { };
     public Action Equipment { get; init; } = () => { };
     public Action LightEquipment { get; init; } = () => { };
@@ -109,7 +109,7 @@ public static class ArenaPresentation
     /// <summary>
     /// One duelist's half of the desktop board, with every card at the same size. From the outer
     /// edge inward: canje under the Bonus and Área frame that straddles the divider, the Relikario
-    /// over its equipment, the four skills in a 2×2 block, the memories and the deck. The rival's
+    /// over its equipment, the four skills in a 2×2 block, the memory and the deck. The rival's
     /// half is the same field turned around.
     /// </summary>
     public static void Field(BoardCanvas canvas, DuelPlayerView owner, int index, bool enemy, bool active, bool preparing,
@@ -236,12 +236,7 @@ public static class ArenaPresentation
             Put(skill, x, y, H, W);
         }
 
-        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Cards = owner.Memory, Accent = accent, Board = true,
-            RaisedPile = canvas.TableView, RelikarioId = owner.RelikarioId };
-        memory.Pressed += () => actions.Memory(false); Put(memory, 996, top, W, H);
-        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", CorruptedCount = owner.CorruptedCount,
-            Corrupted = true, Board = true, RaisedPile = canvas.TableView, Sleeve = owner.Sleeve };
-        corrupted.Pressed += () => actions.Memory(true); Put(corrupted, 996, bottom, W, H);
+        Put(MemoryPile(owner, index, accent, actions.Memory, board: true, raised: canvas.TableView), 996, top, W, H);
         // Center each deck vertically in the outer column, just beyond the opposing Bonus/Área frame.
         var deckRow = canvas.TableView ? (top + bottom) / 2 : bottom;
         var deckInset = canvas.TableView ? 10 : 0;
@@ -394,12 +389,8 @@ public static class ArenaPresentation
             SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.ShrinkBegin };
         zones.AddThemeConstantOverride("separation", 6);
         zones.AddChild(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter, Sleeve = owner.Sleeve });
-        var memories = new HBoxContainer(); memories.AddThemeConstantOverride("separation", 6);
-        var memory = new MemoryZoneButton { Name = $"MemoryButton{index}", Cards = owner.Memory, Accent = accent, RelikarioId = owner.RelikarioId };
-        memory.Pressed += () => actions.Memory(false); memories.AddChild(memory);
-        var corrupted = new MemoryZoneButton { Name = $"CorruptedMemoryButton{index}", CorruptedCount = owner.CorruptedCount, Corrupted = true, Sleeve = owner.Sleeve };
-        corrupted.Pressed += () => actions.Memory(true); memories.AddChild(corrupted);
-        if (!narrow) zones.AddChild(memories);
+        var memory = MemoryPile(owner, index, accent, actions.Memory);
+        if (!narrow) zones.AddChild(memory);
         var permanent = new VBoxContainer { CustomMinimumSize = new(92, 0),
             SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.Fill };
         permanent.AddThemeConstantOverride("separation", 6);
@@ -429,7 +420,7 @@ public static class ArenaPresentation
         portrait.SizeFlagsVertical = narrow ? Control.SizeFlags.ShrinkBegin : Control.SizeFlags.ExpandFill;
         portrait.CustomMinimumSize = new(0, portrait.PortraitHeight);
         body.AddChild(enemy ? zones : permanent); body.AddChild(portrait); body.AddChild(enemy ? permanent : zones); column.AddChild(body);
-        if (narrow) column.AddChild(memories);
+        if (narrow) column.AddChild(memory);
         var skills = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         skills.AddThemeConstantOverride("h_separation", 6); skills.AddThemeConstantOverride("v_separation", 6);
         var nextLesson = NextLessonSlot(owner, !enemy && actions.CanLearn);
@@ -449,6 +440,14 @@ public static class ArenaPresentation
             skills.AddChild(skill);
         }
         column.AddChild(skills);
+    }
+
+    private static MemoryZoneButton MemoryPile(DuelPlayerView owner, int index, Color accent, Action inspect, bool board = false, bool raised = false)
+    {
+        var pile = new MemoryZoneButton { Name = $"MemoryButton{index}", Cards = owner.Memory, CorruptedCount = owner.CorruptedCount,
+            Accent = accent, Board = board, RaisedPile = raised, RelikarioId = owner.RelikarioId, Sleeve = owner.Sleeve };
+        pile.Pressed += inspect;
+        return pile;
     }
 
     private static ZoneCardButton? LightEquipmentZone(DuelPlayerView owner, int index, Action inspect, bool compact, float width = 0, bool raisedPile = false)

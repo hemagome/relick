@@ -317,8 +317,7 @@ public partial class OnlineArena : Control
             _portraits[relative].StandingOnTable = TableView;
             return new ArenaPlayerActions
             {
-                Memory = corrupt => ShowCards($"{(corrupt ? "Memoria corrupta" : "Memoria")} · {player.Name}", corrupt ? null : player.Memory,
-                    player.CorruptedCount, relikarioOf: _ => player.RelikarioId, memoryActivation: seat == s.MySeat && !corrupt ? s : null),
+                Memory = () => ShowMemory(player, seat == s.MySeat ? s : null),
                 Attached = () => SelectFieldPile(seat, FieldZone.Attached),
                 Area = () => SelectField(seat, FieldZone.Area, -1),
                 Equipment = () => SelectEquipment(seat),
@@ -803,14 +802,23 @@ public partial class OnlineArena : Control
         dialog.PopupCentered();
     }
 
-    private void ShowCards(string title, IReadOnlyList<string?>? ids, int hiddenCount = 0, Action<int>? select = null,
-        Func<int, string?>? relikarioOf = null, DuelSnapshot? memoryActivation = null, Func<int, bool>? inverted = null)
+    private void ShowMemory(DuelPlayerView player, DuelSnapshot? memoryActivation)
+    {
+        var faceDown = (IEnumerable<string?>?)player.CorruptedCards ?? Enumerable.Repeat<string?>(null, player.CorruptedCount);
+        ShowCards($"Memoria · {player.Name}", player.Memory.Concat(faceDown).ToArray(), relikarioOf: _ => player.RelikarioId,
+            memoryActivation: memoryActivation, faceDownStart: player.CorruptedCount > 0 ? player.Memory.Length : null, sleeve: player.Sleeve);
+    }
+
+    private void ShowCards(string title, IReadOnlyList<string?> ids, Action<int>? select = null,
+        Func<int, string?>? relikarioOf = null, DuelSnapshot? memoryActivation = null, Func<int, bool>? inverted = null,
+        int? faceDownStart = null, string? sleeve = null)
     {
         if (GetChildren().OfType<Window>().Any(w => w.Visible)) return;
         var dialog = new AcceptDialog { Name = "CardCollectionDialog", Title = title, OkButtonText = "Volver al duelo" };
-        if (ids is { Count: > 0 })
+        if (ids.Count > 0)
         {
-            var view = new CardCollectionView { Cards = ids.ToArray(), ShortScreen = Short, RelikarioOf = relikarioOf, Inverted = inverted,
+            var view = new CardCollectionView { Cards = ids, ShortScreen = Short, RelikarioOf = relikarioOf, Inverted = inverted,
+                FaceDownStart = faceDownStart, Sleeve = sleeve,
                 InspectorWidth = Short ? 260 : Math.Clamp(Size.X * 0.3f, 320, 380),
                 CustomMinimumSize = new(Math.Min(960, Size.X - 72), Math.Min(480, Size.Y - 140)) };
             if (select != null) view.CardPressed += index => { select(index); dialog.QueueFree(); };
@@ -839,7 +847,7 @@ public partial class OnlineArena : Control
         }
         else
         {
-            var message = ArenaPresentation.Text(ids == null ? $"{hiddenCount} cartas corruptas boca abajo. Su identidad permanece oculta." : "No hay cartas en esta zona.");
+            var message = ArenaPresentation.Text("No hay cartas en esta zona.");
             message.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             message.CustomMinimumSize = new(Math.Min(620, Size.X - 72), Math.Min(120, Size.Y - 140));
             dialog.AddChild(message);

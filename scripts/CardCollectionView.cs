@@ -10,6 +10,8 @@ public partial class CardCollectionView : HBoxContainer
     public Func<int, string?>? RelikarioOf { get; init; }
     public bool ShortScreen { get; init; }
     public Func<int, bool>? Inverted { get; init; }
+    public int? FaceDownStart { get; init; }
+    public string? Sleeve { get; init; }
     public float InspectorWidth { get; init; } = 340;
     public event Action<int>? CardPressed;
     public event Action<int>? SelectionChanged;
@@ -18,7 +20,7 @@ public partial class CardCollectionView : HBoxContainer
     /// <summary>The large card art above the inspector, as on the duel's reading rail; absent on short screens.</summary>
     internal CardShowcase? Showcase { get; private set; }
     internal ScrollContainer Gallery { get; private set; } = null!;
-    private GridContainer _grid = null!;
+    private readonly List<GridContainer> _grids = [];
     private readonly List<Button> _cards = [];
 
     public override void _Ready()
@@ -31,9 +33,9 @@ public partial class CardCollectionView : HBoxContainer
             // Allow the viewport to shrink before recalculating the grid's column count.
             HorizontalScrollMode = ScrollContainer.ScrollMode.ShowNever };
         AddChild(Gallery);
-        _grid = new GridContainer { Name = "CollectionCards", Columns = 1, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _grid.AddThemeConstantOverride("h_separation", 10); _grid.AddThemeConstantOverride("v_separation", 10);
-        Gallery.AddChild(_grid);
+        var sections = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        sections.AddThemeConstantOverride("separation", 8);
+        Gallery.AddChild(sections);
         var reading = new VBoxContainer { Name = "CollectionReading", CustomMinimumSize = new(InspectorWidth, 0),
             SizeFlagsHorizontal = SizeFlags.Fill, SizeFlagsVertical = SizeFlags.ExpandFill };
         reading.AddThemeConstantOverride("separation", 8);
@@ -48,12 +50,27 @@ public partial class CardCollectionView : HBoxContainer
         reading.AddChild(Inspector);
         Inspector.SizeFlagsHorizontal = SizeFlags.Fill;
         var scale = ShortScreen ? 0.6f : 1f;
+        GridContainer? grid = null;
         for (var index = 0; index < Cards.Count; index++)
         {
+            if (index == 0 || index == FaceDownStart)
+            {
+                var faceDown = index == FaceDownStart;
+                if (FaceDownStart.HasValue)
+                {
+                    var heading = ArenaPresentation.Text(faceDown ? "Fondo · Boca abajo" : "Boca arriba", 14, BoardArt.Muted);
+                    heading.Name = faceDown ? "FaceDownMemoryHeading" : "FaceUpMemoryHeading";
+                    sections.AddChild(heading);
+                }
+                grid = new GridContainer { Name = faceDown ? "FaceDownMemoryCards" : "CollectionCards", Columns = 1 };
+                grid.AddThemeConstantOverride("h_separation", 10); grid.AddThemeConstantOverride("v_separation", 10);
+                sections.AddChild(grid);
+                _grids.Add(grid);
+            }
             var slot = index;
             Button item = Cards[index] is string id
                 ? new HandCard { Card = CardCatalog.Get(id), PresentationScale = scale, RelikarioId = RelikarioOf?.Invoke(index) }
-                : new OpponentHandCard { FaceSize = new Vector2(126, 184) * scale };
+                : new OpponentHandCard { FaceSize = new Vector2(126, 184) * scale, Sleeve = Sleeve };
             item.Name = "CollectionCard" + index;
             item.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
             item.Pressed += () =>
@@ -63,7 +80,7 @@ public partial class CardCollectionView : HBoxContainer
             };
             item.FocusEntered += () => Inspect(slot);
             item.MouseEntered += () => Inspect(slot);
-            _cards.Add(item); _grid.AddChild(item);
+            _cards.Add(item); grid!.AddChild(item);
             if (Cards[index] is string visibleId)
                 item.TooltipText = CardCatalog.Get(visibleId).Name + (Inverted?.Invoke(index) == true ? " · Invertida" : "");
             if (Inverted?.Invoke(index) == true)
@@ -89,7 +106,8 @@ public partial class CardCollectionView : HBoxContainer
     {
         var width = Gallery.Size.X - 18; // Reserve the vertical scrollbar, even before it appears.
         var cardWidth = ShortScreen ? 75.6f : 126;
-        _grid.Columns = Math.Clamp((int)((width + 10) / (cardWidth + 10)), 1, 6);
+        var columns = Math.Clamp((int)((width + 10) / (cardWidth + 10)), 1, 6);
+        foreach (var grid in _grids) grid.Columns = columns;
     }
 
     private void Inspect(int index)

@@ -38,7 +38,10 @@ public static class ProfileCatalog
         new("temerario", "Temerario"),
         new("lanzadados", "Lanzadados"),
         new("coleccionista", "Coleccionista"),
-        new("guardian", "Guardián del Relikario")
+        new("guardian", "Guardián del Relikario"),
+        new("artesanal", "Artesanal"),
+        new("p2w", "P2W"),
+        new("f2p", "F2P")
     ];
 
     public static readonly IReadOnlyList<ProfileFrame> Frames =

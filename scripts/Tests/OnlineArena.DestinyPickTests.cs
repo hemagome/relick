@@ -34,6 +34,7 @@ public partial class OnlineArena
                 }, new SeededRandom(59));
                 game.State.Phase = Phase.Actions;
                 game.State.Active.Memory.AddRange([attack, pick.Id]);
+                game.State.Active.CorruptedMemory.Add(pick.Id);
                 game.State.Players[1 - actor].Memory.AddRange([pick.Id, CardCatalog.Magnet.Id]);
                 ResetAnimations();
                 var before = DuelSnapshot.For(game, actor, 1);
@@ -52,6 +53,8 @@ public partial class OnlineArena
                             throw new Exception("La activación debe estar visible y deshabilitada al inspeccionar el Ataque.");
                         ((HandCard)dialog.FindChild("CollectionCard1", true, false)).EmitSignal(Button.SignalName.Pressed);
                         if (activate.Disabled) throw new Exception("Seleccionar Púa debe habilitar su efecto de memoria.");
+                        ((HandCard)dialog.FindChild("CollectionCard2", true, false)).EmitSignal(Button.SignalName.Pressed);
+                        if (!activate.Disabled) throw new Exception("La Púa corrompida se puede activar desde la consulta.");
                     }
                     else if (activate != null) throw new Exception("La galería rival ofrece activar una carta ajena.");
                     dialog.QueueFree();
