@@ -523,4 +523,6 @@ con SpacetimeAuth, así que el reloj se validó contra un servidor local con el 
 
 Las tablas de inicio, portadas, temporadas, ELO, premios y torneos, su administración y
 sus pruebas están en [Competencias](COMPETITIVE.md). Son tablas, vistas y reductores
-nuevos: no cambia ninguna tabla anterior. Todavía no están publicados en Maincloud.
+nuevos: no cambia ninguna tabla anterior. Se publicaron en Maincloud el 22 de noviembre
+de 2026 con `--delete-data=never`. El programa pasó de `3a28823f…` a `5e187268…` sin
+perder filas, y la temporada y el torneo siguen cerrados hasta que el dueño los abra.

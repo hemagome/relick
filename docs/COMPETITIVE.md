@@ -6,18 +6,30 @@ acción del dueño de la base, sin actualizar el cliente.
 
 ## Publicar
 
-No está publicado en Maincloud. Publica el módulo real, nunca los de `tests/server`:
+Publicado el 22 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud con
+`--delete-data=never`, sin salas, partidas ni búsquedas abiertas. Los modos siguen
+cerrados: no hay temporada ni torneo abiertos.
+
+- **Plan de migración.** Solo creó 16 tablas y 15 vistas, y no cambió ni quitó nada.
+  Las cuentas, mazos, perfiles, registros y estilos de mazo conservaron su número.
+- **Programa.** Pasó de `3a28823f…` a `5e187268…`.
+- **Copia.** El programa anterior se extrajo de `st_module` y quedó en
+  `artifacts/maincloud-backup/relick-3a28823f-antes-de-competencias.wasm`, fuera de
+  Git. Su restauración y la migración se ensayaron en una base local.
+- **Local.** El mismo código está en `relick-dev` (`tests/server/dev`) y en
+  `relick-auth-check` (`server/spacetimedb`) del servidor de pruebas.
+- **Sin probar en Maincloud.** No se ejecutaron las pruebas de red, porque el módulo
+  real exige iniciar sesión con SpacetimeAuth.
+
+Para volver a publicar, usa el módulo real, nunca los de `tests/server`:
 
 ```bash
 spacetime publish relick-pvp-dev-c2006ee7 --server maincloud --module-path server/spacetimedb --delete-data=never --no-config
 ```
 
-La migración solo agrega tablas, vistas y reductores. Un cliente anterior sigue jugando
-contra el módulo nuevo, y el cliente nuevo contra el anterior: oculta lo que ese
-servidor no ofrece.
-
-Las tablas nuevas no se pueden retirar con `--delete-data=never` una vez publicadas.
-Haz una copia antes, como en las publicaciones anteriores.
+Un cliente anterior sigue jugando contra el módulo nuevo, y el cliente nuevo contra el
+anterior: oculta lo que ese servidor no ofrece. Las tablas nuevas ya no se pueden
+retirar con `--delete-data=never`. Haz una copia antes de cada publicación.
 
 ## Administrar
 
