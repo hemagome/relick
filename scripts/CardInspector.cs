@@ -115,7 +115,7 @@ public partial class CardInspector : PanelContainer
         style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 4 : 8;
         AddThemeStyleboxOverride("panel", style);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", ShortScreen ? 3 : 6); AddChild(column);
-        HintLabel = Wrapped("ContextHint", ShortScreen ? 13 : 14, BoardArt.Ink); column.AddChild(HintLabel);
+        HintLabel = Wrapped("ContextHint", ShortScreen ? 13 : 14, BoardArt.Gold); column.AddChild(HintLabel);
         var header = new VBoxContainer { Name = "InspectorHeader" };
         header.AddThemeConstantOverride("separation", ShortScreen ? 2 : 6); column.AddChild(header);
         ClassificationLabel = ArenaPresentation.Text("", 12, ArenaPresentation.Mint);

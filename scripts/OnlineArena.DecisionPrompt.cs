@@ -136,7 +136,8 @@ public partial class OnlineArena
 
         var choosing = _preparing || NeedsDecisionPrompt(s) || hasButtons;
         var active = s.Winner == null && (!IsAnimating || rejection.Length > 0);
-        var showHint = _decisionHint.Length > 0 && _selected.Count == 1 && _fieldSelection == null && !_skillContext && !_cardActions.Visible;
+        // On desktop the reason a card cannot be played is read with the card: here it would cover the turn button.
+        var showHint = _showcase == null && _decisionHint.Length > 0 && _selected.Count == 1 && _fieldSelection == null && !_skillContext && !_cardActions.Visible;
         _decisionPopup.Visible = active && (choosing || showHint || rejection.Length > 0);
         if (!_decisionPopup.Visible) return;
 
@@ -153,6 +154,12 @@ public partial class OnlineArena
         _decisionPopup.CustomMinimumSize = new(folded ? 320 : Math.Min(Size.X - 32, Short ? 424 : 528), 0);
         PositionDecisionPrompt();
     }
+
+    /// <summary>Why the selected card has no play, for the desktop reader.</summary>
+    private string SelectionReason() =>
+        _showcase != null && !_preparing && _snapshot is { } s && _decisionHint.Length > 0 && _selected.Count == 1 &&
+        _fieldSelection == null && !_skillContext && _cardActions.GetChildCount() == 0 && _moves.GetChildCount() == 0 && !NeedsDecisionPrompt(s)
+            ? _decisionHint : "";
 
     private void PositionDecisionPrompt()
     {

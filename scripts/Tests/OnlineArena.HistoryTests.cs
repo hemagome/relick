@@ -6,6 +6,8 @@ namespace Relick;
 
 public partial class OnlineArena
 {
+    private static Button EnableForTest(Button button) { button.Disabled = false; return button; }
+
     internal async Task CheckPublicHistory()
     {
         void Check(bool value, string message) { if (!value) throw new Exception(message); }
@@ -61,7 +63,7 @@ public partial class OnlineArena
                 SelectCard(0); await Layout(); var selected = _selected.ToArray();
                 if (_inlineHistory)
                 {
-                    // The desktop rail lists the plays itself and yields to the card being read.
+                    // The strip keeps the plays in sight while a card is read; the full history opens when asked.
                     var feedRows = _historyFeed!.FindChildren("HistoryFeedEntry*", "PanelContainer", true, false).OfType<PanelContainer>().ToArray();
                     var feedText = string.Join("\n", _historyFeed.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text));
                     // The activation, both Error de Carga and the pass are one resolution: one card, responses hanging from it.
@@ -71,9 +73,14 @@ public partial class OnlineArena
                         _historyFeed.FindChild("HistoryFeedCard4", true, false) is HistoryCardThumb { Card.Id: var feedCard } && feedCard == CardCatalog.Senshuni.Id &&
                         !feedText.Contains(CardCatalog.DiamondHelmet.Name) && !feedText.Contains(CardCatalog.Agility.Name),
                         "El historial del inspector duplica filas, pierde resultados o revela robos privados.");
-                    Check(!_historyButton!.Visible && !_historyFeed.Visible && _showcase!.Visible, "El historial no cede el inspector a la carta seleccionada.");
+                    Check(_historyButton!.IsVisibleInTree() && _playTiles.Count == 1 && _playTiles[0].IsVisibleInTree() && !_historyFeed.Visible && _showcase!.Visible,
+                        "Leer una carta oculta la franja de jugadas o deja el historial abierto encima.");
                     ClearContext(); await Layout();
-                    Check(_historyFeed.Visible && _showcase is { Visible: false }, "Sin carta señalada el inspector no muestra el historial.");
+                    Check(!_historyFeed.Visible && _showcase is { Visible: false }, "Sin carta señalada queda un lector vacío o el historial se abre solo.");
+                    GuiInputTestDriver.Click(EnableForTest(_historyButton)); await Layout();
+                    Check(_historyFeed.IsVisibleInTree(), "Historial no abre las jugadas en escritorio.");
+                    GuiInputTestDriver.Click(_historyButton); await Layout();
+                    Check(!_historyFeed.Visible, "Historial no se vuelve a cerrar.");
                     SelectCard(0); await Layout();
                     ShowDuelHistory();
                 }

@@ -34,6 +34,7 @@ public partial class OnlineArena
         _choosingAttackSkill = false;
         _fieldSelection = null; _showReplayMemory = false;
         _inspectorPreview = null; _relikarioPreview = null;
+        ForgetPreview();
     }
 
     private void BuildInspector(VBoxContainer parent)
@@ -341,11 +342,12 @@ public partial class OnlineArena
 
         if (_preparing)
         {
-            _inspectorPreview = null; _relikarioPreview = null;
+            _inspectorPreview = null; _relikarioPreview = null; ForgetPreview();
             _openingInspection = null;
             RefreshInspector();
         }
         else if (_inspectorPreview != null || _relikarioPreview != null || HasContextSelection || _showReplayMemory) ClearContext();
+        else if (_historyOpen) SetHistoryOpen(false);
         else return;
         GetViewport().SetInputAsHandled();
     }
@@ -362,8 +364,13 @@ public partial class OnlineArena
             portrait.MouseEntered += () =>
             {
                 if (_snapshot is { } s && !_preparing && !HasContextSelection)
+                {
+                    if (IsAnimating) return;
+                    TrackPreview(portrait);
                     PreviewRelikario(index == 0 ? s.MySeat : 1 - s.MySeat);
+                }
             };
+            portrait.MouseExited += PreviewLeft;
         }
     }
 
@@ -381,7 +388,11 @@ public partial class OnlineArena
     private void BindInspectorPreviews()
     {
         // A disabled evolution button still receives pointer hover and can be read.
-        if (_evolveButton != null) _evolveButton.MouseEntered += () => PreviewRelikario(_snapshot!.MySeat, evolution: true);
+        if (_evolveButton is { } evolve)
+        {
+            evolve.MouseEntered += () => { if (!IsAnimating) TrackPreview(evolve); PreviewRelikario(_snapshot!.MySeat, evolution: true); };
+            evolve.MouseExited += PreviewLeft;
+        }
         var buttons = _root!.FindChildren("*", "Button", true, false).OfType<Button>();
         if (_deckChoiceShade != null) buttons = buttons.Concat(_handCards).Concat(_initialSkillCards);
         foreach (var control in buttons)
@@ -417,7 +428,7 @@ public partial class OnlineArena
                 // Choosing the skill of an Attack is exactly when its damage table is worth reading.
                 var choosingSkill = _choosingAttackSkill && control is SkillTile;
                 if (IsAnimating || HasContextSelection && !choosingSkill) return;
-                if (card != null) control.TooltipText = "";
+                if (card != null) { control.TooltipText = ""; TrackPreview(control); }
                 (CardDefinition, int?)? preview = card == null ? null : (card, counters);
                 if (_inspectorPreview == preview && _inspectorPreviewOwner == owner && _inspectorPreviewRelikario == relikario && _relikarioPreview == null) return;
                 _inspectorPreview = preview; _inspectorPreviewOwner = owner; _inspectorPreviewRelikario = relikario; _relikarioPreview = null;
@@ -426,6 +437,7 @@ public partial class OnlineArena
             if (card != null) control.MouseExited += () =>
             {
                 control.TooltipText = tooltip;
+                if (!_choosingAttackSkill) PreviewLeft();
                 if (!_choosingAttackSkill || _inspectorPreview == null) return;
                 _inspectorPreview = null; RefreshInspector();
             };
@@ -474,9 +486,10 @@ public partial class OnlineArena
         var s = _snapshot!;
         var selected = SelectedCardId();
         var activation = selected == null ? InspectorActivationId() : null;
-        var id = selected ?? activation;
+        var responding = selected == null && activation == null ? RespondingToCard() : null;
+        var id = selected ?? activation ?? responding;
         var card = id == null ? null : CardCatalog.Get(id);
-        var artworkRelikario = SelectedArtworkRelikario();
+        var artworkRelikario = responding != null ? RespondingArtwork() : SelectedArtworkRelikario();
         int? counters = null;
         if (_fieldSelection is { Zone: FieldZone.Skill } field)
             counters = s.Players[field.Owner].Counters.ElementAtOrDefault(field.Index);
@@ -517,19 +530,15 @@ public partial class OnlineArena
             // Deciding a Trap shows the two exchanged cards that met its recipe.
             var recipe = !fromPreview && card?.Id == s.TrapCardId && s.Phase == Phase.TrapCraftChoice ? s.TrapIngredients : null;
             _inspector.Present(card, card != null ? title : "", card != null ? cost : "", counters: counters,
+                hint: card != null && !fromPreview ? SelectionReason() : "",
                 outlook: InspectorOutlook(card, counters, owner), recipe: recipe);
             _showcase?.Present(card, fromPreview ? _inspectorPreviewRelikario : artworkRelikario);
         }
         _contextCost.TooltipText = cost;
         var reading = card != null || relikia != null || relikario != null;
         _actionDock.SizeFlagsVertical = reading ? SizeFlags.ExpandFill : SizeFlags.Fill;
-        if (_showcase != null)
-        {
-            // With no card to read, the rail gives its height to the history.
-            _showcase.Visible = reading;
-            if (_historyFeed != null) _historyFeed.Visible = !reading && !_preparing;
-            if (_railReading != null) _railReading.SizeFlagsVertical = reading || _historyFeed is not { Visible: true } ? SizeFlags.ExpandFill : SizeFlags.Fill;
-        }
+        _readerReading = reading;
+        SyncRail();
         if (_showcase == null && _deckChoiceShade == null)
         {
             var interaction = (Control)_actionDock.GetParent().GetParent();

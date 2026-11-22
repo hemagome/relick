@@ -20,13 +20,37 @@ Con un lienzo de al menos 1400×980 unidades lógicas, `OnlineArena` construye e
 - **Núcleo de turno.** `TurnCore` (236×112) ocupa el hueco entre las habilidades de ambos jugadores, sobre la línea central. Tiene de quién es la decisión y su reloj, la fase con el número de turno, una pista de cuatro tramos y un único botón contextual (avanzar o «Dejar resolver»). Toma el color de quien tiene el turno y nunca cambia de tamaño. Conserva los nombres `CombatCenter`, `StageIndicator` y `TurnDock`. Los equipos ligeros van bajo la Memoria de su dueño.
 - **Manos.** La mano propia cuelga del borde inferior con las cartas al tamaño del tablero: en reposo solo el cuadro de efecto queda bajo la pantalla. La carta bajo el cursor, con foco o seleccionada sube hasta verse completa y sus acciones la acompañan; el área de pulsación no se mueve. Un borde rojo identifica las cartas del rival que tienes en mano. La mano rival cuelga del borde superior y solo asoma su franja inferior.
 - **Elecciones.** Elegir entre cartas que no están en la mano —Disquete, reciclaje, búsqueda en el mazo, Resetear la Mente, corrupción, código de Relikia y habilidad inicial— abre un panel sobre el tablero atenuado. Las memorias se apilan en bloques con el color de su dueño y la decisión que confirma la elección va al pie del panel.
-- **Riel de lectura.** A la derecha: COMBO y Menú, la resolución en curso y, debajo, la carta señalada o seleccionada con su inspector. Cuando no hay carta que leer, ese espacio muestra el historial de jugadas públicas, la más reciente primero y con el color de quien jugó; el botón Historial ya no existe en escritorio y el menú conserva el diálogo completo.
-- **Relikia.** El contador de PR del jugador abre un menú que solo nombra los cuatro efectos. El efecto bajo el cursor se explica en el riel con su lámina (`assets/relikia/`) y su coste.
+- **Riel adaptable.** A la derecha, una franja de 72 unidades con el menú, COMBO, Historial y las jugadas públicas en miniatura. El lector de cartas se fija, flota o entra en la galería según el espacio (ver [Riel adaptable](#riel-adaptable)).
+- **Relikia.** El contador de PR del jugador abre un menú que solo nombra los cuatro efectos. El efecto bajo el cursor se explica en el lector con su lámina (`assets/relikia/`) y su coste.
 - **Lienzo lógico.** En escritorio el alto lógico es 1024 y el ancho sigue la proporción de la ventana (entre 1440 y 2280), de modo que un monitor panorámico no muestra bandas laterales.
 
 Entre el tablero de escritorio y las pantallas compactas (ancho de 1100 o más y menos de 980 de alto, como 1366×768 o un tablet), los dos campos van dentro de `ArenaScroll`. Si caben, ocupan su alto completo. En caso contrario, el desplazamiento ocupa el espacio que dejan la mano y el inspector. Las galerías centradas, como habilidad inicial, Disquete y reciclaje, conservan su confirmación visible al desplazarse. `--choice-preview-dir=DIRECTORIO` (con `--choice-sizes=1366x768,…` opcional) informa y captura esos botones en cada tamaño.
 
 `./jugar.sh -- --pvp-ui-test --board-preview-dir=DIRECTORIO` guarda capturas del tablero en reposo, con una carta seleccionada, con el menú de Relikia y con Disquete, a 1820×1024 y 1440×1024.
+
+### Riel adaptable
+
+El riel solo ocupa lo que no encoge las cartas. `ChooseRailMode` mide el ancho que sobra junto al tablero a escala completa:
+
+- **Con 320 unidades o más (16:9 y más ancho)** el lector queda fijo junto a la franja, hasta 420 en total. Sin carta que leer muestra «Última jugada».
+- **Con menos (16:10, 3:2, 4:3)** solo queda la franja y el tablero crece (un 10–14 % en 16:10). El lector flota sobre la columna lateral de Bonus, Área y canje, sin tapar habilidades, Relikarios, Memorias, el núcleo ni la mano.
+- **En una galería con riel estrecho** el lector es una columna del propio panel.
+
+Reglas del lector:
+
+- **Hover.** Aparece tras 180 ms en pantallas estrechas, no recibe clics y se aparta si el cursor entra en él. Al salir de la carta se cierra (250 ms flotando, 700 ms fijo, para poder ir a leerlo), así que el último hover ya no deja oculto lo que había debajo.
+- **Fijado.** Una selección, una jugada pulsada en la franja o la carta que debes responder quedan abiertas. La carta a responder se abre sola.
+- **Lado.** Prefiere la derecha. Pasa a la izquierda si ahí está la carta que se lee, el historial o algo que pulsar. Con objetivos en ambos lados se oculta.
+- **Texto.** El arte cede alto antes que el texto. Con las 67 cartas actuales solo Reverse Shuffle necesita desplazamiento, en 4:3 y en el lector fijo más estrecho; al seleccionarla se puede desplazar.
+- **Motivo.** Por qué una carta no se puede jugar se lee en el lector; el aviso central no lo repite porque taparía el botón de turno.
+
+Franja e historial:
+
+- **Jugada.** Cada ficha (`PlayTile`) muestra la carta, el color y lado de quien jugó y una cifra: vidas, PR, robo, acciones o dado, en ese orden. Su tooltip la cuenta completa. Los avances de fase sin efecto solo aparecen en el historial.
+- **Historial.** El botón abre las últimas veinte jugadas en el lector fijo o en un cajón junto a la franja. Se cierra con el mismo botón, Esc o un clic en el campo vacío. El menú conserva el diálogo completo.
+- **Sin adelantos.** Mientras se anima la última jugada, la franja, el historial y «Última jugada» no muestran su resultado. El cuadro de resolución solo aparece mientras hay algo resolviéndose.
+
+Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --rail-only`, también en la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda los tres modos.
 
 ### Acabado y efectos
 
@@ -147,7 +171,7 @@ autorizada de la acción actual. Al consultar una carta sin una acción disponib
 se puede mostrar su coste de catálogo; eso no habilita jugadas. Los contadores y
 el daño de una habilidad enseñada corresponden a su copia autorizada. Limpiar la
 selección retira esos datos. Sin una carta para mostrar, el inspector se contrae y
-el riel de escritorio muestra el historial. Al consultar una carta, clasificación,
+en escritorio el lector se retira o muestra la última jugada. Al consultar una carta, clasificación,
 nombre, atributos y contadores permanecen en la cabecera. Solo se desplaza la
 descripción. El coste queda visible debajo.
 En escritorio, la lectura recibe parte del espacio libre al seleccionar una carta.
@@ -200,13 +224,13 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --guidance-only`. C
 
 Cuando el botón de turno cambia de significado (otra fase, una fase repetida o cada nueva ventana de respuesta) espera 400 ms (`TurnGuardMilliseconds`) antes de aceptar una pulsación: aparece en el mismo lugar que el anterior y un doble clic terminaría el turno. Una jugada dentro de la misma fase no reinicia la espera.
 
-Espacio pulsa ese botón en todas las distribuciones. No repite al mantenerlo, respeta la espera y no actúa detrás de galerías, avisos que cubren el botón, diálogos o perfiles. Si el foco se puso con el teclado, Espacio sigue pulsando el control enfocado; Enter siempre lo hace.
+Espacio pulsa ese botón en todas las distribuciones. No repite al mantenerlo, respeta la espera y no actúa detrás de galerías, avisos que cubren el botón, diálogos o perfiles. Un tooltip no cuenta como diálogo. Si el foco se puso con el teclado, Espacio sigue pulsando el control enfocado; Enter siempre lo hace.
 
 ### Temporizador
 
 El reloj muestra el tiempo de quien decide, aunque sea una respuesta en el turno ajeno: cada asiento dispone de una referencia de 90 segundos por turno. El contorno del núcleo se vacía con él, se vuelve dorado en los últimos 15 segundos y después cuenta el tiempo extra como «+0:12». **Es solo informativo: no avanza, pasa ni termina nada.** Su tooltip añade el total de cada jugador en el duelo.
 
-Se repite donde el núcleo no se ve: en el aviso de decisión, en el riel durante una galería y en el indicador de las composiciones compactas. Se oculta en la preparación, al terminar y con un servidor que no lo publica; sin hora del servidor muestra «–:––». Los datos se describen en [PvP · Reloj de decisión](PVP.md#reloj-de-decisión).
+Se repite donde el núcleo no se ve: en el aviso de decisión, en el lector durante una galería y en el indicador de las composiciones compactas. Se oculta en la preparación, al terminar y con un servidor que no lo publica; sin hora del servidor muestra «–:––». Los datos se describen en [PvP · Reloj de decisión](PVP.md#reloj-de-decisión).
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --turn-core-only`; también forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el núcleo en ambas vistas, la decisión y la galería.
 
@@ -339,7 +363,7 @@ anulada. Identifica la carta original y a su jugador; las respuestas encadenadas
 aparecen debajo, sin atribuir la activación original a quien contraataca. Presenta
 el resultado cuando terminan el dado y los movimientos de cartas.
 
-«Historial» abre las últimas veinte jugadas públicas, de la más reciente a la más
+«Historial» (en escritorio, en la franja) abre las últimas veinte jugadas públicas, de la más reciente a la más
 antigua. También está disponible en Menú para pantallas pequeñas. Cada entrada
 identifica turno, jugada y resultados públicos: daño/curación y destinatario,
 vidas, PR, robos por cantidad, cambios de zona públicos y anulaciones. No enumera

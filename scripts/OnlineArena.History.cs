@@ -33,9 +33,13 @@ public partial class OnlineArena
         title.HorizontalAlignment = HorizontalAlignment.Left; title.VerticalAlignment = VerticalAlignment.Center;
         title.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         row.AddChild(title);
-        _historyButton = new Button { Name = "DuelHistoryButton", Text = "Historial", CustomMinimumSize = new(0, 48), Visible = !_preparing, MouseDefaultCursorShape = CursorShape.PointingHand };
-        _historyButton.AddThemeFontSizeOverride("font_size", 12);
-        _historyButton.Pressed += ShowDuelHistory; row.AddChild(_historyButton);
+        // On desktop the button belongs to the strip of plays and opens the history beside it.
+        if (!_inlineHistory)
+        {
+            _historyButton = new Button { Name = "DuelHistoryButton", Text = "Historial", CustomMinimumSize = new(0, 48), Visible = !_preparing, MouseDefaultCursorShape = CursorShape.PointingHand };
+            _historyButton.AddThemeFontSizeOverride("font_size", 12);
+            _historyButton.Pressed += ShowDuelHistory; row.AddChild(_historyButton);
+        }
         _resolutionSource = ArenaPresentation.Text("", 17);
         _resolutionSource.Name = "ResolutionSource"; _resolutionSource.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _resolutionSource.MaxLinesVisible = 2; _resolutionSource.HorizontalAlignment = HorizontalAlignment.Center;
@@ -51,9 +55,12 @@ public partial class OnlineArena
     {
         if (_resolutionMessage == null || _snapshot == null) return;
         var s = _snapshot; var latest = s.History?.LastOrDefault(); var live = s.Resolution;
-        _historyButton!.Visible = !_preparing && !_inlineHistory;
-        _historyButton.Disabled = IsAnimating;
-        _historyButton.TooltipText = IsAnimating ? "El historial estará disponible al terminar la resolución visual." : $"Últimas {DuelHistory.Capacity} jugadas públicas.";
+        if (_historyButton != null && IsInstanceValid(_historyButton))
+        {
+            _historyButton.Visible = !_preparing && !_readerInGallery;
+            _historyButton.Disabled = IsAnimating;
+            _historyButton.TooltipText = IsAnimating ? "El historial estará disponible al terminar la resolución visual." : $"Últimas {DuelHistory.Capacity} jugadas públicas.";
+        }
         if (_arenaMenu != null)
         {
             var popup = _arenaMenu.GetPopup(); var item = popup.GetItemIndex(3);
@@ -92,11 +99,12 @@ public partial class OnlineArena
         _resolutionMessage.Visible = !IsAnimating && _resolutionMessage.Text.Length > 0;
         // The heading only appears with something to head: an idle duel shows no empty "resolution".
         _resolutionStage!.Visible = !_preparing && (hasPublicResolution || _resolutionMessage.Visible);
+        // Once settled, the strip and the last play tell the result; repeating it here said the same thing twice.
         if (_resolutionPanel != null)
-            _resolutionPanel.Visible = _resolutionStage!.Visible || _resolutionSource.Visible || _resolutionResponses.Visible || _resolutionMessage.Visible;
+            _resolutionPanel.Visible = (live != null || latest == null || s.Winner != null) && (_resolutionStage!.Visible || _resolutionSource.Visible || _resolutionResponses.Visible || _resolutionMessage.Visible);
     }
 
-    /// <summary>On the desktop rail, what is resolving now stays above the card or the history.</summary>
+    /// <summary>On desktop, what is resolving now heads the reader.</summary>
     private void BuildRailResolution(VBoxContainer parent, string message)
     {
         var panel = new PanelContainer { Name = "ResolutionPanel", SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -117,10 +125,10 @@ public partial class OnlineArena
         _combatMessage = status;
     }
 
-    /// <summary>The public plays, newest first. The rail shows them whenever no card is being read.</summary>
+    /// <summary>The public plays, newest first: in the docked reader or the drawer, when asked for.</summary>
     private void BuildHistoryFeed(VBoxContainer parent)
     {
-        var feed = new VBoxContainer { Name = "HistoryFeed", SizeFlagsVertical = SizeFlags.ExpandFill, Visible = !_preparing };
+        var feed = new VBoxContainer { Name = "HistoryFeed", SizeFlagsVertical = SizeFlags.ExpandFill, Visible = false };
         feed.AddThemeConstantOverride("separation", 4); parent.AddChild(feed); _historyFeed = feed;
         var heading = ArenaPresentation.Text("HISTORIAL", 12, BoardArt.Gold);
         heading.AddThemeFontOverride("font", RelickVisuals.Display); feed.AddChild(heading);
@@ -168,10 +176,10 @@ public partial class OnlineArena
 
     /// <summary>One list for the rail and the dialog: turn and stage marks, one card per resolution, and formalities
     /// that settled nothing as a quiet line.</summary>
-    private void FillHistory(VBoxContainer list, string prefix, bool large, string emptyText)
+    private void FillHistory(VBoxContainer list, string prefix, bool large, string emptyText, DuelHistoryEntry[]? only = null)
     {
         var s = _snapshot!;
-        var entries = _preparing ? [] : s.History?.OrderByDescending(e => e.Id).Take(DuelHistory.Capacity).ToArray() ?? [];
+        var entries = only ?? (_preparing ? [] : s.History?.OrderByDescending(e => e.Id).Take(DuelHistory.Capacity).ToArray() ?? []);
         if (entries.Length == 0)
         {
             var empty = ArenaPresentation.Text(emptyText, large ? 15 : 13, BoardArt.Muted);
@@ -208,6 +216,7 @@ public partial class OnlineArena
             var style = new StyleBoxFlat { BgColor = new Color(1, 1, 1, 0.035f), BorderColor = accent, BorderWidthLeft = 3,
                 ContentMarginLeft = 9, ContentMarginRight = 6, ContentMarginTop = 5, ContentMarginBottom = 5 };
             panel.AddThemeStyleboxOverride("panel", style); list.AddChild(panel);
+            if (feed && last.Id == newest) _unsettledPlay.Add(panel);
             if (feed && _historySeen != 0 && last.Id > _historySeen && !_impacts.ReducedMotion) _historyGlow = (last.Id, Time.GetTicksMsec());
             var glowing = (Time.GetTicksMsec() - _historyGlow.StartMs) / 1000.0;
             if (feed && _historyGlow.Id == last.Id && glowing < HistoryGlowSeconds && !_impacts.ReducedMotion)
@@ -226,7 +235,9 @@ public partial class OnlineArena
                 var seat = head.SourceActor is 0 or 1 ? head.SourceActor : -1;
                 var thumb = new HistoryCardThumb(CardCatalog.Get(source), seat >= 0 ? s.Players[seat].RelikarioId : null, large)
                     { Name = $"{prefix}Card{last.Id}" };
-                thumb.Pressed += () => ReadHistoryCard(thumb.Card, thumb.Relikario);
+                thumb.Pressed += () => ReadHistoryCard(thumb.Card, thumb.Relikario, thumb.GetGlobalRect().GetCenter());
+                // Under "ÚLTIMA JUGADA" the card is already shown large.
+                if (prefix == "LastPlay") thumb.Visible = false;
                 row.AddChild(thumb);
             }
             var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 1); row.AddChild(column);
@@ -284,11 +295,12 @@ public partial class OnlineArena
     }
 
     /// <summary>Reading a play's card: the inspector shows it as when hovering it on the board; the dialog yields.</summary>
-    private void ReadHistoryCard(CardDefinition card, string? relikario)
+    private void ReadHistoryCard(CardDefinition card, string? relikario, Vector2 from)
     {
         if (_snapshot == null || IsAnimating) return;
         if (_historyDialog is { } dialog && IsInstanceValid(dialog)) { _historyDialog = null; dialog.QueueFree(); }
         _inspectorPreview = (card, null); _inspectorPreviewOwner = null; _inspectorPreviewRelikario = relikario; _relikarioPreview = null;
+        _previewPinned = true; _previewLeftAt = null; _previewAnchor = from;
         RefreshInspector();
     }
 }
