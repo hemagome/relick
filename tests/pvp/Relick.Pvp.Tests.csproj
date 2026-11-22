@@ -11,6 +11,7 @@
     <Compile Include="../../network/LobbyConnection.cs" Link="LobbyConnection.cs" />
     <Compile Include="../../network/LobbyConnection.QuickMatch.cs" Link="LobbyConnection.QuickMatch.cs" />
     <Compile Include="../../network/AuthSession.cs" Link="AuthSession.cs" />
+    <Compile Include="../../network/LobbyConnection.Clock.cs" Link="LobbyConnection.Clock.cs" />
     <Compile Include="../../network/LobbyConnection.Decks.cs" Link="LobbyConnection.Decks.cs" />
     <Compile Include="../../network/LobbyConnection.Profile.cs" Link="LobbyConnection.Profile.cs" />
     <Compile Include="../../network/DeckInfo.Style.cs" Link="DeckInfo.Style.cs" />

@@ -153,27 +153,29 @@ public partial class OnlineArena
         var s = _snapshot!;
         _advanceButton = null;
         _passResponseSlot = null;
+        AddTurnButton(header);
+        ArmTurnGuard();
+    }
+
+    private void AddTurnButton(Node header)
+    {
+        var s = _snapshot!;
         if (_preparing) return;
         if (s.Phase == Phase.ErrorResponse && s.DecisionPlayer == s.MySeat)
         {
-            _passResponseSlot = new HBoxContainer { Name = "ResponseControls", MouseFilter = MouseFilterEnum.Ignore,
-                CustomMinimumSize = new(header.Name == "TurnDock" ? 192 : 0, 0) };
+            _passResponseSlot = new HBoxContainer { Name = "ResponseControls", MouseFilter = MouseFilterEnum.Ignore };
             header.AddChild(_passResponseSlot);
             return;
         }
         var advance = s.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Advance);
-        if (advance < 0)
-        {
-            // On the board the bar keeps the button's room, so it does not shrink and shift on the rival's turn.
-            if (header.Name == "TurnDock" && s.Winner == null)
-                header.AddChild(new Control { Name = "AdvancePlaceholder", CustomMinimumSize = new(192, 48), MouseFilter = MouseFilterEnum.Ignore });
-            return;
-        }
+        if (advance < 0) return;
         _advanceButton = (AdvancePhaseButton)AddOption(header, advance);
         _advanceButton.Name = "AdvanceStage";
-        _advanceButton.TooltipText = AdvanceSuggested(s)
-            ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.";
+        _advanceButton.TooltipText = (AdvanceSuggested(s)
+            ? "No quedan jugadas disponibles. " + ArenaGuidance.NextStep(s) : "Avanza cuando termines tus jugadas de esta fase.") + ShortcutHint;
     }
+
+    private static string ShortcutHint => OS.HasFeature("mobile") ? "" : "\nAtajo: Espacio.";
 
     private static bool IsComboActivation(DuelOption option, DuelSnapshot s) =>
         option.Move.Kind == DuelMoveKind.PlayCode && ArenaActionText.HandCard(option, s)?.IsCombo == true;
@@ -201,7 +203,7 @@ public partial class OnlineArena
                 var button = AddOption(_passResponseSlot, pass);
                 button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                 button.TooltipText = (s.ErrorAfterDie ? $"Dado final: {s.Die}. " : "") +
-                    "Selecciona un COMBO iluminado para responder o deja que se resuelva la activación.";
+                    "Selecciona un COMBO iluminado para responder o deja que se resuelva la activación." + ShortcutHint;
             }
         }
         else if (s.Phase == Phase.TrapCraftChoice)

@@ -64,6 +64,8 @@ public partial class OnlineArena
         // The desktop rail reads the card and its answers; the stacked layouts can cover the reading for a moment.
         if (desktop && _readerRail != null && IsInstanceValid(_readerRail) && _readerRail.IsVisibleInTree()) soft.Add(Local(_readerRail));
         if (!desktop && lane is { } bar) soft.Add(bar);
+        // The plate carries the time and whose answer it is, not just its button.
+        if (desktop && lane is { } plate) buttons.Add(plate);
         if (_hand != null && IsInstanceValid(_hand) && _hand.IsVisibleInTree()) soft.Add(Local(_hand).Intersection(bounds));
         if (_diceOverlay.Visible && _diceOverlay.GetChildCount() > 0 && _diceOverlay.GetChild(0) is Control dice) soft.Add(Local(dice));
         var board = desktop && soft.Count > 0 ? new Rect2(bounds.Position, new Vector2(Math.Max(0, soft[0].Position.X - bounds.Position.X - 8), bounds.Size.Y)) : bounds;

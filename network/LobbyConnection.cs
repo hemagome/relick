@@ -175,6 +175,7 @@ public sealed partial class LobbyConnection : IDisposable
         _connection.Reducers.OnCreateRoom += (context, _) => RoomReply(context);
         _connection.Reducers.OnJoinRoom += (context, _, _) => RoomReply(context);
         _connection.Reducers.OnLeaveRoom += context => RoomReply(context);
+        _connection.Reducers.OnEnsureDuel += context => SampleServerTime(context.Event.Timestamp.MicrosecondsSinceUnixEpoch);
         RegisterQuickMatchReplies();
         RegisterDeckReplies();
         RegisterProfileReplies();
@@ -207,6 +208,7 @@ public sealed partial class LobbyConnection : IDisposable
         _connection.Db.MyChoices.OnUpdate += (_, _, row) => GamePayloadBytes += Encoding.UTF8.GetByteCount(row.Json);
         _connection.Reducers.OnPlayDuelV2 += (context, _, _, _, _, _) =>
         {
+            SampleServerTime(context.Event.Timestamp.MicrosecondsSinceUnixEpoch);
             switch (context.Event.Status)
             {
                 case Status.Committed:
@@ -493,6 +495,7 @@ public sealed partial class LobbyConnection : IDisposable
     public void Dispose()
     {
         Ready = Connecting = false;
+        _serverTime = null;
         _healthCheck = null;
         QuickMatchAvailable = false;
         _preparationHand = []; _preparationHandDirty = true; PreparationRevision++;

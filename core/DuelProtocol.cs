@@ -193,6 +193,7 @@ public sealed class StrictEnumConverter<TEnum> : JsonStringEnumConverter<TEnum> 
 [JsonSerializable(typeof(DuelEntry))]
 [JsonSerializable(typeof(DuelSnapshot))]
 [JsonSerializable(typeof(DuelBoardPacket))]
+[JsonSerializable(typeof(TurnClock))]
 [JsonSerializable(typeof(DuelPrivateData))]
 [JsonSerializable(typeof(List<DuelOption>))]
 public partial class DuelJson : JsonSerializerContext { }

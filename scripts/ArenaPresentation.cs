@@ -91,7 +91,7 @@ public static class ArenaPresentation
         };
     }
 
-    private static Label Heading(string text, int size, Color color)
+    internal static Label Heading(string text, int size, Color color)
     {
         var label = Text(text, size, color);
         label.AddThemeFontOverride("font", RelickVisuals.Display);
@@ -103,7 +103,7 @@ public static class ArenaPresentation
     {
         var mat = new PanelContainer { Name = enemy ? "EnemyRelikarioPanel" : "OwnRelikarioPanel", MouseFilter = Control.MouseFilterEnum.Ignore };
         mat.AddThemeStyleboxOverride("panel", RelickVisuals.Field(enemy ? Coral : Mint, active));
-        return canvas.PlaceField(mat, enemy, 0, 14, BoardCanvas.DesignWidth, 410);
+        return canvas.PlaceField(mat, enemy, 0, 4, BoardCanvas.DesignWidth, BoardCanvas.HalfDepth - 4);
     }
 
     /// <summary>
@@ -117,7 +117,7 @@ public static class ArenaPresentation
         Action bonusPressed, Action<int> exchangePressed)
     {
         const float W = BoardCanvas.CardWidth, H = BoardCanvas.CardHeight;
-        const float top = 21, bottom = top + H + 10;
+        const float top = 5, bottom = top + H + 10;
         var accent = enemy ? Coral : Mint;
         T Put<T>(T node, float x, float fromSeam, float width, float height) where T : Control
             => canvas.PlaceField(node, enemy, x, fromSeam, width, height);
@@ -139,7 +139,7 @@ public static class ArenaPresentation
         Put(track.AreaButton!, 8, -H / 2, W, H);
         Put(track.BonusButton, 156, -H / 2, W, H);
         for (var slot = 0; slot < track.ExchangeButtons.Length; slot++)
-            Put(track.ExchangeButtons[slot], (302 - H) / 2, 131 + slot * (W + 10), H, W);
+            Put(track.ExchangeButtons[slot], (302 - H) / 2, 115 + slot * (W + 10), H, W);
 
         // Relikario: portrait beside its name, lives, actions, Destreza and PR.
         var hero = new HBoxContainer { Name = $"Hero{index}", MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -155,7 +155,7 @@ public static class ArenaPresentation
             stand.AddChild(new Control { CustomMinimumSize = portrait.CustomMinimumSize, SizeFlagsVertical = Control.SizeFlags.ExpandFill,
                 MouseFilter = Control.MouseFilterEnum.Ignore });
         else stand.AddChild(portrait);
-        // Whose turn it is lives in the phase bar's status cell; the name is only the name.
+        // Whose turn it is lives in the turn plate's status cell; the name is only the name.
         var ownerName = Heading(owner.Name, 17, accent);
         ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; info.AddChild(ownerName);
         OpensProfile(ownerName, owner.Name, actions.Profile);
@@ -203,7 +203,7 @@ public static class ArenaPresentation
             StackCopies = canvas.TableView ? owner.EquipmentStackedCopies + 1 : 0 };
         equipment.Pressed += actions.Equipment; Put(equipment, 306, bottom, W, H);
         if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W, canvas.TableView) is { } lights)
-            Put(lights, 1150, top, W, H);
+            Put(lights, 996, bottom, W, H); // Under its owner's Memory: beside it would cover the other seat's Bonus.
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
             TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
             SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0 };
@@ -218,7 +218,7 @@ public static class ArenaPresentation
         }
 
         // Skills: 500 and 1000 PR above, 0 and 300 PR below.
-        var skills = new (int Slot, float X, float Y)[] { (2, 596, 76), (3, 596 + H + 10, 76), (0, 596, 76 + W + 10), (1, 596 + H + 10, 76 + W + 10) };
+        var skills = new (int Slot, float X, float Y)[] { (2, 596, 60), (3, 596 + H + 10, 60), (0, 596, 60 + W + 10), (1, 596 + H + 10, 60 + W + 10) };
         var nextLesson = NextLessonSlot(owner, !enemy && actions.CanLearn);
         foreach (var (slot, x, y) in skills)
         {
@@ -244,70 +244,17 @@ public static class ArenaPresentation
             RaisedPile = canvas.TableView, Sleeve = owner.Sleeve }, BoardCanvas.DesignWidth - W - deckInset, deckRow, W, H);
     }
 
-    /// <summary>
-    /// The bar over the divider: turn, the four stages and, for whoever may advance, the button.
-    /// Its colour is the colour of the duelist whose turn it is.
-    /// </summary>
-    public static (Control Lane, HBoxContainer Row) PhaseBar(BoardCanvas canvas, Phase stage, string detail, Color accent)
+    /// <summary>The turn plate on the divider, in the pocket between both skill blocks.</summary>
+    public static (Control Lane, TurnCore Core) PhaseCore(BoardCanvas canvas, Phase stage, int? turn, string idle, Color accent)
     {
-        var lane = new CenterContainer { Name = "CombatCenter", MouseFilter = Control.MouseFilterEnum.Ignore };
-        canvas.PlaceTableHud(lane, new Rect2(306, BoardCanvas.Seam - 30, 828, 60));
-        var panel = new PanelContainer { Name = "StageIndicator", MouseFilter = Control.MouseFilterEnum.Ignore };
-        var frame = RelickVisuals.Glass(RelickVisuals.Playmat.Raised.Lerp(accent, 0.14f), RelickVisuals.Playmat.Surface,
-            BoardArt.Tint(accent, 0.9f), 10, 8, BoardArt.Tint(accent, 0.30f));
-        frame.ContentMarginLeft = frame.ContentMarginRight = 18; frame.ContentMarginTop = frame.ContentMarginBottom = 4;
-        panel.AddThemeStyleboxOverride("panel", frame);
-        lane.AddChild(panel);
-        var row = new HBoxContainer { Name = "TurnDock", CustomMinimumSize = new(0, 48), MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", 8); panel.AddChild(row);
-        static Label Still(Label label)
-        {
-            label.MouseFilter = Control.MouseFilterEnum.Ignore; label.VerticalAlignment = VerticalAlignment.Center;
-            label.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter; return label;
-        }
-        // Every cell keeps its width from stage to stage, so the advance button never moves.
-        // The status cell says in words whose turn or decision it is; colour only repeats it.
-        var status = new HBoxContainer { Name = "StageStatusCell", CustomMinimumSize = new(StatusCellWidth, 0),
-            MouseFilter = Control.MouseFilterEnum.Pass, TooltipText = detail };
-        status.AddThemeConstantOverride("separation", 7); row.AddChild(status);
-        status.AddChild(new IconView { Name = "StageStatusIcon", Icon = GameIcon.Bolt, Color = accent,
-            CustomMinimumSize = new(20, 20), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
-        var lines = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center,
-            MouseFilter = Control.MouseFilterEnum.Ignore };
-        lines.AddThemeConstantOverride("separation", -2); status.AddChild(lines);
-        var headline = Still(Heading("", 15, accent));
-        headline.Name = "StageStatus"; headline.ClipText = true; lines.AddChild(headline);
-        var context = Still(Text(detail, 12, BoardArt.Ink));
-        context.Name = "StageDetail"; context.ClipText = true; context.TooltipText = detail;
-        lines.AddChild(context);
-        var stages = new[] { Phase.Draw, Phase.Combat, Phase.Actions, Phase.Final };
-        var widths = new[] { 66f, 112, 116, 70 };
-        var current = Array.IndexOf(stages, stage);
-        if (current < 0)
-        {
-            var only = Still(Heading(StageAppearance.For(stage).Title, 16, accent));
-            only.Name = "CurrentStageTitle"; only.CustomMinimumSize = new(widths.Sum() + 8 * (widths.Length - 1), 0);
-            only.HorizontalAlignment = HorizontalAlignment.Center;
-            row.AddChild(only);
-            return (lane, row);
-        }
-        for (var i = 0; i < stages.Length; i++)
-        {
-            var title = StageAppearance.For(stages[i]).Title;
-            var cell = new HBoxContainer { CustomMinimumSize = new(widths[i], 0), Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
-            cell.AddThemeConstantOverride("separation", 5); row.AddChild(cell);
-            if (i < current) cell.AddChild(Still(Text(title + " ✓", 12, BoardArt.Tint(accent, 0.75f))));
-            else if (i > current) cell.AddChild(Still(Text(title, 12, BoardArt.Tint(BoardArt.Muted, 0.6f))));
-            else
-            {
-                var now = Still(Heading(title, 16, accent)); now.Name = "CurrentStageTitle"; cell.AddChild(now);
-            }
-        }
-        return (lane, row);
+        var lane = new Control { Name = "CombatCenter", MouseFilter = Control.MouseFilterEnum.Ignore };
+        canvas.PlaceTableHud(lane, new Rect2((BoardCanvas.DesignWidth - TurnCore.PlateWidth) / 2,
+            BoardCanvas.Seam - TurnCore.PlateHeight / 2, TurnCore.PlateWidth, TurnCore.PlateHeight));
+        var core = TurnCore.Create(stage, turn, idle, accent);
+        lane.AddChild(core);
+        core.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        return (lane, core);
     }
-
-    /// <summary>Width of the desktop status cell; the bar must still fit its 828-unit lane.</summary>
-    internal const float StatusCellWidth = 180;
 
     public static BoxContainer Arena(VBoxContainer root, bool compact)
     {
@@ -729,7 +676,7 @@ public static class ArenaPresentation
         text.Name = "DuelScoreline"; text.AutowrapMode = TextServer.AutowrapMode.WordSmart; parent.AddChild(text);
     }
 
-    public static void StageIndicator(Node parent, Phase stage, string detail, bool shortScreen, bool wrap = false)
+    public static HBoxContainer StageIndicator(Node parent, Phase stage, string detail, bool shortScreen, bool wrap = false)
     {
         var style = StageAppearance.For(stage);
         var panel = new PanelContainer { Name = "StageIndicator", MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -758,6 +705,7 @@ public static class ArenaPresentation
         if (shortScreen || wrap) context.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         if (wrap) { title.AddThemeFontSizeOverride("font_size", 20); context.AddThemeFontSizeOverride("font_size", 12); context.AddThemeColorOverride("font_color", BoardArt.Muted); }
         labels.AddChild(context);
+        return row;
     }
 
     public static (VBoxContainer Board, VBoxContainer Controls) Body(VBoxContainer root, bool split)

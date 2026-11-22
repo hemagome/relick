@@ -130,6 +130,11 @@ public partial class OnlineLobby
                 await online.CheckDiscardAnimation(); online.QueueFree(); await Layout();
                 QuitWithAudio(); return;
             }
+            if (OS.GetCmdlineUserArgs().Contains("--turn-core-only"))
+            {
+                await online.CheckTurnCore(); online.QueueFree(); await Layout();
+                GD.Print("PVP_TURN_CORE_ONLY_PASS"); QuitWithAudio(); return;
+            }
             if (OS.GetCmdlineUserArgs().Contains("--guidance-only"))
             {
                 await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
@@ -378,6 +383,7 @@ public partial class OnlineLobby
             await online.CheckContextActionBar();
             await online.CheckDecisionGuidance();
             await online.CheckDecisionFeedback();
+            await online.CheckTurnCore();
             await online.CheckBoardReading();
             await online.CheckPolishEffects();
             await online.CheckTrapRecipe();

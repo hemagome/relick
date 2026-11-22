@@ -40,7 +40,12 @@ public partial class OnlineArena
         _decisionTitle.AddThemeFontOverride("font", RelickVisuals.Display);
         header.AddChild(_decisionTitle);
         header.Visible = gallery == null;
-        if (gallery == null) BuildDecisionToggle(header);
+        if (gallery == null)
+        {
+            // The prompt covers the turn plate exactly while someone is deciding.
+            AddClockLabel(header, Short ? 14 : 17);
+            BuildDecisionToggle(header);
+        }
 
         _selection = DecisionText("ContextHint", Short ? 13 : 15, BoardArt.Ink);
         content.AddChild(_selection);

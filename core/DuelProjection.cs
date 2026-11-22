@@ -101,6 +101,10 @@ public sealed class DuelSnapshot
     public int ExtraActionStages { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int ExtraFinalStages { get; set; }
+    /// <summary>Informative decision clock, stamped by the server; null from older servers and outside live duels.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    [System.Text.Json.Serialization.JsonPropertyOrder(-1)] // First, so TurnClock.FromBoard never parses the board.
+    public TurnClock? Clock { get; set; }
     public int? Winner { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? EndReason { get; set; }

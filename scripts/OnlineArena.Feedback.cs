@@ -10,7 +10,7 @@ public partial class OnlineArena
     /// <summary>How long a refused play stays in the inspector unless the player plays again first.</summary>
     internal const ulong RejectionMilliseconds = 6000;
 
-    private Label? _stageStatus, _stageDetail;
+    private Label? _stageStatus;
     private IconView? _stageStatusIcon;
     private Control? _stageStatusCell;
     private string? _stageStatusKey;
@@ -23,20 +23,19 @@ public partial class OnlineArena
     internal string StageStatusText => _stageStatus?.Text ?? "";
     internal bool ShowingRejection => _rejectionUntil > Time.GetTicksMsec() && _rejectionText.Length > 0;
 
-    private void BindStageStatus(Control bar)
+    private void BindStageStatus(Control core)
     {
-        _stageStatusCell = bar.FindChild("StageStatusCell", true, false) as Control;
-        _stageStatus = bar.FindChild("StageStatus", true, false) as Label;
-        _stageDetail = bar.FindChild("StageDetail", true, false) as Label;
-        _stageStatusIcon = bar.FindChild("StageStatusIcon", true, false) as IconView;
+        _stageStatusCell = core.FindChild("StageStatusCell", true, false) as Control;
+        _stageStatus = core.FindChild("StageStatus", true, false) as Label;
+        _stageStatusIcon = core.FindChild("StageStatusIcon", true, false) as IconView;
         _stageStatusKey = null;
-        // Filled while building, so a rebuilt bar never shows an empty headline for a frame.
+        // Filled while building, so a rebuilt plate never shows an empty headline for a frame.
         if (_snapshot != null) RefreshStageStatus(_snapshot);
     }
 
     private void ClearStageStatus()
     {
-        _stageStatus = _stageDetail = null; _stageStatusIcon = null; _stageStatusCell = null; _stageStatusKey = null;
+        _stageStatus = null; _stageStatusIcon = null; _stageStatusCell = null; _stageStatusKey = null;
     }
 
     /// <summary>Called every frame; it only touches nodes when the presented state changes.</summary>
@@ -89,7 +88,6 @@ public partial class OnlineArena
         _stageStatusKey = key;
         _stageStatus.Text = headline;
         _stageStatus.AddThemeColorOverride("font_color", color);
-        if (_stageDetail != null) { _stageDetail.Text = detail; _stageDetail.TooltipText = detail; }
         if (_stageStatusCell != null) _stageStatusCell.TooltipText = $"{headline} · {detail}";
         if (_stageStatusIcon != null) { _stageStatusIcon.Icon = icon; _stageStatusIcon.Color = color; _stageStatusIcon.QueueRedraw(); }
     }

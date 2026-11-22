@@ -86,6 +86,11 @@ public static partial class Module
         var players = ctx.Db.Member.RoomCode.Filter(roomCode).OrderBy(m => m.Seat).ToArray();
         var packet = new DuelBoardPacket { Board = DuelSnapshot.For(game, -1, revision) };
         packet.Board.Visuals = visuals ?? [];
+        var cached = ctx.Db.DuelBoard.RoomCode.Find(roomCode);
+        // The board row already lasts as long as the duel, so it also carries the clock.
+        var clock = cached is DuelBoard last ? TurnClock.FromBoard(last.Json) : null;
+        packet.Board.Clock = TurnClock.Next(clock, game.State.Turn, game.State.IsOver ? null : game.State.DecisionPlayer,
+            ctx.Timestamp.MicrosecondsSinceUnixEpoch);
         // Counts travel once on the shared board. Only actual public revelations need slots.
         foreach (var player in packet.Board.Players) if (player.Hand.All(c => c == null)) player.Hand = [];
         foreach (var member in players)
@@ -124,7 +129,7 @@ public static partial class Module
             packet.OptionVersions[member.Seat] = choicesVersion;
         }
         var board = new DuelBoard { RoomCode = roomCode, Revision = revision, Json = JsonSerializer.Serialize(packet, DuelJson.Default.DuelBoardPacket) };
-        if (ctx.Db.DuelBoard.RoomCode.Find(roomCode) == null) ctx.Db.DuelBoard.Insert(board); else ctx.Db.DuelBoard.RoomCode.Update(board);
+        if (cached == null) ctx.Db.DuelBoard.Insert(board); else ctx.Db.DuelBoard.RoomCode.Update(board);
     }
 
     private static CurrentDuel EnsureCurrentDuel(ReducerContext ctx, string roomCode)

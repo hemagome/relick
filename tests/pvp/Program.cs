@@ -271,10 +271,19 @@ try
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), int.MaxValue, []), "Opción inventada rechazada por el servidor");
     Rejected(starter, () => starter.Connection.Reducers.PlayDuelV2(nextCode, 0, Guid.NewGuid().ToString("N"), learn, [0]), "Descartes adicionales no pueden modificar una jugada normal");
     var learnId = Guid.NewGuid().ToString("N");
+    var openingClock = starter.Duel.Clock;
+    Check(openingClock is { Turn: 1, Reference: TurnClock.DefaultReference } && openingClock.Running == starter.Duel.DecisionPlayer,
+        "El duelo empieza con el reloj del servidor en quien decide");
+    Thread.Sleep(1200);
     starter.Connection.Reducers.PlayDuelV2(nextCode, 0, learnId, learn, []);
     Until(() => fighterA.Duel?.Revision == 1 && b.Duel?.Revision == 1);
     Check(starter.Duel!.Players[starter.Duel.MySeat].Skills.Length == 1, "Enseñar una habilidad actualiza ambos tableros");
     VerifyPublicHistory(fighterA.Duel!, b.Duel!);
+    var movedClock = JsonSerializer.Serialize(fighterA.Duel!.Clock);
+    var decider = openingClock!.Running!.Value;
+    Check(starter.Duel.Clock!.SpentThisTurn[decider] >= 1_000_000 && starter.Duel.Clock.SpentThisTurn[1 - decider] == 0 &&
+        starter.Duel.Clock.SpentInDuel[decider] == starter.Duel.Clock.SpentThisTurn[decider] && JsonSerializer.Serialize(b.Duel!.Clock) == movedClock,
+        "El servidor carga el tiempo solo a quien decidió y ambos jugadores reciben el mismo reloj");
     Check(starter.Duel.History!.Single().CardId == starter.Duel.Players[starter.Duel.MySeat].Skills[0],
         "La jugada aceptada añade una sola carta anunciada al historial compartido");
     var acceptedHistory = HistoryFingerprint(starter.Duel);
@@ -291,7 +300,11 @@ try
     using (var turnService = new Relick.Network.LobbyConnection())
     {
         services.Add(turnService); turnService.Connect(server, database, starter.Token);
-        Until(() => turnService.Ready && turnService.Duel?.Revision == 1);
+        Until(() => turnService.Ready && turnService.Duel?.Revision == 1 && turnService.ServerNow != null);
+        Check(JsonSerializer.Serialize(turnService.Duel!.Clock) == movedClock,
+            "Reconectar, reintentar y los rechazos conservan el reloj sin reiniciarlo");
+        var behind = turnService.ServerNow!.Value - turnService.Duel.Clock!.UpdatedAt;
+        Check(behind is >= 0 and < 20_000_000, "El cliente mide el reloj con la hora del servidor");
         var advance = turnService.Duel!.Options.FindIndex(o => o.Move.Kind == DuelMoveKind.Advance);
         turnService.Play(advance, expectedRevision: 1, expectedRoom: "OTRA-SALA");
         Check(!turnService.PlayPending && turnService.Duel.Revision == 1, "Un botón de otra sala no se envía como jugada de la sala actual");
@@ -364,6 +377,7 @@ try
     Console.WriteLine($"IMPACT_TRANSPORT · {verifiedImpacts} impactos con resultado final verificado.");
     Check(verifiedImpacts > 0, "El duelo remoto transporta dados finales de impactos de ataque");
     Check(fighterA.Duel.Options.Count == 0 && b.Duel!.Options.Count == 0, "La partida terminada no acepta nuevas jugadas");
+    Check(fighterA.Duel.Clock is { Running: null } stopped && stopped.SpentInDuel.Sum() > 0, "El reloj se detiene al terminar el duelo");
     Check(decisions.Contains(Phase.AttackRerollChoice) || decisions.Contains(Phase.DieRerollChoice), "La partida remota ejercita decisiones de dado persistidas");
     service.Leave();
     Until(() => service.Room == null && b.Room == null && fighterA.Duel == null);

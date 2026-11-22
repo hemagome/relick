@@ -40,7 +40,7 @@ public partial class OnlineLobby
             var steps = 0;
             while (_lobby.Duel!.Winner == null && steps++ < 600)
             {
-                await Until(() => !_arena!.IsAnimating);
+                await Until(() => !_arena!.IsAnimating && !_arena.TurnButtonHeld);
                 var current = _lobby.Duel;
                 var ownTurn = current.DecisionPlayer == current.MySeat;
                 var snapshot = ownTurn ? current : rival.Duel!;

@@ -494,3 +494,27 @@ y `player_record` y las vistas `my_profile` y `my_room_profiles`, junto con el r
 `set_profile`. Se conservaron las cuentas y los mazos, y las tablas nuevas empiezan vacías.
 No se ejecutó la batería de perfiles contra Maincloud: el módulo real exige iniciar
 sesión con SpacetimeAuth. Los resultados empiezan a contarse desde esta publicación.
+
+## Reloj de decisión
+
+`TurnClock` (`core/TurnClock.cs`) guarda, con la hora del servidor, quién decide, desde cuándo y cuánto ha usado cada asiento en el turno y en el duelo. `CacheDuel` lo cierra y lo reinicia en cada revisión. El motor no lo lee y ninguna regla depende de él.
+
+- **Sin cambio de esquema.** Viaja como `Clock` dentro del JSON de `DuelBoard`, que vive lo mismo que el duelo. No hay tablas, vistas, reductores ni bindings nuevos.
+- **Primero en el JSON.** `DuelSnapshot.Clock` se serializa primero para que `TurnClock.FromBoard` lo lea sin analizar el tablero completo en cada jugada. Una prueba del motor protege ese orden.
+- **Hora del cliente.** `LobbyConnection.ServerNow` parte de la hora que devuelven `EnsureDuel` y cada jugada, y avanza con un reloj monótono. La hora del dispositivo no interviene.
+- **Compatibilidad.** Un cliente anterior ignora el campo; un cliente nuevo oculta el reloj si el servidor no lo envía. Un duelo en curso al publicar lo recibe en su siguiente revisión.
+- **Reintentos.** Rechazos, reintentos, reconexiones y cambios privados de COMBO que no reanudan el duelo no lo reinician.
+
+Para darle consecuencias más adelante:
+
+- el límite ya viaja desde el servidor (`Reference`) y los totales por duelo permiten una bolsa de tiempo;
+- el vencimiento debe decidirlo un reductor programado, como `RoomExpiry`, comprobando la revisión; nunca el cliente;
+- hoy el tiempo incluye las animaciones y las desconexiones del jugador que decide. Habrá que acordar una gracia para ambas antes de penalizar.
+
+Publicado el 21 de noviembre de 2026 (22 en UTC) en `relick-pvp-dev-c2006ee7` de
+Maincloud con `--delete-data=never`, sin salas, partidas ni búsquedas abiertas. El plan
+de migración quedó vacío y el esquema y el número de cuentas, mazos, perfiles y registros
+de resultados no cambiaron. El programa pasó de `abeadcbe…` a `3a28823f…`; el primero se
+conservó en `artifacts/maincloud-backup/` (fuera de Git) y su restauración se ensayó en
+local. La batería PvP no se ejecutó contra Maincloud: el módulo real exige iniciar sesión
+con SpacetimeAuth, así que el reloj se validó contra un servidor local con el mismo código.

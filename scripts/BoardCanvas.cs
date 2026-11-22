@@ -11,13 +11,15 @@ public enum BoardAnchor { Top, Middle, Bottom }
 /// </summary>
 public partial class BoardCanvas : Control
 {
-    public const float DesignWidth = 1440, DesignHeight = 1024;
+    public const float DesignWidth = 1440, DesignHeight = 992;
     /// <summary>The one card footprint of the board; landscape zones swap the axes.</summary>
     public const float CardWidth = 138, CardHeight = 193;
     /// <summary>Divider between both fields, in design units from the top.</summary>
-    public const float Seam = 466;
-    internal const float FarEdge = Seam - 424, NearEdge = Seam + 424;
-    private const float Depth = .29f, NearY = 884;
+    public const float Seam = 450;
+    /// <summary>How far each field reaches from the divider.</summary>
+    internal const float HalfDepth = 408;
+    internal const float FarEdge = Seam - HalfDepth, NearEdge = Seam + HalfDepth;
+    private const float Depth = .29f, NearY = 852;
     internal const float RearRailY = 194;
     internal const float PerspectiveSlope = Depth / (NearEdge - FarEdge);
     internal const float PerspectiveRise = (NearY - RearRailY) * (1 + Depth) / (NearEdge - FarEdge);
@@ -55,7 +57,7 @@ public partial class BoardCanvas : Control
     {
         const float center = 388;
         const float width = 180, height = 168;
-        var contact = new Vector2(enemy ? DesignWidth - center : center, Seam + (enemy ? -43 : 174));
+        var contact = new Vector2(enemy ? DesignWidth - center : center, Seam + (enemy ? -27 : 158));
         Add(portrait, new Rect2(contact, new Vector2(width, height)), BoardAnchor.Middle, Layer.Figure);
     }
 
@@ -104,8 +106,9 @@ public partial class BoardCanvas : Control
         if (Size.X <= 0 || Size.Y <= 0) return;
         Unit = Math.Min(Size.X / DesignWidth, Size.Y / DesignHeight);
         var design = Size / Unit;
-        var left = (design.X - DesignWidth) / 2;
-        var extra = design.Y - DesignHeight;
+        // One axis always fits exactly: rounding must not push its edge a fraction off the screen.
+        var left = Math.Max(0, (design.X - DesignWidth) / 2);
+        var extra = Math.Max(0, design.Y - DesignHeight);
         _stage.Position = Vector2.Zero; _stage.Scale = Vector2.One * Unit; _stage.Size = design;
         if (_table != null) _table.Position = new Vector2(left, extra / 2);
         foreach (var (node, rect, anchor, layer) in _items)

@@ -198,7 +198,7 @@ public partial class OnlineArena : Control
         UpdateResolutionPresentation();
         UpdateRelikiaPreview();
         UpdateEnabled(); RefreshRuntimeGuidance();
-        PositionCardActions(); RefreshDecisionFeedback();
+        PositionCardActions(); RefreshDecisionFeedback(); RefreshTurnClock();
         PositionResponseChain();
         UpdateResultPresentation();
         PresentPlaymat();
@@ -265,7 +265,7 @@ public partial class OnlineArena : Control
     {
         _relikiaMenu = null;
         _inspectorPreview = null; _relikarioPreview = null;
-        ClearStageStatus();
+        ClearStageStatus(); ClearTurnClock();
         _fieldPress = null;
         var handPosition = handScroll?.X ?? _hand?.ScrollHorizontal ?? 0;
         var handVerticalPosition = handScroll?.Y ?? _hand?.ScrollVertical ?? 0;
@@ -386,14 +386,16 @@ public partial class OnlineArena : Control
             else canvas.Place(rivalHand, new Rect2(340, rivalBand - rivalFanHeight, BoardCanvas.DesignWidth - 680, rivalFanHeight), BoardAnchor.Top);
             BuildOpponentHand(rivalHand, canvas.TableView ? BoardCanvas.RivalCardSize : new Vector2(BoardCanvas.CardWidth, BoardCanvas.CardHeight));
 
-            // Turn, stage and the advance button live on the divider, in the colour of whose turn it is.
+            // Turn, stage, time and the turn button live on the divider, in the colour of whose turn it is.
             var turnAccent = _preparing || s.Winner != null ? BoardArt.Gold : s.CurrentPlayer == s.MySeat ? ArenaPresentation.Mint : ArenaPresentation.Coral;
-            var barDetail = _preparing ? PreparationCaption() : s.Winner != null ? resultCaption : $"TURNO {s.Turn:00}";
-            if (!_preparing && s.Winner == null && stage != s.Phase) barDetail += " · " + PhaseName(s);
-            var (lane, bar) = ArenaPresentation.PhaseBar(canvas, stage, barDetail, turnAccent);
-            _combatCenter = lane;
-            BuildTurnControl(bar);
-            BindStageStatus(bar);
+            var live = !_preparing && s.Winner == null;
+            var idle = _preparing ? PreparationCaption() : s.Winner != null ? resultCaption : stage != s.Phase ? PhaseName(s) : "";
+            var (lane, core) = ArenaPresentation.PhaseCore(canvas, stage, live ? s.Turn : null, idle, turnAccent);
+            _combatCenter = lane; _turnCore = core;
+            _clockLabels.Add(core.Time);
+            BuildTurnControl(core.Dock);
+            core.FillDock();
+            BindStageStatus(core);
 
             // Choices among cards outside the hand open over the board; the hand itself stays low.
             if (choiceGallery)
@@ -434,6 +436,8 @@ public partial class OnlineArena : Control
             if (_comboResponsesToggle != null) _comboResponsesToggle.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             else railHeader.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
             BuildArenaMenu(railHeader);
+            // A gallery dims the board and its plate; the rail stays lit.
+            if (choiceGallery) AddClockLabel(inspectorColumn, 16).HorizontalAlignment = HorizontalAlignment.Center;
             BuildRailResolution(inspectorColumn, combatMessage);
             _showcase = new CardShowcase { Name = "CardShowcase", CustomMinimumSize = new(0, 330), Visible = false };
             inspectorColumn.AddChild(_showcase);
@@ -450,7 +454,7 @@ public partial class OnlineArena : Control
             brandColumn.AddThemeConstantOverride("separation", 0); brandColumn.AddChild(brand); header.AddChild(brandColumn);
             _status = ArenaPresentation.Text(Connection.Message, 12, BoardArt.Muted); _status.TooltipText = "Sala " + RoomCode;
             _status.Visible = !Short; brandColumn.AddChild(_status);
-            ArenaPresentation.StageIndicator(Short ? _root : header, stage, stageDetail, Short);
+            AddClockLabel(ArenaPresentation.StageIndicator(Short ? _root : header, stage, stageDetail, Short), Short ? 13 : 16);
             BuildComboResponseToggle(header);
             BuildTurnControl(header);
             BuildArenaMenu(header);
@@ -580,6 +584,7 @@ public partial class OnlineArena : Control
         if (_openingRelikarios.Visible) MoveChild(_openingRelikarios, GetChildCount() - 1);
         BuildMoves(); BindInspectorPreviews();
         FitArenaScroll();
+        RefreshTurnClock();
         UpdateResultPresentation();
         BoardBuildCount++;
     }
@@ -746,12 +751,13 @@ public partial class OnlineArena : Control
     private void UpdateEnabled()
     {
         var disabled = _preparing ? !(_choosingOpeningSkill ? CanChooseInitialSkill : CanChooseOpening) || IsAnimating : !Connection.Ready || Connection.PlayPending || IsAnimating;
-        RefreshAdvanceInvitation(disabled);
-        if (_lastDisabled == disabled) return;
-        _lastDisabled = disabled;
+        var held = TurnButtonHeld;
+        RefreshAdvanceInvitation(disabled || held);
+        if (_lastDisabled == disabled && _lastTurnHeld == held) return;
+        _lastDisabled = disabled; _lastTurnHeld = held;
         foreach (var button in _moveButtons)
         {
-            button.Disabled = disabled || (int)button.GetMeta("discards") > 0 && (int)button.GetMeta("discards") != _selected.Count;
+            button.Disabled = disabled || held && IsTurnButton(button) || (int)button.GetMeta("discards") > 0 && (int)button.GetMeta("discards") != _selected.Count;
         }
         foreach (var menu in _actionMenus)
         {
