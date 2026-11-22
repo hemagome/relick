@@ -28,9 +28,10 @@ public partial class OnlineLobby
             Expect(!UpdateAccount() && _accountStage == AccountStage.SignedOut && _loginStatus.Text.Contains("canceló") &&
                 !_signIn.Disabled && !_cancelSignIn.Visible, "un inicio fallido vuelve a ofrecer iniciar sesión con el motivo");
 
-            var menu = _account.GetPopup();
-            Expect(menu.ItemCount == 2 && menu.GetItemText(0) == "Cerrar sesión" && menu.GetItemText(1).StartsWith("Eliminar cuenta"),
-                "el menú de cuenta debe ofrecer cerrar sesión y eliminar la cuenta");
+            PresentAccountSettings();
+            Expect(_accountSection.Visible && _signOut.Text == "Cerrar sesión" && _deleteAccount.Text.StartsWith("Eliminar cuenta") &&
+                _signOut.Disabled && _deleteAccount.GetIndex() > _signOut.GetIndex(),
+                "Ajustes debe ofrecer cerrar sesión y, al final, eliminar la cuenta");
             var warning = DeleteAccountExplanation(3);
             Expect(warning.Contains("3 mazos") && warning.Contains("permanente") && warning.Contains("SpacetimeAuth") && warning.Contains("cuenta nueva y vacía") &&
                 DeleteAccountExplanation(1).Contains("Tu mazo guardado") && DeleteAccountExplanation(0).Contains("no tienes ninguno"),

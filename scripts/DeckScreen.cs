@@ -9,7 +9,8 @@ namespace Relick;
 public partial class DeckScreen : Control
 {
     public LobbyConnection Connection { get; init; } = null!;
-    public event Action? Closed;
+    /// <summary>The editor and the picker take the whole screen; the list lives beside the navigation.</summary>
+    public event Action<bool>? FullScreenChanged;
     /// <summary>A guest sees the training deck they play with, but cannot build or keep decks.</summary>
     public bool Guest { get; init; }
     /// <summary>Fingers instead of a mouse: the editor grows every control to a touch target.</summary>
@@ -30,7 +31,7 @@ public partial class DeckScreen : Control
     private int _savesBeforeEdit;
 
     private IReadOnlyList<DeckInfo> Decks => PreviewDecks ?? Connection.Decks;
-    private bool ShortScreen => ArenaViewport.Short(this);
+    private bool ShortScreen => GetViewportRect().Size.Y < 600;
 
     public override void _Ready()
     {
@@ -56,12 +57,18 @@ public partial class DeckScreen : Control
         _rows = null; _status = null; _create = null; Editor = null; Picker = null;
     }
 
+    /// <summary>Back to the list, unless an editor still holds changes.</summary>
+    internal void ShowDecks()
+    {
+        if (Editor == null) ShowList();
+    }
+
     private void ShowList()
     {
         Clear();
+        FullScreenChanged?.Invoke(false);
         var column = new VBoxContainer { Name = "DeckListScreen" }; column.AddThemeConstantOverride("separation", ShortScreen ? 8 : 16); _margin.AddChild(column);
         var header = new HBoxContainer(); header.AddThemeConstantOverride("separation", 12); column.AddChild(header);
-        MenuVisuals.Back(header, "DecksBack", "la sala", () => Closed?.Invoke());
         var title = ArenaPresentation.Text("Mis mazos", ShortScreen ? MenuVisuals.Type.Title : MenuVisuals.Type.Hero); title.AddThemeFontOverride("font", RelickVisuals.Display);
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill; header.AddChild(title);
         _create = ArenaPresentation.Button(header, "Nuevo mazo", ChooseRelikario);
@@ -213,7 +220,8 @@ public partial class DeckScreen : Control
     internal void ChooseRelikario()
     {
         Clear();
-        Picker = new RelikarioPicker { ShortScreen = ShortScreen };
+        FullScreenChanged?.Invoke(true);
+        Picker = new RelikarioPicker { ShortScreen = GetViewportRect().Size.Y < 720 };
         Picker.Closed += ShowList;
         Picker.Chosen += relikario => Edit(0, "Mazo nuevo", Enumerable.Repeat(DeckRules.DefaultAttackArt(relikario), DeckRules.AttackCount).ToList(), [], relikario: relikario);
         _margin.AddChild(Picker);
@@ -223,6 +231,7 @@ public partial class DeckScreen : Control
         string? sleeve = null, string? dice = null)
     {
         Clear();
+        FullScreenChanged?.Invoke(true);
         var editor = new DeckEditor { DeckName = name, Relikario = relikario ?? RelikarioCatalog.Yuno.Id, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen, Touch = Touch,
             InitialSleeve = sleeve ?? CosmeticCatalog.DefaultSleeve, InitialDice = dice ?? CosmeticCatalog.DefaultDice };
         Editor = editor;

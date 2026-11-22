@@ -9,22 +9,28 @@ public partial class OnlineLobby
 {
     private Control _entryCards = null!;
     private Control _roomPanel = null!;
-    private Label _lobbyTitle = null!;
-    private VBoxContainer _lobbyColumn = null!;
-    private Control _lobbyHeading = null!;
-    private PanelContainer _identityPanel = null!;
+    private BoxContainer _playMain = null!;
+    private VBoxContainer _stageColumn = null!, _modesColumn = null!;
+    private MarginContainer _playMargin = null!;
+    private RelikarioHero _hero = null!;
+    private Control _versus = null!;
+    private SeatCard _searchOwn = null!, _searchRival = null!, _seatOne = null!, _seatTwo = null!;
+    private PanelContainer _deckPanel = null!, _quickPanel = null!, _privatePanel = null!;
+    private Label _deckName = null!, _deckState = null!;
     private readonly List<PanelContainer> _entryPanels = [];
     private readonly List<Label> _entryTitles = [];
     private readonly List<Control> _entryDescriptions = [];
     private readonly List<VBoxContainer> _entryColumns = [];
     private readonly List<LobbySymbol> _entrySymbols = [];
+    private AcceptDialog _joinDialog = null!;
+    private Label _joinError = null!;
+    private Button _openJoin = null!;
     private string _presentedRoomCode = "", _copiedCode = "", _lobbyNotice = "";
     private double _copyFeedbackSeconds;
     private ScrollContainer _lobbyPage = null!;
     private string _shownLobbyProblem = "";
     private Button _quickMatch = null!;
     private Button _decks = null!;
-    private DeckScreen? _deckScreen;
     private Label _quickMatchStatus = null!;
     private bool _presentedSearching;
     private double _searchSeconds;
@@ -36,65 +42,56 @@ public partial class OnlineLobby
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _content = new MarginContainer(); AddChild(_content);
         _content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var page = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true };
+        BuildShell();
+        BuildJoinDialog();
+        BuildConnectionNotice();
+        BuildLoginScreen();
+        Resized += AdjustLobbyLayout; AdjustLobbyLayout();
+    }
+
+    // Play: the Relikario in use on one side, every mode in sight on the other.
+    private Control BuildPlayPage()
+    {
+        var page = new ScrollContainer { Name = "PlayPage", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true };
         _lobbyPage = page;
-        _content.AddChild(page);
-        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        column.AddThemeConstantOverride("separation", 18); page.AddChild(column); _lobbyColumn = column;
+        _playMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        page.AddChild(_playMargin);
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 10); _playMargin.AddChild(column);
 
-        var navigation = new HBoxContainer(); column.AddChild(navigation);
-        var brand = RelickVisuals.Logo();
-        brand.SizeFlagsHorizontal = SizeFlags.ShrinkBegin; brand.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        navigation.AddChild(brand);
-        navigation.AddThemeConstantOverride("separation", 16);
-        navigation.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        // The same speaker that opens the sound controls beside the duel menu.
-        var sound = new IconButton { Name = "LobbyAudioSettings", Symbol = GameIcon.Speaker, CustomMinimumSize = new(52, 48),
-            TooltipText = "Sonido", AccessibilityName = "Sonido", SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        sound.Pressed += () => GetNode<AudioPreferences>("/root/AudioPreferences").OpenControls();
-        navigation.AddChild(sound);
-        _account = new MenuButton { Name = "AccountMenu", Text = "Cuenta", Flat = false, Visible = false,
-            CustomMinimumSize = new(110, 48), SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        navigation.AddChild(_account);
-        var accountMenu = _account.GetPopup();
-        accountMenu.AddItem("Cerrar sesión", 0); accountMenu.AddItem("Eliminar cuenta…", 1);
-        accountMenu.IdPressed += id => { if (id == 0) SignOut(); else ConfirmDeleteAccount(); };
-        ArenaViewport.TouchMenu(accountMenu);
+        _playMain = new HBoxContainer { Name = "RoomEntryCards", SizeFlagsVertical = SizeFlags.ExpandFill };
+        column.AddChild(_playMain); _entryCards = _playMain;
+        _stageColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 0.8f };
+        _playMain.AddChild(_stageColumn);
+        _hero = new RelikarioHero { Name = "RelikarioHero", SizeFlagsVertical = SizeFlags.ExpandFill };
+        _stageColumn.AddChild(_hero);
+        var versus = new VBoxContainer { Name = "SearchVersus", Visible = false, SizeFlagsVertical = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        versus.AddThemeConstantOverride("separation", 10); _stageColumn.AddChild(versus); _versus = versus;
+        _searchOwn = new SeatCard(); versus.AddChild(_searchOwn);
+        var against = Caption("VS", BoardArt.Muted); against.HorizontalAlignment = HorizontalAlignment.Center; versus.AddChild(against);
+        _searchRival = new SeatCard { Accent = RelickVisuals.State.Rival }; versus.AddChild(_searchRival);
 
-        var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
-        _lobbyTitle = Text("Sala de duelos", MenuVisuals.Type.Hero); heading.AddChild(_lobbyTitle);
-        _lobbyTitle.AddThemeFontOverride("font", RelickVisuals.Display);
-
-        var identity = Surface(column, 16); _identityPanel = identity;
-        var identityRow = new HBoxContainer(); identityRow.AddThemeConstantOverride("separation", 20); identity.AddChild(identityRow);
-        _profileButton = new Button { Name = "OpenProfile", CustomMinimumSize = new(56, 56), Visible = false, TooltipText = "Mi perfil",
-            AccessibilityName = "Mi perfil", SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        _profileAvatar = new ProfileAvatar { Name = "ProfileButtonAvatar", MouseFilter = MouseFilterEnum.Ignore };
-        _profileButton.AddChild(_profileAvatar); _profileAvatar.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.Minsize, 4);
-        _profileButton.Pressed += OpenProfile;
-        identityRow.AddChild(_profileButton);
-        var identityLabel = Caption("TU NOMBRE", BoardArt.Muted);
-        identityLabel.CustomMinimumSize = new(100, 0); identityLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        identityRow.AddChild(identityLabel);
-        _name = new LineEdit { Name = "PlayerName", PlaceholderText = "¿Cómo te llamas?", Text = "Jugador", MaxLength = 24,
-            CustomMinimumSize = new(0, 48), SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        identityRow.AddChild(_name);
-        _decks = AddButton(identityRow, "Entrenamiento", OpenDecks);
-        _decks.Name = "OpenDecks"; _decks.ClipText = true; _decks.CustomMinimumSize = new(240, 48);
-        _decks.Icon = DeckScreen.Thumbnail(RelikarioCatalog.Yuno.Id); _decks.ExpandIcon = true; _decks.AddThemeConstantOverride("icon_max_width", 40); _decks.AddThemeConstantOverride("h_separation", 10);
+        _deckPanel = Surface(_stageColumn, 16);
+        var deckRow = new HBoxContainer(); deckRow.AddThemeConstantOverride("separation", 10); _deckPanel.AddChild(deckRow);
+        var deckTexts = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        deckTexts.AddThemeConstantOverride("separation", 0); deckRow.AddChild(deckTexts);
+        _deckState = Caption("MAZO EN USO", BoardArt.Muted); deckTexts.AddChild(_deckState);
+        _deckName = ArenaPresentation.Text("", MenuVisuals.Type.Subtitle); _deckName.Name = "EquippedDeck"; _deckName.ClipText = true;
+        _deckName.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        deckTexts.AddChild(_deckName);
+        _decks = AddButton(deckRow, "Cambiar", OpenDecks);
+        _decks.Name = "OpenDecks"; _decks.CustomMinimumSize = new(96, 48); _decks.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         _decks.TooltipText = "Elige el mazo con el que juegas o arma uno nuevo.";
-        _name.TextSubmitted += _ => { SaveAccountName(); _name.ReleaseFocus(); };
-        _name.FocusExited += SaveAccountName;
 
-        var cards = new HBoxContainer { Name = "RoomEntryCards" }; cards.AddThemeConstantOverride("separation", 18);
-        column.AddChild(cards); _entryCards = cards;
-        var quick = EntryCard(cards, GameIcon.Sword, RelickVisuals.State.Own, "Partida rápida", "Casual · Sin clasificación");
+        _modesColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _playMain.AddChild(_modesColumn);
+        var quick = EntryCard(_modesColumn, GameIcon.Sword, RelickVisuals.State.Own, "Partida rápida", "Casual · Sin clasificación");
+        _quickPanel = _entryPanels[^1]; _quickPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
         // «Buscar rival» and the subtitle already say what this card does; the slot stays for layout toggles.
         _quickExplanation = new Control { Name = "QuickExplanation", MouseFilter = MouseFilterEnum.Ignore }; quick.AddChild(_quickExplanation);
         _matchFeedback = new HBoxContainer { Name = "MatchmakingFeedback", Visible = false, SizeFlagsVertical = SizeFlags.ExpandFill };
         _matchFeedback.AddThemeConstantOverride("separation", 10); quick.AddChild(_matchFeedback);
         _matchLink = new MatchmakingLink { Name = "MatchmakingLink", SizeFlagsVertical = SizeFlags.ShrinkCenter,
-            ReducedMotion = DisplayServer.AccessibilityShouldReduceAnimation() == 1 || ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool() };
+            ReducedMotion = InterfacePreferences.ReducedMotion };
         _matchFeedback.AddChild(_matchLink);
         _quickMatchStatus = Text("", MenuVisuals.Type.Control); _quickMatchStatus.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _quickMatchStatus.SizeFlagsVertical = SizeFlags.ShrinkCenter; _matchFeedback.AddChild(_quickMatchStatus);
@@ -102,40 +99,75 @@ public partial class OnlineLobby
         _quickMatch = AddButton(quick, "Buscar rival", QuickMatch);
         _quickMatch.Name = "QuickMatch"; RelickVisuals.Primary(_quickMatch);
 
-        // The code field and «Crear sala» / «Unirse» explain this card on their own.
-        var join = EntryCard(cards, GameIcon.Flag, RelickVisuals.State.Target, "Sala privada", "");
-        _code = new LineEdit { Name = "RoomCode", PlaceholderText = "Código de 8 caracteres", MaxLength = 8,
-            CustomMinimumSize = new(0, 48), Alignment = HorizontalAlignment.Center };
-        _code.AddThemeFontSizeOverride("font_size", MenuVisuals.Type.Subtitle); join.AddChild(_code);
-        join.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
+        var join = EntryCard(_modesColumn, GameIcon.Flag, RelickVisuals.State.Target, "Sala privada", "");
+        _privatePanel = _entryPanels[^1];
         var privateActions = new HBoxContainer(); privateActions.AddThemeConstantOverride("separation", 10); join.AddChild(privateActions);
         _create = AddButton(privateActions, "Crear sala", () => { _lobbyNotice = _localError = ""; SaveAccountName(); _lobby.Create(_name.Text); });
         _create.CustomMinimumSize = new(0, 48); _create.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _join = AddButton(privateActions, "Unirse", JoinRoom);
-        _join.CustomMinimumSize = new(0, 48); _join.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _code.TextSubmitted += _ => { if (!_join.Disabled) JoinRoom(); };
-        BuildPlannedModes(column);
+        _openJoin = AddButton(privateActions, "Tengo un código", OpenJoinDialog);
+        _openJoin.Name = "OpenJoin"; _openJoin.CustomMinimumSize = new(0, 48); _openJoin.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        BuildPlannedModes(_modesColumn);
 
-        _roomPanel = Surface(column, 24); _roomPanel.Visible = false;
-        var roomColumn = new VBoxContainer(); roomColumn.AddThemeConstantOverride("separation", 14); _roomPanel.AddChild(roomColumn);
-        roomColumn.AddChild(Caption("TU SALA · DUELO PRIVADO", BoardArt.Muted));
-        var roomRow = new HBoxContainer(); roomRow.AddThemeConstantOverride("separation", 16); roomColumn.AddChild(roomRow);
-        _room = Text("", MenuVisuals.Type.Hero); _room.SizeFlagsHorizontal = SizeFlags.ExpandFill; roomRow.AddChild(_room);
-        _copy = AddButton(roomRow, "Copiar código", CopyRoomCode);
-        _copy.Name = "CopyRoomCode";
-        RelickVisuals.Primary(_copy);
-        _players = Text("", MenuVisuals.Type.Control); roomColumn.AddChild(_players);
-        _preparation = Description(""); roomColumn.AddChild(_preparation);
-        _leave = AddButton(roomColumn, "Cerrar sala", _lobby.Leave);
-        _leave.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
-        _leave.TooltipText = "Cierra esta sala de preparación para ambos jugadores.";
+        BuildWaitingRoom(column);
 
         var connection = new HBoxContainer(); connection.AddThemeConstantOverride("separation", 10); column.AddChild(connection);
         _status = Description("Conectando…"); _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _status.SizeFlagsVertical = SizeFlags.ShrinkCenter; connection.AddChild(_status);
-        BuildConnectionNotice();
-        BuildLoginScreen();
-        Resized += AdjustLobbyLayout; AdjustLobbyLayout();
+        page.Resized += AdjustPlayLayout;
+        return page;
+    }
+
+    private VBoxContainer _waitingColumn = null!;
+    private void BuildWaitingRoom(Node parent)
+    {
+        var room = Surface(parent, 24); room.Visible = false; room.SizeFlagsVertical = SizeFlags.ExpandFill; _roomPanel = room;
+        _waitingColumn = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        _waitingColumn.AddThemeConstantOverride("separation", 14); room.AddChild(_waitingColumn);
+        var caption = Caption("TU SALA · DUELO PRIVADO", BoardArt.Muted); caption.HorizontalAlignment = HorizontalAlignment.Center;
+        _waitingColumn.AddChild(caption);
+        _room = Text("", MenuVisuals.Type.Hero); _room.HorizontalAlignment = HorizontalAlignment.Center;
+        _room.AddThemeFontOverride("font", RelickVisuals.Strong); _waitingColumn.AddChild(_room);
+        var seats = new HBoxContainer { Name = "WaitingSeats" }; seats.AddThemeConstantOverride("separation", 10); _waitingColumn.AddChild(seats);
+        _seatOne = new SeatCard { Name = "SeatOne" }; seats.AddChild(_seatOne);
+        var against = Caption("VS", BoardArt.Muted); against.AutowrapMode = TextServer.AutowrapMode.Off;
+        against.SizeFlagsVertical = SizeFlags.ShrinkCenter; seats.AddChild(against);
+        _seatTwo = new SeatCard { Name = "SeatTwo", Accent = RelickVisuals.State.Rival }; seats.AddChild(_seatTwo);
+        _preparation = Description(""); _preparation.HorizontalAlignment = HorizontalAlignment.Center; _waitingColumn.AddChild(_preparation);
+        var actions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        actions.AddThemeConstantOverride("separation", 12); _waitingColumn.AddChild(actions);
+        _leave = AddButton(actions, "Cerrar sala", _lobby.Leave);
+        _leave.TooltipText = "Cierra esta sala de preparación para ambos jugadores.";
+        _copy = AddButton(actions, "Copiar código", CopyRoomCode);
+        _copy.Name = "CopyRoomCode"; _copy.CustomMinimumSize = new(200, 48);
+        RelickVisuals.Primary(_copy);
+    }
+
+    private void BuildJoinDialog()
+    {
+        _joinDialog = new ConfirmationDialog { Name = "JoinDialog", Title = "Tengo un código", OkButtonText = "Unirse",
+            CancelButtonText = "Cancelar", DialogHideOnOk = false };
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 12);
+        column.AddChild(Description("Escribe el código que te compartió tu rival."));
+        _code = new LineEdit { Name = "RoomCode", PlaceholderText = "Código de 8 caracteres", MaxLength = 8,
+            CustomMinimumSize = new(0, 56), Alignment = HorizontalAlignment.Center };
+        _code.AddThemeFontSizeOverride("font_size", MenuVisuals.Type.Subtitle);
+        column.AddChild(_code);
+        _joinError = Description(""); _joinError.Name = "JoinError"; _joinError.Visible = false;
+        _joinError.AddThemeColorOverride("font_color", ArenaPresentation.Coral);
+        column.AddChild(_joinError);
+        MenuDialog.Fill(_joinDialog, column, 420);
+        AddChild(_joinDialog); _joinDialog.Hide();
+        _join = _joinDialog.GetOkButton();
+        _joinDialog.Confirmed += () => { if (!_join.Disabled) JoinRoom(); };
+        _code.TextSubmitted += _ => { if (!_join.Disabled) JoinRoom(); };
+    }
+
+    private void OpenJoinDialog()
+    {
+        _localError = _lobbyNotice = "";
+        _joinError.Visible = false;
+        MenuDialog.Show(_joinDialog);
+        _code.GrabFocus();
     }
 
     private void UpdateLobbyPresentation(bool inRoom)
@@ -144,26 +176,13 @@ public partial class OnlineLobby
         _roomPanel.Visible = inRoom;
     }
 
-    private void OpenDecks()
-    {
-        if (_deckScreen != null || _arena != null) return;
-        _deckScreen = new DeckScreen { Connection = _lobby, Guest = _lobby.Account?.Guest == true };
-        _deckScreen.Closed += CloseDecks;
-        _content.Visible = false; AddChild(_deckScreen);
-    }
-
-    private void CloseDecks()
-    {
-        if (_deckScreen == null) return;
-        RemoveChild(_deckScreen); _deckScreen.QueueFree(); _deckScreen = null;
-        _content.Visible = _arena == null && !_loginScreen.Visible;
-    }
-
     private void PresentEquippedDeck(DeckInfo? deck)
     {
-        _decks.Text = deck?.Name ?? "Entrenamiento";
-        var thumbnail = DeckScreen.Thumbnail(deck?.Relikario ?? RelikarioCatalog.Yuno.Id);
-        _decks.Icon = _matchLink.Thumbnail = thumbnail;
+        var relikario = deck?.Relikario ?? RelikarioCatalog.Yuno.Id;
+        _deckName.Text = deck?.Name ?? "Mazo de entrenamiento";
+        _deckName.TooltipText = _deckName.Text;
+        _hero.Relikario = relikario;
+        _matchLink.Thumbnail = DeckScreen.Thumbnail(relikario);
     }
 
     private void JoinRoom() { _lobbyNotice = _localError = ""; SaveAccountName(); _lobby.Join(_code.Text, _name.Text); }
@@ -209,7 +228,7 @@ public partial class OnlineLobby
         UpdateLobbyPresentation(room != null);
         _status.Modulate = failed.Length > 0 ? ArenaPresentation.Coral : Colors.White;
         var busy = pending != RoomRequest.None;
-        _create.Disabled = _join.Disabled = !ready || busy || searching || room != null;
+        _create.Disabled = _join.Disabled = _openJoin.Disabled = !ready || busy || searching || room != null;
         _quickMatch.Disabled = !ready || !quickMatchAvailable || busy || room != null;
         _quickMatch.TooltipText = quickMatchAvailable ? "" : "La partida rápida no está disponible en este servidor.";
         _quickMatch.Text = pending == RoomRequest.FindQuickMatch ? "Iniciando…" : pending == RoomRequest.CancelQuickMatch ? "Cancelando…" : searching ? "Cancelar búsqueda" : "Buscar rival";
@@ -225,7 +244,9 @@ public partial class OnlineLobby
         _name.Editable = _code.Editable = room == null && !busy && !searching;
         PresentAccountName(_name.Editable);
         _decks.Disabled = !ready || busy || searching || room != null;
-        PresentProfileButton(ready && !busy && !searching && room == null);
+        PresentProfileEditing(ready && !busy && !searching && room == null);
+        PresentAccountSettings();
+        PresentNavigation(ready, busy, searching || matched, room != null);
         PresentEquippedDeck(_lobby.Decks.FirstOrDefault(deck => deck.Active));
         _copy.Visible = _leave.Visible = room != null;
         _copy.Disabled = !ready || busy;
@@ -235,14 +256,48 @@ public partial class OnlineLobby
         PresentConnectionNotice(ready, connecting);
         // The caption above already says it is your room; the seat number tells the player nothing.
         _room.Text = room == null ? "Sin sala" : room.Code;
-        _players.Text = room == null ? "" : $"{room.PlayerOne}  vs  {(room.PlayerTwo.Length > 0 ? room.PlayerTwo : "Esperando rival…")}";
-        _preparation.Text = "Comparte el código con tu rival. Entraréis al tablero cuando se una.";
+        _preparation.Text = "Comparte el código con tu rival. Entrarán al tablero cuando se una.";
+        PresentSeats(room, searching || matched, matched);
+        // The room, the search and a request for either all live on the play page.
+        if (room != null || searching) ReturnToPlay();
+        if (_joinDialog.Visible)
+        {
+            if (room != null || searching) _joinDialog.Hide();
+            _joinError.Text = failed.Length > 0 ? _status.Text : "";
+            _joinError.Visible = failed.Length > 0;
+            _join.Text = pending == RoomRequest.Join ? "Entrando…" : "Unirse";
+        }
         var problem = failed.Length > 0 ? failed : !ready && !connecting ? "desconectado" : "";
         if (problem != _shownLobbyProblem)
         {
             _shownLobbyProblem = problem;
             if (problem.Length > 0) CallDeferred(nameof(ScrollToLobbyStatus));
         }
+    }
+
+    private void PresentSeats(RoomInfo? room, bool searching, bool matched)
+    {
+        _hero.Visible = !searching;
+        _versus.Visible = searching;
+        var compact = TightLobby;
+        var profile = _lobby.Profile;
+        var avatar = profile?.Avatar ?? ProfileCatalog.DefaultAvatar;
+        var frame = profile?.Frame ?? ProfileCatalog.DefaultFrame;
+        if (searching)
+        {
+            _searchOwn.Present(OwnProfile().Name, _deckName.Text, avatar, frame, compact);
+            _searchRival.Present(matched ? "Rival encontrado" : "Buscando rival…", "", null, null, compact);
+        }
+        if (room == null) return;
+        void Seat(SeatCard card, int seat, string name)
+        {
+            var mine = seat == room.MySeat;
+            if (name.Length == 0) { card.Present("Esperando rival…", "", null, null, compact); return; }
+            var shown = mine ? profile : _lobby.RoomProfile(seat);
+            card.Present(name, ProfileCatalog.Title(shown?.Title).Name, shown?.Avatar ?? ProfileCatalog.DefaultAvatar, shown?.Frame ?? ProfileCatalog.DefaultFrame, compact);
+        }
+        Seat(_seatOne, 0, room.PlayerOne);
+        Seat(_seatTwo, 1, room.PlayerTwo);
     }
 
     private void ScrollToLobbyStatus()
@@ -272,7 +327,7 @@ public partial class OnlineLobby
     private VBoxContainer EntryCard(Node parent, GameIcon icon, Color accent, string title, string subtitle)
     {
         var panel = Surface(parent, 24);
-        panel.CustomMinimumSize = new(0, 264); _entryPanels.Add(panel);
+        _entryPanels.Add(panel);
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddThemeConstantOverride("separation", 12); panel.AddChild(column); _entryColumns.Add(column);
         var header = new HBoxContainer(); header.AddThemeConstantOverride("separation", 14); column.AddChild(header);

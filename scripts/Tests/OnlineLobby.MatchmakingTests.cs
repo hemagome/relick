@@ -52,7 +52,7 @@ public partial class OnlineLobby
                 Check(_matchLink.PlaybackSeconds == preserved, "Actualizar el estado reinicia el ciclo de búsqueda.");
                 Check(_matchLink.Thumbnail.NativeId() == yuno.NativeId(), "La búsqueda con el mazo de entrenamiento no muestra a Yuno.");
                 PresentEquippedDeck(equipped);
-                Check(_matchLink.Thumbnail.NativeId() == osamu.NativeId() && _decks.Icon.NativeId() == osamu.NativeId() && _matchLink.PlaybackSeconds == preserved,
+                Check(_matchLink.Thumbnail.NativeId() == osamu.NativeId() && _hero.Relikario == RelikarioCatalog.Osamu.Id && _matchLink.PlaybackSeconds == preserved,
                     "La búsqueda no muestra el mismo Relikario que el mazo equipado o reinicia la animación al cambiar el retrato.");
                 if (!reduced && size.X is 1440 or 700) { await Layout(); await Capture($"match-searching-{size.X}x{size.Y}"); }
                 PresentLobbyState(null, false, false, RoomRequest.None, "", "", true); await Layout();

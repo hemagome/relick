@@ -11,7 +11,6 @@ public partial class OnlineLobby
     private void BuildPlannedModes(Node parent)
     {
         _plannedModes = new HBoxContainer { Name = "PlannedModes", MouseFilter = MouseFilterEnum.Ignore };
-        _plannedModes.AddThemeConstantOverride("separation", 18);
         parent.AddChild(_plannedModes);
         AddPlannedMode("RankedSlot", GameIcon.Ranking, "Clasificatoria ELO", "Duelos con puntuación contra rivales de tu nivel.");
         AddPlannedMode("TournamentSlot", GameIcon.Trophy, "Torneo", "Competencias por rondas entre varios duelistas.");
@@ -52,7 +51,7 @@ public partial class PlannedModeSlot : PanelContainer
         AddThemeStyleboxOverride("panel", _padding);
 
         var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", 12);
+        row.AddThemeConstantOverride("separation", 10);
         AddChild(row);
         _symbol = new LobbySymbol { Icon = Icon, Accent = BoardArt.Muted, SizeFlagsVertical = SizeFlags.ShrinkCenter };
         row.AddChild(_symbol);
@@ -71,14 +70,18 @@ public partial class PlannedModeSlot : PanelContainer
         _description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         texts.AddChild(_description);
 
+        // Two slots share a column, so the badge sits under the name instead of squeezing it.
         var soon = ArenaPresentation.Text(Badge, MenuVisuals.Type.Caption, BoardArt.Ink);
         soon.Name = "Soon";
-        soon.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        soon.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         var plate = RelickVisuals.Frame(MenuVisuals.Tone.Background, MenuVisuals.Tone.Edge, MenuVisuals.Cut.Badge);
         plate.ContentMarginLeft = plate.ContentMarginRight = 8;
         plate.ContentMarginTop = plate.ContentMarginBottom = 2;
         soon.AddThemeStyleboxOverride("normal", plate);
-        row.AddChild(soon);
+        texts.AddChild(soon);
+        _title.ClipText = true;
+        _title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        texts.MoveChild(soon, 1);
         foreach (var label in new[] { _title, _description, soon }) label.MouseFilter = MouseFilterEnum.Ignore;
 
         Resized += QueueRedraw;
@@ -89,10 +92,11 @@ public partial class PlannedModeSlot : PanelContainer
     {
         _description.Visible = !_compact;
         _title.AddThemeFontSizeOverride("font_size", _compact ? MenuVisuals.Type.Body : MenuVisuals.Type.Subtitle);
-        _symbol.CustomMinimumSize = _compact ? new(28, 28) : new(48, 48);
-        _padding.ContentMarginLeft = _padding.ContentMarginRight = _compact ? 10 : 24;
-        _padding.ContentMarginTop = _padding.ContentMarginBottom = _compact ? 6 : 18;
-        CustomMinimumSize = new(0, _compact ? 42 : 96);
+        _symbol.CustomMinimumSize = _compact ? new(28, 28) : new(44, 44);
+        _symbol.Visible = !_compact || GetViewportRect().Size.X >= 800;
+        _padding.ContentMarginLeft = _padding.ContentMarginRight = _compact ? 8 : 16;
+        _padding.ContentMarginTop = _padding.ContentMarginBottom = _compact ? 4 : 14;
+        CustomMinimumSize = new(0, _compact ? 50 : 128);
     }
 
     public override void _Draw()

@@ -41,6 +41,35 @@ public static class MenuVisuals
 
     public const int TouchTarget = 48;
 
+    private static ImageTexture? _switchOn, _switchOff;
+
+    /// <summary>An on/off switch that reads on the menus' dark panels.</summary>
+    public static void Switch(CheckButton toggle)
+    {
+        _switchOn ??= SwitchFace(true); _switchOff ??= SwitchFace(false);
+        toggle.AddThemeIconOverride("checked", _switchOn);
+        toggle.AddThemeIconOverride("unchecked", _switchOff);
+    }
+
+    private static ImageTexture SwitchFace(bool on)
+    {
+        const int width = 52, height = 28;
+        var image = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
+        var track = on ? BoardArt.Gold : Tone.Edge;
+        var knob = on ? Tone.Background : BoardArt.Ink;
+        var centre = new Vector2(on ? width - 14 : 14, height / 2f);
+        for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                var point = new Vector2(x + 0.5f, y + 0.5f);
+                var inside = Math.Clamp(14.5f - point.DistanceTo(new(Math.Clamp(point.X, 14, width - 14), 14)), 0, 1);
+                var color = track.Lerp(knob, Math.Clamp(9.5f - point.DistanceTo(centre), 0, 1));
+                color.A = inside;
+                image.SetPixel(x, y, color);
+            }
+        return ImageTexture.CreateFromImage(image);
+    }
+
     /// <summary>The same way back on every screen; its tooltip says where it leads.</summary>
     public static Button Back(Node parent, string name, string destination, Action pressed)
     {

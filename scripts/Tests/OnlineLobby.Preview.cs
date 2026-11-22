@@ -26,10 +26,10 @@ public partial class OnlineLobby
                 if (_entryCards.GetGlobalRect().End.X > Size.X || _entryCards.GetGlobalRect().Position.X < 0)
                     throw new Exception($"Las tarjetas desbordan en {size}.");
                 if (Size != (Vector2)size) throw new Exception($"Tamaño lógico inesperado: {Size}, esperado {size}.");
+                ShowPage(MenuPage.Profile); await Layout();
                 GuiInputTestDriver.ReplaceText(_name, "Jugador");
-                GuiInputTestDriver.ReplaceText(_code, "AB12CD34");
-                _code.Text = ""; _code.ReleaseFocus();
-                var scroll = (ScrollContainer)_content.GetChild(0); scroll.ScrollVertical = 0;
+                ShowPage(MenuPage.Play); await Layout();
+                _lobbyPage.ScrollVertical = 0;
                 await Layout();
                 if (DisplayServer.GetName() != "headless")
                 {
@@ -38,7 +38,8 @@ public partial class OnlineLobby
                 }
                 UpdateLobbyPresentation(true);
                 _room.Text = "AB12CD34";
-                _players.Text = "Jugador  vs  Esperando rival…";
+                _seatOne.Present("Jugador", "Novato", "yuno", "clasico", size.Y < 720);
+                _seatTwo.Present("Esperando rival…", "", null, null, size.Y < 720);
                 _preparation.Text = "Comparte el código con tu rival para preparar las manos.";
                 await Layout();
                 if (_entryCards.Visible || !_roomPanel.Visible)

@@ -35,8 +35,16 @@ public partial class OnlineLobby
                 Check(notice.Position.X >= 0 && notice.Position.Y >= 0 && notice.End.X <= Size.X && notice.End.Y <= Size.Y,
                     "El cuadro de desconexión sale de la pantalla.");
                 Check(_reconnect.HasFocus(), "El aviso no toma el foco del teclado.");
-                GuiInputTestDriver.Click(_name);
-                Check(!_name.HasFocus(), "El aviso deja pasar clics a los campos de la sala.");
+                var leaked = 0;
+                void Leak() => leaked++;
+                _create.Pressed += Leak;
+                try
+                {
+                    var point = _create.GetGlobalRect().GetCenter();
+                    GuiInputTestDriver.Click(GetViewport(), point);
+                    Check(leaked == 0, "El aviso deja pasar clics a los controles de la sala.");
+                }
+                finally { _create.Pressed -= Leak; }
                 var retryClicks = 0;
                 void Retry() => retryClicks++;
                 _reconnect.Pressed -= Connect; _reconnect.Pressed += Retry;
@@ -107,7 +115,7 @@ public partial class OnlineLobby
                 Check(_connectionNotice.Visible && _copy.Disabled && _leave.Disabled && _roomPanel.Visible,
                     "Perder conexión en una sala borra la vista o permite operaciones.");
                 PresentLobbyState(room, true, false, RoomRequest.None, "", "Conectado"); await Layout();
-                var scroll = (ScrollContainer)_content.GetChild(0); scroll.EnsureControlVisible(_copy); await Layout();
+                _lobbyPage.EnsureControlVisible(_copy); await Layout();
                 GuiInputTestDriver.Click(_copy);
                 Check(clipboardAvailable ? _copy.Text == "Copiado ✓" && DisplayServer.ClipboardGet() == room.Code : _copy.Text != "Copiado ✓" && _localError.Length > 0,
                     "Copiar no confirma el código exacto o anuncia éxito sin portapapeles.");

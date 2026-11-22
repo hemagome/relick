@@ -87,7 +87,7 @@ public partial class OnlineLobby
                 _localError = _lobbyNotice = "";
                 PresentLobbyState(null, true, false, RoomRequest.None, "", ""); await Frames();
                 Inspect(_content, "la sala");
-                Expect(RelickVisuals.IsPrimary(_quickMatch) && !RelickVisuals.IsPrimary(_create) && !RelickVisuals.IsPrimary(_join),
+                Expect(RelickVisuals.IsPrimary(_quickMatch) && !RelickVisuals.IsPrimary(_create) && !RelickVisuals.IsPrimary(_openJoin),
                     "Buscar rival no es la única acción principal de la sala.");
                 PresentLobbyState(null, true, false, RoomRequest.None, "", "", searching: true); await Frames();
                 Expect(!RelickVisuals.IsPrimary(_quickMatch), "Cancelar búsqueda parece la acción principal.");
@@ -96,6 +96,19 @@ public partial class OnlineLobby
                 PresentLobbyState(null, true, false, RoomRequest.None, "", ""); await Frames();
                 Expect(RelickVisuals.IsPrimary(_quickMatch), "Buscar rival no recupera su acento.");
 
+                foreach (var page in new[] { MenuPage.Profile, MenuPage.Settings })
+                {
+                    ShowPage(page); await Frames();
+                    Inspect(_content, page.ToString());
+                    var bounds = _shell.Body.GetGlobalRect();
+                    Expect(bounds.End.X <= Size.X + 1 && bounds.End.Y <= Size.Y + 1, $"{page} desborda {size}.");
+                }
+                foreach (var (page, button) in _shell.Navigation.Buttons)
+                    Expect(GetViewportRect().Grow(1).Encloses(button.GetGlobalRect()) && button.Size.X >= MenuVisuals.TouchTarget && button.Size.Y >= MenuVisuals.TouchTarget,
+                        $"la pestaña {page} no cabe o es pequeña en {size}.");
+                ShowPage(MenuPage.Play); await Frames();
+                OpenJoinDialog();
+                await Dialog(_joinDialog, "Tengo un código", 480);
                 _content.Hide(); _loginScreen.Show(); await Frames();
                 Inspect(_loginScreen, "el inicio de sesión");
                 _loginScreen.Hide(); _content.Show();
@@ -120,7 +133,6 @@ public partial class OnlineLobby
                     try
                     {
                         Inspect(screen, "Mis mazos");
-                        Expect(screen.FindChild("DecksBack", true, false) is Button { Text: "‹ Volver" }, "Mis mazos no usa el botón de volver común.");
                         Press(screen.FindChild("Deck1", true, false)!, "Delete");
                         await Dialog(screen.GetChildren().OfType<AcceptDialog>().LastOrDefault(), "Borrar mazo", 480);
 

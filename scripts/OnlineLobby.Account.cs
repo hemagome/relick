@@ -19,7 +19,6 @@ public partial class OnlineLobby
     private Label _loginStatus = null!;
     private Button _signIn = null!;
     private Button _cancelSignIn = null!;
-    private MenuButton _account = null!;
 
     private bool AccountBusy => _accountStage is AccountStage.Restoring or AccountStage.WaitingBrowser;
 
@@ -56,7 +55,6 @@ public partial class OnlineLobby
         }
         _auth = new AuthSession(client);
         _sessionPath = ProjectSettings.GlobalizePath("user://auth-" + profileKey + ".session");
-        _account.Visible = true;
         if (System.IO.File.Exists(_sessionPath)) Connect();
         else ShowLogin("");
     }
@@ -202,8 +200,8 @@ public partial class OnlineLobby
     {
         var signedOut = _accountStage is AccountStage.SignedOut or AccountStage.WaitingBrowser;
         _loginScreen.Visible = signedOut;
-        if (signedOut) CloseDecks();
-        if (_arena == null && _deckScreen == null) _content.Visible = !signedOut;
+        if (signedOut) { ReturnToPlay(); _joinDialog.Hide(); }
+        if (_arena == null) _content.Visible = !signedOut;
         if (signedOut) _connectionNotice.Hide();
         var waiting = _accountStage == AccountStage.WaitingBrowser;
         _signIn.Disabled = waiting;
@@ -216,8 +214,6 @@ public partial class OnlineLobby
     {
         if (_auth == null) return;
         var account = _lobby.Account;
-        // Leaving the account, either way, waits until no room or search depends on it.
-        _account.Disabled = !_lobby.Ready || _lobby.Room != null || _lobby.Searching || _lobby.PendingRoomRequest != RoomRequest.None || _lobby.AccountPending;
         if (_lobby.TakeAccountError() is { Length: > 0 } refused) _localError = refused;
         if (account == null || account.Name.Length == 0) return;
         if (!_name.HasFocus() && _name.Text != account.Name && editable) _name.Text = account.Name;

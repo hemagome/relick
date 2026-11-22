@@ -56,7 +56,11 @@ public partial class OnlineLobby
             if (role is not ("host" or "guest")) throw new Exception("Usa host o guest.");
             await Until(() => _lobby.Ready);
             if (_lobby.Room != null) throw new Exception("La prueba necesita un perfil sin sala activa.");
+            await Click(_shell.Navigation.Buttons[MenuPage.Profile]);
+            await Frame(); await Frame();
             GuiInputTestDriver.ReplaceText(_name, host ? "Ana teclado" : "Beto teclado");
+            await Click(_shell.Navigation.Buttons[MenuPage.Play]);
+            await Frame(); await Frame();
             if (args.Contains("--pvp-input-quick"))
             {
                 if (!host) await Until(() => System.IO.File.Exists(session + ".queue"));
@@ -76,10 +80,13 @@ public partial class OnlineLobby
             else
             {
                 await Until(() => System.IO.File.Exists(session + ".room"));
+                await Click(_openJoin);
+                await Until(() => _joinDialog.Visible);
                 GuiInputTestDriver.ReplaceText(_code, System.IO.File.ReadAllText(session + ".room"));
                 await Click(_join);
             }
-            await Until(() => _arena?.IsChoosingInitialSkill == true);
+            // The Relikarios' entrance and the deal block input while they play.
+            await Until(() => _arena?.IsChoosingInitialSkill == true && !_arena.IsAnimating);
             if (args.Contains("--pvp-input-quick") && PlayedMatchConfirmations != 1)
                 throw new Exception("La partida rápida omite o repite la confirmación visual del emparejamiento.");
             if (!host) await Until(() => _lobby.Preparation?.HandCountOne == 5);
@@ -87,12 +94,12 @@ public partial class OnlineLobby
             var dealSounds = await CountCardDraws(async () =>
             {
                 await ClickCurrent(() => _arena!.InitialSkillConfirmButton!);
-                await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false);
+                await Until(() => _arena?.OpeningCardCount == 5 && _arena.PreparationConfirmButton?.Disabled == false && !_arena.IsAnimating);
             });
             if (!host && dealSounds != 5) throw new Exception($"El último jugador en elegir habilidad oye {dealSounds} repartos en vez de cinco.");
             if (host)
                 await Until(() => _arena?.FindChildren("OpponentHandCard*", "Button", true, false).Count == 5 &&
-                    _arena.PreparationConfirmButton?.Disabled == false);
+                    _arena.PreparationConfirmButton?.Disabled == false && !_arena.IsAnimating);
             var preparationArena = _arena;
             if (_content.Visible || !_arena!.IsPreparing) throw new Exception("El mulligan sigue en la sala.");
             GD.Print($"PVP_INPUT_PEER_PROGRESS · {role} · sala compartida y cinco cartas.");
