@@ -226,6 +226,22 @@ try
     b.Connection.Reducers.ConfirmPreparation(nextCode, [], Guid.NewGuid().ToString("N"));
     Until(() => service.Duel != null && b.Preparation?.Started == true);
     Check(service.Duel!.Players[service.Duel.MySeat].Hand[0] == "destiny-shuffle" && b.Hand[0].Definition == "magnet-shuffle", "Conservar la mano funciona en ambos lugares y con reintento del cliente real");
+    // Doblador de Tiempo in the starter's hand opens the draw stage, but the checks below teach at revision 0: deal again.
+    for (var deals = 1; service.Duel!.Phase == Phase.Draw; deals++)
+    {
+        if (deals == 20) throw new Exception("Veinte repartos seguidos empiezan en la etapa de robo.");
+        service.Leave();
+        Until(() => service.Room == null && service.Duel == null && b.Room == null && b.Duel == null);
+        service.Create("Solicitud repetida");
+        Until(() => service.Room != null);
+        nextCode = service.Room!.Code;
+        b.Connection.Reducers.JoinRoom(nextCode, "Beto");
+        Until(() => b.InitialSkills?.Selected == false && service.InitialSkills?.Selected == false);
+        b.Connection.Reducers.ChooseInitialSkill(nextCode, "magnet-shuffle", Guid.NewGuid().ToString("N")); service.ChooseInitialSkill("destiny-shuffle");
+        Until(() => b.Hand.Length == 5 && service.Hand.Length == 5);
+        service.Confirm([]); b.Connection.Reducers.ConfirmPreparation(nextCode, [], Guid.NewGuid().ToString("N"));
+        Until(() => service.Duel != null && b.Preparation?.Started == true);
+    }
 
     var fighterA = Connect(serviceToken);
     Until(() => fighterA.Duel != null && b.Duel != null);
@@ -370,6 +386,7 @@ try
         if (combatSteps % 20 == 0) Console.WriteLine($"PROGRESS combate: {combatSteps} jugadas, turno {fighterA.Duel.Turn}, fase {fighterA.Duel.Phase}");
     }
     Check(fighterA.Duel.Winner != null && b.Duel!.Winner == fighterA.Duel.Winner, "Duelo completo resuelto por el servidor con ganador consistente");
+    Until(() => service.Duel?.Winner != null); // Leave() is silently refused until this client sees the result.
     Check(!string.IsNullOrEmpty(fighterA.Duel.EndReason) && fighterA.Duel.EndReason == b.Duel!.EndReason,
         "Ambos jugadores reciben la misma causa pública del resultado");
     Check(fighterA.Duel.History!.Count == DuelHistory.Capacity,
@@ -488,6 +505,7 @@ try
     Check(resultView.Winner != null && resultView.Players.Select(p => p.Health).Order().SequenceEqual(new[] { 6, 8 }) &&
         resultView.Players[resultView.Winner.Value].Health == 8 && b.Duel!.Winner == resultView.Winner,
         "El segundo agotamiento resta dos vidas y gana quien conserva más vida");
+    Until(() => service.Duel?.Winner != null);
     service.Leave(); Until(() => service.Room == null && b.Room == null && fighterA.Duel == null);
     Console.WriteLine($"SEARCH_TRANSPORT · {verifiedSearches} búsquedas privadas verificadas.");
     Console.WriteLine($"HAND_SWAP_TRANSPORT · {verifiedSwaps} intercambios con manos, destinatarios y revelaciones verificados.");

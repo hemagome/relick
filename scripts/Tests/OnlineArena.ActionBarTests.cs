@@ -41,11 +41,15 @@ public partial class OnlineArena
         var button = PresentedButton(_snapshot!.Options[index]);
         if (button is { Disabled: false }) { button.EmitSignal(Button.SignalName.Pressed); return true; }
         var option = _snapshot.Options[index];
+        if (option.Move.Kind == DuelMoveKind.Evolve && _evolveButton is { Disabled: false } evolve)
+        { evolve.EmitSignal(Button.SignalName.Pressed); return true; }
         if (option.Move.Kind == DuelMoveKind.Relikia && option.Move.Value != (int)RelikiaEffect.ReplayCode &&
             _root?.FindChild("ResourceBadge0", true, false) is ResourceBadge badge)
         {
             OpenRelikiaMenu(badge);
-            var item = _relikiaMenu?.GetItemIndex(option.Move.Value) ?? -1;
+            // Godot gives the header its index (0) as id, the same as ChangeBonus: search below it.
+            var item = _relikiaMenu is { } relikia ? Enumerable.Range(1, relikia.ItemCount - 1).FirstOrDefault(
+                i => !relikia.IsItemSeparator(i) && relikia.GetItemId(i) == option.Move.Value, -1) : -1;
             if (_relikiaMenu != null && item >= 0 && !_relikiaMenu.IsItemDisabled(item))
             {
                 _relikiaMenu.EmitSignal(PopupMenu.SignalName.IdPressed, option.Move.Value);
