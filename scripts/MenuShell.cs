@@ -2,7 +2,7 @@ using Godot;
 
 namespace Relick;
 
-public enum MenuPage { Play, Decks, Profile, Settings }
+public enum MenuPage { Play, Decks, Customize, Profile, Settings }
 
 /// <summary>The frame of every screen outside the duel: a bar on top, or a rail at the left when the screen is short.</summary>
 public partial class MenuShell : Container
@@ -107,6 +107,7 @@ public partial class MenuNavigation : PanelContainer
     [
         (MenuPage.Play, GameIcon.Sword, "Jugar"),
         (MenuPage.Decks, GameIcon.Cards, "Mazos"),
+        (MenuPage.Customize, GameIcon.Brush, "Personalizar"),
         (MenuPage.Profile, GameIcon.Person, "Perfil")
     ];
 
@@ -123,14 +124,15 @@ public partial class MenuNavigation : PanelContainer
         _box.AddThemeConstantOverride("separation", rail ? 2 : width < 1200 ? 10 : 28);
         _pages.AddThemeConstantOverride("separation", rail ? 2 : 4);
         _end.AddThemeConstantOverride("separation", rail ? 2 : 4);
-        _logo.Visible = !rail && width >= 900;
+        _logo.Visible = !rail && width >= 1000;
         _space.SizeFlagsHorizontal = rail ? SizeFlags.Fill : SizeFlags.ExpandFill;
         _space.SizeFlagsVertical = rail ? SizeFlags.ExpandFill : SizeFlags.Fill;
         _player.Visible = !rail;
         _who.Visible = width >= 1100;
         _player.CustomMinimumSize = new(width >= 1100 ? 230 : 56, 56);
         _player.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        foreach (var (page, button) in _buttons) button.Arrange(rail, iconOnly: !rail && page == MenuPage.Settings);
+        // With four tabs, narrow bars keep the symbol only beside the settings.
+        foreach (var (page, button) in _buttons) button.Arrange(rail, iconOnly: !rail && (page == MenuPage.Settings || width < 800));
     }
 
     public void Select(MenuPage page)

@@ -150,6 +150,7 @@ public sealed partial class LobbyConnection : IDisposable
                 connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_deck_styles"]);
                 connection.SubscriptionBuilder().Subscribe(["SELECT * FROM my_room_relikarios"]);
                 SubscribeProfiles(connection);
+                SubscribePersonalization(connection);
             })
             .OnConnectError(error => { Ready = Connecting = false; Message = "No se pudo conectar. Comprueba tu conexión y pulsa Reconectar."; })
             .OnDisconnect((_, error) => { Ready = Connecting = false; Message = "Se perdió la conexión. Pulsa Reconectar para recuperar tu sala."; });
@@ -179,6 +180,7 @@ public sealed partial class LobbyConnection : IDisposable
         RegisterQuickMatchReplies();
         RegisterDeckReplies();
         RegisterProfileReplies();
+        RegisterPersonalizationReplies();
         void BoardResult(string json, string roomCode)
         {
             var packet = JsonSerializer.Deserialize(json, DuelJson.Default.DuelBoardPacket)!;
@@ -504,5 +506,6 @@ public sealed partial class LobbyConnection : IDisposable
         _connection = null; _preparationSubscription = null;
         _decks = null; DeckPending = false; DeckRevision++;
         ProfilesAvailable = ProfilePending = false; ProfileRevision++;
+        ForgetPersonalization();
     }
 }

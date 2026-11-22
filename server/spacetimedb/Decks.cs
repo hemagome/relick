@@ -187,6 +187,7 @@ public static partial class Module
         ctx.Db.Deck.Id.Delete(id);
         ctx.Db.DeckSide.Deck.Delete(id);
         ctx.Db.DeckStyle.Deck.Delete(id);
+        ctx.Db.DeckCover.Deck.Delete(id);
         if (ctx.Db.Account.Player.Find(ctx.Sender) is Account account && account.ActiveDeck == id) SetActive(ctx, account, 0);
     }
 

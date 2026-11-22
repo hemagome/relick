@@ -10,6 +10,7 @@ public partial class OnlineLobby
     private MenuPage _page = MenuPage.Play;
     private Control _playPage = null!, _profilePage = null!, _settingsPage = null!;
     private DeckScreen? _deckScreen;
+    private Wardrobe? _wardrobe;
 
     private void BuildShell()
     {
@@ -36,7 +37,13 @@ public partial class OnlineLobby
             if (page == MenuPage.Decks) _deckScreen?.ShowDecks();
             return;
         }
+        if (_page == MenuPage.Customize && _wardrobe?.Dirty == true && !_leavingWardrobe)
+        {
+            ConfirmLeavingWardrobe(page);
+            return;
+        }
         if (_page == MenuPage.Decks) FreeDecks();
+        if (_page == MenuPage.Customize) FreeWardrobe();
         _page = page;
         _shell.Navigation.Select(page);
         _shell.Navigation.Visible = true;
@@ -49,7 +56,14 @@ public partial class OnlineLobby
             case MenuPage.Decks:
                 _deckScreen = new DeckScreen { Connection = _lobby, Guest = _lobby.Account?.Guest == true };
                 _deckScreen.FullScreenChanged += full => _shell.Navigation.Visible = !full;
+                _deckScreen.StyleRequested += OpenDeckStyle;
                 _shell.Body.AddChild(_deckScreen);
+                break;
+            case MenuPage.Customize:
+                _wardrobe = new Wardrobe { Connection = _lobby, PlayerName = OwnProfile().Name, StartAt = _wardrobeStart, StartDeck = _wardrobeDeck };
+                _wardrobe.BackdropTried += backdrop => _background.Backdrop = backdrop;
+                _shell.Body.AddChild(_wardrobe);
+                _wardrobeStart = WardrobeCategory.Avatar; _wardrobeDeck = 0;
                 break;
             case MenuPage.Profile: _presentedProfileRevision = -1; PresentProfile(); break;
             case MenuPage.Settings: PresentSettings(); break;
@@ -62,9 +76,50 @@ public partial class OnlineLobby
         _shell.Body.RemoveChild(_deckScreen); _deckScreen.QueueFree(); _deckScreen = null;
     }
 
+    private WardrobeCategory _wardrobeStart = WardrobeCategory.Avatar;
+    private ulong _wardrobeDeck;
+    private bool _leavingWardrobe;
+
+    private void OpenDeckStyle(ulong deck)
+    {
+        _wardrobeStart = WardrobeCategory.Sleeve; _wardrobeDeck = deck;
+        // The button that asked belongs to the screen this replaces.
+        Callable.From(() => ShowPage(MenuPage.Customize)).CallDeferred();
+    }
+
+    private void FreeWardrobe()
+    {
+        if (_wardrobe == null) return;
+        _shell.Body.RemoveChild(_wardrobe); _wardrobe.QueueFree(); _wardrobe = null;
+        _background.Backdrop = _lobby.HomeBackdrop;
+    }
+
+    private void ConfirmLeavingWardrobe(MenuPage next)
+    {
+        if (GetNodeOrNull("LeaveWardrobeDialog") != null) return;
+        var dialog = new ConfirmationDialog { Name = "LeaveWardrobeDialog", Title = "Cambios sin guardar",
+            OkButtonText = "Salir sin guardar", CancelButtonText = "Seguir aquí" };
+        MenuDialog.Fill(dialog, MenuDialog.Message("Si sales ahora perderás lo que te probaste."), 420, destructive: true);
+        AddChild(dialog);
+        dialog.Confirmed += () => LeaveWardrobe(next);
+        dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
+        MenuDialog.Show(dialog);
+    }
+
+    private void LeaveWardrobe(MenuPage next)
+    {
+        _leavingWardrobe = true;
+        ShowPage(next);
+        _leavingWardrobe = false;
+    }
+
     private void OpenDecks() => ShowPage(MenuPage.Decks);
 
-    private void ReturnToPlay() => ShowPage(MenuPage.Play);
+    private void ReturnToPlay()
+    {
+        // A room or a sign-out does not wait for the wardrobe.
+        if (_page != MenuPage.Play) LeaveWardrobe(MenuPage.Play);
+    }
 
     private void PresentNavigation(bool ready, bool busy, bool searching, bool inRoom)
     {
@@ -72,6 +127,7 @@ public partial class OnlineLobby
             : busy ? "Espera a que termine la solicitud." : !ready ? "Conéctate para cambiar esto." : "";
         // An open editor survives an outage; only the way into it closes.
         _shell.Navigation.Lock(MenuPage.Decks, reason);
+        _shell.Navigation.Lock(MenuPage.Customize, reason);
         _shell.Navigation.Lock(MenuPage.Profile, reason);
         var profile = _lobby.Profile;
         var name = _auth != null && _lobby.Account?.Name is { Length: > 0 } saved ? saved : _name.Text;

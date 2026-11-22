@@ -117,9 +117,17 @@ public partial class OnlineLobby
                 Inspect(_connectionNotice, "el aviso de conexión");
                 PresentConnectionNotice(true, false); await Frames();
 
-                var profile = new ProfileEditor { Current = ProfileView.Default("Ana") };
-                AddChild(profile); MenuDialog.Show(profile);
-                await Dialog(profile, "Mi perfil", 620);
+                var wardrobe = new Wardrobe { Connection = new(), PreviewProfile = ProfileView.Default("Ana"), PlayerName = "Ana", PreviewDecks = [
+                    new() { Id = 1, Name = "Mazo en uso", Relikario = "yuno", Cards = training, Traps = [], Side = [], Valid = true, Active = true }] };
+                _shell.Body.AddChild(wardrobe); _playPage.Hide(); await Frames();
+                foreach (var category in Enum.GetValues<WardrobeCategory>())
+                {
+                    wardrobe.ShowCategory(category); await Frames();
+                    Inspect(wardrobe, "Personalizar · " + category);
+                    var bounds = ((Control)wardrobe.FindChild("WardrobeSave", true, false)!).GetGlobalRect();
+                    Expect(bounds.End.Y <= Size.Y + 1 && bounds.End.X <= Size.X + 1, $"Personalizar desborda {size} en {category}.");
+                }
+                _shell.Body.RemoveChild(wardrobe); wardrobe.QueueFree(); _playPage.Show(); await Frames();
                 ShowDeleteAccount(20);
                 await Dialog(GetNodeOrNull<AcceptDialog>("DeleteAccountDialog"), "Eliminar cuenta", 600);
 
@@ -133,7 +141,8 @@ public partial class OnlineLobby
                     try
                     {
                         Inspect(screen, "Mis mazos");
-                        Press(screen.FindChild("Deck1", true, false)!, "Delete");
+                        screen.SelectDeck(1); await Frames();
+                        Press(screen, "Delete");
                         await Dialog(screen.GetChildren().OfType<AcceptDialog>().LastOrDefault(), "Borrar mazo", 480);
 
                         screen.ChooseRelikario(); await Frames();

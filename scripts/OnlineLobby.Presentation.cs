@@ -20,6 +20,7 @@ public partial class OnlineLobby
     private readonly List<PanelContainer> _entryPanels = [];
     private readonly List<Label> _entryTitles = [];
     private readonly List<Control> _entryDescriptions = [];
+    private LobbyBackground _background = null!;
     private readonly List<VBoxContainer> _entryColumns = [];
     private readonly List<LobbySymbol> _entrySymbols = [];
     private AcceptDialog _joinDialog = null!;
@@ -38,7 +39,7 @@ public partial class OnlineLobby
     private void BuildLobby()
     {
         Theme = LobbyTheme();
-        var background = new LobbyBackground(); AddChild(background);
+        var background = new LobbyBackground(); AddChild(background); _background = background;
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _content = new MarginContainer(); AddChild(_content);
         _content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -181,7 +182,10 @@ public partial class OnlineLobby
         var relikario = deck?.Relikario ?? RelikarioCatalog.Yuno.Id;
         _deckName.Text = deck?.Name ?? "Mazo de entrenamiento";
         _deckName.TooltipText = _deckName.Text;
-        _hero.Relikario = relikario;
+        // A chosen home Relikario replaces the deck's on the stage; the search still shows the deck's.
+        var home = _lobby.HomeHero;
+        _hero.Relikario = home.Length > 0 ? home : relikario;
+        if (_page != MenuPage.Customize) _background.Backdrop = _lobby.HomeBackdrop;
         _matchLink.Thumbnail = DeckScreen.Thumbnail(relikario);
     }
 
@@ -244,7 +248,7 @@ public partial class OnlineLobby
         _name.Editable = _code.Editable = room == null && !busy && !searching;
         PresentAccountName(_name.Editable);
         _decks.Disabled = !ready || busy || searching || room != null;
-        PresentProfileEditing(ready && !busy && !searching && room == null);
+        PresentProfileState(ready && !busy && !searching && room == null);
         PresentAccountSettings();
         PresentNavigation(ready, busy, searching || matched, room != null);
         PresentEquippedDeck(_lobby.Decks.FirstOrDefault(deck => deck.Active));

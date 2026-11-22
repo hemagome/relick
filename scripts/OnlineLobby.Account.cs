@@ -24,19 +24,35 @@ public partial class OnlineLobby
 
     private void BuildLoginScreen()
     {
-        var screen = new CenterContainer { Name = "LoginScreen", Visible = false };
+        var screen = new MarginContainer { Name = "LoginScreen", Visible = false };
         _loginScreen = screen; AddChild(screen);
         screen.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var panel = Surface(screen, 32);
-        panel.SizeFlagsHorizontal = SizeFlags.ShrinkCenter; panel.CustomMinimumSize = new(Math.Min(460, Math.Max(280, Size.X - 48)), 0);
-        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 18); panel.AddChild(column);
-        var logo = RelickVisuals.Logo(); logo.SizeFlagsHorizontal = SizeFlags.ShrinkCenter; column.AddChild(logo);
-        var title = Text("Inicia sesión", MenuVisuals.Type.Title); title.HorizontalAlignment = HorizontalAlignment.Center;
+        var row = new HBoxContainer(); screen.AddChild(row);
+        row.AddChild(new LoginArt { Name = "LoginArt", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.15f });
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddChild(column);
+        var logo = RelickVisuals.Logo(); column.AddChild(logo);
+        var title = Text("Elige tu Relikario.\nArma tu mazo. Duela.", MenuVisuals.Type.Hero);
+        title.Name = "LoginTitle";
         title.AddThemeFontOverride("font", RelickVisuals.Display); column.AddChild(title);
         _signIn = AddButton(column, "Iniciar sesión", StartSignIn);
         _signIn.Name = "SignIn"; RelickVisuals.Primary(_signIn);
-        _loginStatus = Description(""); _loginStatus.Name = "LoginStatus"; _loginStatus.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(Description("Se abrirá tu navegador. Puedes entrar con correo, Discord u otra cuenta."));
+        _loginStatus = Description(""); _loginStatus.Name = "LoginStatus";
         column.AddChild(_loginStatus);
+        void Arrange()
+        {
+            var shortScreen = ArenaViewport.Short(this);
+            var side = (int)Math.Max(shortScreen ? 16 : 48, (Size.X - 1280) / 2);
+            foreach (var edge in new[] { "left", "right" }) screen.AddThemeConstantOverride("margin_" + edge, side);
+            foreach (var edge in new[] { "top", "bottom" }) screen.AddThemeConstantOverride("margin_" + edge, shortScreen ? 12 : 64);
+            column.AddThemeConstantOverride("separation", shortScreen ? 10 : 22);
+            row.AddThemeConstantOverride("separation", shortScreen ? 16 : 56);
+            logo.CustomMinimumSize = shortScreen ? new(172, 40) : new(330, 76);
+            title.AddThemeFontSizeOverride("font_size",
+                shortScreen || Size.X < 900 ? MenuVisuals.Type.Subtitle : Size.X < 1300 ? MenuVisuals.Type.Title : MenuVisuals.Type.Hero);
+        }
+        Resized += Arrange; Arrange();
         _cancelSignIn = AddButton(column, "Cancelar", () => _authCancel?.Cancel());
         _cancelSignIn.Name = "CancelSignIn"; _cancelSignIn.Visible = false;
     }

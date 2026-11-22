@@ -104,7 +104,12 @@ public static partial class Module
         if (ctx.Db.Member.Player.Find(player) != null)
             throw new Exception("Cierra tu sala o termina el duelo antes de eliminar la cuenta.");
         ctx.Db.QuickSearch.Player.Delete(player);
-        foreach (var deck in ctx.Db.Deck.Owner.Filter(player).ToList()) { ctx.Db.Deck.Id.Delete(deck.Id); ctx.Db.DeckSide.Deck.Delete(deck.Id); }
+        foreach (var deck in ctx.Db.Deck.Owner.Filter(player).ToList()) 
+        {
+            ctx.Db.Deck.Id.Delete(deck.Id); ctx.Db.DeckSide.Deck.Delete(deck.Id);
+            ctx.Db.DeckStyle.Deck.Delete(deck.Id); ctx.Db.DeckCover.Deck.Delete(deck.Id);
+        }
+        ctx.Db.HomeStyle.Player.Delete(player);
         ctx.Db.Loadout.Player.Delete(player);
         ctx.Db.LoadoutStyle.Player.Delete(player);
         ctx.Db.LoadoutRelikario.Player.Delete(player);

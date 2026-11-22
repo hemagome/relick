@@ -31,16 +31,19 @@ namespace Relick.Network.Types
             AddTable(MyAccount = new(conn));
             AddTable(MyBoard = new(conn));
             AddTable(MyChoices = new(conn));
+            AddTable(MyDeckCovers = new(conn));
             AddTable(MyDeckStyles = new(conn));
             AddTable(MyDecks = new(conn));
             AddTable(MyDuel = new(conn));
             AddTable(MyDuelHand = new(conn));
             AddTable(MyHand = new(conn));
+            AddTable(MyHomeStyle = new(conn));
             AddTable(MyInitialSkill = new(conn));
             AddTable(MyMoveResult = new(conn));
             AddTable(MyPreparation = new(conn));
             AddTable(MyProfile = new(conn));
             AddTable(MyQuickSearch = new(conn));
+            AddTable(MyRecords = new(conn));
             AddTable(MyRoom = new(conn));
             AddTable(MyRoomProfiles = new(conn));
             AddTable(MyRoomRelikarios = new(conn));
@@ -543,16 +546,19 @@ namespace Relick.Network.Types
             new QueryBuilder().From.MyAccount().ToSql(),
             new QueryBuilder().From.MyBoard().ToSql(),
             new QueryBuilder().From.MyChoices().ToSql(),
+            new QueryBuilder().From.MyDeckCovers().ToSql(),
             new QueryBuilder().From.MyDeckStyles().ToSql(),
             new QueryBuilder().From.MyDecks().ToSql(),
             new QueryBuilder().From.MyDuel().ToSql(),
             new QueryBuilder().From.MyDuelHand().ToSql(),
             new QueryBuilder().From.MyHand().ToSql(),
+            new QueryBuilder().From.MyHomeStyle().ToSql(),
             new QueryBuilder().From.MyInitialSkill().ToSql(),
             new QueryBuilder().From.MyMoveResult().ToSql(),
             new QueryBuilder().From.MyPreparation().ToSql(),
             new QueryBuilder().From.MyProfile().ToSql(),
             new QueryBuilder().From.MyQuickSearch().ToSql(),
+            new QueryBuilder().From.MyRecords().ToSql(),
             new QueryBuilder().From.MyRoom().ToSql(),
             new QueryBuilder().From.MyRoomProfiles().ToSql(),
             new QueryBuilder().From.MyRoomRelikarios().ToSql(),
@@ -565,16 +571,19 @@ namespace Relick.Network.Types
         public global::SpacetimeDB.Table<AccountInfo, MyAccountCols, MyAccountIxCols> MyAccount() => new("my_account", new MyAccountCols("my_account"), new MyAccountIxCols("my_account"));
         public global::SpacetimeDB.Table<DuelBoard, MyBoardCols, MyBoardIxCols> MyBoard() => new("my_board", new MyBoardCols("my_board"), new MyBoardIxCols("my_board"));
         public global::SpacetimeDB.Table<DuelChoices, MyChoicesCols, MyChoicesIxCols> MyChoices() => new("my_choices", new MyChoicesCols("my_choices"), new MyChoicesIxCols("my_choices"));
+        public global::SpacetimeDB.Table<DeckCoverInfo, MyDeckCoversCols, MyDeckCoversIxCols> MyDeckCovers() => new("my_deck_covers", new MyDeckCoversCols("my_deck_covers"), new MyDeckCoversIxCols("my_deck_covers"));
         public global::SpacetimeDB.Table<DeckStyleInfo, MyDeckStylesCols, MyDeckStylesIxCols> MyDeckStyles() => new("my_deck_styles", new MyDeckStylesCols("my_deck_styles"), new MyDeckStylesIxCols("my_deck_styles"));
         public global::SpacetimeDB.Table<DeckInfo, MyDecksCols, MyDecksIxCols> MyDecks() => new("my_decks", new MyDecksCols("my_decks"), new MyDecksIxCols("my_decks"));
         public global::SpacetimeDB.Table<DuelInfo, MyDuelCols, MyDuelIxCols> MyDuel() => new("my_duel", new MyDuelCols("my_duel"), new MyDuelIxCols("my_duel"));
         public global::SpacetimeDB.Table<DuelHand, MyDuelHandCols, MyDuelHandIxCols> MyDuelHand() => new("my_duel_hand", new MyDuelHandCols("my_duel_hand"), new MyDuelHandIxCols("my_duel_hand"));
         public global::SpacetimeDB.Table<HandCard, MyHandCols, MyHandIxCols> MyHand() => new("my_hand", new MyHandCols("my_hand"), new MyHandIxCols("my_hand"));
+        public global::SpacetimeDB.Table<HomeStyleInfo, MyHomeStyleCols, MyHomeStyleIxCols> MyHomeStyle() => new("my_home_style", new MyHomeStyleCols("my_home_style"), new MyHomeStyleIxCols("my_home_style"));
         public global::SpacetimeDB.Table<InitialSkillInfo, MyInitialSkillCols, MyInitialSkillIxCols> MyInitialSkill() => new("my_initial_skill", new MyInitialSkillCols("my_initial_skill"), new MyInitialSkillIxCols("my_initial_skill"));
         public global::SpacetimeDB.Table<MoveResult, MyMoveResultCols, MyMoveResultIxCols> MyMoveResult() => new("my_move_result", new MyMoveResultCols("my_move_result"), new MyMoveResultIxCols("my_move_result"));
         public global::SpacetimeDB.Table<PreparationInfo, MyPreparationCols, MyPreparationIxCols> MyPreparation() => new("my_preparation", new MyPreparationCols("my_preparation"), new MyPreparationIxCols("my_preparation"));
         public global::SpacetimeDB.Table<ProfileInfo, MyProfileCols, MyProfileIxCols> MyProfile() => new("my_profile", new MyProfileCols("my_profile"), new MyProfileIxCols("my_profile"));
         public global::SpacetimeDB.Table<QuickSearchInfo, MyQuickSearchCols, MyQuickSearchIxCols> MyQuickSearch() => new("my_quick_search", new MyQuickSearchCols("my_quick_search"), new MyQuickSearchIxCols("my_quick_search"));
+        public global::SpacetimeDB.Table<RecordInfo, MyRecordsCols, MyRecordsIxCols> MyRecords() => new("my_records", new MyRecordsCols("my_records"), new MyRecordsIxCols("my_records"));
         public global::SpacetimeDB.Table<RoomInfo, MyRoomCols, MyRoomIxCols> MyRoom() => new("my_room", new MyRoomCols("my_room"), new MyRoomIxCols("my_room"));
         public global::SpacetimeDB.Table<ProfileInfo, MyRoomProfilesCols, MyRoomProfilesIxCols> MyRoomProfiles() => new("my_room_profiles", new MyRoomProfilesCols("my_room_profiles"), new MyRoomProfilesIxCols("my_room_profiles"));
         public global::SpacetimeDB.Table<RoomRelikarioInfo, MyRoomRelikariosCols, MyRoomRelikariosIxCols> MyRoomRelikarios() => new("my_room_relikarios", new MyRoomRelikariosCols("my_room_relikarios"), new MyRoomRelikariosIxCols("my_room_relikarios"));
@@ -676,7 +685,9 @@ namespace Relick.Network.Types
                 Reducer.SaveDeckV2 args => Reducers.InvokeSaveDeckV2(eventContext, args),
                 Reducer.SetActiveDeck args => Reducers.InvokeSetActiveDeck(eventContext, args),
                 Reducer.SetComboResponses args => Reducers.InvokeSetComboResponses(eventContext, args),
+                Reducer.SetDeckCover args => Reducers.InvokeSetDeckCover(eventContext, args),
                 Reducer.SetDisplayName args => Reducers.InvokeSetDisplayName(eventContext, args),
+                Reducer.SetHomeStyle args => Reducers.InvokeSetHomeStyle(eventContext, args),
                 Reducer.SetProfile args => Reducers.InvokeSetProfile(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
