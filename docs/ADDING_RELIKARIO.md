@@ -124,9 +124,8 @@ Cada rival tiene un tema de combate y otro de clímax (cuando alguien llega a ce
 ## 9. Verificar
 
 ```bash
-dotnet run --project tests/Relick.Core.Tests.csproj
+./pruebas.sh
 dotnet build server/spacetimedb/StdbModule.csproj
-./jugar.sh --headless --pvp-ui-test
 ./jugar.sh --headless --music-test
 ```
 

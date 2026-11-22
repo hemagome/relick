@@ -58,11 +58,14 @@ Cómo levantar el servidor local y publicar el módulo: [PvP · Desarrollo local
 ## Pruebas
 
 ```bash
-dotnet run --project tests/Relick.Core.Tests.csproj    # motor de reglas (sin Godot ni servidor)
-./jugar.sh --headless --pvp-ui-test                    # interfaz completa sin ventana ni servidor
+./pruebas.sh                                  # motor e interfaz completa, sin ventana ni servidor (menos de un minuto)
+./pruebas.sh --motor                          # solo el motor de reglas
+./pruebas.sh --checks=TotemLayout,TurnCore    # solo esas comprobaciones de interfaz; --lista muestra los nombres
 ```
 
-En Windows, la prueba de interfaz es `dotnet build Relick.csproj` seguido de `Godot_…_mono_win64.exe --headless --path . -- --pvp-ui-test`. Termina con `PVP_UI_PASS` y código de salida 0. Los filtros (`--lobby-only`, `--decks-only`…) y las capturas renderizadas están en [Interfaz · Validación](docs/UI.md#validación).
+`pruebas.sh` compila una vez, ejecuta el motor y reparte la interfaz entre varios procesos de Godot (`-j N`; por defecto, la mitad de los núcleos, hasta 8). Cada proceso usa su propio `user://`, así que no toca tus ajustes. Termina con `PRUEBAS_PASS` y código 0; si algo falla, dice qué comprobación y dónde quedan los registros. Guarda la duración de cada comprobación en `.godot/pruebas-tiempos.tsv` para repartirlas mejor en la siguiente ejecución.
+
+Sin el script (por ejemplo, en Windows): `dotnet run --project tests/Relick.Core.Tests.csproj` para el motor; para la interfaz, `dotnet build Relick.csproj` y luego `godot --headless --fixed-fps 145 --path . -- --pvp-ui-test` (`Godot_…_mono_win64.exe` en Windows). Termina con `PVP_UI_PASS` y código 0. `--fixed-fps 145` evita que Godot duerma entre frames sin pantalla y mantiene el paso de tiempo de siempre; sin él la prueba es correcta, pero tarda más del doble. Úsalo solo en pruebas sin servidor: las de red y audio dependen del reloj real. Los filtros (`--lobby-only`, `--decks-only`…) y las capturas renderizadas están en [Interfaz · Validación](docs/UI.md#validación).
 
 `./jugar.sh --headless --shutdown-test` cierra el juego con el finalizador de .NET cargado y debe terminar con código 0. Protege el arreglo de `ManagedShutdown` para una carrera de Godot .NET 4.7.2 que tumbaba el proceso al cerrar. Depende de un detalle interno del motor: repítela al actualizar Godot.
 

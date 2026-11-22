@@ -542,7 +542,8 @@ var tests = new (string Name, Action Run)[]
     }),
     ("2000 duelos: terminan, decisiones legales, conservación y límites", () =>
     {
-        for (var seed = 0; seed < 2000; seed++)
+        // Each seed is an independent duel: the engine keeps no shared mutable state, so they run in parallel.
+        Parallel.For(0, 2000, seed =>
         {
             var g = TestGame.Create(seed);
             foreach (var p in g.State.Players) p.Dexterity = p.Relikario.StartingDexterity;
@@ -563,7 +564,7 @@ var tests = new (string Name, Action Run)[]
                 Ok(g.State.ActionsLeft >= 0 && g.State.ActionsLeft <= 2);
             }
             Ok(g.State.IsOver, $"No terminó seed {seed}");
-        }
+        });
     }),
     ("Misma semilla y decisiones reproducen el duelo", () =>
     {

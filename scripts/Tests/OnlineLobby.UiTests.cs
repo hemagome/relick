@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Godot;
 using Relick.Core;
 
@@ -5,6 +6,81 @@ namespace Relick;
 
 public partial class OnlineLobby
 {
+    /// <summary>
+    /// The old focused flags, each mapped to the checks it runs and the marker it prints on success.
+    /// Every check also runs on its own with <c>--checks=Name,Name</c>; <c>--list-checks</c> prints the names.
+    /// </summary>
+    private static readonly Dictionary<string, (string? Marker, string[] Checks)> UiTestFlags = new()
+    {
+        ["--matchmaking-only"] = ("PVP_MATCHMAKING_ONLY_PASS", ["MatchmakingAnimation"]),
+        ["--decks-only"] = ("PVP_DECKS_ONLY_PASS", ["DeckScreens"]),
+        ["--style-only"] = ("PVP_STYLE_ONLY_PASS", ["MenuStyle"]),
+        ["--account-only"] = ("PVP_ACCOUNT_ONLY_PASS", ["AccountScreens"]),
+        ["--lobby-only"] = ("PVP_LOBBY_ONLY_PASS", ["AccountScreens", "DeckScreens", "LobbyPolish", "MatchmakingAnimation", "MenuStyle"]),
+        ["--osamu-only"] = ("PVP_OSAMU_ONLY_PASS", ["OsamuSearchLayout", "OsamuPresentation"]),
+        ["--table-view-only"] = (null, ["TableView"]),
+        ["--dexterity-only"] = ("PVP_DEXTERITY_ONLY_PASS", ["DexterityLayout"]),
+        ["--stage-only"] = ("PVP_STAGE_ONLY_PASS", ["StageAnnouncements"]),
+        ["--connection-only"] = ("PVP_CONNECTION_ONLY_PASS", ["ArenaConnectionNotice", "LobbyPolish"]),
+        ["--closure-only"] = ("PVP_CLOSURE_ONLY_PASS", ["DuelResults", "LobbyPolish"]),
+        ["--preparation-only"] = ("PVP_PREPARATION_ONLY_PASS", ["PreparationLayout"]),
+        ["--opening-reveal-only"] = (null, ["OpeningReveal"]),
+        ["--opening-playmats-only"] = (null, ["OpeningPlaymats"]),
+        ["--combo-responses-only"] = ("PVP_COMBO_RESPONSES_ONLY_PASS", ["ComboResponseToggle"]),
+        ["--actions-only"] = ("PVP_ACTION_COUNTERS_ONLY_PASS", ["ActionCounters"]),
+        ["--skill-lesson-only"] = (null, ["SkillLessonAnimation"]),
+        ["--equipment-animation-only"] = (null, ["EquipmentAnimation"]),
+        ["--exchange-animation-only"] = (null, ["ExchangeAnimation"]),
+        ["--guard-animation-only"] = (null, ["GuardAnimation"]),
+        ["--discard-animation-only"] = (null, ["DiscardAnimation"]),
+        ["--turn-core-only"] = ("PVP_TURN_CORE_ONLY_PASS", ["TurnCore"]),
+        ["--rail-only"] = ("PVP_RAIL_ONLY_PASS", ["AdaptiveRail"]),
+        ["--guidance-only"] = ("PVP_GUIDANCE_ONLY_PASS", ["DecisionGuidance"]),
+        ["--profile-only"] = ("PVP_PROFILE_ONLY_PASS", ["Profiles"]),
+        ["--cosmetics-only"] = ("PVP_COSMETICS_ONLY_PASS", ["Cosmetics"]),
+        ["--trap-recipe-only"] = ("PVP_TRAP_RECIPE_ONLY_PASS", ["TrapRecipe"]),
+        ["--polish-only"] = ("PVP_POLISH_ONLY_PASS", ["PolishEffects"]),
+        ["--board-reading-only"] = ("PVP_BOARD_READING_ONLY_PASS", ["BoardReading"]),
+        ["--feedback-only"] = ("PVP_FEEDBACK_ONLY_PASS", ["DecisionFeedback"]),
+        ["--take-equipment-only"] = (null, ["TakeEquipmentLayout"]),
+        ["--equipment-raid-only"] = (null, ["EquipmentRaidLayout"]),
+        ["--purple-ring-only"] = (null, ["PurpleRingLayout"]),
+        ["--galactic-shield-only"] = (null, ["GalacticShieldLayout"]),
+        ["--glass-flute-only"] = (null, ["GlassFluteReturnLayout"]),
+        ["--victorious-manual-control-only"] = (null, ["VictoriousManualControlLayout"]),
+        ["--ellie-only"] = (null, ["EllieLayout"]),
+        ["--new-cards-only"] = (null, ["NewCardsLayout"]),
+        ["--robotize-only"] = (null, ["RobotizeLayout"]),
+        ["--combo-parry-only"] = (null, ["ComboParryLayout"]),
+        ["--metal-hood-only"] = (null, ["MetalHoodLayout"]),
+        ["--destiny-pick-only"] = (null, ["DestinyPickLayout"]),
+        ["--inspector-only"] = ("PVP_INSPECTOR_ONLY_PASS", ["CardInspector"]),
+        ["--triple-attack-only"] = ("PVP_TRIPLE_ATTACK_ONLY_PASS", ["TripleAttackDraws"]),
+        ["--history-only"] = ("PVP_HISTORY_ONLY_PASS", ["PublicHistory"]),
+        ["--context-only"] = ("PVP_CONTEXT_ONLY_PASS", ["ContextActionBar"]),
+        ["--memory-inspection-only"] = ("PVP_MEMORY_INSPECTION_ONLY_PASS", ["MemoryInspection"]),
+        ["--golden-totem-only"] = ("PVP_GOLDEN_TOTEM_ONLY_PASS", ["GoldenTotemLayout"]),
+        ["--super-magnet-only"] = (null, ["SuperMagnetLayout"]),
+        ["--response-chain-only"] = (null, ["ResponseChain"]),
+        ["--zahira-only"] = (null, ["ZahiraLayout"]),
+        ["--super-attack-only"] = (null, ["SuperAttackLayout"]),
+        ["--totem-only"] = ("PVP_TOTEM_ONLY_PASS", ["TotemLayout"]),
+        ["--time-bender-only"] = ("PVP_TIME_BENDER_ONLY_PASS", ["TimeBenderLayout"]),
+        ["--blue-egg-only"] = ("PVP_BLUE_EGG_ONLY_PASS", ["BlueEggDrawLayout"]),
+        ["--reload-cartridge-only"] = ("PVP_RELOAD_CARTRIDGE_ONLY_PASS", ["ReloadCartridgeLayout"]),
+        ["--quick-load-only"] = ("PVP_QUICK_LOAD_ONLY_PASS", ["QuickLoadLayout"]),
+        ["--jessica-only"] = ("PVP_JESSICA_ONLY_PASS", ["JessicaLayout"]),
+        ["--star-only"] = ("PVP_PLUMBER_STAR_ONLY_PASS", ["PlumberStarLayout"]),
+        ["--memory-recovery-only"] = ("PVP_MEMORY_RECOVERY_ONLY_PASS", ["MemoryRecoveryLayout"]),
+        ["--steal-only"] = ("PVP_HAND_STEAL_ONLY_PASS", ["HandStealAnimation"]),
+        ["--reverse-only"] = ("PVP_REVERSE_ONLY_PASS", ["ReverseLayout"]),
+        ["--evolution-only"] = ("PVP_YUNO_EVOLUTION_ONLY_PASS", ["EvolutionReveal", "YunoEvolutionLayout"]),
+        ["--mind-reset-only"] = ("PVP_MIND_RESET_ONLY_PASS", ["MindResetLayout"]),
+        ["--mind-swap-only"] = ("PVP_MIND_SWAP_ONLY_PASS", ["MindSwapLayout"]),
+        ["--portraits-only"] = ("PVP_PORTRAITS_ONLY_PASS", ["ZeroHealthPortraits", "HealingPortraits", "IronwingPortraits"]),
+        ["--deck-search-only"] = ("PVP_DECK_SEARCH_ONLY_PASS", ["DeckSearchLayout"]),
+    };
+
     private async void ArenaUiSmokeTest()
     {
         try
@@ -15,455 +91,196 @@ public partial class OnlineLobby
                 throw new Exception("El juego aún incluye el controlador o rival de práctica.");
             _content.Hide();
             async Task Layout() { for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
-            if (OS.GetCmdlineUserArgs().Contains("--matchmaking-only"))
-            {
-                await CheckMatchmakingAnimation(); await Layout(); GD.Print("PVP_MATCHMAKING_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--decks-only"))
-            {
-                await CheckDeckScreens();
-                GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
-                GD.Print("PVP_DECKS_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--style-only"))
-            {
-                await CheckMenuStyle(); await Layout(); GD.Print("PVP_STYLE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--account-only"))
-            {
-                await CheckAccountScreens(); await Layout(); GD.Print("PVP_ACCOUNT_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--lobby-only"))
-            {
-                await CheckAccountScreens(); await CheckDeckScreens(); await CheckLobbyPolish(); await CheckMatchmakingAnimation();
-                await CheckMenuStyle();
-                await Layout(); GD.Print("PVP_LOBBY_ONLY_PASS"); QuitWithAudio(); return;
-            }
+            var args = OS.GetCmdlineUserArgs();
             var game = new GameEngine(42); game.ChooseInitialSkill(0, CardCatalog.Magnet.Id); game.ChooseInitialSkill(1, CardCatalog.Destiny.Id); game.Start([]);
-            var online = new OnlineArena { Connection = new(), RoomCode = "UITEST00", BoardSettingsPath = IsolatedBoardSettings }; AddChild(online); online.SetProcess(false);
-            if (OS.GetCmdlineUserArgs().Contains("--osamu-only"))
+
+            // The arena is created on first use, so the lobby checks run without it when they run alone.
+            OnlineArena? arena = null;
+            OnlineArena Arena()
             {
-                await online.CheckOsamuSearchLayout(); await online.CheckOsamuPresentation();
-                online.QueueFree(); await Layout();
-                GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
-                GD.Print("PVP_OSAMU_ONLY_PASS"); QuitWithAudio(); return;
+                if (arena == null)
+                {
+                    arena = new OnlineArena { Connection = new(), RoomCode = "UITEST00", BoardSettingsPath = IsolatedBoardSettings };
+                    AddChild(arena); arena.SetProcess(false);
+                }
+                arena.Show();
+                return arena;
             }
-            if (OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--choice-preview-dir=")) is { } choicePreview)
+            void Lobby() => arena?.Hide();
+            // The portraits start from the opening board, whatever the previous check left on screen.
+            async Task<OnlineArena> OpeningBoard()
             {
-                await online.CaptureChoicePreview(choicePreview.Split('=', 2)[1]); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().FirstOrDefault(arg => arg.StartsWith("--board-preview-dir=")) is { } boardPreview)
-            {
-                await online.CaptureBoardPreview(boardPreview.Split('=', 2)[1]); online.QueueFree(); await Layout();
-                GD.Print("PVP_BOARD_PREVIEW_DONE"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--table-view-only"))
-            {
-                await online.CheckTableView(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--dexterity-only"))
-            {
-                await online.CheckDexterityLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_DEXTERITY_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--stage-only"))
-            {
-                await online.CheckStageAnnouncements(); online.QueueFree(); await Layout();
-                GD.Print("PVP_STAGE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--connection-only"))
-            {
-                await CheckArenaConnectionNotice(online); online.Hide(); await CheckLobbyPolish();
-                online.QueueFree(); await Layout(); GD.Print("PVP_CONNECTION_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--closure-only"))
-            {
-                await online.CheckDuelResults(); online.Hide(); await CheckLobbyPolish();
-                online.QueueFree(); await Layout(); GD.Print("PVP_CLOSURE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--preparation-only"))
-            {
-                await online.CheckPreparationLayout(); online.QueueFree(); await Layout();
-                GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
-                GD.Print("PVP_PREPARATION_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--opening-reveal-only"))
-            {
-                await online.CheckOpeningReveal(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--opening-playmats-only"))
-            {
-                await online.CheckOpeningPlaymats(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--combo-responses-only"))
-            {
-                await online.CheckComboResponseToggle(); online.QueueFree(); await Layout();
-                GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
-                GD.Print("PVP_COMBO_RESPONSES_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--actions-only"))
-            {
-                await online.CheckActionCounters(); online.QueueFree(); await Layout();
-                GD.Print("PVP_ACTION_COUNTERS_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--skill-lesson-only"))
-            {
-                await online.CheckSkillLessonAnimation(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--equipment-animation-only"))
-            {
-                await online.CheckEquipmentAnimation(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--exchange-animation-only"))
-            {
-                await online.CheckExchangeAnimation(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--guard-animation-only"))
-            {
-                await online.CheckGuardAnimation(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--discard-animation-only"))
-            {
-                await online.CheckDiscardAnimation(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--turn-core-only"))
-            {
-                await online.CheckTurnCore(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TURN_CORE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--rail-only"))
-            {
-                await online.CheckAdaptiveRail(); online.QueueFree(); await Layout();
-                GD.Print("PVP_RAIL_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--guidance-only"))
-            {
-                await online.CheckDecisionGuidance(); online.QueueFree(); await Layout();
-                GD.Print("PVP_GUIDANCE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--profile-only"))
-            {
-                await online.CheckProfiles(); online.QueueFree(); await Layout();
-                GD.Print("PVP_PROFILE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--cosmetics-only"))
-            {
-                await online.CheckCosmetics(); online.QueueFree(); await Layout();
-                GD.Print("PVP_COSMETICS_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--trap-recipe-only"))
-            {
-                await online.CheckTrapRecipe(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TRAP_RECIPE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--polish-only"))
-            {
-                await online.CheckPolishEffects(); online.QueueFree(); await Layout();
-                GD.Print("PVP_POLISH_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--board-reading-only"))
-            {
-                await online.CheckBoardReading(); online.QueueFree(); await Layout();
-                GD.Print("PVP_BOARD_READING_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--feedback-only"))
-            {
-                await online.CheckDecisionFeedback(); online.QueueFree(); await Layout();
-                GD.Print("PVP_FEEDBACK_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--take-equipment-only"))
-            {
-                await online.CheckTakeEquipmentLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--equipment-raid-only"))
-            {
-                await online.CheckEquipmentRaidLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--purple-ring-only"))
-            {
-                await online.CheckPurpleRingLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--galactic-shield-only"))
-            {
-                await online.CheckGalacticShieldLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--glass-flute-only"))
-            {
-                await online.CheckGlassFluteReturnLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--victorious-manual-control-only"))
-            {
-                await online.CheckVictoriousManualControlLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--ellie-only"))
-            {
-                await online.CheckEllieLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--new-cards-only"))
-            {
-                await online.CheckNewCardsLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--robotize-only"))
-            {
-                await online.CheckRobotizeLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--combo-parry-only"))
-            {
-                await online.CheckComboParryLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--metal-hood-only"))
-            {
-                await online.CheckMetalHoodLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--destiny-pick-only"))
-            {
-                await online.CheckDestinyPickLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--inspector-only"))
-            {
-                await online.CheckCardInspector(); online.QueueFree(); await Layout();
-                GD.Print("PVP_INSPECTOR_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--triple-attack-only"))
-            {
-                await online.CheckTripleAttackDraws(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TRIPLE_ATTACK_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--history-only"))
-            {
-                await online.CheckPublicHistory(); online.QueueFree(); await Layout();
-                GD.Print("PVP_HISTORY_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--context-only"))
-            {
-                await online.CheckContextActionBar(); online.QueueFree(); await Layout();
-                GD.Print("PVP_CONTEXT_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--memory-inspection-only"))
-            {
-                await online.CheckMemoryInspection(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MEMORY_INSPECTION_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--golden-totem-only"))
-            {
-                await online.CheckGoldenTotemLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_GOLDEN_TOTEM_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--super-magnet-only"))
-            {
-                await online.CheckSuperMagnetLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--response-chain-only"))
-            {
-                await online.CheckResponseChain(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--zahira-only"))
-            {
-                await online.CheckZahiraLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--super-attack-only"))
-            {
-                await online.CheckSuperAttackLayout(); online.QueueFree(); await Layout();
-                QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--totem-only"))
-            {
-                await online.CheckTotemLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TOTEM_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--time-bender-only"))
-            {
-                await online.CheckTimeBenderLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_TIME_BENDER_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--blue-egg-only"))
-            {
-                await online.CheckBlueEggDrawLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_BLUE_EGG_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--reload-cartridge-only"))
-            {
-                await online.CheckReloadCartridgeLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_RELOAD_CARTRIDGE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--quick-load-only"))
-            {
-                await online.CheckQuickLoadLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_QUICK_LOAD_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--jessica-only"))
-            {
-                await online.CheckJessicaLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_JESSICA_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--star-only"))
-            {
-                await online.CheckPlumberStarLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_PLUMBER_STAR_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--memory-recovery-only"))
-            {
-                await online.CheckMemoryRecoveryLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MEMORY_RECOVERY_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--steal-only"))
-            {
-                await online.CheckHandStealAnimation(); online.QueueFree(); await Layout();
-                GD.Print("PVP_HAND_STEAL_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--reverse-only"))
-            {
-                await online.CheckReverseLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_REVERSE_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--evolution-only"))
-            {
-                await online.CheckEvolutionReveal(); await online.CheckYunoEvolutionLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_YUNO_EVOLUTION_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--mind-reset-only"))
-            {
-                await online.CheckMindResetLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MIND_RESET_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--mind-swap-only"))
-            {
-                await online.CheckMindSwapLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_MIND_SWAP_ONLY_PASS"); QuitWithAudio(); return;
-            }
-            if (OS.GetCmdlineUserArgs().Contains("--portraits-only"))
-            {
+                var online = Arena();
                 GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
                 online.PresentTestSnapshot(DuelSnapshot.For(game, 0, 7)); await Layout();
-                await online.CheckZeroHealthPortraits(game); await online.CheckHealingPortraits(game);
-                online.CheckIronwingPortraits();
-                online.QueueFree(); await Layout();
-                GD.Print("PVP_PORTRAITS_ONLY_PASS"); QuitWithAudio(); return;
+                return online;
             }
-            if (OS.GetCmdlineUserArgs().Contains("--deck-search-only"))
+
+            if (args.FirstOrDefault(arg => arg.StartsWith("--choice-preview-dir=")) is { } choicePreview)
             {
-                await online.CheckDeckSearchLayout(); online.QueueFree(); await Layout();
-                GD.Print("PVP_DECK_SEARCH_ONLY_PASS"); QuitWithAudio(); return;
+                await Arena().CaptureChoicePreview(choicePreview.Split('=', 2)[1]); arena!.QueueFree(); await Layout();
+                QuitWithAudio(); return;
             }
-            foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
-            foreach (var seat in new[] { 0, 1 })
+            if (args.FirstOrDefault(arg => arg.StartsWith("--board-preview-dir=")) is { } boardPreview)
             {
-                GetWindow().ContentScaleSize = size; await Layout();
-                online.PresentTestSnapshot(DuelSnapshot.For(game, seat, 7)); await Layout();
-                var root = (Control)online.FindChild("DuelInterface", true, false);
-                var minimum = root.GetCombinedMinimumSize();
-                if (minimum.X > root.Size.X + 1 || minimum.Y > root.Size.Y + 1) throw new Exception($"Arena desborda {size}: {minimum}, raíz {root.Size}.");
-                if (online.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown)) throw new Exception("Se revela la mano rival.");
-                if (online.FindChildren("*", "Button", true, false).OfType<Button>().Any(b => b.Text.Contains("práctica"))) throw new Exception("Queda un acceso al modo retirado.");
-                var hand = (ScrollContainer)online.FindChild("HandScroll", true, false);
-                // The desktop hand is lowered on purpose: only the effect box may drop below the edge.
-                var firstCard = online.FindChild("HandCard0", true, false) as Control;
-                if (ArenaViewport.Desktop(online)
-                    ? firstCard == null || firstCard.GetGlobalRect().Position.Y > Size.Y - 100 || firstCard.GetGlobalRect().End.Y < Size.Y
-                    : hand.GetGlobalRect().End.Y > Size.Y + 1) throw new Exception("La mano sale de la pantalla.");
-                GD.Print($"PVP_ARENA_LAYOUT_PASS · {size} · asiento {seat}.");
+                await Arena().CaptureBoardPreview(boardPreview.Split('=', 2)[1]); arena!.QueueFree(); await Layout();
+                GD.Print("PVP_BOARD_PREVIEW_DONE"); QuitWithAudio(); return;
             }
-            GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
-            await online.CheckVisualCues(DuelSnapshot.For(game, 1, 8));
-            await online.CheckComboResponseToggle();
-            await online.CheckContextActionBar();
-            await online.CheckDecisionGuidance();
-            await online.CheckDecisionFeedback();
-            await online.CheckTurnCore();
-            await online.CheckAdaptiveRail();
-            await online.CheckBoardReading();
-            await online.CheckPolishEffects();
-            await online.CheckTrapRecipe();
-            await online.CheckCosmetics();
-            await online.CheckProfiles();
-            await online.CheckActionCounters();
-            await online.CheckMemoryInspection();
-            await online.CheckPublicHistory();
-            await online.CheckResponseChain();
-            await online.CheckTripleAttackDraws();
-            await online.CheckSkillLessonAnimation();
-            await online.CheckEquipmentAnimation();
-            await online.CheckExchangeAnimation();
-            await online.CheckDiscardAnimation();
-            await online.CheckGuardAnimation();
-            await online.CheckZeroHealthPortraits(game);
-            await online.CheckHealingPortraits(game);
-            online.CheckIronwingPortraits();
-            await online.CheckTimeBombLayout();
-            await online.CheckTakeEquipmentLayout();
-            await online.CheckEquipmentRaidLayout();
-            await online.CheckPurpleRingLayout();
-            await online.CheckGalacticShieldLayout();
-            await online.CheckVictoriousManualControlLayout();
-            await online.CheckGlassFluteReturnLayout();
-            await online.CheckEllieLayout();
-            await online.CheckRobotizeLayout();
-            await online.CheckNewCardsLayout();
-            await online.CheckComboParryLayout();
-            await online.CheckMetalHoodLayout();
-            await online.CheckDestinyPickLayout();
-            await online.CheckDeckSearchLayout();
-            await online.CheckOsamuSearchLayout();
-            await online.CheckOsamuPresentation();
-            await online.CheckMemoryRecoveryLayout();
-            await online.CheckPlumberStarLayout();
-            await online.CheckJessicaLayout();
-            await online.CheckQuickLoadLayout();
-            await online.CheckReloadCartridgeLayout();
-            await online.CheckBlueEggDrawLayout();
-            await online.CheckTimeBenderLayout();
-            await online.CheckTotemLayout();
-            await online.CheckGoldenTotemLayout();
-            await online.CheckSuperMagnetLayout();
-            await online.CheckZahiraLayout();
-            await online.CheckSuperAttackLayout();
-            await online.CheckMindResetLayout();
-            await online.CheckMindSwapLayout();
-            await online.CheckRecyclingLayout();
-            await online.CheckHandLimitLayout();
-            await online.CheckDexterityLayout();
-            await online.CheckEvolutionReveal();
-            await online.CheckTableView();
-            await online.CheckYunoEvolutionLayout();
-            await online.CheckReverseLayout();
-            await online.CheckHandStealAnimation();
-            await online.CheckDuelResults();
-            await online.CheckOpeningReveal();
-            await online.CheckOpeningPlaymats();
-            await online.CheckPreparationLayout();
-            await online.CheckChoiceBounds();
-            await CheckArenaConnectionNotice(online);
-            await online.CheckStageAnnouncements();
-            online.Hide(); await CheckLobbyPolish(); await CheckMatchmakingAnimation(); await CheckMenuStyle();
-            online.QueueFree(); await Layout();
+
+            // The full matrix, in order. Each check must pass on its own too: tools run them split across processes.
+            var checks = new (string Name, Func<Task> Run)[]
+            {
+                ("ArenaLayout", async () =>
+                {
+                    var online = Arena();
+                    foreach (var size in new[] { new Vector2I(1440, 1024), new(1024, 768), new(844, 390), new(700, 390) })
+                    foreach (var seat in new[] { 0, 1 })
+                    {
+                        GetWindow().ContentScaleSize = size; await Layout();
+                        online.PresentTestSnapshot(DuelSnapshot.For(game, seat, 7)); await Layout();
+                        var root = (Control)online.FindChild("DuelInterface", true, false);
+                        var minimum = root.GetCombinedMinimumSize();
+                        if (minimum.X > root.Size.X + 1 || minimum.Y > root.Size.Y + 1) throw new Exception($"Arena desborda {size}: {minimum}, raíz {root.Size}.");
+                        if (online.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>().Any(c => !c.IsFaceDown)) throw new Exception("Se revela la mano rival.");
+                        if (online.FindChildren("*", "Button", true, false).OfType<Button>().Any(b => b.Text.Contains("práctica"))) throw new Exception("Queda un acceso al modo retirado.");
+                        var hand = (ScrollContainer)online.FindChild("HandScroll", true, false);
+                        // The desktop hand is lowered on purpose: only the effect box may drop below the edge.
+                        var firstCard = online.FindChild("HandCard0", true, false) as Control;
+                        if (ArenaViewport.Desktop(online)
+                            ? firstCard == null || firstCard.GetGlobalRect().Position.Y > Size.Y - 100 || firstCard.GetGlobalRect().End.Y < Size.Y
+                            : hand.GetGlobalRect().End.Y > Size.Y + 1) throw new Exception("La mano sale de la pantalla.");
+                        GD.Print($"PVP_ARENA_LAYOUT_PASS · {size} · asiento {seat}.");
+                    }
+                    GetWindow().ContentScaleSize = new(1440, 1024); await Layout();
+                }),
+                ("VisualCues", () => Arena().CheckVisualCues(DuelSnapshot.For(game, 1, 8))),
+                ("ComboResponseToggle", () => Arena().CheckComboResponseToggle()),
+                ("ContextActionBar", () => Arena().CheckContextActionBar()),
+                ("DecisionGuidance", () => Arena().CheckDecisionGuidance()),
+                ("DecisionFeedback", () => Arena().CheckDecisionFeedback()),
+                ("TurnCore", () => Arena().CheckTurnCore()),
+                ("AdaptiveRail", () => Arena().CheckAdaptiveRail()),
+                ("BoardReading", () => Arena().CheckBoardReading()),
+                ("PolishEffects", () => Arena().CheckPolishEffects()),
+                ("TrapRecipe", () => Arena().CheckTrapRecipe()),
+                ("Cosmetics", () => Arena().CheckCosmetics()),
+                ("Profiles", () => Arena().CheckProfiles()),
+                ("ActionCounters", () => Arena().CheckActionCounters()),
+                ("MemoryInspection", () => Arena().CheckMemoryInspection()),
+                ("PublicHistory", () => Arena().CheckPublicHistory()),
+                ("ResponseChain", () => Arena().CheckResponseChain()),
+                ("TripleAttackDraws", () => Arena().CheckTripleAttackDraws()),
+                ("SkillLessonAnimation", () => Arena().CheckSkillLessonAnimation()),
+                ("EquipmentAnimation", () => Arena().CheckEquipmentAnimation()),
+                ("ExchangeAnimation", () => Arena().CheckExchangeAnimation()),
+                ("DiscardAnimation", () => Arena().CheckDiscardAnimation()),
+                ("GuardAnimation", () => Arena().CheckGuardAnimation()),
+                ("ZeroHealthPortraits", async () => await (await OpeningBoard()).CheckZeroHealthPortraits(game)),
+                ("HealingPortraits", async () => await (await OpeningBoard()).CheckHealingPortraits(game)),
+                ("IronwingPortraits", () => { Arena().CheckIronwingPortraits(); return Task.CompletedTask; }),
+                ("TimeBombLayout", () => Arena().CheckTimeBombLayout()),
+                ("TakeEquipmentLayout", () => Arena().CheckTakeEquipmentLayout()),
+                ("EquipmentRaidLayout", () => Arena().CheckEquipmentRaidLayout()),
+                ("PurpleRingLayout", () => Arena().CheckPurpleRingLayout()),
+                ("GalacticShieldLayout", () => Arena().CheckGalacticShieldLayout()),
+                ("VictoriousManualControlLayout", () => Arena().CheckVictoriousManualControlLayout()),
+                ("GlassFluteReturnLayout", () => Arena().CheckGlassFluteReturnLayout()),
+                ("EllieLayout", () => Arena().CheckEllieLayout()),
+                ("RobotizeLayout", () => Arena().CheckRobotizeLayout()),
+                ("NewCardsLayout", () => Arena().CheckNewCardsLayout()),
+                ("ComboParryLayout", () => Arena().CheckComboParryLayout()),
+                ("MetalHoodLayout", () => Arena().CheckMetalHoodLayout()),
+                ("DestinyPickLayout", () => Arena().CheckDestinyPickLayout()),
+                ("DeckSearchLayout", () => Arena().CheckDeckSearchLayout()),
+                ("OsamuSearchLayout", () => Arena().CheckOsamuSearchLayout()),
+                ("OsamuPresentation", () => Arena().CheckOsamuPresentation()),
+                ("MemoryRecoveryLayout", () => Arena().CheckMemoryRecoveryLayout()),
+                ("PlumberStarLayout", () => Arena().CheckPlumberStarLayout()),
+                ("JessicaLayout", () => Arena().CheckJessicaLayout()),
+                ("QuickLoadLayout", () => Arena().CheckQuickLoadLayout()),
+                ("ReloadCartridgeLayout", () => Arena().CheckReloadCartridgeLayout()),
+                ("BlueEggDrawLayout", () => Arena().CheckBlueEggDrawLayout()),
+                ("TimeBenderLayout", () => Arena().CheckTimeBenderLayout()),
+                ("TotemLayout", () => Arena().CheckTotemLayout()),
+                ("GoldenTotemLayout", () => Arena().CheckGoldenTotemLayout()),
+                ("SuperMagnetLayout", () => Arena().CheckSuperMagnetLayout()),
+                ("ZahiraLayout", () => Arena().CheckZahiraLayout()),
+                ("SuperAttackLayout", () => Arena().CheckSuperAttackLayout()),
+                ("MindResetLayout", () => Arena().CheckMindResetLayout()),
+                ("MindSwapLayout", () => Arena().CheckMindSwapLayout()),
+                ("RecyclingLayout", () => Arena().CheckRecyclingLayout()),
+                ("HandLimitLayout", () => Arena().CheckHandLimitLayout()),
+                ("DexterityLayout", () => Arena().CheckDexterityLayout()),
+                ("EvolutionReveal", () => Arena().CheckEvolutionReveal()),
+                ("TableView", () => Arena().CheckTableView()),
+                ("YunoEvolutionLayout", () => Arena().CheckYunoEvolutionLayout()),
+                ("ReverseLayout", () => Arena().CheckReverseLayout()),
+                ("HandStealAnimation", () => Arena().CheckHandStealAnimation()),
+                ("DuelResults", () => Arena().CheckDuelResults()),
+                ("OpeningReveal", () => Arena().CheckOpeningReveal()),
+                ("OpeningPlaymats", () => Arena().CheckOpeningPlaymats()),
+                ("PreparationLayout", () => Arena().CheckPreparationLayout()),
+                ("ChoiceBounds", () => Arena().CheckChoiceBounds()),
+                ("ArenaConnectionNotice", () => CheckArenaConnectionNotice(Arena())),
+                ("StageAnnouncements", () => Arena().CheckStageAnnouncements()),
+                // Runs inside ContextActionBar in the full matrix; listed so that --inspector-only can reach it.
+                ("CardInspector", () => Arena().CheckCardInspector()),
+                ("LobbyPolish", () => { Lobby(); return CheckLobbyPolish(); }),
+                ("MatchmakingAnimation", () => { Lobby(); return CheckMatchmakingAnimation(); }),
+                ("MenuStyle", () => { Lobby(); return CheckMenuStyle(); }),
+                ("AccountScreens", () => { Lobby(); return CheckAccountScreens(); }),
+                ("DeckScreens", () => { Lobby(); return CheckDeckScreens(); }),
+            };
+            var names = checks.Select(check => check.Name).ToArray();
+            if (args.Contains("--list-checks"))
+            {
+                foreach (var name in names.Where(name => name != "CardInspector")) GD.Print("PVP_UI_CHECK_NAME · " + name);
+                GetTree().Quit(); return;
+            }
+
+            // A misspelled filter must fail instead of silently running the whole matrix.
+            foreach (var arg in args.Where(arg => arg.StartsWith("--") && !UiTestFlags.ContainsKey(arg)))
+            {
+                var near = UiTestFlags.Keys.FirstOrDefault(known => arg.EndsWith("-only") || EditDistance(arg, known) <= 2);
+                if (near != null) throw new Exception($"Filtro desconocido: {arg}." + (arg.EndsWith("-only") ? "" : $" ¿Querías {near}?"));
+            }
+            var flag = args.FirstOrDefault(UiTestFlags.ContainsKey);
+            var requested = args.FirstOrDefault(arg => arg.StartsWith("--checks="))?.Split('=', 2)[1]
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (requested?.FirstOrDefault(name => !names.Contains(name)) is { } unknown)
+                throw new Exception($"Comprobación desconocida: {unknown}. Usa --list-checks para ver los nombres.");
+            var selected = flag != null ? UiTestFlags[flag].Checks.ToHashSet()
+                : requested?.ToHashSet() ?? names.Where(name => name != "CardInspector").ToHashSet();
+
+            foreach (var (name, run) in checks.Where(check => selected.Contains(check.Name)))
+            {
+                var clock = Stopwatch.StartNew();
+                await run();
+                GD.Print($"PVP_UI_CHECK · {name} · {clock.ElapsedMilliseconds} ms");
+            }
+            arena?.QueueFree(); await Layout();
             GC.Collect(); GC.WaitForPendingFinalizers(); await Layout();
-            GD.Print("PVP_UI_PASS · solo PvP, cuatro tamaños, ambos asientos, selección inicial, mulligan, recuperación y animaciones.");
+            if (flag != null) { if (UiTestFlags[flag].Marker is { } marker) GD.Print(marker); }
+            else if (requested != null) GD.Print($"PVP_UI_CHECKS_PASS · {selected.Count} comprobaciones.");
+            else GD.Print("PVP_UI_PASS · solo PvP, cuatro tamaños, ambos asientos, selección inicial, mulligan, recuperación y animaciones.");
             QuitWithAudio();
         }
         catch (Exception error) { GD.PushError("PVP_UI_FAIL · " + error); GetTree().Quit(1); }
+    }
+
+    private static int EditDistance(string a, string b)
+    {
+        var row = Enumerable.Range(0, b.Length + 1).ToArray();
+        for (var i = 1; i <= a.Length; i++)
+        {
+            var diagonal = row[0]; row[0] = i;
+            for (var j = 1; j <= b.Length; j++)
+            {
+                var above = row[j];
+                row[j] = Math.Min(Math.Min(row[j] + 1, row[j - 1] + 1), diagonal + (a[i - 1] == b[j - 1] ? 0 : 1));
+                diagonal = above;
+            }
+        }
+        return row[b.Length];
     }
 }
