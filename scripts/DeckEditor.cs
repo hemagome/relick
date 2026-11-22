@@ -14,6 +14,7 @@ public partial class DeckEditor : VBoxContainer
     public string InitialSleeve { get; init; } = CosmeticCatalog.DefaultSleeve;
     public string InitialDice { get; init; } = CosmeticCatalog.DefaultDice;
     public bool ShortScreen { get; init; }
+    public bool Touch { get; init; }
 
     /// <summary>Name, main deck, Trap deck, side deck, sleeve and die.</summary>
     public event Action<string, List<string>, List<string>, List<string>, string, string>? SaveRequested;
@@ -229,12 +230,11 @@ public partial class DeckEditor : VBoxContainer
 
     private void Notify(string message, bool error)
     {
-        var mobile = OS.HasFeature("mobile");
-        _notice.Text = message.Length > 0 ? message : EditingStyle ? (mobile ? "Toca para inspeccionar" : "Clic para inspeccionar")
-            : mobile ? "Toca para inspeccionar · Usa + y − para editar"
+        _notice.Text = message.Length > 0 ? message : EditingStyle ? (Touch ? "Toca para inspeccionar" : "Clic para inspeccionar")
+            : Touch ? "Toca para inspeccionar · Usa + y − para editar"
             : "Clic derecho: quita del mazo o añade desde la colección";
         _notice.TooltipText = _notice.Text;
-        _notice.AddThemeColorOverride("font_color", error ? ArenaPresentation.Coral : message.Length > 0 ? BoardArt.Gold : BoardArt.Muted);
+        _notice.AddThemeColorOverride("font_color", error ? ArenaPresentation.Coral : message.Length > 0 ? RelickVisuals.State.Target : BoardArt.Muted);
     }
 
     public void MarkSaved() => _saved = Fingerprint();
@@ -267,13 +267,13 @@ public partial class DeckEditor : VBoxContainer
         if (GetChildren().OfType<Window>().Any(window => window.Visible)) return;
         var dialog = new ConfirmationDialog
         {
-            Title = "Cambios sin guardar", DialogText = "Si sales ahora perderás los cambios de este mazo.",
-            OkButtonText = "Salir sin guardar", CancelButtonText = "Seguir editando"
+            Title = "Cambios sin guardar", OkButtonText = "Salir sin guardar", CancelButtonText = "Seguir editando"
         };
+        MenuDialog.Fill(dialog, MenuDialog.Message("Si sales ahora perderás los cambios de este mazo."), 420, destructive: true);
         AddChild(dialog);
         dialog.Confirmed += () => Closed?.Invoke();
         dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
-        dialog.PopupCentered();
+        MenuDialog.Show(dialog);
     }
 
     private string Fingerprint() => _name.Text.Trim() + "\n" + Tally(_counts) + "\n" + Tally(_side) + "\n" + _sleeve + "/" + _dice;

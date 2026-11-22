@@ -18,10 +18,9 @@ public partial class ProfileEditor : ConfirmationDialog
         Name = "ProfileEditor"; Title = "Mi perfil"; OkButtonText = "Guardar"; CancelButtonText = "Cancelar";
         _avatar = ProfileCatalog.Avatar(Current.Avatar); _title = ProfileCatalog.Title(Current.Title).Id;
         _frame = ProfileCatalog.Frame(Current.Frame).Id; _playmat = ProfileCatalog.Playmat(Current.Playmat).Id;
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new(0, 420) };
-        AddChild(scroll);
-        var column = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        column.AddThemeConstantOverride("separation", 14); scroll.AddChild(column);
+        var column = new VBoxContainer();
+        column.AddThemeConstantOverride("separation", 14);
+        MenuDialog.Fill(this, column, 560);
         _preview = new MarginContainer { Name = "ProfilePreview" }; column.AddChild(_preview);
 
         var avatars = Section(column, "RETRATO", "ProfileAvatars");
@@ -66,7 +65,7 @@ public partial class ProfileEditor : ConfirmationDialog
 
     private static Container Section(Container parent, string caption, string name)
     {
-        var label = ArenaPresentation.Text(caption, 12, BoardArt.Muted); parent.AddChild(label);
+        var label = ArenaPresentation.Text(caption, MenuVisuals.Type.Caption, BoardArt.Muted); parent.AddChild(label);
         var flow = new HFlowContainer { Name = name }; flow.AddThemeConstantOverride("h_separation", 8); flow.AddThemeConstantOverride("v_separation", 8);
         parent.AddChild(flow);
         return flow;
@@ -79,7 +78,7 @@ public partial class ProfileEditor : ConfirmationDialog
         foreach (var (id, label) in options)
         {
             var button = new Button { Name = id, Text = label, ToggleMode = true, ButtonGroup = group, ButtonPressed = id == current(),
-                CustomMinimumSize = new(0, 44), TooltipText = label };
+                CustomMinimumSize = new(0, MenuVisuals.TouchTarget), TooltipText = label };
             decorate(button, id);
             button.Pressed += () => { choose(id); Refresh(); };
             parent.AddChild(button);

@@ -15,11 +15,11 @@ public partial class AudioSettingsDialog : AcceptDialog
     {
         Title = "Sonido";
         Theme = RelickVisuals.Controls();
-        Theme.SetStylebox("panel", "AcceptDialog", RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame));
+        Theme.SetStylebox("panel", "AcceptDialog", RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, MenuVisuals.Cut.Control));
         Theme.SetTypeVariation(SilentSlider, "HSlider");
         SetSliderColors("HSlider", RelickVisuals.Playmat.Raised, BoardArt.Gold);
         SetSliderColors(SilentSlider, new Color("34363b"), new Color("747780"));
-        GetOkButton().Text = "Listo"; GetOkButton().CustomMinimumSize = new(120, 44);
+        GetOkButton().Text = "Listo"; MenuDialog.Style(this);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 14); AddChild(column);
         _music = AddVolume(column, "Música", "MusicVolume", "MusicMute", Preferences.SetMusicVolume, Preferences.SetMusicMuted);
         _effects = AddVolume(column, "Efectos de sonido", "EffectsVolume", "EffectsMute", Preferences.SetEffectsVolume, Preferences.SetEffectsMuted);
@@ -43,12 +43,12 @@ public partial class AudioSettingsDialog : AcceptDialog
         Action<float> setVolume, Action<bool> setMuted)
     {
         var row = new HBoxContainer(); column.AddChild(row);
-        var title = ArenaPresentation.Text(caption, 16); title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; row.AddChild(title);
-        var value = ArenaPresentation.Text("", 14, BoardArt.Gold); row.AddChild(value);
+        var title = ArenaPresentation.Text(caption, MenuVisuals.Type.Control); title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; row.AddChild(title);
+        var value = ArenaPresentation.Text("", MenuVisuals.Type.Body, BoardArt.Gold); row.AddChild(value);
         var channel = caption.ToLowerInvariant();
         var mute = new Button
         {
-            Name = muteName, ToggleMode = true, CustomMinimumSize = new(44, 44),
+            Name = muteName, ToggleMode = true, CustomMinimumSize = new(MenuVisuals.TouchTarget, MenuVisuals.TouchTarget),
             AccessibilityName = $"Silenciar {channel}",
             TooltipText = $"Silenciar o reactivar {channel}"
         };
@@ -65,7 +65,7 @@ public partial class AudioSettingsDialog : AcceptDialog
 
         var slider = new HSlider
         {
-            Name = name, MinValue = 0, MaxValue = 100, Step = 1, CustomMinimumSize = new(260, 44),
+            Name = name, MinValue = 0, MaxValue = 100, Step = 1, CustomMinimumSize = new(260, MenuVisuals.TouchTarget),
             FocusMode = Control.FocusModeEnum.All, TooltipText = caption
         };
         column.AddChild(slider);

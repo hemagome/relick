@@ -32,10 +32,10 @@ public partial class OnlineLobby
         panel.SizeFlagsHorizontal = SizeFlags.ShrinkCenter; panel.CustomMinimumSize = new(Math.Min(460, Math.Max(280, Size.X - 48)), 0);
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 18); panel.AddChild(column);
         var logo = RelickVisuals.Logo(); logo.SizeFlagsHorizontal = SizeFlags.ShrinkCenter; column.AddChild(logo);
-        var title = Text("Inicia sesión", 34); title.HorizontalAlignment = HorizontalAlignment.Center;
+        var title = Text("Inicia sesión", MenuVisuals.Type.Title); title.HorizontalAlignment = HorizontalAlignment.Center;
         title.AddThemeFontOverride("font", RelickVisuals.Display); column.AddChild(title);
         _signIn = AddButton(column, "Iniciar sesión", StartSignIn);
-        _signIn.Name = "SignIn"; AccentButton(_signIn, LobbyMint);
+        _signIn.Name = "SignIn"; RelickVisuals.Primary(_signIn);
         _loginStatus = Description(""); _loginStatus.Name = "LoginStatus"; _loginStatus.HorizontalAlignment = HorizontalAlignment.Center;
         column.AddChild(_loginStatus);
         _cancelSignIn = AddButton(column, "Cancelar", () => _authCancel?.Cancel());
@@ -152,22 +152,26 @@ public partial class OnlineLobby
     private void ConfirmDeleteAccount()
     {
         if (_auth == null || _accountStage != AccountStage.SignedIn || !_lobby.Ready || _lobby.Room != null || _lobby.Searching) return;
-        var decks = _lobby.Decks.Count;
+        ShowDeleteAccount(_lobby.Decks.Count);
+    }
+
+    private void ShowDeleteAccount(int decks)
+    {
         var dialog = new ConfirmationDialog { Name = "DeleteAccountDialog", Title = "Eliminar cuenta",
             OkButtonText = "Eliminar mi cuenta", CancelButtonText = "Conservar mi cuenta" };
-        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 12); dialog.AddChild(column);
-        var explanation = Text(DeleteAccountExplanation(decks), 15);
-        explanation.Name = "DeleteAccountExplanation"; explanation.CustomMinimumSize = new(Math.Min(540, Math.Max(260, Size.X - 96)), 0);
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 12);
+        var explanation = Text(DeleteAccountExplanation(decks), MenuVisuals.Type.Body);
+        explanation.Name = "DeleteAccountExplanation";
         column.AddChild(explanation);
         var confirm = new LineEdit { Name = "DeleteAccountConfirm", PlaceholderText = "Escribe ELIMINAR para confirmar", CustomMinimumSize = new(0, 48) };
         column.AddChild(confirm);
+        MenuDialog.Fill(dialog, column, 540, destructive: true);
         dialog.GetOkButton().Disabled = true;
         confirm.TextChanged += typed => dialog.GetOkButton().Disabled = typed.Trim() != "ELIMINAR";
         dialog.Confirmed += () => { _localError = ""; _lobby.DeleteAccount(); };
         dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
         AddChild(dialog);
-        dialog.PopupCentered();
-        ArenaViewport.FitDialog(dialog, Size);
+        MenuDialog.Show(dialog);
     }
 
     internal static string DeleteAccountExplanation(int decks) =>

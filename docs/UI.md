@@ -10,6 +10,33 @@ La cabecera muestra el logotipo original de Relick. Marcos con esquinas recortad
 
 Los significados de `RelickVisuals.State` son independientes del tapete: selección dorada con confirmación, objetivo cian con escuadras y foco de teclado blanco. La prioridad es selección > objetivo > hover; el foco añade un borde interior. Vida baja conserva su señal de peligro. Las zonas vacías mantienen su tamaño y posición con contornos tenues y costes discretos. Las fases futuras quedan atenuadas, las completadas llevan confirmación y la actual se destaca con tamaño y color; la celda de estado dice con texto de quién es el turno.
 
+## Sistema visual de los menús
+
+Las pantallas fuera del duelo (sala, inicio de sesión, mazos, editor, selector de
+Relikario, perfil, sonido y sus diálogos) toman sus colores, letras y esquinas de
+`MenuVisuals`. No escribas colores ni tamaños propios en ellas.
+
+| Elemento | Regla |
+|---|---|
+| Superficies | `MenuVisuals.Tone`, derivadas del tapete Clásico. El tapete del jugador solo viste la arena. |
+| Menta | La acción principal: una por pantalla, con `RelickVisuals.Primary`. El resto son botones normales. |
+| Oro | Selección: pestaña activa, mazo en uso, opción elegida. Nunca una acción. |
+| Cian | Información y avisos que no son errores. |
+| Coral | Error, rival y confirmaciones que destruyen algo. |
+| Violeta | Solo significados del duelo y cosméticos elegidos por el jugador; nunca superficies. |
+| Letra | `MenuVisuals.Type`: 12, 14, 16, 20, 28 y 40. |
+| Esquinas | `MenuVisuals.Cut`: 4 en insignias, 8 en controles y 12 en paneles. |
+| Volver | `MenuVisuals.Back`: «‹ Volver», con el destino en el tooltip. |
+| Diálogos | `MenuDialog.Fill` y `MenuDialog.Show`: miden lo que su contenido y solo desplazan si no caben. |
+| Táctil | Los controles del editor miden al menos 48 unidades cuando `Touch` está activo (móvil). |
+
+`ArenaViewport.FitDialog` queda para los lectores del duelo (Memoria, Historial), que
+aprovechan toda la pantalla. `RelickVisuals.Primary` fija el color del texto en todos
+los estados, incluido el foco, también en el duelo.
+
+`--pvp-ui-test --style-only` comprueba estas reglas en cinco tamaños, con ratón y en
+táctil. Forma parte de `--lobby-only` y de la matriz completa.
+
 ## Tablero de escritorio
 
 Con un lienzo de al menos 1400×980 unidades lógicas, `OnlineArena` construye el tablero completo; los tamaños menores conservan las distribuciones apiladas descritas más abajo, con el mismo acabado visual.
@@ -71,6 +98,12 @@ en los bordes; las superficies de lectura conservan su contraste. Es estático,
 se adapta al tamaño y deja pasar los clics a los controles. Los acentos de las
 acciones y el foco visible conservan sus significados. En pantallas cortas se
 reducen márgenes y descripciones. Enter en el código permite unirse cuando hay conexión.
+
+Debajo de las dos tarjetas, dos espacios inactivos anuncian Clasificatoria ELO y Torneo,
+que están planeados y aún no existen: contorno discontinuo, color atenuado y
+«Próximamente». No son botones, no reciben clics ni foco, no consultan al servidor y se
+ocultan dentro de una sala. En ventanas de menos de 720 de alto quedan en una línea sin
+descripción y se ven sin desplazar la sala.
 
 Durante la partida rápida, el centro del panel muestra la miniatura del Relikario
 del mazo equipado, la silueta rival y tres flechas con un ciclo suave de dos
@@ -258,7 +291,7 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. T
 
 ## Editor de mazos
 
-El editor muestra el mazo en el centro, el inspector a la izquierda y la colección a la derecha. Las pestañas Principal, Trampas y Banquillo tienen sus propias cuadrículas. «Agrupar copias» alterna entre una ficha con contador por carta y una ficha por copia. Los requisitos del mazo se actualizan al editar y se pueden consultar antes de guardar un borrador.
+El editor muestra el mazo en el centro, el inspector a la izquierda y la colección a la derecha. En pantallas cortas el nombre y los totales ocupan la barra superior y Deshacer pasa junto a «Agrupar copias», para dejar el alto a las cartas. Las pestañas Principal, Trampas y Banquillo tienen sus propias cuadrículas. «Agrupar copias» alterna entre una ficha con contador por carta y una ficha por copia. Los requisitos del mazo se actualizan al editar y se pueden consultar antes de guardar un borrador.
 
 - Pulsa una carta para ver su arte y su efecto. Pulsa el arte del inspector para ampliarlo.
 - La colección muestra los tres artes de Ataque del Relikario del mazo. Yuno y Osamu tienen arte clásico, NS y DT. Ironwing tiene UT (su arte inicial), DT y NS. Cada copia cuenta para el total de 12 y conserva su ilustración durante el duelo. Los artes ajenos de mazos antiguos pasan al arte inicial del Relikario.
@@ -384,7 +417,7 @@ desde el registro interno del motor, que contiene información privada.
 
 `--pvp-ui-test --matchmaking-only` verifica el ciclo, la cancelación sin mover el
 botón, la pausa/desconexión, el movimiento reducido, el emparejamiento inmediato,
-la confirmación autorizada y su duración acotada, en cuatro tamaños. Se incluye
+la confirmación autorizada y su duración acotada, en cinco tamaños. Se incluye
 también en `--lobby-only`. Con `--ui-screenshot-dir` guarda los estados de búsqueda
 y rival encontrado en una ejecución gráfica. La prueba de dos procesos con
 `--pvp-input-quick` exige una sola confirmación visual en cada cliente.

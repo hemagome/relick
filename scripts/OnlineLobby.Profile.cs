@@ -31,7 +31,6 @@ public partial class OnlineLobby
         if (_name.Text.Trim().Length > 0) current = current with { Name = _name.Text.Trim() };
         var editor = new ProfileEditor { Current = current, Saved = (avatar, title, frame, playmat) => _lobby.SetProfile(avatar, title, frame, playmat) };
         AddChild(editor);
-        editor.PopupCentered(new Vector2I(Math.Min(560, Math.Max(300, (int)Size.X - 32)), 0));
-        ArenaViewport.FitDialog(editor, Size);
+        MenuDialog.Show(editor);
     }
 }

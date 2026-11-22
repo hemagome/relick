@@ -77,15 +77,15 @@ public partial class MatchmakingLink : Control
         var rival = new Rect2(center + new Vector2(offset - cardWidth / 2, -cardHeight / 2), new(cardWidth, cardHeight));
         var matched = State == MatchmakingLinkState.Matched;
         var reveal = matched ? ReducedMotion ? 1f : (float)Math.Clamp(_elapsed / (ConfirmationSeconds * 0.7), 0, 1) : 0;
-        BoardArt.Plate(this, own.Grow(2), RelickVisuals.Playmat.Raised, BoardArt.Tint(RelickVisuals.State.Own, 0.6f), 3);
+        BoardArt.Plate(this, own.Grow(2), RelickVisuals.Playmat.Raised, BoardArt.Tint(RelickVisuals.State.Own, 0.6f), MenuVisuals.Cut.Badge);
         if (Thumbnail is { } portrait) DrawTextureRect(portrait, BoardArt.FitArtwork(portrait, own), false);
-        else BoardArt.Text(this, "?", own.GetCenter() + new Vector2(-4, 5), 15, BoardArt.Muted);
+        else BoardArt.Text(this, "?", own.GetCenter() + new Vector2(-4, 5), MenuVisuals.Type.Control, BoardArt.Muted);
         BoardArt.Plate(this, rival.Grow(2), RelickVisuals.Playmat.Raised,
-            BoardArt.Tint(matched ? RelickVisuals.State.Rival : BoardArt.Muted, 0.5f), 3);
+            BoardArt.Tint(matched ? RelickVisuals.State.Rival : BoardArt.Muted, 0.5f), MenuVisuals.Cut.Badge);
         if (reveal > 0) DrawTextureRect(_rivalBack, rival, false, BoardArt.Tint(Colors.White, reveal));
-        if (reveal < 1) BoardArt.Text(this, "?", rival.Position + new Vector2(cardWidth / 2 - 4, cardHeight / 2 + 5), 15, BoardArt.Tint(BoardArt.Muted, 1 - reveal));
-        BoardArt.Text(this, "TÚ", new(own.GetCenter().X - 7, rival.End.Y + 14), 11, BoardArt.Muted);
-        BoardArt.Text(this, "RIVAL", new(rival.GetCenter().X - 16, rival.End.Y + 14), 11, BoardArt.Muted);
+        if (reveal < 1) BoardArt.Text(this, "?", rival.Position + new Vector2(cardWidth / 2 - 4, cardHeight / 2 + 5), MenuVisuals.Type.Control, BoardArt.Tint(BoardArt.Muted, 1 - reveal));
+        BoardArt.Text(this, "TÚ", new(own.GetCenter().X - 7, rival.End.Y + 14), MenuVisuals.Type.Caption, BoardArt.Muted);
+        BoardArt.Text(this, "RIVAL", new(rival.GetCenter().X - 16, rival.End.Y + 14), MenuVisuals.Type.Caption, BoardArt.Muted);
         var phase = (float)(_elapsed / CycleSeconds);
         for (var i = 0; i < 3; i++)
         {

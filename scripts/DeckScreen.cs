@@ -12,6 +12,8 @@ public partial class DeckScreen : Control
     public event Action? Closed;
     /// <summary>A guest sees the training deck they play with, but cannot build or keep decks.</summary>
     public bool Guest { get; init; }
+    /// <summary>Fingers instead of a mouse: the editor grows every control to a touch target.</summary>
+    internal bool Touch { get; init; } = OS.HasFeature("mobile");
     internal const string GuestNotice = "Como invitado juegas con el mazo de entrenamiento. Cierra sesión e inicia con una cuenta (correo, Discord u otra) para armar y guardar tus mazos.";
     /// <summary>Decks to show instead of the server's, for offline previews and tests.</summary>
     internal IReadOnlyList<DeckInfo>? PreviewDecks { get; set; }
@@ -59,19 +61,18 @@ public partial class DeckScreen : Control
         Clear();
         var column = new VBoxContainer { Name = "DeckListScreen" }; column.AddThemeConstantOverride("separation", ShortScreen ? 8 : 16); _margin.AddChild(column);
         var header = new HBoxContainer(); header.AddThemeConstantOverride("separation", 12); column.AddChild(header);
-        var back = ArenaPresentation.Button(header, "← Volver", () => Closed?.Invoke());
-        back.Name = "DecksBack"; back.CustomMinimumSize = new(120, 48);
-        var title = ArenaPresentation.Text("Mis mazos", ShortScreen ? 26 : 36); title.AddThemeFontOverride("font", RelickVisuals.Display);
+        MenuVisuals.Back(header, "DecksBack", "la sala", () => Closed?.Invoke());
+        var title = ArenaPresentation.Text("Mis mazos", ShortScreen ? MenuVisuals.Type.Title : MenuVisuals.Type.Hero); title.AddThemeFontOverride("font", RelickVisuals.Display);
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill; header.AddChild(title);
         _create = ArenaPresentation.Button(header, "Nuevo mazo", ChooseRelikario);
         _create.Name = "NewDeck"; _create.CustomMinimumSize = new(160, 48); RelickVisuals.Primary(_create);
         _create.Visible = !Guest;
         if (Guest)
         {
-            var notice = ArenaPresentation.Text(GuestNotice, 15, BoardArt.Gold); notice.Name = "GuestNotice";
+            var notice = ArenaPresentation.Text(GuestNotice, MenuVisuals.Type.Body, MenuVisuals.Tone.Reading); notice.Name = "GuestNotice";
             notice.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(notice);
         }
-        _status = ArenaPresentation.Text("", 15, ArenaPresentation.Coral); _status.Name = "DecksStatus";
+        _status = ArenaPresentation.Text("", MenuVisuals.Type.Body, ArenaPresentation.Coral); _status.Name = "DecksStatus";
         _status.AutowrapMode = TextServer.AutowrapMode.WordSmart; _status.Visible = false; column.AddChild(_status);
         var scroll = new ScrollContainer { Name = "DeckRows", SizeFlagsVertical = SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true };
@@ -128,7 +129,7 @@ public partial class DeckScreen : Control
         string? sleeve = null, string? dice = null)
     {
         var panel = new PanelContainer { Name = key, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var style = RelickVisuals.Frame(RelickVisuals.Playmat.Surface, active ? ArenaPresentation.Mint : RelickVisuals.Playmat.Frame, 8, active ? 2 : 1);
+        var style = RelickVisuals.Frame(MenuVisuals.Tone.Surface, active ? BoardArt.Gold : MenuVisuals.Tone.Edge, MenuVisuals.Cut.Panel, active ? 2 : 1);
         style.ContentMarginLeft = style.ContentMarginRight = ShortScreen ? 12 : 18; style.ContentMarginTop = style.ContentMarginBottom = ShortScreen ? 8 : 14;
         panel.AddThemeStyleboxOverride("panel", style); _rows!.AddChild(panel);
         var body = new HBoxContainer(); body.AddThemeConstantOverride("separation", ShortScreen ? 10 : 16); panel.AddChild(body);
@@ -143,32 +144,31 @@ public partial class DeckScreen : Control
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new(260, 0) };
         titles.AddThemeConstantOverride("separation", 2); row.AddChild(titles);
         var heading = new HBoxContainer(); heading.AddThemeConstantOverride("separation", 10); titles.AddChild(heading);
-        var title = ArenaPresentation.Text(name, ShortScreen ? 18 : 22, BoardArt.Ink); title.Name = "DeckTitle"; heading.AddChild(title);
+        var title = ArenaPresentation.Text(name, ShortScreen ? MenuVisuals.Type.Control : MenuVisuals.Type.Subtitle, BoardArt.Ink); title.Name = "DeckTitle"; heading.AddChild(title);
         if (active)
         {
-            var badge = ArenaPresentation.Text("EN USO", 12, ArenaPresentation.Mint); badge.Name = "ActiveBadge";
+            var badge = ArenaPresentation.Text("EN USO", MenuVisuals.Type.Caption, BoardArt.Gold); badge.Name = "ActiveBadge";
             badge.SizeFlagsVertical = SizeFlags.ShrinkCenter; heading.AddChild(badge);
         }
         AddStylePreviews(titles, sleeve, dice);
         if (problem != null)
         {
-            var draft = ArenaPresentation.Text($"Borrador: {problem}", 14, ArenaPresentation.Coral);
+            var draft = ArenaPresentation.Text($"Borrador: {problem}", MenuVisuals.Type.Body, ArenaPresentation.Coral);
             draft.Name = "DeckProblem"; draft.AutowrapMode = TextServer.AutowrapMode.WordSmart; titles.AddChild(draft);
         }
         var valid = problem == null;
         var actions = new HBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter }; actions.AddThemeConstantOverride("separation", 8); row.AddChild(actions);
         var useButton = ArenaPresentation.Button(actions, "Usar", use, busy || active || !valid);
-        useButton.Name = "Use"; useButton.CustomMinimumSize = new(96, 44);
+        useButton.Name = "Use"; useButton.CustomMinimumSize = new(96, MenuVisuals.TouchTarget);
         useButton.TooltipText = valid ? "" : "Completa el mazo para poder jugarlo.";
         // The active deck already says so with its badge and its frame; a disabled «En uso» would repeat it.
         useButton.Visible = !active;
-        if (!active && valid) RelickVisuals.Primary(useButton);
         // Secondary actions repeat on every row: a symbol each, with the name in the tooltip.
         void Secondary(string name, string caption, GameIcon symbol, Action? pressed)
         {
             if (pressed == null) return;
             var button = new FramedIconButton { Name = name, Symbol = symbol, TooltipText = caption, AccessibilityName = caption,
-                CustomMinimumSize = new(48, 44), Disabled = busy };
+                CustomMinimumSize = new(MenuVisuals.TouchTarget, MenuVisuals.TouchTarget), Disabled = busy };
             button.Pressed += pressed; actions.AddChild(button);
         }
         Secondary("Edit", "Editar", GameIcon.Pencil, edit);
@@ -190,7 +190,7 @@ public partial class DeckScreen : Control
         {
             var pair = new HBoxContainer(); pair.AddThemeConstantOverride("separation", 5); styles.AddChild(pair);
             art.MouseFilter = MouseFilterEnum.Ignore; art.SizeFlagsVertical = SizeFlags.ShrinkCenter; pair.AddChild(art);
-            var label = ArenaPresentation.Text(caption, 13, BoardArt.Muted);
+            var label = ArenaPresentation.Text(caption, MenuVisuals.Type.Caption, BoardArt.Muted);
             label.SizeFlagsVertical = SizeFlags.ShrinkCenter; pair.AddChild(label);
         }
 
@@ -201,12 +201,12 @@ public partial class DeckScreen : Control
 
     private void ConfirmDelete(DeckInfo deck)
     {
-        var dialog = new ConfirmationDialog { Title = "Borrar mazo", DialogText = $"¿Borrar «{deck.Name}»? No se puede deshacer.",
-            OkButtonText = "Borrar", CancelButtonText = "Cancelar" };
+        var dialog = new ConfirmationDialog { Title = "Borrar mazo", OkButtonText = "Borrar", CancelButtonText = "Cancelar" };
+        MenuDialog.Fill(dialog, MenuDialog.Message($"¿Borrar «{deck.Name}»? No se puede deshacer."), 420, destructive: true);
         AddChild(dialog);
         dialog.Confirmed += () => Connection.DeleteDeck(deck.Id);
         dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
-        dialog.PopupCentered();
+        MenuDialog.Show(dialog);
     }
 
     /// <summary>A new deck starts by choosing its Relikario; the editor then opens with the twelve Attacks every deck carries.</summary>
@@ -223,7 +223,7 @@ public partial class DeckScreen : Control
         string? sleeve = null, string? dice = null)
     {
         Clear();
-        var editor = new DeckEditor { DeckName = name, Relikario = relikario ?? RelikarioCatalog.Yuno.Id, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen,
+        var editor = new DeckEditor { DeckName = name, Relikario = relikario ?? RelikarioCatalog.Yuno.Id, InitialCards = cards.ToList(), InitialTraps = traps.ToList(), InitialSide = side?.ToList() ?? [], ShortScreen = ShortScreen, Touch = Touch,
             InitialSleeve = sleeve ?? CosmeticCatalog.DefaultSleeve, InitialDice = dice ?? CosmeticCatalog.DefaultDice };
         Editor = editor;
         editor.Closed += ShowList;

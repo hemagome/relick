@@ -97,12 +97,12 @@ public partial class ProfileCard : PanelContainer
         row.AddChild(new ProfileAvatar { Name = "ProfileAvatar", Avatar = view.Avatar, Frame = view.Frame, CustomMinimumSize = new(96, 96),
             SizeFlagsVertical = SizeFlags.ShrinkBegin });
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; column.AddThemeConstantOverride("separation", 4); row.AddChild(column);
-        var name = ArenaPresentation.Text(view.Name, 22, Accent);
+        var name = ArenaPresentation.Text(view.Name, MenuVisuals.Type.Subtitle, Accent);
         name.Name = "ProfileName"; name.AddThemeFontOverride("font", RelickVisuals.Display); name.ClipText = true;
         column.AddChild(name);
-        var title = ArenaPresentation.Text(ProfileCatalog.Title(view.Title).Name.ToUpperInvariant(), 12, BoardArt.Gold);
+        var title = ArenaPresentation.Text(ProfileCatalog.Title(view.Title).Name.ToUpperInvariant(), MenuVisuals.Type.Caption, BoardArt.Gold);
         title.Name = "ProfileTitle"; column.AddChild(title);
-        var record = ArenaPresentation.Text(view.Record(), 14, BoardArt.Ink);
+        var record = ArenaPresentation.Text(view.Record(), MenuVisuals.Type.Body, BoardArt.Ink);
         // One line: a wrapping label would report its height for zero width and stretch the popup.
         record.Name = "ProfileRecord"; column.AddChild(record);
         if (RelikarioCatalog.Find(view.Favorite) is { } favorite)
@@ -111,12 +111,12 @@ public partial class ProfileCard : PanelContainer
             if (RelikarioArt.Thumbnail(favorite.Id) is { } thumbnail)
                 line.AddChild(new TextureRect { Texture = thumbnail, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, CustomMinimumSize = new(22, 22) });
-            line.AddChild(ArenaPresentation.Text($"Favorito: {favorite.DisplayName}", 13, BoardArt.Muted));
+            line.AddChild(ArenaPresentation.Text($"Favorito: {favorite.DisplayName}", MenuVisuals.Type.Caption, BoardArt.Muted));
         }
         var mat = ProfileCatalog.Playmat(view.Playmat);
         var playmat = new HBoxContainer { Name = "ProfilePlaymat" }; playmat.AddThemeConstantOverride("separation", 6); column.AddChild(playmat);
         playmat.AddChild(new ColorRect { Color = new Color(mat.Trace), CustomMinimumSize = new(14, 14), SizeFlagsVertical = SizeFlags.ShrinkCenter });
-        playmat.AddChild(ArenaPresentation.Text($"Tapete: {mat.Name}", 13, BoardArt.Muted));
+        playmat.AddChild(ArenaPresentation.Text($"Tapete: {mat.Name}", MenuVisuals.Type.Caption, BoardArt.Muted));
     }
 
     private static StyleBox Padded(StyleBox box, int padding)

@@ -3,7 +3,7 @@ using Relick.Core;
 
 namespace Relick;
 
-public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass, Check, Pencil, Copy, Trash, Bench, Eye }
+public enum GameIcon { Sword, Bolt, Heart, Cards, Memory, Gem, Shield, Exchange, Gift, Reload, Flag, Speaker, SpeakerMuted, Gear, Hand, Skip, WhiteFlag, Alert, Hourglass, Check, Pencil, Copy, Trash, Bench, Eye, Ranking, Trophy }
 
 /// <summary>Shared vector symbols: readable at card, counter and toolbar sizes.</summary>
 public static class BoardArt
@@ -57,9 +57,9 @@ public static class BoardArt
         return new Rect2(area.GetCenter() - extent / 2, extent);
     }
 
-    private static Vector2[] Octagon(Rect2 rect, int radius)
+    internal static Vector2[] Octagon(Rect2 rect, int radius, int limit = 8)
     {
-        var cut = Math.Min(Math.Min(radius, 8), Math.Min(rect.Size.X, rect.Size.Y) / 2);
+        var cut = Math.Min(Math.Min(radius, limit), Math.Min(rect.Size.X, rect.Size.Y) / 2);
         var x = rect.Position.X; var y = rect.Position.Y; var r = rect.End.X; var b = rect.End.Y;
         return [new(x + cut, y), new(r - cut, y), new(r, y + cut), new(r, b - cut),
             new(r - cut, b), new(x + cut, b), new(x, b - cut), new(x, y + cut)];
@@ -248,6 +248,16 @@ public static class BoardArt
                 // Side deck: a bench seen from the front.
                 Block(-14, -6, 28, 5); Block(-14, 2, 28, 4);
                 Block(-12, 6, 3, 8); Block(9, 6, 3, 8);
+                break;
+            case GameIcon.Ranking:
+                // Rating ladder: three rising steps.
+                Block(-14, 4, 8, 10); Block(-4, -4, 8, 18); Block(6, -14, 8, 28);
+                break;
+            case GameIcon.Trophy:
+                Shape(new(-8, -14), new(8, -14), new(8, -5), new(4, 2), new(-4, 2), new(-8, -5));
+                Stroke(new(-8, -11), new(-13, -11), new(-13, -6), new(-6, -1));
+                Stroke(new(8, -11), new(13, -11), new(13, -6), new(6, -1));
+                Block(-2, 1, 4, 8); Block(-9, 9, 18, 5);
                 break;
             case GameIcon.Hourglass:
                 // Waiting: two glass bulbs between a top and a bottom bar.

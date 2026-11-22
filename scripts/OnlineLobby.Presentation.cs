@@ -16,12 +16,12 @@ public partial class OnlineLobby
     private readonly List<PanelContainer> _entryPanels = [];
     private readonly List<Label> _entryTitles = [];
     private readonly List<Control> _entryDescriptions = [];
+    private readonly List<VBoxContainer> _entryColumns = [];
+    private readonly List<LobbySymbol> _entrySymbols = [];
     private string _presentedRoomCode = "", _copiedCode = "", _lobbyNotice = "";
     private double _copyFeedbackSeconds;
     private ScrollContainer _lobbyPage = null!;
     private string _shownLobbyProblem = "";
-    private static readonly Color LobbyMint = new("5ed6b3");
-    private static readonly Color LobbyBlue = new("9ebdff");
     private Button _quickMatch = null!;
     private Button _decks = null!;
     private DeckScreen? _deckScreen;
@@ -62,7 +62,7 @@ public partial class OnlineLobby
         ArenaViewport.TouchMenu(accountMenu);
 
         var heading = new VBoxContainer(); _lobbyHeading = heading; heading.AddThemeConstantOverride("separation", 4); column.AddChild(heading);
-        _lobbyTitle = Text("Sala de duelos", 42); heading.AddChild(_lobbyTitle);
+        _lobbyTitle = Text("Sala de duelos", MenuVisuals.Type.Hero); heading.AddChild(_lobbyTitle);
         _lobbyTitle.AddThemeFontOverride("font", RelickVisuals.Display);
 
         var identity = Surface(column, 16); _identityPanel = identity;
@@ -88,7 +88,7 @@ public partial class OnlineLobby
 
         var cards = new HBoxContainer { Name = "RoomEntryCards" }; cards.AddThemeConstantOverride("separation", 18);
         column.AddChild(cards); _entryCards = cards;
-        var quick = EntryCard(cards, GameIcon.Sword, LobbyMint, "Partida rápida", "Casual · Sin clasificación");
+        var quick = EntryCard(cards, GameIcon.Sword, RelickVisuals.State.Own, "Partida rápida", "Casual · Sin clasificación");
         // «Buscar rival» and the subtitle already say what this card does; the slot stays for layout toggles.
         _quickExplanation = new Control { Name = "QuickExplanation", MouseFilter = MouseFilterEnum.Ignore }; quick.AddChild(_quickExplanation);
         _matchFeedback = new HBoxContainer { Name = "MatchmakingFeedback", Visible = false, SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -96,36 +96,35 @@ public partial class OnlineLobby
         _matchLink = new MatchmakingLink { Name = "MatchmakingLink", SizeFlagsVertical = SizeFlags.ShrinkCenter,
             ReducedMotion = DisplayServer.AccessibilityShouldReduceAnimation() == 1 || ProjectSettings.GetSetting("relick/accessibility/reduced_motion", false).AsBool() };
         _matchFeedback.AddChild(_matchLink);
-        _quickMatchStatus = Text("", 16); _quickMatchStatus.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _quickMatchStatus = Text("", MenuVisuals.Type.Control); _quickMatchStatus.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _quickMatchStatus.SizeFlagsVertical = SizeFlags.ShrinkCenter; _matchFeedback.AddChild(_quickMatchStatus);
         _quickIdleSpace = new Control { SizeFlagsVertical = SizeFlags.ExpandFill }; quick.AddChild(_quickIdleSpace);
         _quickMatch = AddButton(quick, "Buscar rival", QuickMatch);
-        _quickMatch.Name = "QuickMatch"; AccentButton(_quickMatch, LobbyMint);
+        _quickMatch.Name = "QuickMatch"; RelickVisuals.Primary(_quickMatch);
 
         // The code field and «Crear sala» / «Unirse» explain this card on their own.
-        var join = EntryCard(cards, GameIcon.Flag, LobbyBlue, "Sala privada", "");
+        var join = EntryCard(cards, GameIcon.Flag, RelickVisuals.State.Target, "Sala privada", "");
         _code = new LineEdit { Name = "RoomCode", PlaceholderText = "Código de 8 caracteres", MaxLength = 8,
             CustomMinimumSize = new(0, 48), Alignment = HorizontalAlignment.Center };
-        _code.AddThemeFontSizeOverride("font_size", 20); join.AddChild(_code);
+        _code.AddThemeFontSizeOverride("font_size", MenuVisuals.Type.Subtitle); join.AddChild(_code);
         join.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
         var privateActions = new HBoxContainer(); privateActions.AddThemeConstantOverride("separation", 10); join.AddChild(privateActions);
         _create = AddButton(privateActions, "Crear sala", () => { _lobbyNotice = _localError = ""; SaveAccountName(); _lobby.Create(_name.Text); });
         _create.CustomMinimumSize = new(0, 48); _create.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _join = AddButton(privateActions, "Unirse", JoinRoom);
         _join.CustomMinimumSize = new(0, 48); _join.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        AccentButton(_create, LobbyBlue);
-        AccentButton(_join, LobbyBlue);
         _code.TextSubmitted += _ => { if (!_join.Disabled) JoinRoom(); };
+        BuildPlannedModes(column);
 
         _roomPanel = Surface(column, 24); _roomPanel.Visible = false;
         var roomColumn = new VBoxContainer(); roomColumn.AddThemeConstantOverride("separation", 14); _roomPanel.AddChild(roomColumn);
-        roomColumn.AddChild(Caption("TU SALA · DUELO PRIVADO", LobbyMint));
+        roomColumn.AddChild(Caption("TU SALA · DUELO PRIVADO", BoardArt.Muted));
         var roomRow = new HBoxContainer(); roomRow.AddThemeConstantOverride("separation", 16); roomColumn.AddChild(roomRow);
-        _room = Text("", 34); _room.SizeFlagsHorizontal = SizeFlags.ExpandFill; roomRow.AddChild(_room);
+        _room = Text("", MenuVisuals.Type.Hero); _room.SizeFlagsHorizontal = SizeFlags.ExpandFill; roomRow.AddChild(_room);
         _copy = AddButton(roomRow, "Copiar código", CopyRoomCode);
         _copy.Name = "CopyRoomCode";
-        AccentButton(_copy, LobbyMint);
-        _players = Text("", 18); roomColumn.AddChild(_players);
+        RelickVisuals.Primary(_copy);
+        _players = Text("", MenuVisuals.Type.Control); roomColumn.AddChild(_players);
         _preparation = Description(""); roomColumn.AddChild(_preparation);
         _leave = AddButton(roomColumn, "Cerrar sala", _lobby.Leave);
         _leave.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
@@ -141,7 +140,7 @@ public partial class OnlineLobby
 
     private void UpdateLobbyPresentation(bool inRoom)
     {
-        _entryCards.Visible = !inRoom;
+        _entryCards.Visible = _plannedModes.Visible = !inRoom;
         _roomPanel.Visible = inRoom;
     }
 
@@ -214,6 +213,12 @@ public partial class OnlineLobby
         _quickMatch.Disabled = !ready || !quickMatchAvailable || busy || room != null;
         _quickMatch.TooltipText = quickMatchAvailable ? "" : "La partida rápida no está disponible en este servidor.";
         _quickMatch.Text = pending == RoomRequest.FindQuickMatch ? "Iniciando…" : pending == RoomRequest.CancelQuickMatch ? "Cancelando…" : searching ? "Cancelar búsqueda" : "Buscar rival";
+        // Searching is the action; calling it off is not.
+        var cancels = searching && !matched || pending == RoomRequest.CancelQuickMatch;
+        if (cancels == RelickVisuals.IsPrimary(_quickMatch))
+        {
+            if (cancels) RelickVisuals.Secondary(_quickMatch); else RelickVisuals.Primary(_quickMatch);
+        }
         PresentMatchmakingFeedback(searching, ready, pending, matched);
         _create.Text = pending == RoomRequest.Create ? "Creando…" : "Crear sala";
         _join.Text = pending == RoomRequest.Join ? "Entrando…" : "Unirse";
@@ -247,18 +252,18 @@ public partial class OnlineLobby
 
     private static Label Caption(string text, Color color)
     {
-        var label = Text(text, 12); label.AddThemeColorOverride("font_color", color); return label;
+        var label = Text(text, MenuVisuals.Type.Caption); label.AddThemeColorOverride("font_color", color); return label;
     }
 
     private static Label Description(string text)
     {
-        var label = Text(text, 15); label.AddThemeColorOverride("font_color", BoardArt.Muted); return label;
+        var label = Text(text, MenuVisuals.Type.Body); label.AddThemeColorOverride("font_color", BoardArt.Muted); return label;
     }
 
     private static PanelContainer Surface(Node parent, int padding)
     {
         var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var style = RelickVisuals.Frame(RelickVisuals.Playmat.Surface, RelickVisuals.Playmat.Frame, 8);
+        var style = RelickVisuals.Frame(MenuVisuals.Tone.Surface, MenuVisuals.Tone.Edge, MenuVisuals.Cut.Panel);
         style.ContentMarginLeft = style.ContentMarginRight = padding;
         style.ContentMarginTop = style.ContentMarginBottom = padding;
         panel.AddThemeStyleboxOverride("panel", style); parent.AddChild(panel); return panel;
@@ -269,17 +274,16 @@ public partial class OnlineLobby
         var panel = Surface(parent, 24);
         panel.CustomMinimumSize = new(0, 264); _entryPanels.Add(panel);
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        column.AddThemeConstantOverride("separation", 12); panel.AddChild(column);
+        column.AddThemeConstantOverride("separation", 12); panel.AddChild(column); _entryColumns.Add(column);
         var header = new HBoxContainer(); header.AddThemeConstantOverride("separation", 14); column.AddChild(header);
-        header.AddChild(new LobbySymbol { Icon = icon, Accent = accent, CustomMinimumSize = new(48, 48) });
+        var symbol = new LobbySymbol { Icon = icon, Accent = accent, CustomMinimumSize = new(48, 48) };
+        header.AddChild(symbol); _entrySymbols.Add(symbol);
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; titles.AddThemeConstantOverride("separation", 2); header.AddChild(titles);
-        var label = Text(title, 24); label.AddThemeColorOverride("font_color", BoardArt.Ink); titles.AddChild(label); _entryTitles.Add(label);
+        var label = Text(title, MenuVisuals.Type.Subtitle); label.AddThemeColorOverride("font_color", BoardArt.Ink); titles.AddChild(label); _entryTitles.Add(label);
         titles.Alignment = BoxContainer.AlignmentMode.Center;
         if (subtitle.Length > 0) { var description = Description(subtitle); titles.AddChild(description); _entryDescriptions.Add(description); }
         return column;
     }
-
-    private static void AccentButton(Button button, Color accent) => RelickVisuals.Primary(button, accent);
 
     private static Theme LobbyTheme() => RelickVisuals.Controls();
 
@@ -292,7 +296,7 @@ public partial class LobbySymbol : Control
     public override void _Ready() { MouseFilter = MouseFilterEnum.Ignore; Resized += QueueRedraw; }
     public override void _Draw()
     {
-        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), BoardArt.Tint(Accent, 0.09f), BoardArt.Tint(Accent, 0.25f), 12);
-        BoardArt.Icon(this, Icon, Size / 2, 25, Accent);
+        BoardArt.Plate(this, new Rect2(Vector2.Zero, Size), BoardArt.Tint(Accent, 0.09f), BoardArt.Tint(Accent, 0.25f), MenuVisuals.Cut.Control);
+        BoardArt.Icon(this, Icon, Size / 2, Math.Min(25, Size.Y * 0.6f), Accent);
     }
 }

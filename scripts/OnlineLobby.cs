@@ -126,29 +126,35 @@ public partial class OnlineLobby : Control
         foreach (var side in new[] { "left", "right" }) _content.AddThemeConstantOverride("margin_" + side, horizontal);
         foreach (var side in new[] { "top", "bottom" }) _content.AddThemeConstantOverride("margin_" + side, ArenaViewport.Short(this) ? 12 : 28);
         var shortScreen = ArenaViewport.Short(this);
+        // Small desktop windows keep the full lobby but tighten it, so the planned modes stay on screen.
+        var tight = Size.Y < 720;
         _matchLink.Compact = shortScreen;
-        _quickMatchStatus.AddThemeFontSizeOverride("font_size", shortScreen ? 14 : 16);
+        _quickMatchStatus.AddThemeFontSizeOverride("font_size", shortScreen ? MenuVisuals.Type.Body : MenuVisuals.Type.Control);
         if (_lobbyHeading != null) _lobbyHeading.Visible = !shortScreen;
-        if (_lobbyColumn != null) _lobbyColumn.AddThemeConstantOverride("separation", shortScreen ? 12 : 18);
+        if (_lobbyColumn != null) _lobbyColumn.AddThemeConstantOverride("separation", shortScreen ? 8 : tight ? 12 : 18);
         foreach (var description in _entryDescriptions) description.Visible = !shortScreen;
         _quickExplanation.Visible = _matchLink.State == MatchmakingLinkState.Idle && !shortScreen;
-        foreach (var title in _entryTitles) title.AddThemeFontSizeOverride("font_size", shortScreen ? 20 : 24);
+        foreach (var title in _entryTitles) title.AddThemeFontSizeOverride("font_size", MenuVisuals.Type.Subtitle);
         foreach (var panel in _entryPanels)
         {
-            panel.CustomMinimumSize = new(0, shortScreen ? 200 : 264);
+            panel.CustomMinimumSize = new(0, shortScreen ? 176 : tight ? 244 : 264);
             var style = (StyleBoxFlat)panel.GetThemeStylebox("panel");
             style.ContentMarginLeft = style.ContentMarginRight = shortScreen ? 16 : 24;
-            style.ContentMarginTop = style.ContentMarginBottom = shortScreen ? 16 : 24;
+            style.ContentMarginTop = style.ContentMarginBottom = shortScreen ? 10 : 24;
         }
+        // Short screens give up padding so the planned modes fit under the ones that work, without scrolling.
+        foreach (var column in _entryColumns) column.AddThemeConstantOverride("separation", shortScreen ? 8 : 12);
+        foreach (var symbol in _entrySymbols) symbol.CustomMinimumSize = shortScreen ? new(36, 36) : new(48, 48);
+        foreach (var slot in _plannedSlots) slot.Compact = tight;
         if (_identityPanel != null)
         {
             var style = (StyleBoxFlat)_identityPanel.GetThemeStylebox("panel");
-            style.ContentMarginTop = style.ContentMarginBottom = shortScreen ? 8 : 16;
+            style.ContentMarginTop = style.ContentMarginBottom = shortScreen ? 4 : 16;
         }
     }
 
     public override void _ExitTree() { _authCancel?.Cancel(); _lobby.Dispose(); }
-    private static Label Text(string text, int size = 16)
+    private static Label Text(string text, int size = MenuVisuals.Type.Control)
     {
         var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };
         label.AddThemeFontSizeOverride("font_size", size);
