@@ -25,8 +25,6 @@ public sealed record RelikarioDefinition(string Id, string Name, int MaxHealth, 
     [System.Text.Json.Serialization.JsonIgnore]
     public int AttackDieBonusIncludingOne { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsVillain { get; init; }
-    [System.Text.Json.Serialization.JsonIgnore]
     public int EvolutionDiscards { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
     public string? DefaultAttackArtId { get; init; }
@@ -66,11 +64,11 @@ public static class RelikarioCatalog
         Level: 2, EvolutionCost: 1200) { ShortName = "Ironwing", BaseForm = "ironwing", AttackDieBonusIncludingOne = 1 };
     public static readonly RelikarioDefinition Wd = new("wd", "WD", 11,
         "Al atacar, puedes descartar cartas Bala o de Ataque para sumar +1 al D6 de ataque por cada carta descartada, hasta 5.")
-        { EvolvesTo = "wd-lv2", IsVillain = true, DefaultAttackArtId = "attack-wd" };
+        { EvolvesTo = "wd-lv2", DefaultAttackArtId = "attack-wd" };
     public static readonly RelikarioDefinition WdLv2 = new("wd-lv2", "WD", Wd.MaxHealth,
         "Al lanzar un dado, puedes descartar cualquier carta para sumar +1 por carta. Suma +1 al D6 de ataque.",
         Level: 2, EvolutionCost: 1600, EvolutionHealing: 3)
-        { BaseForm = "wd", IsVillain = true, EvolutionDiscards = 4, AttackDieBonusIncludingOne = 1 };
+        { BaseForm = "wd", EvolutionDiscards = 4, AttackDieBonusIncludingOne = 1 };
 
     /// <summary>Every programmed form, evolutions included, by Id.</summary>
     public static readonly IReadOnlyDictionary<string, RelikarioDefinition> All =

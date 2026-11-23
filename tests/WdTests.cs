@@ -11,7 +11,7 @@ static class WdTests
         {
             var (game, random) = Fixture([Bala, Bonfire, Bonfire, Bonfire, Attack]);
             var player = game.State.Active;
-            Check(player.Relikario.IsVillain && player.Health == 11 && player.Dexterity == 0);
+            Check(player.Relikario.Id == "wd" && player.Health == 11 && player.Dexterity == 0);
             player.Health = 9;
             player.Relikia = 1599;
             Check(!game.Evolve(0).Success);
