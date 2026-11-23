@@ -19,8 +19,8 @@ public partial class BoardCanvas : Control
     /// <summary>How far each field reaches from the divider.</summary>
     internal const float HalfDepth = 408;
     internal const float FarEdge = Seam - HalfDepth, NearEdge = Seam + HalfDepth;
-    private const float Depth = .29f, NearY = 852;
-    internal const float RearRailY = 194;
+    private const float Depth = .27f, NearY = 852;
+    internal const float RearRailY = 250;
     internal const float PerspectiveSlope = Depth / (NearEdge - FarEdge);
     internal const float PerspectiveRise = (NearY - RearRailY) * (1 + Depth) / (NearEdge - FarEdge);
     internal static Vector4 ProjectionParameters => new(DesignWidth / 2, NearEdge, NearY, PerspectiveSlope);
@@ -32,7 +32,7 @@ public partial class BoardCanvas : Control
     /// <summary>The point of the tabletop right under the eye, and how high the eye is above it.</summary>
     internal static readonly Vector2 EyeFoot = new(DesignWidth / 2, NearEdge + Focal * TiltSin - LensShift * TiltCos);
     internal static readonly float EyeHeight = Focal * TiltCos + LensShift * TiltSin;
-    private enum Layer { Screen, Hud, Figure }
+    private enum Layer { Screen, Hud, FittedHud, Figure }
 
     private readonly Control _stage = new() { Name = "BoardStage", MouseFilter = MouseFilterEnum.Ignore };
     private readonly List<(Control Node, Rect2 Rect, BoardAnchor Anchor, Layer Layer)> _items = [];
@@ -59,7 +59,9 @@ public partial class BoardCanvas : Control
     public T Place<T>(T node, Rect2 rect, BoardAnchor anchor = BoardAnchor.Middle) where T : Control
         => Add(node, rect, anchor, Layer.Screen);
 
-    internal T PlaceTableHud<T>(T node, Rect2 rect) where T : Control => Add(node, rect, BoardAnchor.Middle, Layer.Hud);
+    /// <param name="fitDepth">Shrinks it evenly to the depth its rectangle takes on the table, for a gap it must not overflow.</param>
+    internal T PlaceTableHud<T>(T node, Rect2 rect, bool fitDepth = false) where T : Control
+        => Add(node, rect, BoardAnchor.Middle, fitDepth ? Layer.FittedHud : Layer.Hud);
 
     internal void PlaceFigure(RelikarioPortrait portrait, bool enemy)
     {
@@ -94,6 +96,10 @@ public partial class BoardCanvas : Control
         ? new Rect2(DesignWidth - x - width, Seam - fromSeam - height, width, height)
         : new Rect2(x, Seam + fromSeam, width, height);
     private static float PerspectiveScale(float y) => 1 / (1 - (y - NearEdge) * PerspectiveSlope);
+    /// <summary>How much shorter the table looks in depth than across, at a row of the board.</summary>
+    private static float Foreshortening(float y) => (Project(new Vector2(0, y + 1)).Y - Project(new Vector2(0, y - 1)).Y) / 2 / PerspectiveScale(y);
+    /// <summary>The foreshortening the Relikario figures were drawn for, near the divider of a 24° table.</summary>
+    private const float FigureForeshortening = .93f;
 
     internal static Vector2 Project(Vector2 point, float elevation = 0)
     {
@@ -127,17 +133,23 @@ public partial class BoardCanvas : Control
             var position = rect.Position;
             var scale = Vector2.One;
             // The scoreboard and phase controls follow the table but stay level so their text is readable.
-            if (TableView && layer == Layer.Hud)
+            if (TableView && layer is Layer.Hud or Layer.FittedHud)
             {
+                // Same scale on both axes: squashing it with the table makes the text hard to read.
                 var center = rect.GetCenter();
-                var height = Project(new Vector2(center.X, rect.End.Y)).Y - Project(new Vector2(center.X, rect.Position.Y)).Y;
-                scale = new(PerspectiveScale(center.Y), height / rect.Size.Y);
+                scale *= PerspectiveScale(center.Y);
+                if (layer == Layer.FittedHud)
+                {
+                    var depth = Project(new Vector2(center.X, rect.End.Y)).Y - Project(new Vector2(center.X, rect.Position.Y)).Y;
+                    scale = Vector2.One * Math.Min(scale.X, depth / rect.Size.Y);
+                }
                 position = Project(center) - rect.Size * scale / 2;
             }
             else if (TableView && layer == Layer.Figure)
             {
                 // Stand vertically, with the feet on the projected board instead of foreshortening the sprite.
-                scale *= PerspectiveScale(position.Y);
+                // The steeper the view, the less table a figure may hide, so its height follows the table's depth.
+                scale *= PerspectiveScale(position.Y) * Math.Min(1, Foreshortening(position.Y) / FigureForeshortening);
                 position = Project(position) - rect.Size * scale * new Vector2(.5f, .94f);
             }
             node.Position = origin + position;

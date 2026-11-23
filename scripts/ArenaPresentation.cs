@@ -250,7 +250,7 @@ public static class ArenaPresentation
     {
         var lane = new Control { Name = "CombatCenter", MouseFilter = Control.MouseFilterEnum.Ignore };
         canvas.PlaceTableHud(lane, new Rect2((BoardCanvas.DesignWidth - TurnCore.PlateWidth) / 2,
-            BoardCanvas.Seam - TurnCore.PlateHeight / 2, TurnCore.PlateWidth, TurnCore.PlateHeight));
+            BoardCanvas.Seam - TurnCore.PlateHeight / 2, TurnCore.PlateWidth, TurnCore.PlateHeight), fitDepth: true);
         var core = TurnCore.Create(stage, turn, idle, accent);
         lane.AddChild(core);
         core.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);

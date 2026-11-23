@@ -73,6 +73,9 @@ public partial class OnlineArena
                     Board<Control>("Dexterity1"), Board<Control>("ResourceBadge1") }.All(marker =>
                     Mathf.IsZeroApprox(marker.GetGlobalTransform().Rotation) && ProjectedTable.Of(marker) == null),
                     "Los marcadores de vidas, acciones, Destreza y PR del rival deben quedar de frente.");
+                Check(new Control[] { Board<Control>("Hero0"), Board<Control>("Hero1"), _combatCenter! }.All(hud =>
+                    hud.GetGlobalTransform().Scale is var scale && Mathf.IsEqualApprox(scale.X, scale.Y)),
+                    "Los marcadores y el núcleo de turno deben conservar su proporción, sin aplastarse con la mesa.");
                 GuiInputTestDriver.Hover(_evolveButton!); await Layout();
                 Check(_relikarioPreview is { Evolution: true }, "El Relikario propio tapa la lectura del botón de evolución.");
                 ClearContext(); await Layout();
