@@ -110,6 +110,42 @@ public partial class OnlineArena
             throw new Exception("El tablero vuelve a la mano con dos cartas y muestra el Núcleo en corruptas.");
     }
 
+    private async Task CheckSecretRoomLayout()
+    {
+        var room = CardCatalog.SecretRoom;
+        var attack = CardCatalog.Attack.Id;
+        var trap = CardCatalog.SuperAttack.Id;
+        if (BoardArt.LoadCardArtwork(room) == null || BoardArt.CardType(room) != "CÓDIGO · JUGADA")
+            throw new Exception("Falta el arte o la clasificación de Habitación Secreta.");
+
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[room.Id, attack], []], Decks = [[room.Id, attack], [attack]],
+            Traps = [[trap, CardCatalog.SuperMagnet.Id], []], Bonuses = [attack, null]
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.Actions;
+        game.State.Active.Memory.AddRange([attack, CardCatalog.Dodge.Id]);
+        if (!game.Exchange(0, 0).Success) throw new Exception("No se pudo canjear Habitación Secreta.");
+
+        ResetAnimations();
+        var recover = DuelSnapshot.For(game, 0, 1);
+        PresentTestSnapshot(recover);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var first = _deckSearchOptions.Single(option => option.CardId == CardCatalog.Dodge.Id);
+        SelectCard(Array.IndexOf(_deckSearchOptions, first));
+        if (!ChoosingMemoryRecovery || !PresentsOption(first) || !first.Move.Apply(game, 0).Success || !game.Exchange(0, 0).Success)
+            throw new Exception("El canje debe mostrar la recuperación y permitir el segundo canje al terminar.");
+
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 2));
+        var choice = _deckSearchOptions.Single(option => option.CardId == trap);
+        SelectCard(Array.IndexOf(_deckSearchOptions, choice));
+        if (PresentedButton(choice)?.Text != "Colocar trampa" || _snapshot!.Players[0].Pr != 3000 || !choice.Move.Apply(game, 0).Success)
+            throw new Exception("El nuevo Bonus debe mostrar el premio y permitir colocar la Trampa.");
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 3));
+        if (ChoosingEffectCards || !_handCards.Any(card => card.Card.Id == trap) || _snapshot!.Players[0].Bonus != room.Id)
+            throw new Exception("La Trampa debe quedar en mano y la Habitación en el Bonus.");
+    }
+
     internal async Task CheckNewCardsLayout()
     {
         foreach (var card in new[] { CardCatalog.MagicTome, CardCatalog.CopyHelmet, CardCatalog.FutureEra, CardCatalog.Platforms,
@@ -187,6 +223,7 @@ public partial class OnlineArena
         await CheckTargetResponseLayout();
         await CheckDualityCassetteLayout();
         await CheckGalacticEnergyCoreLayout();
+        await CheckSecretRoomLayout();
         CheckIronwingDieChoices();
 
         for (var result = 1; result <= 10; result++)

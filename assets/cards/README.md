@@ -1,5 +1,32 @@
 # Cartas
 
+## Habitación Secreta
+
+`habitacion-secreta-clean.png` restaura la carta NS-19/150 con la herramienta
+integrada `image_gen`. Se retiró la marca diagonal y se conservaron los textos
+y créditos impresos.
+
+Código Jugada disponible en el editor de mazos. Al entrar en un espacio de
+canje, su controlador recupera una carta de su memoria normal. Si completa el
+canje, primero se entrega y se repone el Bonus. Cuando la Habitación llega
+como ese Bonus de reposición, su controlador gana 3.000 PR y elige una Trampa
+disponible de su mazo de Códigos Trampa. La carta entra en la zona que indica
+su texto y gasta una copia de ese mazo. Los 3.000 PR se conceden incluso con
+el mazo de Trampas vacío.
+
+La Trampa de la Habitación se coloca por efecto. Después, el canje puede
+ofrecer su creación por receta si queda una copia. Al colocar Habitación
+Secreta como segundo canje, su recuperación incluye las cartas recién
+canjeadas que estén en su memoria.
+[Reglamento oficial, §§ 4.6, 4.7 y 5.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the attached original, complete Spanish ReLick card HABITACIÓN SECRETA, NS-19/150. Remove only the repeated large translucent diagonal RELICK watermark overlays. Reconstruct the underlying gray circuit traces and illustration exactly from the visible shapes: red distressed radial background, isometric black room with white outline, narrow entry walkway and small man with flashlight, white circular light, dark doorway and tiny floor objects. Keep flat front-facing portrait framing, exact original 697:987 geometry, borders, gray circuitry, type banners, layout, colors, typography and red emphasis. Preserve all printed text exactly: JUGADA; CÓDIGO; HABITACIÓN SECRETA; SI ESTA CARTA LLEGA A: TU CANJE: AÑADE UNA CARTA DE TU MEMORIA A TU MANO. TU BONUS AL CANJEAR 2 CARTAS: GANA 3.000PR, SELECCIONA UN CÓDIGO TRAMPA DE TU MAZO DE CÓDIGOS TRAMPA Y ENVÍALO AL LUGAR DONDE INDICA ESA CARTA. Footer: NS-19/150, ILUS. STIVART, ©2018 FG. No redesign, extra text, margins or cropping.
+
+</details>
+
 ## Núcleo Energético Galáctico x3
 
 `nucleo-energetico-galactico-clean.png` restaura la carta UT-25/50 con la

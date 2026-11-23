@@ -172,7 +172,11 @@ public sealed partial class GameEngine
             case ContinuationKind.MoveHand: MoveTopCard(p, false, next.Next); break;
             case ContinuationKind.MoveBonus: MoveTopCard(p, true, next.Next); break;
             case ContinuationKind.RefillDone:
-                if (p.Bonus != null) Log($"{p.Name} coloca {CardCatalog.Get(p.Bonus).Name} como nuevo Bonus.");
+                if (p.Bonus is { } bonus)
+                {
+                    Log($"{p.Name} coloca {CardCatalog.Get(bonus).Name} como nuevo Bonus.");
+                    if (next.Flag) QueueExchangeTrigger(next.Actor, bonus, ExchangeMoment.RefilledBonus, FieldZone.Bonus, -1);
+                }
                 Continue(next.Next); break;
             case ContinuationKind.RefillBonus: RefillBonus(p, next.Next); break;
             case ContinuationKind.RelikiaPlacement: BeginRelikiaChoice(RelikiaChoice.PlaceHandCard); break;

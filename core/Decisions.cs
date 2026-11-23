@@ -94,6 +94,8 @@ public sealed class DecisionView
 internal abstract class CardRules
 {
     public abstract string CardId { get; }
+    /// <summary>Why this card cannot be played as a code, beyond the shared costs.</summary>
+    public virtual string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
     /// <summary>The choices of a decision this card opened.</summary>
     public virtual IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => [];
     public virtual void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) { }
@@ -110,9 +112,6 @@ internal abstract class CardEffect : CardRules
 {
     /// <summary>The physical copy waits outside memory while its activation resolves.</summary>
     public virtual bool HoldsActivationCard => false;
-    /// <summary>Why the card cannot be activated now, beyond the common costs; <paramref name="excludedHand"/> is the card itself.
-    /// Null by default: the card has no restriction of its own.</summary>
-    public virtual string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
     public abstract void Resolve(GameEngine.EffectContext ctx);
 }
 
@@ -208,7 +207,7 @@ internal static class CardEffects
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(), new NoOptionsEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new Compass16BitEffect(), new GhostDogEffect(),
-            new DualityCassetteEffect(), new GalacticEnergyCoreEffect(),
+            new DualityCassetteEffect(), new GalacticEnergyCoreEffect(), new SecretRoomEffect(),
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new PlatformsEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
             GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect(), new SalvationTotemEffect() }.ToDictionary(e => e.CardId);
 
@@ -435,6 +434,8 @@ public sealed partial class GameEngine
         }
 
         public IEnumerable<MemorySelection> RecoverableMemoryCards() => _engine.RecoverableMemoryCards();
+        public IEnumerable<string> AvailableTrapCards() => _engine.AvailableTrapCards(Actor);
+        public void PlaceTrap(string id) => _engine.PlaceTrap(Actor, id);
         /// <summary>Memory cards Resetear la Mente may return: all but a memory code waiting on its responses.</summary>
         public IEnumerable<MemorySelection> ResettableMemoryCards() => _engine.MindResetMemories();
         public string? MindResetUnavailable(int excludedHand) => _engine.MindResetUnavailable(Actor, excludedHand);

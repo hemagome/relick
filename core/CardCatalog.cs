@@ -86,6 +86,9 @@ public static class CardCatalog
     public static readonly CardDefinition GalacticEnergyCore = new("nucleo-energetico-galactico", "Núcleo Energético Galáctico x3", CardKind.Code,
         "Envía exactamente 3 cartas de Ataque de tu memoria a tu mazo, revuelve y roba 2 cartas. Luego corrompe esta carta.",
         CodeType: CodeType.Object);
+    public static readonly CardDefinition SecretRoom = new("habitacion-secreta", "Habitación Secreta", CardKind.Code,
+        "Si esta carta llega a tu canje, añade una carta de tu memoria a tu mano. Si llega a tu Bonus al canjear 2 cartas, gana 3.000 PR, selecciona un Código Trampa de tu mazo de Códigos Trampa y envíalo al lugar donde indica esa carta.",
+        CodeType: CodeType.Play);
     public static readonly CardDefinition Bonfire = new("bonfire", "Hoguera", CardKind.Equipment,
         "Al equipar: gana +1 vida. Mientras esta carta esté equipada, todos los daños que recibas se transforman en 0. Destruye esta carta al inicio de tu siguiente turno luego de haber sido equipada.",
         Heal: 1, DestroyAtNextTurnStart: true);
@@ -226,7 +229,7 @@ public static class CardCatalog
         CodeType: CodeType.Character);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore, SecretRoom }.ToDictionary(c => c.Id);
 
     // A field instance can carry copied text and a different physical card.
     internal static string TextId(string id)

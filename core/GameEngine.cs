@@ -315,6 +315,7 @@ public sealed partial class GameEngine
             p.ExchangePlacementTurns[p.Exchange.Count - 1] = fieldPlacedTurn ?? Math.Max(1, State.Turn);
         }
         Log($"{p.Name} coloca {CardCatalog.Get(id).Name} en canje ({p.Exchange.Count}/2).");
+        QueueExchangeTrigger(Seat(p), id, ExchangeMoment.EnteredExchange, FieldZone.Exchange, p.Exchange.Count - 1);
     }
 
     private void CompleteExchange(PlayerState p, EngineContinuation? completed = null)
@@ -335,7 +336,7 @@ public sealed partial class GameEngine
             ShiftExchangeEffects(p, 0, 2);
             TakeBonus(p, p);
             Log($"{p.Name} completa el canje y obtiene su bonus.");
-            RefillBonus(p, new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = actor, Next = completed });
+            RefillBonus(p, new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = actor, Next = completed }, fromExchange: true);
         }
         else Continue(completed);
     }
@@ -450,10 +451,11 @@ public sealed partial class GameEngine
         }
         // An interrupt can spend or remove the last option before returning to the pending die.
         if (ResolveUnopposedDie()) return;
+        CompleteAttackIfReady();
+        if (TryPresentExchangeTrigger()) return;
         // With nothing left to fire, the pending play goes on below, as it does when a trigger finishes by continuation.
         if (_activeActivation == null && State is { Phase: Phase.Actions, ActionStartActor: int actor } &&
             RunTurnTriggers(TurnMoment.ActionStart, actor)) return;
-        CompleteAttackIfReady();
         if (!PresentPendingArea() && !TryPresentTrapCraft()) CompleteEndTurnIfReady();
     }
 

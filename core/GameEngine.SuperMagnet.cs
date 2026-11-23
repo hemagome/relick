@@ -52,7 +52,7 @@ public sealed partial class GameEngine
         while (queue.Count > 0)
         {
             // A copy may have been used or a Zahira slot filled while the creation waited.
-            var available = queue[0].Options.Where(id => HasTrapCopy(queue[0] with { CardId = id })).ToArray();
+            var available = queue[0].Options.Where(id => HasTrapCopy(queue[0].Actor, id)).ToArray();
             if (available.Length > 0) { queue[0] = queue[0] with { CardId = available[0], Choices = available }; break; }
             queue.RemoveAt(0);
         }
@@ -66,10 +66,16 @@ public sealed partial class GameEngine
         return true;
     }
 
-    private bool HasTrapCopy(TrapCraft recipe)
+    private IEnumerable<string> AvailableTrapCards(int actor)
     {
-        var player = State.Players[recipe.Actor];
-        return recipe.CardId switch
+        foreach (var card in new[] { CardCatalog.SuperMagnet, CardCatalog.ZahiraFlair, CardCatalog.SuperAttack })
+            if (HasTrapCopy(actor, card.Id)) yield return card.Id;
+    }
+
+    private bool HasTrapCopy(int actor, string cardId)
+    {
+        var player = State.Players[actor];
+        return cardId switch
         {
             var id when id == CardCatalog.ZahiraFlair.Id => player.ZahiraAvailable && FreeZahiraSlot(player) >= 0,
             var id when id == CardCatalog.SuperAttack.Id => player.SuperAttackAvailable,
@@ -84,36 +90,40 @@ public sealed partial class GameEngine
         if (State.Phase != Phase.TrapCraftChoice || actor != State.DecisionPlayer)
             return CommandResult.Fail("No te corresponde decidir si creas un Código Trampa.");
         var pending = State.TrapCraftQueue![0];
-        if (create && (choice < 0 || choice >= pending.Options.Count))
+        if (create && (choice < 0 || choice >= pending.Options.Count || !HasTrapCopy(actor, pending.Options[choice])))
             return CommandResult.Fail("Ese Código Trampa no está disponible para este canje.");
 
-        var player = State.Players[actor];
         var queue = State.TrapCraftQueue!;
-        var recipe = create ? pending with { CardId = pending.Options[choice] } : pending;
         queue.RemoveAt(0);
         if (queue.Count == 0) State.TrapCraftQueue = null;
         State.Phase = State.TrapCraftResumePhase!.Value;
         State.TrapCraftResumePhase = null;
-        if (create && recipe.CardId == CardCatalog.SuperAttack.Id)
+        if (create) PlaceTrap(actor, pending.Options[choice]);
+        else CompletePendingPlay();
+        return CommandResult.Ok();
+    }
+
+    private void PlaceTrap(int actor, string cardId)
+    {
+        var player = State.Players[actor];
+        if (cardId == CardCatalog.SuperAttack.Id)
         {
             if (player.SuperAttackSpares > 0) player.SuperAttackSpares--; else player.SuperAttackAvailable = false;
-            player.Hand.Add(recipe.CardId);
+            player.Hand.Add(cardId);
             Log($"{player.Name} crea Súper Ataque y lo añade a su mano.");
             CompletePendingPlay();
         }
-        else if (create && recipe.CardId == CardCatalog.ZahiraFlair.Id)
+        else if (cardId == CardCatalog.ZahiraFlair.Id)
         {
             if (player.ZahiraSpares > 0) player.ZahiraSpares--; else player.ZahiraAvailable = false;
             BeginZahiraPlacement(actor, creating: true, FreeZahiraSlot(player));
         }
-        else if (create)
+        else if (cardId == CardCatalog.SuperMagnet.Id)
         {
             player.SuperMagnetCopies--;
             var placement = new EngineContinuation { Kind = ContinuationKind.PlaceSuperMagnet, Actor = actor };
             DestroyEquipment(player, placement);
         }
-        else CompletePendingPlay();
-        return CommandResult.Ok();
     }
 
     private void FinishSuperMagnetPlacement(int actor)

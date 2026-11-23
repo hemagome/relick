@@ -326,6 +326,8 @@ public sealed class GameState
     public PendingGoldenTotem? PendingGoldenTotem { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<TrapCraft>? TrapCraftQueue { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ExchangeTrigger>? ExchangeTriggerQueue { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ZahiraRolledThisFinal { get; internal set; }
     // Next Zahira Flair of the waiting player that still has to roll in this final stage.

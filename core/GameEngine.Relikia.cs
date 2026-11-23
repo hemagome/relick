@@ -198,8 +198,8 @@ public sealed partial class GameEngine
     }
 
     private void DealBonus(PlayerState p, EngineContinuation? completed = null) => MoveTopCard(p, true, completed);
-    private void RefillBonus(PlayerState p, EngineContinuation? completed = null)
-        => DealBonus(p, new EngineContinuation { Kind = ContinuationKind.RefillDone, Actor = Array.IndexOf(State.Players, p), Next = completed });
+    private void RefillBonus(PlayerState p, EngineContinuation? completed = null, bool fromExchange = false)
+        => DealBonus(p, new EngineContinuation { Kind = ContinuationKind.RefillDone, Actor = Seat(p), Next = completed, Flag = fromExchange });
 
     private static bool IsCode(string id) => CardCatalog.Get(id).Kind == CardKind.Code;
     private bool IsMemoryCode(int owner, int index) => owner >= 0 && owner < State.Players.Length &&
