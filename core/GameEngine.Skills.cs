@@ -97,6 +97,15 @@ public sealed partial class GameEngine
     {
         var attack = State.PendingAttack!;
         State.Phase = Phase.Combat;
+        if (!attack.EffectsSuppressed && CardEffects.For(attack.SkillId) is IAttackDamageEffect effect &&
+            effect.TryPrepareDamage(EffectFor(attack.Attacker, attack.SkillId), new EngineContinuation
+            { Kind = ContinuationKind.ApplyAttackDamage, Actor = attack.Attacker, Flag = canceled, Text = source, Step = cardId })) return;
+        ApplyAttackDamage(canceled, source, deferCompletion, cardId);
+    }
+
+    private void ApplyAttackDamage(bool canceled, string source, bool deferCompletion = false, string? cardId = null)
+    {
+        var attack = State.PendingAttack!;
         if (canceled)
         {
             State.LastCombat += $" · Daño cancelado por {source}";
@@ -127,15 +136,29 @@ public sealed partial class GameEngine
         if (!deferCompletion) CompletePendingPlay();
     }
 
-    private void CompleteAttackIfReady()
+    private bool TryContinueAttackResolution()
     {
-        if (State.Phase != Phase.Combat || State.PendingAttack is not { DamageResolved: true } attack ||
-            State.PendingSniper != null || _activeActivation != null) return;
+        if (State.Phase != Phase.Combat || State.PendingAttack is not { } attack ||
+            State.PendingSniper != null || _activeActivation != null) return false;
+        if (attack.ApplyDamage is { } applyDamage)
+        {
+            State.PendingAttack = attack with { ApplyDamage = null };
+            Continue(applyDamage);
+            return true;
+        }
+        if (!attack.DamageResolved) return false;
+        if (attack.AfterDamage is { } afterDamage)
+        {
+            State.PendingAttack = attack with { AfterDamage = null };
+            Continue(afterDamage);
+            return true;
+        }
         State.PendingAttack = null;
-        if (!attack.RewardPending) return;
+        if (!attack.RewardPending) return false;
         var p = State.Players[attack.Attacker]; var reward = attack.Reward ?? CardCatalog.Get(attack.SkillId).Reward;
         p.Relikia += reward;
         Log($"{p.Name} obtiene {reward} PR.");
+        return false;
     }
 
     public CommandResult SkipMagnet(int actor)

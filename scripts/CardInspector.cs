@@ -61,6 +61,9 @@ internal sealed record AttackOutlook(int Normal, int Critical, bool RandomNormal
             return die switch { 4 => Range(1, 3), 5 => Range(2, 5), _ => Range(4, 7) };
         if (SkillId == CardCatalog.TurboOverlap.Id && die == 6) return Range(1, 6);
         var amount = GameEngine.DamageFor(die, Normal, Critical) * DamageMultiplier;
+        if (SkillId == CardCatalog.WildAim.Id)
+            return die == 6 ? $"≥{amount}" : Range(GameEngine.DamageFor(die, Normal, Critical),
+                GameEngine.DamageFor(die, CardCatalog.WildAim.MaxNormalDamage, Critical));
         if (SkillId == CardCatalog.MultiDrive.Id || SkillId == CardCatalog.WildDrive.Id && die == 6)
             return $"≥{amount}";
         return amount.ToString();

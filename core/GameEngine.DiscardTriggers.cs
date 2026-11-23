@@ -38,6 +38,20 @@ public sealed partial class GameEngine
         return landed;
     }
 
+    private List<MemorySelection> DiscardHandCardsForCost(int actor, IEnumerable<int> indices)
+    {
+        var player = State.Players[actor];
+        var snipers = new List<MemorySelection>();
+        foreach (var index in indices.OrderDescending())
+        {
+            var id = PlayableHandCard(player, index)!;
+            var landed = DiscardHandCard(player, index);
+            Log($"{player.Name} descarta {CardCatalog.Get(id).Name}.");
+            if (landed != null && CardCatalog.Get(id).EquipOnDiscard) snipers.Add(landed);
+        }
+        return snipers;
+    }
+
     private void ShiftDiscardTriggerIndices(int owner, int removed)
     {
         foreach (var batch in State.DiscardTriggers ?? [])

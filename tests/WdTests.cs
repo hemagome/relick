@@ -3,7 +3,7 @@ using Relick.Core;
 static class WdTests
 {
     private static readonly string Attack = CardCatalog.AttackWd.Id, Bala = CardCatalog.Bullet.Id, Bonfire = CardCatalog.Bonfire.Id;
-    private static readonly string Wild = CardCatalog.WildDrive.Id, Multi = CardCatalog.MultiDrive.Id;
+    private static readonly string Wild = CardCatalog.WildDrive.Id, Multi = CardCatalog.MultiDrive.Id, Aim = CardCatalog.WildAim.Id;
 
     public static (string Name, Action Run)[] Cases =>
     [
@@ -136,6 +136,103 @@ static class WdTests
             game.State.Active.Bonus = Bonfire;
             Check(!game.PlayCode(0, 0).Success && game.Exchange(0, 0).Success);
             Check(game.State.Active.Hand.Count == 0 && game.State.Active.Exchange.SequenceEqual([Bala]) && game.State.Active.Deck.Count == 8);
+        }),
+        ("Wild Aim: calcula daño reducido, normal y crítico con los descartes y roba después del golpe", () =>
+        {
+            foreach (var (die, damage) in new[] { (4, 2), (5, 4), (6, 7) })
+            {
+                var (game, random) = Fixture([Attack, Bonfire, Bonfire, Bonfire, Bonfire], skill: Aim);
+                var visuals = DuelVisualEvents.Capture(game);
+                random.EnqueueDie(die);
+                Check(game.Attack(0, 0, 0).Success && game.State.PendingDecision?.Source == Aim);
+                for (var index = 0; index < 4; index++) Check(Pick(game, index).Success);
+                Check(game.State.Active.Hand.Count == 4 && game.State.Players[1].Health == 8 && game.State.Active.Relikia == 0);
+                Check(Pick(game, -1).Success && game.State.PendingAttack == null && game.State.Phase == Phase.Combat);
+                Check(game.State.Players[1].Health == 8 - damage && game.State.Active.Relikia == 600);
+                Check(game.State.Active.Hand.Count == 3 && game.State.Active.Memory.SequenceEqual([Attack, Bonfire, Bonfire, Bonfire, Bonfire]));
+                Check(visuals.Where(cue => cue.Kind is DuelVisualKind.Hit or DuelVisualKind.Draw).Select(cue => cue.Kind)
+                    .SequenceEqual([DuelVisualKind.Hit, DuelVisualKind.Draw, DuelVisualKind.Draw, DuelVisualKind.Draw]));
+            }
+        }),
+        ("Wild Aim: acepta cero o un descarte, aplica el daño base sin mano y no se ofrece al fallar", () =>
+        {
+            foreach (var discards in new[] { 0, 1 })
+            {
+                var (game, random) = Fixture([Attack, Bonfire], skill: Aim);
+                random.EnqueueDie(5);
+                Check(game.Attack(0, 0, 0).Success);
+                if (discards == 1) Check(Pick(game, 0).Success);
+                Check(Pick(game, -1).Success && game.State.Active.Hand.Count == 1 - discards);
+                Check(game.State.Players[1].Health == 6 - discards && game.State.Active.Relikia == 200 + 100 * discards);
+            }
+
+            foreach (var (die, hand, damage, reward) in new[]
+            {
+                (5, new[] { Attack }, 2, 200),
+                (2, new[] { Attack, Bonfire }, 0, 0)
+            })
+            {
+                var (game, random) = Fixture(hand, skill: Aim);
+                random.EnqueueDie(die);
+                Check(game.Attack(0, 0, 0).Success && game.State.PendingDecision == null && game.State.PendingAttack == null);
+                Check(game.State.Players[1].Health == 8 - damage && game.State.Active.Relikia == reward);
+            }
+        }),
+        ("Wild Aim: conserva una selección privada al reconectar y permite borrarla", () =>
+        {
+            var (game, random) = Fixture([Attack, Bonfire, Bala, CardCatalog.ExtraLife.Id], skill: Aim);
+            random.EnqueueDie(5);
+            Check(game.Attack(0, 0, 0).Success && Pick(game, 1).Success);
+            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+            var rival = DuelSnapshot.For(game, 1, 0);
+            Check(rival.Options.All(option => option.Move.Kind != DuelMoveKind.Choose) && rival.Players[0].Hand.All(id => id == null));
+            Check(!Pick(game, 1).Success && Pick(game, -2).Success && Pick(game, 0).Success && Pick(game, -1).Success);
+            Check(game.State.Active.Hand.SequenceEqual([Bala, CardCatalog.ExtraLife.Id]) && game.State.Active.Memory.SequenceEqual([Attack, Bonfire]));
+        }),
+        ("Wild Aim: Bala roba al descartarse y Wild Drive puede enviarla a canje antes del daño", () =>
+        {
+            var (game, random) = Fixture([Attack, Bala, Bonfire], skill: Aim);
+            game.State.Active.Skills.Add(Wild);
+            var visuals = DuelVisualEvents.Capture(game);
+            random.EnqueueDie(5);
+            Check(game.Attack(0, 0, 0).Success && Pick(game, 0).Success && Pick(game, 1).Success && Pick(game, -1).Success);
+            Check(game.State.PendingDecision?.Source == Wild && game.State.Players[1].Health == 8);
+            Check(Pick(game, 1).Success && game.State.Active.Exchange.SequenceEqual([Bala]));
+            Check(game.State.Active.Hand.SequenceEqual([Bonfire, Bonfire]) && game.State.Active.Relikia == 400 && game.State.Players[1].Health == 4);
+            Check(visuals.Where(cue => cue.Kind is DuelVisualKind.Hit or DuelVisualKind.Draw).Select(cue => cue.Kind)
+                .SequenceEqual([DuelVisualKind.Draw, DuelVisualKind.Hit, DuelVisualKind.Draw]));
+        }),
+        ("Wild Aim: Esquivar puede anular el ataque y Destiny solo cancela el daño", () =>
+        {
+            var (game, random) = Fixture([Attack, Bonfire, Bonfire], skill: Aim);
+            var defender = game.State.Players[1];
+            defender.Dexterity = 0;
+            defender.Hand.Add(CardCatalog.Dodge.Id);
+            random.EnqueueDie(5);
+            random.EnqueueDie(5);
+            Check(game.Attack(0, 0, 0).Success && game.State.Phase == Phase.DefenseChoice);
+            Check(game.PlayCode(1, 0).Success && game.State.Phase == Phase.Combat && game.State.PendingAttack == null);
+            Check(game.State.Active.Hand.Count == 2 && game.State.Active.Relikia == 0 && defender.Health == 8);
+
+            (game, random) = Fixture([Attack, Bonfire, Bonfire], skill: Aim);
+            defender = game.State.Players[1];
+            defender.Skills.Add(CardCatalog.Destiny.Id);
+            defender.Hand.AddRange([Bonfire, Bonfire, Bonfire]);
+            random.EnqueueDie(5);
+            Check(game.Attack(0, 0, 0).Success && game.ResolveDefense(1, 0, [0, 1, 2]).Success);
+            Check(game.State.PendingDecision?.Source == Aim && Pick(game, 0).Success && Pick(game, 1).Success && Pick(game, -1).Success);
+            Check(game.State.Active.Hand.Count == 1 && game.State.Active.Relikia == 400 && defender.Health == 8);
+        }),
+        ("Wild Aim: un robo con el mazo agotado espera al reciclaje antes de pagar el premio una sola vez", () =>
+        {
+            var (game, random) = Fixture([Attack, Bonfire, Bonfire], skill: Aim, deckSize: 1);
+            random.EnqueueDie(5);
+            random.EnqueueDie(1);
+            Check(game.Attack(0, 0, 0).Success && Pick(game, 0).Success && Pick(game, 1).Success && Pick(game, -1).Success);
+            Check(game.State.Phase == Phase.RecycleChoice && game.State.Active.Relikia == 0 && game.State.Players[1].Health == 4);
+            game = GameEngine.FromSnapshot(game.SaveSnapshot(), random);
+            Check(game.ResolveRecycling(0, [0]).Success && game.State.Active.Hand.SequenceEqual([Bonfire]));
+            Check(game.State.Phase == Phase.Combat && game.State.PendingAttack == null && game.State.Active.Relikia == 400);
         }),
     ];
 

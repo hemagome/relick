@@ -104,10 +104,12 @@ public sealed partial class GameEngine
         var damage = DamageFor(converted ? 5 : die, normal, skill.CriticalDamage);
         if (die is >= 4 and <= 6 || converted) damage = DamageWithEquipmentBonus(actor, damage + attackDamageBonus);
         var outcome = converted ? "Normal por Tótem de Salvación" : die is < 4 or > 6 ? "Fallido" : die == 4 ? "Reducido" : die == 5 ? "Normal" : "Crítico";
-        State.LastCombat = $"{p.Name} · {outcome} · {damage} de daño" +
+        var damageText = (die is >= 4 and <= 6 || converted) && !effectsSuppressed && CardEffects.For(skill.Id) is IAttackDamageEffect
+            ? $"{damage} de daño base" : $"{damage} de daño";
+        State.LastCombat = $"{p.Name} · {outcome} · {damageText}" +
             (attackDamageBonus > 0 ? " · Súper Ataque" : "") +
             (rerolled ? $" · Dado final: {die}" : "");
-        Log($"{p.Name} usa {skill.Name} contra {State.Players[1 - actor].Name}: dado {die}, {outcome.ToLowerInvariant()}, {damage} de daño.");
+        Log($"{p.Name} usa {skill.Name} contra {State.Players[1 - actor].Name}: dado {die}, {outcome.ToLowerInvariant()}, {damageText}.");
         if (die is < 4 or > 6 && !converted) return;
         var reward = skill.Reward != CardCatalog.Get(skill.Id).Reward ? skill.Reward : (int?)null;
         State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true, NormalFromMiss: converted, EffectsSuppressed: effectsSuppressed, Reward: reward);

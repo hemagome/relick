@@ -119,6 +119,12 @@ internal abstract class CardEffect : CardRules
 /// <summary>A COMBO that is offered when an opponent's effect selects the player or a card they control.</summary>
 internal interface ITargetResponse { }
 
+/// <summary>A skill that can ask for a choice before applying its attack damage.</summary>
+internal interface IAttackDamageEffect
+{
+    bool TryPrepareDamage(GameEngine.EffectContext ctx, EngineContinuation applyDamage);
+}
+
 /// <summary>Moments of the turn when a card in play may act. Each moment's triggers run in their <c>Order</c>.</summary>
 internal enum TurnMoment { TurnStart, ActionStart, FinalStage }
 
@@ -208,7 +214,7 @@ internal static class CardEffects
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(), new NoOptionsEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new Compass16BitEffect(), new GhostDogEffect(),
-            new DualityCassetteEffect(), new GalacticEnergyCoreEffect(), new SecretRoomEffect(), new BulletEffect(),
+            new DualityCassetteEffect(), new GalacticEnergyCoreEffect(), new SecretRoomEffect(), new BulletEffect(), new WildAimEffect(),
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new PlatformsEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
             GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect(), new SalvationTotemEffect() }.ToDictionary(e => e.CardId);
 
@@ -286,6 +292,16 @@ public sealed partial class GameEngine
         }
 
         public void Draw(int count, EngineContinuation? then = null) => _engine.DrawCards(Player, count, then);
+        public IEnumerable<(int Index, string Id)> DiscardableHandCards() => _engine.PlayableCards(Actor)
+            .Where(card => card.Field == null).Select(card => (card.Index, card.Id));
+        /// <summary>Applies a skill's chosen modifiers and waits for any effects from its discard cost before applying damage.</summary>
+        public void PayAttackDiscards(IReadOnlyList<int> indices, int damageBonus, int reward, EngineContinuation applyDamage, EngineContinuation? afterDamage)
+        {
+            var attack = State.PendingAttack!;
+            State.PendingAttack = attack with { Damage = attack.Damage + damageBonus, Reward = reward,
+                ApplyDamage = applyDamage, AfterDamage = afterDamage };
+            _engine.BeginSniperChoices(Actor, _engine.DiscardHandCardsForCost(Actor, indices));
+        }
         public void ReturnMemoryCardsToDeck(IReadOnlyList<int> indices) => _engine.ReturnMemoryCardsToDeck(Actor, indices);
         /// <summary>Finishes the held physical card by corruption. A copy replayed with Relikia is already corrupt.</summary>
         public void CorruptActivationCard()

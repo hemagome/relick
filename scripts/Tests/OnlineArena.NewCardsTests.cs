@@ -226,6 +226,7 @@ public partial class OnlineArena
         await CheckSecretRoomLayout();
         CheckIronwingDieChoices();
         CheckWdDieChoices();
+        CheckWildAimChoice();
 
         for (var result = 1; result <= 10; result++)
         {
@@ -409,6 +410,40 @@ public partial class OnlineArena
         PresentTestSnapshot(DuelSnapshot.For(game, 1, 17));
         if (!_portraits[1].AssetsReady || _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose))
             throw new Exception("El rival debe ver el retrato de WD y esperar su elección.");
+    }
+
+    private void CheckWildAimChoice()
+    {
+        var aim = CardCatalog.WildAim;
+        var outlook = AttackOutlook.For(aim, 0);
+        if (BoardArt.LoadCardArtwork(aim)?.ResourcePath != "res://assets/cards/wild-aim-clean.png" ||
+            outlook.Damage(4) != "1–2" || outlook.Damage(5) != "2–4" || outlook.Damage(6) != "≥3")
+            throw new Exception("El inspector de Wild Aim debe mostrar su arte y el rango de daño de cada cara.");
+
+        var attack = CardCatalog.AttackWd.Id;
+        var bonfire = CardCatalog.Bonfire.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[bonfire, CardCatalog.Bullet.Id], []], Decks = [[attack, attack], [attack]],
+            Bonuses = [null, null], StartingSeat = 0, Relikarios = [RelikarioCatalog.Wd.Id, RelikarioCatalog.Yuno.Id]
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.DefenseChoice;
+        game.State.LastAttackDie = 5;
+        game.State.PendingAttack = new(0, aim.Id, aim.NormalDamage, Critical: false, RewardPending: true);
+        if (!game.PassDefense(1).Success) throw new Exception("No se abrió el descarte de Wild Aim.");
+        ResetAnimations();
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 18));
+        var confirm = _snapshot!.Options.Single(option => option.Move.Kind == DuelMoveKind.Choose && option.CardId == null);
+        if (!PresentsOption(confirm) || _deckSearchOptions.Length != 2)
+            throw new Exception("Wild Aim debe mostrar las cartas de la mano y permitir resolver con cero descartes.");
+        SelectCard(0);
+        var pick = _deckSearchOptions.Single(option => option.CardId == bonfire);
+        if (!PresentsOption(pick) || !pick.Move.Apply(game, 0).Success)
+            throw new Exception("El tablero debe permitir marcar una carta para Wild Aim.");
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 19));
+        if (_deckSearchOptions.Single().CardId != CardCatalog.Bullet.Id ||
+            !_snapshot!.Options.Any(option => option.Label == "Borrar selección" && PresentsOption(option)))
+            throw new Exception("La siguiente selección debe excluir la carta marcada y ofrecer borrarla.");
     }
 
     private async Task CheckAreaAndDeckArrivals()

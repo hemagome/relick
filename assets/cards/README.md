@@ -1,5 +1,29 @@
 # Cartas
 
+## Relick Wild Aim
+
+[Wild Aim (L8B-14/40)](wild-aim-clean.png) se restauró con la herramienta
+integrada `image_gen` a partir del escaneo adjunto `wild-aim.png`.
+
+Habilidad de WD. Tras confirmar un acierto y resolver las respuestas al
+ataque, el atacante puede elegir y confirmar cualquier número de descartes
+de su mano, incluso cero. Cada descarte suma 1 al daño normal (máx. 4) o al
+crítico (sin tope impreso), y 100 PR al premio base de 200 PR. Con un 4, se
+aplica la mitad del daño normal y se redondea hacia arriba.
+
+Después de resolver el daño, el atacante roba tantas cartas como descartó
+menos una, con un mínimo de cero. Si una defensa cancela solo el daño,
+Wild Aim conserva sus descartes, su robo y su premio. Un fallo sin
+conversión o un ataque anulado termina sin abrir la selección de descartes.
+[Reglamento de combate, §§ 7.1–7.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the supplied full landscape ReLick card “RELICK WILD AIM” (L8B-14/40). The attached card is the exact edit target. Remove only the repeated large diagonal translucent “RELICK” watermarks, including their faint outlines across the white shirt, technical cartoon blaster, name bar, transparent rules box and bottom. The original large green comic letters and the two WD cap logos are part of the artwork and must remain. Rebuild the underlying flat colors, linework and original bevels. Preserve the 987:697 landscape proportions, full dark outer border, the left inset portrait, the masked blond character in white and green, his pose and original fictional pixel-art and comic styling, the teal star-speckled dark background and original layout. Preserve all printed credits and text verbatim in place. Top left “BGRD. STARLINE/FREEPIK”. Top right “© 2018 FUYUHIRO GUSHIKEN”. Name “RELICK WILD AIM”. Code “L8B-14/40”. Rules panel: “ATAQUE-HABILIDAD” then “AL RESOLVER EL DAÑO DESCARTA CUALQUIER” / “NÚMERO DE CARTAS, ?: EL NÚMERO DE” / “CARTAS QUE DESCARTASTE.” / “LUEGO DE RESOLVER EL DAÑO ROBA ?-1”. Other columns “DAÑO NORMAL” with “2+?” and “MAX 4”, “DAÑO CRÍTICO” with “3+?”, and “PREMIO” with “?X100” above “+200” above “PR”. Keep every original panel, glyph, copyright notice, text, margin and border. No crop, added typography, new elements, or redesign. Return only the clean card.
+
+</details>
+
 ## Ataques L8B
 
 Cada ilustración está disponible en el editor con su Relikario y cuenta

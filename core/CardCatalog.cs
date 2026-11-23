@@ -31,6 +31,7 @@ public sealed record CardDefinition(
         "magnet-shuffle" => "1D6",
         "turbo-sword" => "1D6−1 · mín. 2",
         "multi-drive" => "Mano ÷ 2 · mín. 2",
+        "wild-aim" => "2 + descartes · máx. 4",
         _ => NormalDamageAt(counters).ToString()
     };
     public string CriticalDamageText(int counters = 0) => Id switch
@@ -39,9 +40,15 @@ public sealed record CardDefinition(
         "turbo-overlap" => "2D6 · elige uno",
         "wild-drive" => "Ataques en memoria · mín. 4",
         "multi-drive" => "Cartas en mano · mín. 4",
+        "wild-aim" => "3 + descartes",
         _ => CriticalDamageAt(counters).ToString()
     };
-    public string RewardText => Id == "multi-drive" ? "100 PR por carta · mín. 400" : $"{Reward} PR";
+    public string RewardText => Id switch
+    {
+        "multi-drive" => "100 PR por carta · mín. 400",
+        "wild-aim" => "200 PR + 100 por descarte",
+        _ => $"{Reward} PR"
+    };
 }
 
 public static class CardCatalog
@@ -176,6 +183,9 @@ public static class CardCatalog
     public static readonly CardDefinition MultiDrive = new("multi-drive", "Relick Multi Drive", CardKind.Skill,
         "Si fallas el ataque, puedes descartar una carta y relanzar el dado de ataque. El daño normal es la mitad de las cartas en tu mano (mín. 2), el crítico es ese número de cartas (mín. 4) y el premio es 100 PR por carta en tu mano (mín. 400).",
         NormalDamage: 2, CriticalDamage: 4, Reward: 400, Relikario: RelikarioCatalog.Wd.Id);
+    public static readonly CardDefinition WildAim = new("wild-aim", "Relick Wild Aim", CardKind.Skill,
+        "Al resolver el daño, descarta cualquier número de cartas de tu mano. El daño normal es 2 más los descartes (máx. 4), el crítico es 3 más los descartes y el premio es 200 PR más 100 PR por descarte. Después de resolver el daño, roba una carta menos que las que descartaste.",
+        NormalDamage: 2, CriticalDamage: 3, Reward: 200, MaxNormalDamage: 4, Relikario: RelikarioCatalog.Wd.Id);
     public static readonly CardDefinition Bullet = new("bala", "Bala", CardKind.Code, "Si esta carta es descartada, roba 1 carta.", CodeType: CodeType.Object);
     public static readonly CardDefinition IronwingRoll = new("ironwing-roll", "Relick Ironwing Roll", CardKind.Skill,
         "Destruye 2 Ataques de tu mazo (4 si es crítico) y coloca 1 contador sobre esta copia para cancelar el daño de un ataque. Con 3 contadores, destruye esta carta.",
@@ -246,7 +256,7 @@ public static class CardCatalog
         CodeType: CodeType.Character);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackYunoL8b, AttackOsamuL8b, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore, SecretRoom, AttackWd, AttackWdNs, AttackWdDt, AttackWdL8b, WildDrive, MultiDrive, Bullet }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackYunoL8b, AttackOsamuL8b, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore, SecretRoom, AttackWd, AttackWdNs, AttackWdDt, AttackWdL8b, WildDrive, MultiDrive, WildAim, Bullet }.ToDictionary(c => c.Id);
 
     // A field instance can carry copied text and a different physical card.
     internal static string TextId(string id)

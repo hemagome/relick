@@ -84,7 +84,7 @@ public sealed partial class GameEngine
                 else
                 {
                     var player = State.Players[actor];
-                    var snipers = PayWdDiscards(actor, selected);
+                    var snipers = DiscardHandCardsForCost(actor, selected);
                     ApplyEvolution(actor, RelikarioCatalog.WdLv2);
                     BeginSniperChoices(actor, snipers);
                 }
@@ -122,20 +122,6 @@ public sealed partial class GameEngine
         PlaceInExchange(player, card.CardId);
     }
 
-    private List<MemorySelection> PayWdDiscards(int actor, IEnumerable<int> indices)
-    {
-        var p = State.Players[actor];
-        var snipers = new List<MemorySelection>();
-        foreach (var index in indices.OrderDescending())
-        {
-            var id = PlayableHandCard(p, index)!;
-            var landed = DiscardHandCard(p, index);
-            Log($"{p.Name} descarta {CardCatalog.Get(id).Name}.");
-            if (landed != null && CardCatalog.Get(id).EquipOnDiscard) snipers.Add(landed);
-        }
-        return snipers;
-    }
-
     private void BeginWdPayment(int index, EngineContinuation after)
     {
         after.Next = State.WdPayment;
@@ -144,7 +130,7 @@ public sealed partial class GameEngine
         State.PendingDieRoll = null;
         _pendingDieEffect = null;
         State.Phase = Phase.WdResolving;
-        BeginSniperChoices(after.Actor, PayWdDiscards(after.Actor, [index]));
+        BeginSniperChoices(after.Actor, DiscardHandCardsForCost(after.Actor, [index]));
         CompletePendingPlay();
     }
 
