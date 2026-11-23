@@ -642,7 +642,7 @@ public partial class DeckEditor
             _cardName.Text = label;
             var cost = ArenaActionText.CardCost(card);
             var stats = card.Kind == CardKind.Skill
-                ? $"Daño {card.NormalDamageText()} · Crítico {card.CriticalDamageText()} · {card.RewardText}\n\n" : "";
+                ? CardInspectorText.SkillStats(card) + "\n\n" : "";
             _description.Text = stats + CardInspectorText.Description(card) + (cost.Length == 0 ? "" : $"\n\nCoste: {cost}");
             UpdateInspectorLayout();
         }

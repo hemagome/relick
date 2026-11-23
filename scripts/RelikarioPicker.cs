@@ -270,14 +270,12 @@ public partial class RelikarioPicker : VBoxContainer
             if (skills.Count > 0)
             {
                 side.AddChild(ArenaPresentation.Text("HABILIDADES ESPECÍFICAS", MenuVisuals.Type.Caption, BoardArt.Muted));
-                var flow = new HFlowContainer { Name = "SpecificSkills" }; flow.AddThemeConstantOverride("h_separation", 6); flow.AddThemeConstantOverride("v_separation", 6); side.AddChild(flow);
-                foreach (var skill in skills)
-                {
-                    var chip = ArenaPresentation.Text(skill.Name, MenuVisuals.Type.Caption, RelickVisuals.State.Target);
-                    var plate = RelickVisuals.Frame(Colors.Transparent, MenuVisuals.Tone.Surface.Lerp(RelickVisuals.State.Target, 0.4f), MenuVisuals.Cut.Badge);
-                    plate.ContentMarginLeft = plate.ContentMarginRight = 8; plate.ContentMarginTop = plate.ContentMarginBottom = 2;
-                    chip.AddThemeStyleboxOverride("normal", plate); flow.AddChild(chip);
-                }
+                // Wide panels show the skills as a row of cards; the narrow side column lists them with a small picture.
+                Container list = ShortScreen ? new VBoxContainer() : new HFlowContainer();
+                list.Name = "SpecificSkills";
+                list.AddThemeConstantOverride(ShortScreen ? "separation" : "h_separation", 6); list.AddThemeConstantOverride("v_separation", 6);
+                side.AddChild(list);
+                foreach (var skill in skills) list.AddChild(SkillButton(skill));
             }
         }
         if (!_selected.Playable)
@@ -292,6 +290,83 @@ public partial class RelikarioPicker : VBoxContainer
         create.Name = "CreateDeck"; create.CustomMinimumSize = new(0, 52);
         create.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         if (_selected.Playable) RelickVisuals.Primary(create);
+    }
+
+    /// <summary>A specific skill the player can read before choosing: its art, its text on hover and the enlarged card on a press.</summary>
+    private Button SkillButton(CardDefinition skill)
+    {
+        var art = SkillArtwork.Load(skill);
+        var stats = CardInspectorText.SkillStats(skill);
+        var button = new Button
+        {
+            Name = "Skill_" + skill.Id, FocusMode = FocusModeEnum.All, MouseDefaultCursorShape = CursorShape.PointingHand,
+            TooltipText = $"{skill.Name}\n{stats}\n\n{Wrap(CardInspectorText.Description(skill), 52)}\n\nToca para ampliar.",
+            AccessibilityName = $"Ampliar {skill.Name}",
+            // Skill art is landscape (about 1.42:1).
+            CustomMinimumSize = ShortScreen ? new(0, MenuVisuals.TouchTarget) : new(108, 76)
+        };
+        var plate = RelickVisuals.Frame(MenuVisuals.Tone.Well, MenuVisuals.Tone.Edge, MenuVisuals.Cut.Badge);
+        var hover = RelickVisuals.Frame(MenuVisuals.Tone.Well, RelickVisuals.State.Target, MenuVisuals.Cut.Badge, 2);
+        var focus = RelickVisuals.Frame(Colors.Transparent, RelickVisuals.State.Focus, MenuVisuals.Cut.Badge, 2); focus.DrawCenter = false;
+        foreach (var state in new[] { "normal", "disabled" }) button.AddThemeStyleboxOverride(state, plate);
+        foreach (var state in new[] { "hover", "pressed" }) button.AddThemeStyleboxOverride(state, hover);
+        button.AddThemeStyleboxOverride("focus", focus);
+
+        var picture = new TextureRect { Name = "SkillArt", Texture = art, MouseFilter = MouseFilterEnum.Ignore,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered };
+        if (ShortScreen)
+        {
+            var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; row.AddThemeConstantOverride("separation", 8);
+            row.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); row.OffsetLeft = row.OffsetTop = 4; row.OffsetRight = row.OffsetBottom = -4;
+            picture.CustomMinimumSize = new(56, 0); row.AddChild(picture);
+            var name = ArenaPresentation.Text(skill.Name.StartsWith("Relick ", StringComparison.Ordinal) ? skill.Name[7..] : skill.Name,
+                MenuVisuals.Type.Caption, RelickVisuals.State.Target);
+            name.VerticalAlignment = VerticalAlignment.Center; name.ClipText = true; name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            name.MouseFilter = MouseFilterEnum.Ignore; row.AddChild(name);
+            button.AddChild(row);
+        }
+        else
+        {
+            button.AddChild(picture);
+            picture.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); picture.OffsetLeft = picture.OffsetTop = 2; picture.OffsetRight = picture.OffsetBottom = -2;
+        }
+        button.Pressed += () => ZoomSkill(skill, art);
+        return button;
+    }
+
+    private void ZoomSkill(CardDefinition skill, Texture2D? art)
+    {
+        if (GetChildren().OfType<Window>().Any(window => window.Visible)) return;
+        var available = GetViewportRect().Size;
+        var content = new VBoxContainer(); content.AddThemeConstantOverride("separation", 10);
+        var width = Math.Min(720, available.X * 0.83f);
+        if (art != null)
+        {
+            var extent = BoardArt.FitArtwork(art, new Rect2(Vector2.Zero, new(width, available.Y * 0.55f))).Size;
+            content.AddChild(new TextureRect { Name = "EnlargedSkill", Texture = art, CustomMinimumSize = extent, MouseFilter = MouseFilterEnum.Ignore,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered });
+            width = Math.Max(320, extent.X);
+        }
+        var text = ArenaPresentation.Text($"{CardInspectorText.SkillStats(skill)}\n\n{CardInspectorText.Description(skill)}", MenuVisuals.Type.Body);
+        text.AutowrapMode = TextServer.AutowrapMode.WordSmart; content.AddChild(text);
+        var dialog = new AcceptDialog { Name = "SkillZoom", Title = skill.Name, OkButtonText = "Cerrar" };
+        MenuDialog.Fill(dialog, content, width);
+        AddChild(dialog);
+        dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
+        MenuDialog.Show(dialog);
+    }
+
+    /// <summary>Tooltips do not wrap on their own, so long rules text is broken into lines here.</summary>
+    internal static string Wrap(string text, int width)
+    {
+        var lines = new List<string>(); var line = "";
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.Length > 0 && line.Length + 1 + word.Length > width) { lines.Add(line); line = word; }
+            else line = line.Length == 0 ? word : line + " " + word;
+        }
+        if (line.Length > 0) lines.Add(line);
+        return string.Join("\n", lines);
     }
 
     /// <summary>Turns the card to a level. A manual turn holds the automatic one off for a while, so the card can be read.</summary>

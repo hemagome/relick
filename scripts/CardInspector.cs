@@ -25,6 +25,9 @@ internal static class CardInspectorText
         return card.IsCombo ? type + " · COMBO" : type;
     }
 
+    public static string SkillStats(CardDefinition card) =>
+        $"Daño {card.NormalDamageText()} · Crítico {card.CriticalDamageText()} · {card.RewardText}";
+
     public static string Description(CardDefinition card)
     {
         var text = card.Text;

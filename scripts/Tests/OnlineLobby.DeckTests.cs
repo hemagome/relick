@@ -151,6 +151,16 @@ public partial class OnlineLobby
             await ToSignal(GetTree().CreateTimer(0.6), SceneTreeTimer.SignalName.Timeout);
             Expect(picker.Level == 2 && ((TextureRect)picker.FindChild("RelikarioCard", true, false)).Texture.NativeId() == RelikarioPicker.Card("yuno", 2).NativeId() &&
                 ((Button)picker.FindChild("Level2", true, false)).ButtonPressed, "tocar la carta no la gira al nivel 2.");
+            if (picker.FindChild("SpecificSkills", true, false) is Container skillList)
+            {
+                var skillButtons = skillList.GetChildren().OfType<Button>().ToList();
+                Expect(skillButtons.Count == 4 && skillButtons.All(b => b.FindChild("SkillArt", true, false) is TextureRect { Texture: not null } && b.TooltipText.Contains("Crítico")),
+                    "las habilidades específicas de Yuno deben mostrarse con su arte y su texto.");
+                skillButtons[0].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+                Expect(picker.FindChild("SkillZoom", true, false) is AcceptDialog { Visible: true }, "tocar una habilidad específica no la amplía.");
+                foreach (var zoom in picker.GetChildren().OfType<AcceptDialog>()) zoom.Hide();
+                await Frames();
+            }
             Expect(RelikarioPicker.Monogram("Yuno 8 bits") == "Y8B" && RelikarioPicker.Monogram("Zii Jay") == "ZJ", "las iniciales de los Relikarios sin retrato son incorrectas.");
             foreach (var button in picker.FindChildren("*", "Button", true, false).OfType<Button>().Where(b => b.IsVisibleInTree() && b.GetGlobalRect().Position.Y < size.Y))
                 Expect(button.Size.Y >= 40, "un botón del selector es demasiado bajo para tocarlo.");
