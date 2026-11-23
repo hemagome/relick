@@ -64,7 +64,7 @@ public sealed partial class GameEngine
             _activeActivation is not { Kind: ActivationKind.TurnBuff } frame || PlayableHandCard(State.Players[actor], handIndex) == null)
             return CommandResult.Fail("Elige una carta de tu mano para pagar la activación pendiente.");
         var p = State.Players[actor]; var pending = State.PendingTurnBuff;
-        var paid = PlayableHandCard(p, handIndex)!; var landed = SendHandToMemory(p, handIndex);
+        var paid = PlayableHandCard(p, handIndex)!; var landed = DiscardHandCard(p, handIndex);
         var discarded = new ActivationDiscard(paid, landed?.Index ?? -1, landed == null || landed.Owner == actor ? null : landed.Owner);
         pending.PaidDiscards ??= []; pending.PaidDiscards.Add(discarded);
         if (pending.DiscardIndex < 0) { pending.DiscardId = discarded.CardId; pending.DiscardIndex = discarded.MemoryIndex; }

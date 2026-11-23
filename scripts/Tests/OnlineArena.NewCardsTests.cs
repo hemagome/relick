@@ -225,6 +225,7 @@ public partial class OnlineArena
         await CheckGalacticEnergyCoreLayout();
         await CheckSecretRoomLayout();
         CheckIronwingDieChoices();
+        CheckWdDieChoices();
 
         for (var result = 1; result <= 10; result++)
         {
@@ -374,6 +375,40 @@ public partial class OnlineArena
         CheckCosts();
         game.State.Active.Relikario = RelikarioCatalog.IronwingLv2;
         CheckCosts(1);
+    }
+
+    private void CheckWdDieChoices()
+    {
+        foreach (var card in new[] { CardCatalog.AttackWd, CardCatalog.AttackWdNs, CardCatalog.AttackWdDt,
+            CardCatalog.WildDrive, CardCatalog.MultiDrive, CardCatalog.Bullet })
+            if (BoardArt.LoadCardArtwork(card) == null)
+                throw new Exception($"Falta el arte de {card.Name} ({card.Id}).");
+
+        var attack = CardCatalog.AttackWd.Id;
+        var bala = CardCatalog.Bullet.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[bala, CardCatalog.Bonfire.Id], []],
+            Decks = [[attack, attack], [attack]], Bonuses = [null, null], StartingSeat = 0,
+            Relikarios = [RelikarioCatalog.Wd.Id, RelikarioCatalog.Yuno.Id]
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.AttackRerollChoice;
+        game.State.PendingAttackRoll = new(0, CardCatalog.WildDrive.Id, 3);
+        ResetAnimations();
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 15));
+        var boost = _snapshot!.Options.Single(o => o.Move.Kind == DuelMoveKind.WdBoost);
+        if (!PresentsOption(boost) || !PresentsKind(DuelMoveKind.AttackDie) || !_portraits[0].AssetsReady)
+            throw new Exception("El tablero de WD debe mostrar su retrato y ofrecer aumentar o confirmar el dado.");
+        if (!boost.Move.Apply(game, 0).Success) throw new Exception("No se pudo ofrecer el descarte de WD.");
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 16));
+        if (_deckSearchOptions.Length != 1 || _deckSearchOptions[0].CardId != bala)
+            throw new Exception("WD Lv 1 solo debe mostrar Bala entre las cartas de esta mano.");
+        SelectCard(0);
+        if (!PresentsOption(_deckSearchOptions[0])) throw new Exception("No aparece el botón para pagar Bala.");
+
+        PresentTestSnapshot(DuelSnapshot.For(game, 1, 17));
+        if (!_portraits[1].AssetsReady || _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose))
+            throw new Exception("El rival debe ver el retrato de WD y esperar su elección.");
     }
 
     private async Task CheckAreaAndDeckArrivals()

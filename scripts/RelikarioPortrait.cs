@@ -33,7 +33,7 @@ public partial class RelikarioPortrait : Control
     private ShaderMaterial? _restMaterial;
     internal bool ReducedMotion { get; private set; }
     /// <summary>This pose is sampled continuously from time instead of stepping through a sheet.</summary>
-    public bool IsContinuous => _osamu != null || _ironwing != null || Clips[Motion].Still;
+    public bool IsContinuous => _osamu != null || _ironwing != null || _staticPortrait != null || Clips[Motion].Still;
     private readonly Dictionary<PortraitMotion, Texture2D> _sheets = new();
     private Texture2D? _staticPortrait;
     private OsamuPortraitRig? _osamu;
@@ -57,18 +57,21 @@ public partial class RelikarioPortrait : Control
 
     public PortraitMotion Motion { get; private set; }
     public bool IsActionPlaying => !Clips[Motion].Loops;
-    public int FrameCount => _osamu != null || UsesIronwingRig ? 1 : Clips[Motion].Frames;
+    public int FrameCount => IsContinuous ? 1 : Clips[Motion].Frames;
     public double DurationSeconds => DurationFor(Motion);
     // Stabilize exact frame boundaries reached through repeated 60/120 Hz delta additions.
     public int CurrentFrame => Math.Min(FrameCount - 1, (int)(_elapsed / DurationSeconds * FrameCount + 1e-9));
-    public bool AssetsReady => _osamu != null || UsesIronwingRig || _sheets.Count == Clips.Count;
+    public bool AssetsReady => _osamu != null || UsesIronwingRig || _staticPortrait != null || _sheets.Count == Clips.Count;
+    internal bool UsesWdPortrait => _staticPortrait != null && RelikarioArt.Family(RelikarioId) == RelikarioCatalog.Wd.Id;
     /// <summary>Any form's Id; forms of one Relikario share their clips.</summary>
     public string RelikarioId { get; private set; } = RelikarioCatalog.Yuno.Id;
 
     internal (Vector2 Point, float Width) AttackLaunch(bool lob)
     {
-        // Match the glove in Yuno's extended frame and the hand in Osamu's release pose.
         var target = Placement().Target;
+        if (UsesWdPortrait)
+            return (FigurePoint(StillPortraitTarget(target), new(.89f, .18f)), target.Size.X * GetGlobalTransform().Scale.X);
+        // Match the glove in Yuno's extended frame and the hand in Osamu's release pose.
         var transform = GetGlobalTransform();
         return (FigurePoint(target, lob ? new(.67f, .54f) : new(.79f, .69f)), target.Size.X * transform.Scale.X);
     }
@@ -232,6 +235,7 @@ public partial class RelikarioPortrait : Control
             _ironwing.Advance(Motion, _elapsed, delta, ReducedMotion, FlipHorizontal);
             _sprite.QueueRedraw();
         }
+        if (_staticPortrait != null && !ReducedMotion) _sprite.QueueRedraw();
         if (CurrentFrame != previousFrame || Motion != previousMotion) Refresh();
     }
 
@@ -298,14 +302,16 @@ public partial class RelikarioPortrait : Control
             _ironwing.Draw(_sprite, target, Motion, _elapsed, FlipHorizontal, ReducedMotion);
             return;
         }
-        _sprite.DrawSetTransform(Vector2.Zero);
+        _sprite.DrawSetTransform(FlipHorizontal ? new Vector2(Size.X, 0) : Vector2.Zero, 0, new Vector2(FlipHorizontal ? -1 : 1, 1));
         if (!_sheets.TryGetValue(Motion, out var texture))
         {
             if (_staticPortrait is { } portrait)
-                _sprite.DrawTextureRect(portrait, BoardArt.FitArtwork(portrait, target.Grow(-target.Size.Y * 0.12f)), false);
+            {
+                var tint = Motion == PortraitMotion.ExhaustedIdle ? new Color(.63f, .69f, .65f) : Colors.White;
+                _sprite.DrawTextureRect(portrait, StillPortraitTarget(target), false, tint);
+            }
             return;
         }
-        if (FlipHorizontal) _sprite.DrawSetTransform(new Vector2(Size.X, 0), 0, new Vector2(-1, 1));
         if (IsContinuous)
         {
             // The still carries a transparent margin so the breath can lift the hair past the canvas edge.
@@ -317,5 +323,24 @@ public partial class RelikarioPortrait : Control
         var frameHeight = texture.GetHeight() / (FrameCount / Columns);
         var source = new Rect2((CurrentFrame % Columns) * frameWidth, (CurrentFrame / Columns) * frameHeight, frameWidth, frameHeight);
         _sprite.DrawTextureRectRegion(texture, target, source);
+    }
+
+    private Rect2 StillPortraitTarget(Rect2 target)
+    {
+        var area = BoardArt.FitArtwork(_staticPortrait!, target.Grow(-target.Size.Y * .08f));
+        if (ReducedMotion) return area;
+        var progress = (float)(_elapsed / DurationSeconds);
+        var sway = Mathf.Sin(progress * Mathf.Tau);
+        var pulse = Mathf.Sin(progress * Mathf.Pi);
+        var offset = Motion switch
+        {
+            PortraitMotion.Attack => new Vector2(-.05f * Mathf.Exp(-90 * Mathf.Pow(progress - .42f, 2)), -.015f * pulse),
+            PortraitMotion.HitCritical => new Vector2(-.09f * pulse, -.04f * pulse),
+            PortraitMotion.Hit or PortraitMotion.HitNormal => new Vector2(-.045f * pulse, 0),
+            PortraitMotion.Heal => new Vector2(0, -.04f * pulse),
+            PortraitMotion.ExhaustedIdle => new Vector2(0, .04f + .006f * sway),
+            _ => new Vector2(0, .012f * sway)
+        };
+        return new Rect2(area.Position + target.Size * offset, area.Size);
     }
 }

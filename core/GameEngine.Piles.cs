@@ -143,6 +143,7 @@ public sealed partial class GameEngine
         var id = memory[source.Index];
         memory.RemoveAt(source.Index);
         ShiftSniperIndices(source.Owner, source.Index);
+        ShiftDiscardTriggerIndices(source.Owner, source.Index);
         return id;
     }
 
@@ -199,8 +200,7 @@ public sealed partial class GameEngine
         var index = frame.MemoryIndex;
         var id = p.Memory[index];
         NotifyPileMove(State.Players[frame.Actor], id, CardZone.Activation, destination: CardZone.Corrupted, memoryOwner: frame.MemorySeat);
-        p.Memory.RemoveAt(index);
-        ShiftSniperIndices(frame.MemorySeat, index);
+        RemoveMemoryCard(new(frame.MemorySeat, index));
         p.CorruptedMemory.Add(id);
         Log($"Una carta de {p.Name} se corrompe al ir a la memoria por el efecto de Osamu.");
         return true;

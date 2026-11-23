@@ -9,7 +9,8 @@ public sealed partial class GameEngine
         if (error != null) return error;
         var p = State.Players[actor];
         if (State.Phase is not (Phase.Combat or Phase.Actions) &&
-            !(p.Relikario == RelikarioCatalog.Ironwing && State.Phase is Phase.Draw or Phase.Final))
+            !((p.Relikario == RelikarioCatalog.Ironwing || p.Relikario == RelikarioCatalog.Wd) &&
+                State.Phase is Phase.Draw or Phase.Final))
             return "Completa el efecto pendiente antes de evolucionar.";
         var next = RelikarioCatalog.EvolutionFor(p.Relikario);
         if (next == null) return "El Relikario ya está en su nivel máximo.";
@@ -20,6 +21,11 @@ public sealed partial class GameEngine
         else if (next.EvolutionMaxHealth is int maxHealth)
         {
             if (p.Health > maxHealth) return $"Requiere tener {maxHealth} vidas o menos.";
+        }
+        else if (next.EvolutionDiscards > 0)
+        {
+            if (PlayableCards(actor).Count(card => card.Field == null) < next.EvolutionDiscards)
+                return $"Necesitas {next.EvolutionDiscards} cartas en tu mano para evolucionar.";
         }
         else if (!p.HasNaturalSix) return "Requiere haber obtenido un 6 natural en un D6 durante la partida, sin relanzarlo ni modificarlo.";
         if (p.Relikia < next.EvolutionCost) return $"Necesitas {next.EvolutionCost} PR para evolucionar.";
@@ -32,8 +38,15 @@ public sealed partial class GameEngine
     {
         var error = EvolutionUnavailableReason(actor);
         if (error != null) return CommandResult.Fail(error);
+        var next = RelikarioCatalog.EvolutionFor(State.Players[actor].Relikario)!;
+        if (next.EvolutionDiscards > 0) AskWdEvolution(actor, []);
+        else ApplyEvolution(actor, next);
+        return CommandResult.Ok();
+    }
+
+    private void ApplyEvolution(int actor, RelikarioDefinition next)
+    {
         var p = State.Players[actor];
-        var next = RelikarioCatalog.EvolutionFor(p.Relikario)!;
         p.Relikia -= next.EvolutionCost;
         p.Relikario = next;
         var previousHealth = p.Health;
@@ -47,7 +60,6 @@ public sealed partial class GameEngine
             OfferOsamuSearch(actor, next.Id, OsamuEvolutionSearch);
         if (next == RelikarioCatalog.IronwingLv2 && !EffectsSuppressed(actor, FieldZone.Relikario))
             RecoverIronwingAttacks(actor);
-        return CommandResult.Ok();
     }
 
     private void RegisterNaturalSix(PlayerState p, int die)

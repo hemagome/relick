@@ -45,6 +45,7 @@ public sealed partial class GameEngine
         {
             var id = player.Hand[index];
             var landed = SendToMemory(player, id, CardZone.Hand, index, notify: false);
+            RecordDiscard(owner, id, landed);
             if (landed != null && CardCatalog.Get(id).EquipOnDiscard) snipers.Add(landed);
         }
         foreach (var index in indices.Reverse())
@@ -64,6 +65,7 @@ public sealed partial class GameEngine
         _activeActivation = frame;
         while (State.PendingReload == pending && State.Phase == Phase.ReloadResolving)
         {
+            if (pending.Stage >= 2 && TryRunDiscardEffects()) return;
             var stage = pending.Stage++;
             var owner = stage is 0 or 2 ? pending.Actor : 1 - pending.Actor;
             if (stage <= 1)

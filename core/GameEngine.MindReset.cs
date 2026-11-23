@@ -61,7 +61,7 @@ public sealed partial class GameEngine
             var p = State.Players[group.Key];
             foreach (var selection in group.OrderByDescending(m => m.Index))
             {
-                p.Deck.Add(p.Memory[selection.Index]); p.Memory.RemoveAt(selection.Index);
+                p.Deck.Add(RemoveMemoryCard(selection));
                 if (State.PendingCode is { FromMemory: true } code && code.Actor == group.Key && code.MemoryIndex > selection.Index)
                     State.PendingCode = code with { MemoryIndex = code.MemoryIndex - 1 };
                 // Suspended code activations keep their source indices aligned.

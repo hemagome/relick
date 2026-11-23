@@ -96,6 +96,7 @@ internal abstract class CardRules
     public abstract string CardId { get; }
     /// <summary>Why this card cannot be played as a code, beyond the shared costs.</summary>
     public virtual string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
+    public virtual int DrawOnDiscard => 0;
     /// <summary>The choices of a decision this card opened.</summary>
     public virtual IReadOnlyList<DecisionChoice> Choices(GameEngine.EffectContext ctx, PendingDecision decision) => [];
     public virtual void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice) { }
@@ -207,7 +208,7 @@ internal static class CardEffects
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(), new NoOptionsEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new Compass16BitEffect(), new GhostDogEffect(),
-            new DualityCassetteEffect(), new GalacticEnergyCoreEffect(), new SecretRoomEffect(),
+            new DualityCassetteEffect(), new GalacticEnergyCoreEffect(), new SecretRoomEffect(), new BulletEffect(),
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new PlatformsEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
             GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect(), new SalvationTotemEffect() }.ToDictionary(e => e.CardId);
 
@@ -412,7 +413,7 @@ public sealed partial class GameEngine
         {
             var attack = State.PendingAttack!; var attacker = State.Players[attack.Attacker];
             _engine.NotifyGuard(Actor, attack.Attacker, Card.Id, attack.Damage, 0, blocked: true);
-            if (!attack.RewardPending) attacker.Relikia = Math.Max(0, attacker.Relikia - CardCatalog.Get(attack.SkillId).Reward);
+            if (!attack.RewardPending) attacker.Relikia = Math.Max(0, attacker.Relikia - (attack.Reward ?? CardCatalog.Get(attack.SkillId).Reward));
             State.PendingAttack = null; State.Phase = Phase.Combat;
         }
 
@@ -511,6 +512,7 @@ public sealed partial class GameEngine
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor) return [];
         if (decision.TargetResponse != null)
             return [new() { Label = "Dejar resolver el efecto", Button = "Pasar", Public = "deja resolver el efecto rival.", RequiresAcknowledgement = true }];
+        if (IsWdDecision(decision)) return WdChoices(decision);
         if (CardEffects.For(decision.Source) is { } effect)
             return effect.Choices(EffectFor(actor, decision.Source), decision);
         if (decision.Source == CardCatalog.CopyHelmet.Id) return CopyHelmetChoices(decision);
@@ -538,7 +540,8 @@ public sealed partial class GameEngine
             TryOfferTargetResponse(decision.Decider, target, decision.Source, choice: choice)) return;
         State.PendingDecision = decision.Suspended;
         State.Phase = decision.ResumePhase;
-        if (CardEffects.For(decision.Source) is { } effect)
+        if (IsWdDecision(decision)) ResolveWdChoice(decision, choice);
+        else if (CardEffects.For(decision.Source) is { } effect)
             effect.Choose(EffectFor(decision.Decider, decision.Source), decision, choice);
         else if (decision.Source == CardCatalog.CopyHelmet.Id) AddCopyHelmetToRam(decision, choice);
         else if (decision.Source == CardCatalog.EquipmentRaid.Id) ResolveEquipmentRaidChoice(decision, choice);

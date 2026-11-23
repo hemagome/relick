@@ -57,6 +57,7 @@ static class DeckRulesTests
             {
                 (RelikarioCatalog.Yuno.Id, CardCatalog.Attack, CardCatalog.AttackYuno, CardCatalog.AttackIronwingDt),
                 (RelikarioCatalog.Osamu.Id, CardCatalog.Attack, CardCatalog.AttackOsamuDt, CardCatalog.AttackYunoDt),
+                (RelikarioCatalog.Wd.Id, CardCatalog.AttackWd, CardCatalog.AttackWdDt, CardCatalog.AttackIronwingNs),
                 (RelikarioCatalog.Ironwing.Id, CardCatalog.AttackIronwingUt, CardCatalog.AttackIronwingNs, CardCatalog.AttackOsamu)
             })
             {

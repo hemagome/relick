@@ -33,7 +33,8 @@ public static class DuelOptions
             result[^1].CardId = field.CardId;
         }
         if (game.CanEvolve(actor) && RelikarioCatalog.EvolutionFor(p.Relikario) is { } next)
-            Add(DuelMoveKind.Evolve, $"Evolucionar a {next.DisplayName} Lv {next.Level} · {next.EvolutionCost} PR");
+            Add(DuelMoveKind.Evolve, $"Evolucionar a {next.DisplayName} Lv {next.Level} · {next.EvolutionCost} PR" +
+                (next.EvolutionDiscards > 0 ? $" · {next.EvolutionDiscards} descartes" : ""));
         if (s.DecisionPlayer == actor)
         {
             foreach (var slot in game.IronwingFireDestructions(actor))
@@ -159,6 +160,7 @@ public static class DuelOptions
                     if (game.CanConvertD10(actor)) Add(DuelMoveKind.ConvertD10, "Era Futurista · convertir en 6");
                     if (game.CanRerollLearningDie(actor)) Add(DuelMoveKind.LearningDie, $"Relanzar por Reverse Shuffle · {2 - s.PendingDieRoll!.LearningRerolls} restantes");
                     if (game.CanUseDexterity(actor)) Add(DuelMoveKind.Dexterity, "Usar destreza · +1 al dado · 1 ficha");
+                    if (game.CanBoostWdDie(actor)) Add(DuelMoveKind.WdBoost, "WD · descartar para sumar +1");
                     for (var count = 1; count <= game.IronwingDieCostLimit(actor); count++)
                     {
                         var increase = game.IronwingDieIncrease(actor, count);

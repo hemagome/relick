@@ -18,7 +18,7 @@ public sealed partial class GameEngine
         // Canonical ordering makes an unordered UI selection replay identically.
         Array.Sort(indices);
         p.Deck.AddRange(indices.Select(i => p.Memory[i]));
-        foreach (var i in indices.Reverse()) p.Memory.RemoveAt(i);
+        foreach (var i in indices.Reverse()) RemoveMemoryCard(new(actor, i));
         Shuffle(p);
         if (indices.Length > 0) CardsReturnedToDeck?.Invoke(actor);
         Log($"{p.Name} devuelve {indices.Length} carta(s) elegidas de su memoria al mazo y lo baraja.");

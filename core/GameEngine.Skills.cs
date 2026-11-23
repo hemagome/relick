@@ -83,7 +83,7 @@ public sealed partial class GameEngine
         foreach (var index in indices.OrderDescending())
         {
             var sniper = CardCatalog.Get(PlayableHandCard(p, index)!).EquipOnDiscard;
-            var discarded = SendHandToMemory(p, index);
+            var discarded = DiscardHandCard(p, index);
             if (sniper && discarded != null) sniperIndices.Add(discarded);
         }
         p.SkillCounters[skillSlot] = p.CountersOnSkill(skillSlot) + 1;
@@ -133,7 +133,7 @@ public sealed partial class GameEngine
             State.PendingSniper != null || _activeActivation != null) return;
         State.PendingAttack = null;
         if (!attack.RewardPending) return;
-        var p = State.Players[attack.Attacker]; var reward = CardCatalog.Get(attack.SkillId).Reward;
+        var p = State.Players[attack.Attacker]; var reward = attack.Reward ?? CardCatalog.Get(attack.SkillId).Reward;
         p.Relikia += reward;
         Log($"{p.Name} obtiene {reward} PR.");
     }

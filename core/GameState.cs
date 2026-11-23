@@ -4,7 +4,7 @@ namespace Relick.Core;
 
 public enum FutureDieState { Ready, Prepared, Used }
 
-public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, ErrorResponse, RecycleChoice, SniperChoice, Final, DestructionResponse, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, GoldenTotemResolving, TrapCraftChoice, Decision }
+public enum Phase { Preparation, Combat, Actions, Discard, Finished, RelikiaChoice, DefenseChoice, MagnetChoice, AttackRerollChoice, DieRerollChoice, CodeResponse, ErrorResponse, RecycleChoice, SniperChoice, Final, DestructionResponse, TurnBuffDiscard, TurnBuffResolving, EffectDamageChoice, ReloadResolving, Draw, GoldenTotemResolving, TrapCraftChoice, Decision, WdResolving }
 
 public static class PhaseExtensions
 {
@@ -19,6 +19,8 @@ public sealed record LightEquipmentCopy(string CardId, bool Borrowed = false);
 
 public sealed class PlayerState
 {
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int WildDriveRedirects { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool AutoPassCombos { get; internal set; }
     /// <summary>
@@ -328,6 +330,10 @@ public sealed class GameState
     public List<TrapCraft>? TrapCraftQueue { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<ExchangeTrigger>? ExchangeTriggerQueue { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<DiscardTriggerBatch>? DiscardTriggers { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public EngineContinuation? WdPayment { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ZahiraRolledThisFinal { get; internal set; }
     // Next Zahira Flair of the waiting player that still has to roll in this final stage.
@@ -371,7 +377,8 @@ public sealed record PendingAttack(int Attacker, string SkillId, int Damage, boo
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool RewardPending = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool DamageResolved = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool NormalFromMiss = false,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Reward = null);
 
 public readonly record struct CommandResult(bool Success, string Message)
 {

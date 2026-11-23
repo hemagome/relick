@@ -173,6 +173,7 @@ public sealed partial class GameEngine
 
     private void CompleteActivationIfFinished()
     {
+        if (TryRunDiscardEffects()) return;
         if (FinishPlayedTargetResponse()) return;
         if (State.Phase == Phase.ReloadResolving && State.PendingReload != null) { ContinueReloadHands(); return; }
         if (State.Phase == Phase.TurnBuffResolving && State.PendingTurnBuff is { Completed: true })

@@ -61,6 +61,8 @@ internal sealed record AttackOutlook(int Normal, int Critical, bool RandomNormal
             return die switch { 4 => Range(1, 3), 5 => Range(2, 5), _ => Range(4, 7) };
         if (SkillId == CardCatalog.TurboOverlap.Id && die == 6) return Range(1, 6);
         var amount = GameEngine.DamageFor(die, Normal, Critical) * DamageMultiplier;
+        if (SkillId == CardCatalog.MultiDrive.Id || SkillId == CardCatalog.WildDrive.Id && die == 6)
+            return $"≥{amount}";
         return amount.ToString();
     }
 
@@ -269,7 +271,7 @@ public partial class CardInspector : PanelContainer
         {
             _attributeValues[0].Text = card.NormalDamageText(counters ?? 0);
             _attributeValues[1].Text = card.CriticalDamageText(counters ?? 0);
-            _attributeValues[2].Text = card.Reward + " PR";
+            _attributeValues[2].Text = card.RewardText;
         }
         CounterBadge.Present(CardCounters.For(card, counters));
         CostLabel.Text = cost; _cost.Visible = cost.Length > 0;

@@ -232,10 +232,10 @@ public sealed partial class GameEngine
     private bool CanRespondToAttackDie() => CanConvertD10(State.CurrentPlayer) || HasTurnBuffInHand(State.CurrentPlayer) || HasComboParry(State.CurrentPlayer) ||
         HasDestinyPickResponse(State.CurrentPlayer) || CanUseRelikarioOnPendingDie(State.CurrentPlayer) ||
         ActiveEquipment(State.CurrentPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.CurrentPlayer) || CanUsePc(State.CurrentPlayer) || CanUseDexterity(State.CurrentPlayer) ||
-        IronwingDieCostLimit(State.CurrentPlayer) > 0;
+        IronwingDieCostLimit(State.CurrentPlayer) > 0 || CanBoostWdDie(State.CurrentPlayer);
     private bool CanRespondToEffectDie() => CanConvertD10(State.DecisionPlayer) || HasTurnBuffInHand(State.DecisionPlayer) || HasComboParry(State.DecisionPlayer) || CanUseRelikarioOnPendingDie(State.DecisionPlayer) ||
         ActiveEquipment(State.DecisionPlayer)?.Id == CardCatalog.Pendant.Id || HasRerollCombo(State.DecisionPlayer) || CanUsePc(State.DecisionPlayer) || CanUseDexterity(State.DecisionPlayer) || CanRerollLearningDie(State.DecisionPlayer) ||
-        IronwingDieCostLimit(State.DecisionPlayer) > 0;
+        IronwingDieCostLimit(State.DecisionPlayer) > 0 || CanBoostWdDie(State.DecisionPlayer);
 
     public bool CanUsePendant(int actor, PendantEffect effect)
     {

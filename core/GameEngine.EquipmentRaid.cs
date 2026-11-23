@@ -97,8 +97,7 @@ public sealed partial class GameEngine
         var rival = State.Players[1 - actor];
         var index = rival.Memory.FindIndex(id => DeckRules.IsAttack(CardCatalog.Get(id)));
         if (index < 0) return;
-        var id = rival.Memory[index];
-        rival.Memory.RemoveAt(index); ShiftSniperIndices(1 - actor, index);
+        var id = RemoveMemoryCard(new(1 - actor, index));
         State.Players[actor].AttachedCards.Add(id);
         MarkBorrowedFieldCard(State.Players[actor], id);
         NotifyPileMove(rival, id, CardZone.Memory, index, CardZone.Attached, destinationPlayer: actor);

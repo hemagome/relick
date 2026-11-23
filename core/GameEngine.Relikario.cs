@@ -67,6 +67,11 @@ public sealed partial class GameEngine
 
     private void ResolveConfirmedAttackDie(PendingAttackRoll pending)
     {
+        if (!OfferMultiDriveRetry(pending)) ResolveAfterSkillRetry(pending);
+    }
+
+    private void ResolveAfterSkillRetry(PendingAttackRoll pending)
+    {
         if (!OfferOsamuAttackSearch(pending)) OfferIronwingBonus(pending);
     }
 
@@ -79,6 +84,13 @@ public sealed partial class GameEngine
         var attackDamageBonus = pending.SuperAttack ? CardCatalog.SuperAttack.DamageBonus : 0;
         if (pending.NormalDamage is int normal && pending.CriticalDamage is int critical)
             skill = skill with { NormalDamage = normal, CriticalDamage = critical };
+        if (!pending.EffectsSuppressed && skill.Id == CardCatalog.WildDrive.Id)
+            skill = skill with { CriticalDamage = Math.Max(4, p.Memory.Count(id => DeckRules.IsAttack(CardCatalog.Get(id)))) };
+        if (!pending.EffectsSuppressed && skill.Id == CardCatalog.MultiDrive.Id)
+        {
+            var hand = p.Hand.Count;
+            skill = skill with { NormalDamage = Math.Max(2, (hand + 1) / 2), CriticalDamage = Math.Max(4, hand), Reward = Math.Max(400, 100 * hand) };
+        }
         if (skill.Id == CardCatalog.Magnet.Id && (die is 4 or 5 || die < 4 && HasStackedTotem(pending.Attacker)))
             RollWithRelikario(p, DiePurpose.MagnetDamage, new DieEffect { Purpose = DiePurpose.MagnetDamage, Actor = pending.Attacker,
                 SkillId = skill.Id, AttackDie = die, Rerolled = pending.WasRerolled, AttackDamageBonus = attackDamageBonus });
@@ -97,7 +109,8 @@ public sealed partial class GameEngine
             (rerolled ? $" · Dado final: {die}" : "");
         Log($"{p.Name} usa {skill.Name} contra {State.Players[1 - actor].Name}: dado {die}, {outcome.ToLowerInvariant()}, {damage} de daño.");
         if (die is < 4 or > 6 && !converted) return;
-        State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true, NormalFromMiss: converted, EffectsSuppressed: effectsSuppressed);
+        var reward = skill.Reward != CardCatalog.Get(skill.Id).Reward ? skill.Reward : (int?)null;
+        State.PendingAttack = new(actor, skill.Id, damage, die == 6, RewardPending: true, NormalFromMiss: converted, EffectsSuppressed: effectsSuppressed, Reward: reward);
         if (!OfferFireDamage(actor)) PresentResolvedAttack();
     }
 

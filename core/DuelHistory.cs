@@ -407,6 +407,7 @@ internal sealed class PublicDuelObservation : IDisposable
             DuelMoveKind.IronwingRoll => $"{name} se defiende con {card}.",
             DuelMoveKind.IronwingFire => $"{name} activa {card}.",
             DuelMoveKind.IronwingDie => $"{name} destruye {m.Value} Ataque(s) de su mazo con Ironwing.",
+            DuelMoveKind.WdBoost => $"{name} considera aumentar su dado con WD.",
             DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => m.Flag ? $"{name} relanza con {(actor is 0 or 1 ? g.State.Players[actor].Relikario.DisplayName : "su Relikario")}." : $"{name} confirma el resultado del dado.",
             DuelMoveKind.Pc or DuelMoveKind.Pendant => $"{name} modifica el dado con {card}.",
             DuelMoveKind.UsePurpleRing => $"{name} usa {card} para ganar 500 PR.",

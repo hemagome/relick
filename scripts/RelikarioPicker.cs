@@ -140,7 +140,8 @@ public partial class RelikarioPicker : VBoxContainer
             corner.AddChild(soon); plate.AddChild(corner);
             plate.Modulate = new Color(1, 1, 1, 0.55f);
         }
-        var name = ArenaPresentation.Text(entry.Name, ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, entry.Playable ? BoardArt.Ink : BoardArt.Muted);
+        var name = ArenaPresentation.Text(entry.Definition?.IsVillain == true ? $"{entry.Name} · Villano" : entry.Name,
+            ShortScreen ? MenuVisuals.Type.Caption : MenuVisuals.Type.Body, entry.Playable ? BoardArt.Ink : BoardArt.Muted);
         name.Name = "TileName"; name.ClipText = true; name.MouseFilter = MouseFilterEnum.Ignore; name.AddThemeFontOverride("font", RelickVisuals.Strong);
         var labels = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
         labels.AddThemeConstantOverride("margin_left", 8); labels.AddThemeConstantOverride("margin_right", 8); labels.AddThemeConstantOverride("margin_bottom", 6);

@@ -29,6 +29,7 @@ internal static class ArenaActionText
         DuelMoveKind.AttackDie or DuelMoveKind.EffectDie => option.Move.Flag ? $"Relanzar con {RelikarioCatalog.DisplayNameOf(s.Players.ElementAtOrDefault(s.MySeat)?.RelikarioId)}" : "Conservar",
         DuelMoveKind.LearningDie => "Relanzar con Reverse",
         DuelMoveKind.Dexterity => "Destreza · +1",
+        DuelMoveKind.WdBoost => "WD · Descartar para +1",
         DuelMoveKind.Pc => "Usar PC",
         DuelMoveKind.Pendant => option.Move.Value switch { 0 => "Relanzar", 1 => "Sumar +1", _ => "Sumar +2" },
         DuelMoveKind.PassDefense or DuelMoveKind.EffectDamage => "Recibir daño",

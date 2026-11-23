@@ -214,7 +214,7 @@ public sealed partial class GameEngine
             CriticalDamage: skill.DamagePerReroll > 0 && !suppressed ? skill.CriticalDamageAt(p.CountersOnSkill(skillIndex)) : null,
             EffectsSuppressed: suppressed, SuperAttack: superAttack);
         State.Phase = Phase.AttackRerollChoice;
-        State.LastCombat = p.Relikario.Family == RelikarioCatalog.Ironwing.Id
+        State.LastCombat = p.Relikario.Family == RelikarioCatalog.Ironwing.Id || p.Relikario.Family == RelikarioCatalog.Wd.Id
             ? $"{p.Name} · Dado de ataque {die} · Conserva o modifica el resultado"
             : $"{p.Name} · Dado de ataque {die} · Decide si relanza con {p.Relikario.DisplayName}";
         ProcessAttackDie(die, new EngineContinuation { Kind = ContinuationKind.AttackDieReady, Actor = actor });
@@ -377,7 +377,7 @@ public sealed partial class GameEngine
         if (handLimit ? p.Hand.Count <= MaxHandSize : State.DiscardsRemaining <= 0)
             return CommandResult.Fail("No tienes descartes pendientes.");
         if (PlayableHandCard(p, handIndex) is not { } id) return CommandResult.Fail("Elige una carta que puedas usar.");
-        var discarded = SendHandToMemory(p, handIndex);
+        var discarded = DiscardHandCard(p, handIndex);
         Log($"{p.Name} descarta {CardCatalog.Get(id).Name}.");
         if (!handLimit)
         {
@@ -403,6 +403,7 @@ public sealed partial class GameEngine
         {
             player.LockedGhostCards = null;
             player.AttackRerollUsedThisTurn = false;
+            player.WildDriveRedirects = 0;
             player.RelikarioSearchUsedThisTurn = false;
             player.BonusEffectUsed = false; player.ExchangeEffectsUsed = null; player.IronwingFireUsed = null;
         }
@@ -442,6 +443,7 @@ public sealed partial class GameEngine
 
     private void CompletePendingPlay()
     {
+        if (TryRunDiscardEffects() || TryFinishWdPayment()) return;
         if (FinishPlayedTargetResponse()) return;
         if (_activeActivation == null && _ramResolutions.LastOrDefault() is { } ram &&
             State.Phase == ram.PlayPhase)

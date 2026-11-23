@@ -30,14 +30,18 @@ public sealed record CardDefinition(
     {
         "magnet-shuffle" => "1D6",
         "turbo-sword" => "1D6−1 · mín. 2",
+        "multi-drive" => "Mano ÷ 2 · mín. 2",
         _ => NormalDamageAt(counters).ToString()
     };
     public string CriticalDamageText(int counters = 0) => Id switch
     {
         "turbo-sword" => "1D6+1 · mín. 4",
         "turbo-overlap" => "2D6 · elige uno",
+        "wild-drive" => "Ataques en memoria · mín. 4",
+        "multi-drive" => "Cartas en mano · mín. 4",
         _ => CriticalDamageAt(counters).ToString()
     };
+    public string RewardText => Id == "multi-drive" ? "100 PR por carta · mín. 400" : $"{Reward} PR";
 }
 
 public static class CardCatalog
@@ -160,6 +164,16 @@ public static class CardCatalog
     public static readonly CardDefinition AttackIronwingUt = Attack with { Id = "attack-ironwing-ut22", ArtworkLabel = "Ironwing (UT-22/50)", Relikario = RelikarioCatalog.Ironwing.Id };
     public static readonly CardDefinition AttackIronwingDt = Attack with { Id = "attack-ironwing-dt80", ArtworkLabel = "Ironwing (DT-80/100)", Relikario = RelikarioCatalog.Ironwing.Id };
     public static readonly CardDefinition AttackIronwingNs = Attack with { Id = "attack-ironwing-ns49", ArtworkLabel = "Ironwing (NS-49/150)", Relikario = RelikarioCatalog.Ironwing.Id };
+    public static readonly CardDefinition AttackWd = Attack with { Id = "attack-wd", ArtworkLabel = "WD (clásico)", Relikario = RelikarioCatalog.Wd.Id };
+    public static readonly CardDefinition AttackWdNs = Attack with { Id = "attack-wd-ns43", ArtworkLabel = "WD (NS-43/150)", Relikario = RelikarioCatalog.Wd.Id };
+    public static readonly CardDefinition AttackWdDt = Attack with { Id = "attack-wd-dt74", ArtworkLabel = "WD (DT-74/100)", Relikario = RelikarioCatalog.Wd.Id };
+    public static readonly CardDefinition WildDrive = new("wild-drive", "Relick Wild Drive", CardKind.Skill,
+        "Una vez por turno, si una de tus cartas es descartada, puedes enviarla a tu canje. El daño crítico es el número de Ataques en tu memoria (mín. 4).",
+        NormalDamage: 3, CriticalDamage: 4, Reward: 400, Relikario: RelikarioCatalog.Wd.Id);
+    public static readonly CardDefinition MultiDrive = new("multi-drive", "Relick Multi Drive", CardKind.Skill,
+        "Si fallas el ataque, puedes descartar una carta y relanzar el dado de ataque. El daño normal es la mitad de las cartas en tu mano (mín. 2), el crítico es ese número de cartas (mín. 4) y el premio es 100 PR por carta en tu mano (mín. 400).",
+        NormalDamage: 2, CriticalDamage: 4, Reward: 400, Relikario: RelikarioCatalog.Wd.Id);
+    public static readonly CardDefinition Bullet = new("bala", "Bala", CardKind.Code, "Si esta carta es descartada, roba 1 carta.", CodeType: CodeType.Object);
     public static readonly CardDefinition IronwingRoll = new("ironwing-roll", "Relick Ironwing Roll", CardKind.Skill,
         "Destruye 2 Ataques de tu mazo (4 si es crítico) y coloca 1 contador sobre esta copia para cancelar el daño de un ataque. Con 3 contadores, destruye esta carta.",
         1, 2, 300, Relikario: RelikarioCatalog.Ironwing.Id);
@@ -229,7 +243,7 @@ public static class CardCatalog
         CodeType: CodeType.Character);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore, SecretRoom }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore, SecretRoom, AttackWd, AttackWdNs, AttackWdDt, WildDrive, MultiDrive, Bullet }.ToDictionary(c => c.Id);
 
     // A field instance can carry copied text and a different physical card.
     internal static string TextId(string id)

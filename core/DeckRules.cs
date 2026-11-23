@@ -18,8 +18,8 @@ public static class DeckRules
 
     public static bool Compatible(CardDefinition card, string relikario) => card.Relikario == null || card.Relikario == relikario;
 
-    public static string DefaultAttackArt(string relikario) => relikario == RelikarioCatalog.Ironwing.Id
-        ? CardCatalog.AttackIronwingUt.Id : CardCatalog.Attack.Id;
+    public static string DefaultAttackArt(string relikario) =>
+        RelikarioCatalog.Find(relikario)?.DefaultAttackArtId ?? CardCatalog.Attack.Id;
 
     /// <summary>Repairs older main decks that mixed Attack art or used the classic ID for Ironwing's UT art.</summary>
     public static List<string> NormalizeAttackArt(string relikario, IEnumerable<string> cards)

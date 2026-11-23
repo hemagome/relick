@@ -17,7 +17,7 @@ public sealed partial class GameEngine
     private string TakeFromMemory(int actor, int owner, int memoryIndex, string effectName = "Disquete", bool mark = false)
     {
         var source = State.Players[owner]; var recipient = State.Players[actor]; var id = source.Memory[memoryIndex];
-        source.Memory.RemoveAt(memoryIndex); ShiftSniperIndices(owner, memoryIndex);
+        RemoveMemoryCard(new(owner, memoryIndex));
         recipient.Hand.Add(id);
         if (mark) recipient.MarkForCorruption(CardZone.Hand, recipient.Hand.Count - 1);
         if (owner != actor) MarkBorrowedHandCard(recipient, recipient.Hand.Count - 1);

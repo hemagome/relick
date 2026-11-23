@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie, TakeMagnetTarget, RelikiaOpponentDiscards, InstallOpponentEquipment }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie, TakeMagnetTarget, RelikiaOpponentDiscards, InstallOpponentEquipment, DiscardEffectsComplete, WdBoostPaid, MultiDrivePaid }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -168,6 +168,9 @@ public sealed partial class GameEngine
                 if (next.Flag) DrawCards(p, 1);
                 break;
             case ContinuationKind.CompleteExchange: CompleteExchange(p, next.Next); break;
+            case ContinuationKind.DiscardEffectsComplete: CompleteActivationIfFinished(); break;
+            case ContinuationKind.WdBoostPaid: ResumeWdDie(next); break;
+            case ContinuationKind.MultiDrivePaid: RerollMultiDrive(next.Attack!); break;
             case ContinuationKind.Draw: DrawCards(p, next.Count, next.Next); break;
             case ContinuationKind.MoveHand: MoveTopCard(p, false, next.Next); break;
             case ContinuationKind.MoveBonus: MoveTopCard(p, true, next.Next); break;

@@ -24,6 +24,12 @@ public sealed record RelikarioDefinition(string Id, string Name, int MaxHealth, 
     public int AttackDieBonus => AttackDieBonusExceptOne + AttackDieBonusIncludingOne;
     [System.Text.Json.Serialization.JsonIgnore]
     public int AttackDieBonusIncludingOne { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsVillain { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int EvolutionDiscards { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? DefaultAttackArtId { get; init; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public string DisplayName => ShortName ?? Name;
@@ -54,25 +60,32 @@ public static class RelikarioCatalog
         Level: 2, EvolutionCost: 1500) { ShortName = "Osamu", BaseForm = "osamu", EvolutionMaxHealth = 4, AttackDieBonusIncludingOne = 1 };
     public static readonly RelikarioDefinition Ironwing = new("ironwing", "Ironwing CJC-019", 9,
         "Al acertar un ataque, puedes enviar al fondo del mazo las cartas de tu zona de Bonus y reponer el Bonus, hasta tres veces por ataque. En tu D6 de ataque, puedes destruir hasta 4 Ataques de tu mazo y sumar +1 por cada 2, hasta 5. Evoluciona con Agujero Negro como tu Área activa y 1200 PR.")
-        { ShortName = "Ironwing", EvolvesTo = "ironwing-lv2" };
+        { ShortName = "Ironwing", EvolvesTo = "ironwing-lv2", DefaultAttackArtId = "attack-ironwing-ut22" };
     public static readonly RelikarioDefinition IronwingLv2 = new("ironwing-lv2", "Ironwing CJC-019", Ironwing.MaxHealth,
         "Al evolucionar, devuelve hasta 5 Ataques de tu memoria al mazo y barájalo. Suma +1 a tu D6 de ataque. Cuando lances el dado de Agujero Negro, cámbialo a 6. Puedes destruir Ataques de tu mazo para sumar +1 por cada uno a un D6 propio.",
         Level: 2, EvolutionCost: 1200) { ShortName = "Ironwing", BaseForm = "ironwing", AttackDieBonusIncludingOne = 1 };
+    public static readonly RelikarioDefinition Wd = new("wd", "WD", 11,
+        "Al atacar, puedes descartar cartas Bala o de Ataque para sumar +1 al D6 de ataque por cada carta descartada, hasta 5.")
+        { EvolvesTo = "wd-lv2", IsVillain = true, DefaultAttackArtId = "attack-wd" };
+    public static readonly RelikarioDefinition WdLv2 = new("wd-lv2", "WD", Wd.MaxHealth,
+        "Al lanzar un dado, puedes descartar cualquier carta para sumar +1 por carta. Suma +1 al D6 de ataque.",
+        Level: 2, EvolutionCost: 1600, EvolutionHealing: 3)
+        { BaseForm = "wd", IsVillain = true, EvolutionDiscards = 4, AttackDieBonusIncludingOne = 1 };
 
     /// <summary>Every programmed form, evolutions included, by Id.</summary>
     public static readonly IReadOnlyDictionary<string, RelikarioDefinition> All =
-        new[] { Yuno, YunoLv2, Osamu, OsamuLv2, Ironwing, IronwingLv2 }.ToDictionary(r => r.Id);
+        new[] { Yuno, YunoLv2, Osamu, OsamuLv2, Ironwing, IronwingLv2, Wd, WdLv2 }.ToDictionary(r => r.Id);
 
     public static RelikarioDefinition? Find(string? id) => id != null && All.TryGetValue(id, out var r) ? r : null;
 
     /// <summary>Base forms a deck can be built around; evolutions are reached during the duel.</summary>
-    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno, Osamu, Ironwing];
+    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno, Osamu, Wd, Ironwing];
 
     /// <summary>Every Relikario of the game, in the order the deck builder lists them. Only those with a
     /// definition are programmed and can have decks built for them; the rest are shown as coming soon.</summary>
     public static readonly IReadOnlyList<RelikarioEntry> Roster =
     [
-        new("yuno", "Yuno", Yuno), new("osamu", "Osamu", Osamu), new("wd", "WD"), new("godkira", "Godkira"), new("jen95", "Jen95"),
+        new("yuno", "Yuno", Yuno), new("osamu", "Osamu", Osamu), new("wd", "WD", Wd), new("godkira", "Godkira"), new("jen95", "Jen95"),
         new("yuno-8bits", "Yuno 8 bits"), new("yuno-abogado", "Yuno abogado"), new("yuno-oro", "Yuno oro"), new("senshuni", "Senshuni"),
         new("zii-jay", "Zii Jay"), new("hiperman", "Hiperman"), new("ef-jen", "EF Jen"), new("ef-wd", "EF WD"), new("ironwing", "Ironwing", Ironwing),
         new("shuya", "Shuya"), new("zarpo", "Zarpo"), new("kael", "Kael"), new("kurtz", "Kurtz")

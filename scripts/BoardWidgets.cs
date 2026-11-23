@@ -41,8 +41,8 @@ public static class BoardArt
 
     internal static Texture2D? LoadCardArtwork(CardDefinition card, string? relikario = null)
     {
-        if (card.Id == CardCatalog.Attack.Id && RelikarioArt.Family(relikario) == RelikarioCatalog.Ironwing.Id)
-            return LoadCardArtwork(CardCatalog.AttackIronwingUt);
+        if (card.Id == CardCatalog.Attack.Id && RelikarioCatalog.Find(RelikarioArt.Family(relikario))?.DefaultAttackArtId is { } attack)
+            return LoadCardArtwork(CardCatalog.Get(attack));
         if (card.Id == CardCatalog.Attack.Id && relikario != null && RelikarioArt.Load(relikario, "attack-card") is { } alternate)
             return alternate;
         var path = $"res://assets/cards/{card.Id}-clean.png";

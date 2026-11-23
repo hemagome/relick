@@ -38,7 +38,7 @@ internal static class ArenaGuidance
         if (SuggestAdvance(s)) return "No quedan jugadas disponibles. " + NextStep(s);
         return s.Phase switch
         {
-            Phase.AttackRerollChoice or Phase.DieRerollChoice => s.Options.Any(o => o.Move.Kind is DuelMoveKind.Dexterity or DuelMoveKind.Pendant or DuelMoveKind.Pc or DuelMoveKind.LearningDie or DuelMoveKind.ConvertD10 or DuelMoveKind.PlayCode ||
+            Phase.AttackRerollChoice or Phase.DieRerollChoice => s.Options.Any(o => o.Move.Kind is DuelMoveKind.Dexterity or DuelMoveKind.Pendant or DuelMoveKind.Pc or DuelMoveKind.LearningDie or DuelMoveKind.ConvertD10 or DuelMoveKind.WdBoost or DuelMoveKind.PlayCode ||
                 o.Move.Kind == DuelMoveKind.IronwingDie && IsUsefulDieModifier(o, s) ||
                 o.Move.Kind is DuelMoveKind.AttackDie or DuelMoveKind.EffectDie && o.Move.Flag)
                 ? "Conserva el dado o elige cómo modificarlo." : "Confirma el resultado del dado.",

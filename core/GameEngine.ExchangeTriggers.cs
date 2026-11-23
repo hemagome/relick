@@ -20,7 +20,8 @@ public sealed partial class GameEngine
 
     private bool TryPresentExchangeTrigger()
     {
-        if (!State.Phase.IsTurnStage() || _activeActivation != null || State.PendingAttack != null || State.PendingSniper != null)
+        var canFire = State.Phase.IsTurnStage() || State.Phase == Phase.WdResolving;
+        if (!canFire || _activeActivation != null || State.PendingAttack != null || State.PendingSniper != null)
             return false;
 
         while (State.ExchangeTriggerQueue is { Count: > 0 } queue)

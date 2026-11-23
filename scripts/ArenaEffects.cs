@@ -86,7 +86,7 @@ public partial class ImpactLayer : Control
     {
         public double Age { get; set; }
         public bool Laser => RightArt == null;
-        public double Release => Laser ? IronwingPortraitRig.FireAt : Lob ? 0.42 : 0.48;
+        public double Release => Attacker.UsesIronwingRig ? IronwingPortraitRig.FireAt : Lob ? 0.42 : 0.48;
         public double Travel => Laser ? 0.24 : Lob ? 0.44 : 0.34;
         public (Vector2 Far, Vector2 Near)? Emission { get; set; }
     }
@@ -144,7 +144,7 @@ public partial class ImpactLayer : Control
     internal void LaunchAttack(RelikarioPortrait attacker, RelikarioPortrait defender)
     {
         if (ReducedMotion || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
-        var laser = attacker.UsesIronwingRig;
+        var laser = attacker.UsesIronwingRig || attacker.UsesWdPortrait;
         var art = laser ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile");
         if (!laser && art == null) return;
         var lob = RelikarioArt.Family(attacker.RelikarioId) == RelikarioCatalog.Osamu.Id;
@@ -221,6 +221,12 @@ public partial class ImpactLayer : Control
         var to = defender.AttackTarget;
         if (rightArt == null)
         {
+            if (attacker.UsesWdPortrait)
+            {
+                var (muzzle, _) = attacker.AttackLaunch(lob: false);
+                DrawLaser(muzzle - origin, to - origin, t, green: true);
+                return;
+            }
             if (!attacker.UsesIronwingRig) return;
             var (far, near) = projectile.Emission ??= attacker.IronwingGuns();
             var spread = (to - (far + near) / 2).Normalized().Orthogonal() * 4;
@@ -248,15 +254,15 @@ public partial class ImpactLayer : Control
         DrawSetTransform(Vector2.Zero);
     }
 
-    private void DrawLaser(Vector2 from, Vector2 to, float t)
+    private void DrawLaser(Vector2 from, Vector2 to, float t, bool green = false)
     {
         var head = from.Lerp(to, t);
         var tail = from.Lerp(to, Math.Max(0, t - .22f));
         if (head.DistanceSquaredTo(tail) < .01f) return;
         var opacity = 1 - Mathf.SmoothStep(.83f, 1, t) * .75f;
-        DrawLine(tail, head, new Color(.20f, .78f, 1, opacity * .23f), 11, true);
-        DrawLine(tail, head, new Color(.40f, .90f, 1, opacity * .74f), 5, true);
-        DrawLine(tail, head, new Color(.90f, 1, 1, opacity), 2, true);
+        DrawLine(tail, head, new Color(.20f, .78f, green ? .46f : 1, opacity * .23f), 11, true);
+        DrawLine(tail, head, new Color(.40f, .90f, green ? .68f : 1, opacity * .74f), 5, true);
+        DrawLine(tail, head, new Color(.90f, 1, green ? .91f : 1, opacity), 2, true);
     }
 
     private void DrawSummon(Summon s, Vector2 origin)
