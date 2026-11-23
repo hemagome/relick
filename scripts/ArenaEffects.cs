@@ -85,10 +85,12 @@ public partial class ImpactLayer : Control
     private sealed record Projectile(RelikarioPortrait Attacker, RelikarioPortrait Defender, Texture2D? RightArt, Texture2D? LeftArt, bool Lob)
     {
         public double Age { get; set; }
-        public bool Laser => RightArt == null;
-        public double Release => Attacker.UsesIronwingRig ? IronwingPortraitRig.FireAt : Lob ? 0.42 : 0.48;
+        public bool Laser => RightArt == null && !Attacker.UsesYunoOroRig;
+        public double Release => Attacker.UsesYunoOroRig ? YunoOroPortraitRig.FireAt :
+            Attacker.UsesIronwingRig ? IronwingPortraitRig.FireAt : Lob ? 0.42 : 0.48;
         public double Travel => Laser ? 0.24 : Lob ? 0.44 : 0.34;
         public (Vector2 Far, Vector2 Near)? Emission { get; set; }
+        public (Vector2 At, float Width)? GoldEmission { get; set; }
     }
     private readonly List<Projectile> _projectiles = [];
     private double _flash = FlashSeconds;
@@ -144,12 +146,12 @@ public partial class ImpactLayer : Control
     internal void LaunchAttack(RelikarioPortrait attacker, RelikarioPortrait defender)
     {
         if (ReducedMotion || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
-        var laser = attacker.UsesIronwingRig || attacker.UsesWdPortrait;
-        var art = laser ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile");
-        if (!laser && art == null) return;
+        var procedural = attacker.UsesIronwingRig || attacker.UsesWdPortrait || attacker.UsesYunoOroRig;
+        var art = procedural ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile");
+        if (!procedural && art == null) return;
         var lob = RelikarioArt.Family(attacker.RelikarioId) == RelikarioCatalog.Osamu.Id;
         // A directional sprite can preserve lettering that would be reversed by a horizontal flip.
-        var leftArt = lob || laser ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile-left");
+        var leftArt = lob || procedural ? null : RelikarioArt.Load(attacker.RelikarioId, "attack-projectile-left");
         _projectiles.Add(new(attacker, defender, art, leftArt, lob));
         SetProcess(true); QueueRedraw();
     }
@@ -219,6 +221,12 @@ public partial class ImpactLayer : Control
         if (projectile.Age < projectile.Release || !attacker.IsVisibleInTree() || !defender.IsVisibleInTree()) return;
         var t = (float)((projectile.Age - projectile.Release) / projectile.Travel);
         var to = defender.AttackTarget;
+        if (attacker.UsesYunoOroRig)
+        {
+            var (start, width) = projectile.GoldEmission ??= attacker.AttackLaunch(lob: false);
+            DrawGoldPulse(start - origin, to - origin, t, width);
+            return;
+        }
         if (rightArt == null)
         {
             if (attacker.UsesWdPortrait)
@@ -252,6 +260,26 @@ public partial class ImpactLayer : Control
         DrawSetTransform(at, rotation, new(flip ? -1 : 1, 1));
         DrawTextureRect(art, new Rect2(-size * pivot, size), false, new Color(1, 1, 1, Math.Min(1, (1 - t) * 9)));
         DrawSetTransform(Vector2.Zero);
+    }
+
+    private void DrawGoldPulse(Vector2 from, Vector2 to, float t, float width)
+    {
+        if (from.IsEqualApprox(to)) return;
+        var progress = t * (.65f + .35f * t);
+        var head = from.Lerp(to, progress);
+        var axis = (to - from).Normalized();
+        var across = axis.Orthogonal();
+        var radius = Mathf.Clamp(width * .07f, 4, 20);
+        var opacity = 1 - Mathf.SmoothStep(.84f, 1, t);
+        var gold = new Color("ffb437");
+        var light = new Color("fff0ae");
+        var tail = from.Lerp(to, Math.Max(0, progress - .16f));
+        DrawLine(tail, head, BoardArt.Tint(gold, .36f * opacity), radius * 1.3f, true);
+        DrawLine(tail, head, BoardArt.Tint(light, .72f * opacity), radius * .39f, true);
+        DrawColoredPolygon([head + axis * radius, head + across * radius * .62f,
+            head - axis * radius, head - across * radius * .62f], BoardArt.Tint(gold, opacity));
+        DrawColoredPolygon([head + axis * radius * .53f, head + across * radius * .28f,
+            head - axis * radius * .53f, head - across * radius * .28f], BoardArt.Tint(light, opacity));
     }
 
     private void DrawLaser(Vector2 from, Vector2 to, float t, bool green = false)

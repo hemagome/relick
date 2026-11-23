@@ -194,6 +194,7 @@ public partial class OnlineLobby
                 ("DeckSearchLayout", () => Arena().CheckDeckSearchLayout()),
                 ("OsamuSearchLayout", () => Arena().CheckOsamuSearchLayout()),
                 ("OsamuPresentation", () => Arena().CheckOsamuPresentation()),
+                ("YunoOroPortrait", () => Arena().CheckYunoOroPortrait()),
                 ("MemoryRecoveryLayout", () => Arena().CheckMemoryRecoveryLayout()),
                 ("PlumberStarLayout", () => Arena().CheckPlumberStarLayout()),
                 ("JessicaLayout", () => Arena().CheckJessicaLayout()),

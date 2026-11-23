@@ -33,11 +33,14 @@ public partial class RelikarioPortrait : Control
     private ShaderMaterial? _restMaterial;
     internal bool ReducedMotion { get; private set; }
     /// <summary>This pose is sampled continuously from time instead of stepping through a sheet.</summary>
-    public bool IsContinuous => _osamu != null || _ironwing != null || _staticPortrait != null || Clips[Motion].Still;
+    public bool IsContinuous => _osamu != null || _ironwing != null || _yunoOro != null || _staticPortrait != null || Clips[Motion].Still;
     private readonly Dictionary<PortraitMotion, Texture2D> _sheets = new();
     private Texture2D? _staticPortrait;
     private OsamuPortraitRig? _osamu;
     private IronwingPortraitRig? _ironwing;
+    private YunoOroPortraitRig? _yunoOro;
+    internal YunoOroPortraitRig.Pose? YunoOroPose => _yunoOro?.Current;
+    internal bool UsesYunoOroRig => _yunoOro != null;
     internal OsamuPortraitRig.Pose? OsamuPose => _osamu?.Current;
     internal bool UsesIronwingRig => _ironwing != null;
     private double _elapsed;
@@ -61,7 +64,7 @@ public partial class RelikarioPortrait : Control
     public double DurationSeconds => DurationFor(Motion);
     // Stabilize exact frame boundaries reached through repeated 60/120 Hz delta additions.
     public int CurrentFrame => Math.Min(FrameCount - 1, (int)(_elapsed / DurationSeconds * FrameCount + 1e-9));
-    public bool AssetsReady => _osamu != null || UsesIronwingRig || _staticPortrait != null || _sheets.Count == Clips.Count;
+    public bool AssetsReady => _osamu != null || UsesIronwingRig || UsesYunoOroRig || _staticPortrait != null || _sheets.Count == Clips.Count;
     internal bool UsesWdPortrait => _staticPortrait != null && RelikarioArt.Family(RelikarioId) == RelikarioCatalog.Wd.Id;
     /// <summary>Any form's Id; forms of one Relikario share their clips.</summary>
     public string RelikarioId { get; private set; } = RelikarioCatalog.Yuno.Id;
@@ -69,6 +72,8 @@ public partial class RelikarioPortrait : Control
     internal (Vector2 Point, float Width) AttackLaunch(bool lob)
     {
         var target = Placement().Target;
+        if (_yunoOro != null)
+            return (GetGlobalTransform() * _yunoOro.Launch(target, FlipHorizontal), target.Size.X * GetGlobalTransform().Scale.X);
         if (UsesWdPortrait)
             return (FigurePoint(StillPortraitTarget(target), new(.89f, .18f)), target.Size.X * GetGlobalTransform().Scale.X);
         // Match the glove in Yuno's extended frame and the hand in Osamu's release pose.
@@ -88,6 +93,7 @@ public partial class RelikarioPortrait : Control
         get
         {
             var target = Placement().Target;
+            if (_yunoOro != null) return GetGlobalTransform() * _yunoOro.Target(target, FlipHorizontal);
             return _ironwing != null ? GetGlobalTransform() * _ironwing.Target(target, FlipHorizontal) :
                 FigurePoint(target, _osamu != null ? new(.32f, .50f) : new(.44f, .62f));
         }
@@ -134,6 +140,7 @@ public partial class RelikarioPortrait : Control
         _sheets.Clear();
         _osamu = null;
         _ironwing = null;
+        _yunoOro = null;
         var family = RelikarioArt.Family(RelikarioId);
         if (family == RelikarioCatalog.Osamu.Id &&
             RelikarioArt.Load(RelikarioId, "sprite") is { } body && RelikarioArt.Load(RelikarioId, "turbo-sword") is { } sword)
@@ -148,6 +155,13 @@ public partial class RelikarioPortrait : Control
             _staticPortrait = null;
             _ironwing = new IronwingPortraitRig(hull);
             _ironwing.Advance(Motion, _elapsed, 0, ReducedMotion, FlipHorizontal);
+            return;
+        }
+        if (family == RelikarioCatalog.YunoOro.Id && RelikarioArt.Load(RelikarioId, "sprite") is { } gold)
+        {
+            _staticPortrait = null;
+            _yunoOro = new YunoOroPortraitRig(gold);
+            _yunoOro.Advance(Motion, _elapsed, 0, ReducedMotion, FlipHorizontal);
             return;
         }
         var name = RelikarioCatalog.NameOf(RelikarioId);
@@ -194,6 +208,7 @@ public partial class RelikarioPortrait : Control
     {
         _osamu?.BeginMotion();
         _ironwing?.BeginMotion();
+        _yunoOro?.BeginMotion();
         Motion = motion;
         _elapsed = 0;
         Refresh();
@@ -220,9 +235,11 @@ public partial class RelikarioPortrait : Control
                 _osamu?.BeginMotion();
                 _ironwing?.Advance(Motion, DurationSeconds, actionDelta, ReducedMotion, FlipHorizontal);
                 _ironwing?.BeginMotion();
+                _yunoOro?.Advance(Motion, DurationSeconds, actionDelta, ReducedMotion, FlipHorizontal);
+                _yunoOro?.BeginMotion();
                 delta = remaining;
                 Motion = _restMotion;
-                _elapsed = UsesIronwingRig ? remaining % DurationSeconds : 0;
+                _elapsed = UsesIronwingRig || UsesYunoOroRig ? remaining % DurationSeconds : 0;
             }
         }
         if (_osamu != null)
@@ -233,6 +250,11 @@ public partial class RelikarioPortrait : Control
         if (_ironwing != null)
         {
             _ironwing.Advance(Motion, _elapsed, delta, ReducedMotion, FlipHorizontal);
+            _sprite.QueueRedraw();
+        }
+        if (_yunoOro != null)
+        {
+            _yunoOro.Advance(Motion, _elapsed, delta, ReducedMotion, FlipHorizontal);
             _sprite.QueueRedraw();
         }
         if (_staticPortrait != null && !ReducedMotion) _sprite.QueueRedraw();
@@ -259,7 +281,7 @@ public partial class RelikarioPortrait : Control
 
     public override void _Draw()
     {
-        if (_osamu == null && _ironwing == null && !_sheets.ContainsKey(Motion) && _staticPortrait == null) return;
+        if (_osamu == null && _ironwing == null && _yunoOro == null && !_sheets.ContainsKey(Motion) && _staticPortrait == null) return;
         var (halo, radius, _) = Placement();
         if (StandingOnTable)
         {
@@ -300,6 +322,11 @@ public partial class RelikarioPortrait : Control
         if (_ironwing != null)
         {
             _ironwing.Draw(_sprite, target, Motion, _elapsed, FlipHorizontal, ReducedMotion);
+            return;
+        }
+        if (_yunoOro != null)
+        {
+            _yunoOro.Draw(_sprite, target, Motion, _elapsed, FlipHorizontal);
             return;
         }
         _sprite.DrawSetTransform(FlipHorizontal ? new Vector2(Size.X, 0) : Vector2.Zero, 0, new Vector2(FlipHorizontal ? -1 : 1, 1));
