@@ -257,7 +257,7 @@ public partial class RelikarioPicker : VBoxContainer
                 var auto = new HBoxContainer { Alignment = AlignmentMode.Center }; auto.AddThemeConstantOverride("separation", 8); side.AddChild(auto);
                 // The level buttons and the card's own tooltip say how to turn it; the bar only times the next turn.
                 _progress = new ProgressBar { Name = "AutoProgress", MaxValue = AutoSeconds, ShowPercentage = false, CustomMinimumSize = new(80, 4), SizeFlagsVertical = SizeFlags.ShrinkCenter,
-                    MouseFilter = MouseFilterEnum.Pass, TooltipText = "La carta cambia de nivel sola cada pocos segundos." };
+                    MouseFilter = MouseFilterEnum.Ignore };
                 _progress.AddThemeStyleboxOverride("background", new StyleBoxFlat { BgColor = RelickVisuals.Playmat.Frame });
                 _progress.AddThemeStyleboxOverride("fill", new StyleBoxFlat { BgColor = RelickVisuals.State.Selected });
                 auto.AddChild(_progress);
