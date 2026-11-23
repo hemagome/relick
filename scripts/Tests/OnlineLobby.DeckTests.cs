@@ -108,9 +108,17 @@ public partial class OnlineLobby
             var picker = screen.Picker!;
             Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 5 && picker.Selected.Id == "yuno",
                 "el selector no lista los 18 Relikarios con Yuno elegido.");
-            Expect(picker.Tiles["yuno"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
-                picker.Tiles["osamu"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
-                picker.Tiles["wd"].FindChild("Portrait", true, false) is TextureRect { Texture: not null }, "Yuno, Osamu y WD deben mostrar sus retratos.");
+            foreach (var form in RelikarioCatalog.Playable)
+            {
+                var tile = picker.Tiles[form.Id];
+                var portrait = tile.FindChild("Portrait", true, false) as TextureRect;
+                Expect(portrait?.Texture is AtlasTexture { Atlas: { } art, Region: var crop } &&
+                    crop.Size.X == crop.Size.Y && new Rect2(Vector2.Zero, art.GetSize()).Encloses(crop) &&
+                    portrait.FlipH == (form.Id == RelikarioCatalog.Ironwing.Id) &&
+                    tile.FindChild("Art", true, false) is PanelContainer plate &&
+                    plate.GetThemeStylebox("panel") is StyleBoxFlat { BgColor: var color } && color == MenuVisuals.Tone.Well,
+                    $"{form.Name} debe usar el encuadre cuadrado y el fondo común del selector.");
+            }
             foreach (var name in new[] { "PickerBack", "RosterGallery", "RelikarioDetail", "CreateDeck", "CardButton" })
                 Inside((Control)picker.FindChild(name, true, false), name);
             Expect(((Control)picker.FindChild("CreateDeck", true, false)).GetGlobalRect().End.Y <= size.Y + 1,

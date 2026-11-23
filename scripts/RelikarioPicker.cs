@@ -37,9 +37,23 @@ public partial class RelikarioPicker : VBoxContainer
     private bool Roomy => !ShortScreen || GetViewportRect().Size.Y >= 720;
     private float TileWidth => ShortScreen ? 96 : 132;
 
-    /// <summary>The square portrait shown on a Relikario's tile, or null while it has no art.</summary>
-    internal static Texture2D? Portrait(string relikario) =>
-        RelikarioArt.Portrait(relikario);
+    /// <summary>Frame the face or cockpit using the transparent arena art so the tile supplies the background.</summary>
+    internal static Texture2D? Portrait(string relikario)
+    {
+        var (file, region) = RelikarioArt.Family(relikario) switch
+        {
+            // idle-rest is imported at half the source resolution.
+            "yuno" => ("idle-rest", new Rect2(69, 12, 157, 157)),
+            "osamu" => ("sprite", new Rect2(180, 22, 344, 344)),
+            "wd" => ("portrait", new Rect2(158, 5, 610, 610)),
+            "yuno-oro" => ("sprite", new Rect2(94, 0, 385, 385)),
+            "ironwing" => ("sprite", new Rect2(200, 167, 850, 850)),
+            _ => (null, default(Rect2))
+        };
+        return file != null && RelikarioArt.Load(relikario, file) is { } art
+            ? new AtlasTexture { Atlas = art, Region = region, FilterClip = true }
+            : RelikarioArt.Portrait(relikario);
+    }
 
     /// <summary>The printed Relikario card at a level, or null when it has none.</summary>
     internal static Texture2D? Card(string relikario, int level) =>
@@ -120,7 +134,8 @@ public partial class RelikarioPicker : VBoxContainer
         content.AddChild(plate);
         if (Portrait(entry.Id) is { } portrait)
             plate.AddChild(new TextureRect { Name = "Portrait", Texture = portrait, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, MouseFilter = MouseFilterEnum.Ignore });
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, MouseFilter = MouseFilterEnum.Ignore,
+                FlipH = entry.Id == RelikarioCatalog.Ironwing.Id });
         else
         {
             var mono = ArenaPresentation.Text(Monogram(entry.Name), ShortScreen ? MenuVisuals.Type.Subtitle : MenuVisuals.Type.Title, MenuVisuals.Tone.Edge);
