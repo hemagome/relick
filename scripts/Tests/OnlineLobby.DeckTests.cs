@@ -219,11 +219,11 @@ public partial class OnlineLobby
                 "la ampliación no muestra el arte seleccionado.");
             ((AcceptDialog)editor.FindChild("DeckCardZoom", true, false)!).Hide();
             await Frames();
-            CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackYunoDt];
+            CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackYunoDt, CardCatalog.AttackYunoL8b];
             HandCard[] AttackTiles(DeckEditor view) => view.FindChild("CatalogCards", true, false)!.GetChildren()
                 .OfType<HandCard>().Where(tile => DeckRules.IsAttack(tile.Card)).ToArray();
             Expect(AttackTiles(editor).Select(tile => tile.Card).ToHashSet().SetEquals(variants.Append(CardCatalog.Attack)),
-                "la colección de Yuno debe mostrar solo sus tres artes.");
+                "la colección de Yuno debe mostrar sus cuatro artes.");
             var alternates = variants.Select(card => (HandCard)editor.FindChild("Catalog_" + card.Id, true, false)!).ToArray();
             Expect(alternates.All(tile => tile.FaceTexture?.ResourcePath == $"res://assets/cards/{tile.Card.Id}-clean.png") &&
                 alternates.Append(attackInCatalog).Select(tile => tile.FaceTexture.NativeId()).Distinct().Count() == variants.Length + 1,
@@ -333,20 +333,23 @@ public partial class OnlineLobby
                 Inside(button, "Un botón del banquillo");
             await Capture("deck-side");
 
-            foreach (var (relikario, initial, ns, dt) in new[]
+            foreach (var (relikario, initial, arts) in new (string, CardDefinition, CardDefinition[])[]
             {
-                (RelikarioCatalog.Osamu.Id, CardCatalog.Attack, CardCatalog.AttackOsamu, CardCatalog.AttackOsamuDt),
-                (RelikarioCatalog.Ironwing.Id, CardCatalog.AttackIronwingUt, CardCatalog.AttackIronwingNs, CardCatalog.AttackIronwingDt)
+                (RelikarioCatalog.Osamu.Id, CardCatalog.Attack, [CardCatalog.AttackOsamu, CardCatalog.AttackOsamuDt, CardCatalog.AttackOsamuL8b]),
+                (RelikarioCatalog.Wd.Id, CardCatalog.AttackWd, [CardCatalog.AttackWdNs, CardCatalog.AttackWdDt, CardCatalog.AttackWdL8b]),
+                (RelikarioCatalog.Ironwing.Id, CardCatalog.AttackIronwingUt, [CardCatalog.AttackIronwingNs, CardCatalog.AttackIronwingDt])
             })
             {
-                screen.Edit(0, "Mazo anterior", [CardCatalog.Attack.Id, CardCatalog.AttackYuno.Id, ns.Id], [], relikario: relikario);
+                var owned = arts.Select(card => card.Id).ToArray();
+                screen.Edit(0, "Mazo anterior", [CardCatalog.Attack.Id, CardCatalog.AttackYunoL8b.Id, .. owned], [], relikario: relikario);
                 await Frames();
                 var ownerEditor = screen.Editor!;
                 var tiles = AttackTiles(ownerEditor);
-                Expect(tiles.Select(tile => tile.Card).ToHashSet().SetEquals([initial, ns, dt]) &&
-                    tiles.All(tile => tile.FaceTexture != null) && tiles.Select(tile => tile.FaceTexture.NativeId()).Distinct().Count() == 3,
-                    $"la colección de {relikario} debe mostrar sus tres artes sin duplicados.");
-                Expect(ownerEditor.Main.SequenceEqual([initial.Id, initial.Id, ns.Id]) && ownerEditor.AddBlocked(CardCatalog.AttackYuno) != null,
+                Expect(tiles.Select(tile => tile.Card).ToHashSet().SetEquals(arts.Append(initial)) &&
+                    tiles.All(tile => tile.FaceTexture != null) && tiles.Select(tile => tile.FaceTexture.NativeId()).Distinct().Count() == arts.Length + 1,
+                    $"la colección de {relikario} debe mostrar todos sus artes sin duplicados.");
+                var expectedCards = new[] { initial.Id, initial.Id }.Concat(owned);
+                Expect(ownerEditor.Main.Order().SequenceEqual(expectedCards.Order()) && ownerEditor.AddBlocked(CardCatalog.AttackYunoL8b) != null,
                     $"un mazo anterior de {relikario} debe sustituir los artes ajenos por el inicial.");
             }
             RemoveChild(screen); screen.QueueFree(); await Frames();

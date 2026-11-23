@@ -16,7 +16,8 @@ public partial class OnlineArena
         Check(super != null && super.NativeId() != blue.NativeId() && super.NativeId() == BoardArt.LoadCardArtwork(CardCatalog.SuperAttack, "yuno").NativeId(),
             "Súper Ataque debe conservar su propia ilustración.");
 
-        CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt];
+        CardDefinition[] variants = [CardCatalog.AttackYuno, CardCatalog.AttackOsamu, CardCatalog.AttackYunoDt, CardCatalog.AttackOsamuDt,
+            CardCatalog.AttackYunoL8b, CardCatalog.AttackOsamuL8b, CardCatalog.AttackWdL8b];
         var game = GameEngine.FromOpening(new DuelOpening
         {
             Names = ["Osamu", "Yuno"], Relikarios = ["osamu", "yuno"],

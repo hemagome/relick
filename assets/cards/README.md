@@ -1,5 +1,46 @@
 # Cartas
 
+## Ataques L8B
+
+Cada ilustración está disponible en el editor con su Relikario y cuenta
+para el cupo de doce Ataques del mazo principal.
+
+### Osamu (L8B-9/40)
+
+Se restauró el escaneo adjunto `atk-osamu-4.png` con la herramienta integrada
+`image_gen`. El resultado es [`attack-osamu-l8b9-clean.png`](attack-osamu-l8b9-clean.png).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Asset type: full-bleed portrait ReLick Ataque card for the user's game. Input image: the supplied OSAMU card is the edit target. Remove only the repeated translucent diagonal “RELICK” watermark, including the faint outlines on the symbol and on all background rays. Reconstruct the original flat colors, straight ray edges and bevel wherever the watermark overlapped them. Match the original pixel-art scan closely, including its full outer dark border on all four edges, proportions, banner and corner positions, indigo and pale lavender rays and four indigo octagonal corner jewels, and the vertical black sword symbol with a thick beveled white and silver pixel-art outline. Retain the printed text exactly with the same position, lettering and white outlines where present. At the top center above the first banner print “L8B-9/40”. In both black banners print “ATAQUE”. At the bottom center below the lower banner retain “© 2018 FUYUHIRO GUSHIKEN”. Keep the printed copyright notice. No crop, perspective, redesign, extra text, gradients in the flat background, added marks, or change in icon geometry. Return the full clean portrait card.
+
+</details>
+
+### Yuno (L8B-8/40)
+
+Se restauró el escaneo adjunto `atk-yuno-4.png` con la herramienta integrada
+`image_gen`. El resultado es [`attack-yuno-l8b8-clean.png`](attack-yuno-l8b8-clean.png).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Asset type: full-bleed portrait ReLick Ataque card for the user's game. Input image: the supplied YUNO card is the edit target. Remove only the repeated translucent diagonal “RELICK” watermark, including the faint outlines on the symbol and on all background rays. Reconstruct the original flat colors, straight ray edges and bevel wherever the watermark overlapped them. Match the original pixel-art scan closely, including its full outer dark border on all four edges, proportions, banner and corner positions, scarlet and pale peach rays and four red octagonal corner jewels, and the black raised fist with a thick beveled white and silver pixel-art outline. Retain the printed text exactly with the same position, lettering and white outlines where present. At the top center above the first banner print “L8B-8/40”. In both black banners print “ATAQUE”. At the bottom center below the lower banner retain “© 2018 FUYUHIRO GUSHIKEN”. Keep the printed copyright notice. No crop, perspective, redesign, extra text, gradients in the flat background, added marks, or change in icon geometry. Return the full clean portrait card.
+
+</details>
+
+### WD (L8B-10/40)
+
+Se restauró el escaneo adjunto `atk-wd-4.png` con la herramienta integrada
+`image_gen`. El resultado es [`attack-wd-l8b10-clean.png`](attack-wd-l8b10-clean.png).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Asset type: full-bleed portrait ReLick Ataque card for the user's game. Input image: the supplied WD card is the edit target. Remove only the repeated translucent diagonal “RELICK” watermark, including the faint outlines on the symbol and on all background rays. Reconstruct the original flat colors, straight ray edges and bevel wherever the watermark overlapped them. Match the original pixel-art scan closely, including its full outer dark border on all four edges, proportions, banner and corner positions, emerald green and pale mint rays and four green octagonal corner jewels, and the sideways black blaster icon pointing right, with a thick beveled white and silver pixel-art outline. Retain the printed text exactly with the same position, lettering and white outlines where present. At the top center above the first banner print “L8B-10/40”. In both black banners print “ATAQUE”. At the bottom center below the lower banner retain “© 2018 FUYUHIRO GUSHIKEN”. Keep the printed copyright notice. No crop, perspective, redesign, extra text, gradients in the flat background, added marks, or change in icon geometry. Return the full clean portrait card.
+
+</details>
+
 ## Habitación Secreta
 
 `habitacion-secreta-clean.png` restaura la carta NS-19/150 con la herramienta

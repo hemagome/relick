@@ -33,31 +33,33 @@ static class DeckRulesTests
             var deck = CardCatalog.TrainingDeck().Skip(DeckRules.AttackCount).ToArray();
             foreach (var (variant, quantity) in new[] { (yuno, 6), (yunoDt, 10) })
                 Legal(deck.Concat(Enumerable.Repeat(variant, quantity)).Concat(Enumerable.Repeat(classic, 12 - quantity)).ToList(), []);
-            var mixed = deck.Concat(Enumerable.Repeat(classic, 4)).Concat(Enumerable.Repeat(yuno, 4)).Concat(Enumerable.Repeat(yunoDt, 4)).ToList();
+            var yunoL8b = CardCatalog.AttackYunoL8b.Id;
+            var mixed = deck.Concat(Enumerable.Repeat(classic, 3)).Concat(Enumerable.Repeat(yuno, 3))
+                .Concat(Enumerable.Repeat(yunoDt, 3)).Concat(Enumerable.Repeat(yunoL8b, 3)).ToList();
             Legal(mixed, []);
             Broken(Swap(mixed, CardCatalog.Pc.Id, yuno), [], "exactamente 12");
             Broken(mixed, [], [yuno, yunoDt], "no admite cartas de Ataque");
 
             var game = GameEngine.FromOpening(new DuelOpening
             {
-                Names = ["Yuno", "Osamu"], StartingSeat = 0, Hands = [[yuno, yunoDt], []], Decks = [mixed, []], Bonuses = [null, null]
+                Names = ["Yuno", "Osamu"], StartingSeat = 0, Hands = [[yunoDt, yunoL8b], []], Decks = [mixed, []], Bonuses = [null, null]
             }, new SeededRandom(3));
             game.State.Turn = 2;
             game.State.Active.Skills.Add(CardCatalog.Destiny.Id);
             var restored = GameEngine.FromSnapshot(game.SaveSnapshot(), new SeededRandom(3));
-            Check(DuelSnapshot.For(restored, 0, 1).Players[0].Hand.SequenceEqual([yuno, yunoDt]));
+            Check(DuelSnapshot.For(restored, 0, 1).Players[0].Hand.SequenceEqual([yunoDt, yunoL8b]));
             Check(DuelSnapshot.For(restored, 1, 1).Players[0].Hand.All(id => id == null));
             var attack = DuelOptions.For(restored, 0).Single(option => option.Move.Kind == DuelMoveKind.Attack && option.Move.Index == 1);
             Check(attack.Move.Apply(restored, 0).Success);
-            Check(restored.State.Players[0].Hand.SequenceEqual([yuno]) && restored.State.Players[0].Memory.Contains(yunoDt));
+            Check(restored.State.Players[0].Hand.SequenceEqual([yunoDt]) && restored.State.Players[0].Memory.Contains(yunoL8b));
         }),
         ("Mazo: las variantes pertenecen a su Relikario y los mazos antiguos conservan sus 12 Ataques", () =>
         {
             foreach (var (relikario, initial, ownArt, foreignArt) in new[]
             {
-                (RelikarioCatalog.Yuno.Id, CardCatalog.Attack, CardCatalog.AttackYuno, CardCatalog.AttackIronwingDt),
-                (RelikarioCatalog.Osamu.Id, CardCatalog.Attack, CardCatalog.AttackOsamuDt, CardCatalog.AttackYunoDt),
-                (RelikarioCatalog.Wd.Id, CardCatalog.AttackWd, CardCatalog.AttackWdDt, CardCatalog.AttackIronwingNs),
+                (RelikarioCatalog.Yuno.Id, CardCatalog.Attack, CardCatalog.AttackYunoL8b, CardCatalog.AttackWdL8b),
+                (RelikarioCatalog.Osamu.Id, CardCatalog.Attack, CardCatalog.AttackOsamuL8b, CardCatalog.AttackYunoL8b),
+                (RelikarioCatalog.Wd.Id, CardCatalog.AttackWd, CardCatalog.AttackWdL8b, CardCatalog.AttackOsamuL8b),
                 (RelikarioCatalog.Ironwing.Id, CardCatalog.AttackIronwingUt, CardCatalog.AttackIronwingNs, CardCatalog.AttackOsamu)
             })
             {
