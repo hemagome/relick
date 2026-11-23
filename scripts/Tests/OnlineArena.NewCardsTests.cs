@@ -5,6 +5,111 @@ namespace Relick;
 
 public partial class OnlineArena
 {
+    private async Task CheckTargetResponseLayout()
+    {
+        var card = CardCatalog.NoOptions;
+        if (BoardArt.LoadCardArtwork(card) == null || BoardArt.CardType(card) != "CÓDIGO · JUGADA" || !card.IsCombo)
+            throw new Exception("Falta el arte o la clasificación de Sin opciones.");
+
+        var attack = CardCatalog.Attack.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[CardCatalog.TimeBomb.Id, attack, attack], [card.Id]],
+            Decks = [[attack, attack], [attack, attack]], Bonuses = [null, null], StartingSeat = 0
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.Actions;
+        game.State.Players[1].Equipment = CardCatalog.Bonfire.Id;
+        if (!game.PlayCode(0, 0).Success) throw new Exception("No se pudo jugar Bomba de Tiempo.");
+        var target = DuelOptions.For(game, 0).Single(option => option.Field is { Owner: 1, Zone: FieldZone.Equipment });
+        if (!target.Move.Apply(game, 0).Success) throw new Exception("No se pudo seleccionar el equipo rival.");
+
+        ResetAnimations();
+        var response = DuelSnapshot.For(game, 1, 1);
+        PresentTestSnapshot(response);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var combo = response.Options.Single(option => option.Move.Kind == DuelMoveKind.PlayCode);
+        var pass = response.Options.Single(option => option.Move.Kind == DuelMoveKind.Choose);
+        if (!PlayableHandIndices.SequenceEqual([0]) || !PresentsOption(pass))
+            throw new Exception("Sin opciones debe iluminarse y permitir pasar.");
+        SelectCard(combo.Move.Index);
+        if (PresentedButton(combo) is not CardActionButton { Text: "Activar" } activate || activate.GetParent() != _cardActions)
+            throw new Exception("Sin opciones debe ofrecer Activar junto a la carta.");
+
+        if (!combo.Move.Apply(game, 1).Success) throw new Exception("No se pudo activar Sin opciones.");
+        PresentTestSnapshot(DuelSnapshot.For(game, 1, 2));
+        if (_opponentCards.Count != 1 || !_opponentCards[0].IsFaceDown || _snapshot!.Players[1].Equipment != null)
+            throw new Exception("La carta al azar queda oculta y se resuelve Bomba de Tiempo.");
+    }
+
+    private async Task CheckDualityCassetteLayout()
+    {
+        var card = CardCatalog.DualityCassette;
+        if (BoardArt.LoadCardArtwork(card) == null || BoardArt.CardType(card) != "CÓDIGO · OBJETO" || card.IsCombo)
+            throw new Exception("Falta el arte o la clasificación de Casete de Dualidad.");
+
+        var attack = CardCatalog.Attack.Id;
+        var dodge = CardCatalog.Dodge.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[card.Id], []], Decks = [[attack, dodge, attack], [attack]],
+            Bonuses = [null, null]
+        }, new SeededRandom(1));
+        game.State.Phase = Phase.Actions;
+        game.State.Active.Dexterity = 0;
+        if (!game.PlayCode(0, 0).Success) throw new Exception("No se pudo jugar el Casete.");
+
+        ResetAnimations();
+        var before = DuelSnapshot.For(game, 0, 1);
+        PresentTestSnapshot(before);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var choice = before.Options.Single(option => option.Move.Kind == DuelMoveKind.Choose && option.CardId == dodge);
+        PrepareTestOption(before.Options.IndexOf(choice));
+        if (!ChoosingMemoryRecovery || PresentedButton(choice) == null)
+            throw new Exception("Las corruptas elegibles deben aparecer en la galería con un botón de recuperación.");
+
+        var events = DuelVisualEvents.Capture(game);
+        if (!choice.Move.Apply(game, 0).Success) throw new Exception("No se pudo recuperar la carta del Casete.");
+        var after = DuelSnapshot.For(game, 0, 2);
+        after.Visuals = events;
+        var flight = CaptureOrigins(after, before).Values.Single(cue => cue.Event.Source == CardZone.Corrupted);
+        if (flight.Face != dodge || flight.StartsFaceUp != false || flight.EndsFaceUp != true)
+            throw new Exception("La carta recuperada se gira únicamente al llegar a su mano.");
+    }
+
+    private async Task CheckGalacticEnergyCoreLayout()
+    {
+        var card = CardCatalog.GalacticEnergyCore;
+        if (BoardArt.LoadCardArtwork(card) == null || BoardArt.CardType(card) != "CÓDIGO · OBJETO" || card.IsCombo)
+            throw new Exception("Falta el arte o la clasificación de Núcleo Energético Galáctico x3.");
+
+        var attack = CardCatalog.Attack.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[card.Id], []], Decks = [[attack], [attack]], Bonuses = [null, null]
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.Actions;
+        game.State.Active.Memory.AddRange([attack, CardCatalog.Bonfire.Id, attack, attack, attack]);
+        if (!game.PlayCode(0, 0).Success) throw new Exception("No se pudo jugar el Núcleo.");
+
+        ResetAnimations();
+        var before = DuelSnapshot.For(game, 0, 1);
+        PresentTestSnapshot(before);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (!ChoosingMemoryRecovery || _deckSearchOptions.Length != 4 || _deckSearchOptions.Any(option => option.CardId != attack))
+            throw new Exception("El Núcleo debe mostrar solo los cuatro Ataques de la memoria.");
+        var first = _deckSearchOptions[0];
+        SelectCard(0);
+        if (!PresentsOption(first) || !first.Move.Apply(game, 0).Success || !game.ResolveDecision(0, 0).Success)
+            throw new Exception("La galería debe permitir elegir las primeras dos copias.");
+        var second = DuelSnapshot.For(game, 0, 2);
+        PresentTestSnapshot(second);
+        if (_deckSearchOptions.Length != 2 || !game.ResolveDecision(0, 0).Success)
+            throw new Exception("Quedan dos candidatos para elegir el tercer Ataque.");
+        PresentTestSnapshot(DuelSnapshot.For(game, 0, 3));
+        if (ChoosingEffectCards || _handCards.Count != 2 || _snapshot!.Players[0].CorruptedCards?.Single() != card.Id)
+            throw new Exception("El tablero vuelve a la mano con dos cartas y muestra el Núcleo en corruptas.");
+    }
+
     internal async Task CheckNewCardsLayout()
     {
         foreach (var card in new[] { CardCatalog.MagicTome, CardCatalog.CopyHelmet, CardCatalog.FutureEra, CardCatalog.Platforms,
@@ -79,6 +184,9 @@ public partial class OnlineArena
         }
 
         await CheckAreaAndDeckArrivals();
+        await CheckTargetResponseLayout();
+        await CheckDualityCassetteLayout();
+        await CheckGalacticEnergyCoreLayout();
         CheckIronwingDieChoices();
 
         for (var result = 1; result <= 10; result++)

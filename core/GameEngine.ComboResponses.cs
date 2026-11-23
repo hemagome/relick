@@ -17,6 +17,7 @@ public sealed partial class GameEngine
             // Already-started effects, skill/equipment decisions and targets remain manual.
             switch (State.Phase)
             {
+                case Phase.Decision when WaitingForTargetResponse(actor): ResolveDecision(actor, 0); resumed = true; break;
                 case Phase.ErrorResponse: PassErrorResponse(actor); resumed = true; break;
                 case Phase.EffectDamageChoice: ResolveEffectDamage(actor); resumed = true; break;
                 case Phase.DefenseChoice when !CanDefend(actor, State.PendingAttack!.Critical):

@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie, TakeMagnetTarget, RelikiaOpponentDiscards, InstallOpponentEquipment }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -65,6 +65,8 @@ public sealed class EngineActivation
     public bool EquipOpponent { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public int EquipmentRecipient => EquipOpponent ? 1 - Actor : Actor;
     public bool CanInterrupt { get; set; } = true;
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RespondsToTarget { get; set; }
     public bool FromMemory { get; set; }
     public int MemoryIndex { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
@@ -135,6 +137,9 @@ public sealed partial class GameEngine
             case ContinuationKind.EquipInstall: FinishEquipmentInstall(); break;
             case ContinuationKind.ReplaceEquipment: ReplaceEquipment(next); break;
             case ContinuationKind.BlockOpponentEquipment: CompleteActivationIfFinished(); break;
+            case ContinuationKind.InstallOpponentEquipment: BeginEquipmentInstall(_activeActivation!, offerResponse: false); break;
+            case ContinuationKind.TakeMagnetTarget: FinishMagnetChoice(next); break;
+            case ContinuationKind.RelikiaOpponentDiscards: ResolveRelikiaOpponentDiscards(next.Actor); break;
             case ContinuationKind.PlaceSuperMagnet: FinishSuperMagnetPlacement(next.Actor); break;
             case ContinuationKind.PlaceZahira: FinishZahiraPlacement(next); break;
             case ContinuationKind.FinishZahiraDestruction: FinishZahiraDestruction(next); break;

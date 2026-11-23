@@ -25,6 +25,7 @@ internal static class DiePurposes
         // someone decides it should.
         [DiePurpose.BlackHole] = new("Agujero Negro · Dado de Área", null),
         [DiePurpose.GhostDog] = new("Perro Fantasma · Recuperación", null),
+        [DiePurpose.DualityCassette] = new("Casete de Dualidad · Corrupción", CardCatalog.DualityCassette.Id),
     };
 
     /// <summary>The caption under the die; Turbo Overlap numbers its two damage dice.</summary>

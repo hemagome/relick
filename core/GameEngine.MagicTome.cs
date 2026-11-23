@@ -177,11 +177,11 @@ public sealed partial class GameEngine
         return id;
     }
 
-    private void FinishHeldCard(EngineActivation frame)
+    private void FinishHeldCard(EngineActivation frame, bool corrupt = false)
     {
         if (frame.HeldCard is not { } physical) return;
         frame.HeldCard = null;
-        var marked = frame.CorruptOnMemory;
+        var marked = frame.CorruptOnMemory || corrupt;
         frame.CorruptOnMemory = false;
         if (frame.TomeSource is { } source && TomeProtects(State.Players[frame.Actor], source))
         {

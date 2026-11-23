@@ -37,7 +37,8 @@ internal sealed class DestinyPickEffect : CardEffect
         var choices = new List<DecisionChoice>
         {
             new() { Label = "Robar 1 carta", Value = Draw, Public = "elige robar 1 carta con Púa del Destino." },
-            new() { Label = "Hacer 1 daño no letal", Value = Damage, Public = "elige hacer 1 daño no letal con Púa del Destino." }
+            new() { Label = "Hacer 1 daño no letal", Value = Damage, TargetPlayer = 1 - ctx.Actor,
+                Public = "elige hacer 1 daño no letal con Púa del Destino." }
         };
         if (ctx.ResettableMemoryCards().Any())
             choices.Add(new() { Label = "Corromper 1 carta", Value = Corrupt, Public = "elige corromper una carta con Púa del Destino." });

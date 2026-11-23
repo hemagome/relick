@@ -91,6 +91,9 @@ public sealed partial class GameEngine
         if (PlayableHandCard(p, handIndex) is not { } id || CardCatalog.Get(id).Kind != CardKind.Code) return "Elige un código que puedas usar.";
         var card = CardCatalog.Get(id);
         if (State.Phase is Phase.TrapCraftChoice) return "Completa la decisión del Código Trampa antes de jugar.";
+        if (State.Phase == Phase.Decision && State.PendingDecision is { TargetResponse.Played: false } &&
+            (!WaitingForTargetResponse(actor) || CardEffects.For(id) is not ITargetResponse))
+            return "Responde al objetivo rival o deja que se resuelva.";
         if (State.Phase == Phase.Decision && State.PendingDecision is { AllowsCombos: false } decision)
             return $"Decide primero: {decision.Title()}.";
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||

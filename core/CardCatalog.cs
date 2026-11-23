@@ -80,6 +80,12 @@ public static class CardCatalog
         CodeType: CodeType.Object, IsCombo: true, DiscardForTurnBuff: true, DiscardCost: 1);
     public static readonly CardDefinition FloppyDisk = new("floppy-disk", "Disquete", CardKind.Code,
         "Selecciona una carta de cualquier memoria y añádela a tu mano. No puede recuperar la copia que se está activando; sí otra copia de Disquete.", CodeType: CodeType.Object);
+    public static readonly CardDefinition DualityCassette = new("casete-de-dualidad", "Casete de Dualidad", CardKind.Code,
+        "Lanza 1D6 y corrompe ese número de cartas del tope de tu mazo: añade la mitad de esas cartas corruptas a tu mano. Si sacas 6: añade una carta corrupta.",
+        CodeType: CodeType.Object);
+    public static readonly CardDefinition GalacticEnergyCore = new("nucleo-energetico-galactico", "Núcleo Energético Galáctico x3", CardKind.Code,
+        "Envía exactamente 3 cartas de Ataque de tu memoria a tu mazo, revuelve y roba 2 cartas. Luego corrompe esta carta.",
+        CodeType: CodeType.Object);
     public static readonly CardDefinition Bonfire = new("bonfire", "Hoguera", CardKind.Equipment,
         "Al equipar: gana +1 vida. Mientras esta carta esté equipada, todos los daños que recibas se transforman en 0. Destruye esta carta al inicio de tu siguiente turno luego de haber sido equipada.",
         Heal: 1, DestroyAtNextTurnStart: true);
@@ -115,6 +121,9 @@ public static class CardCatalog
         CodeType: CodeType.Play);
     public static readonly CardDefinition ComboParry = new("combo-parry", "Combo Parry", CardKind.Code,
         "COMBO. Tu adversario revela su mano y envía a su mazo todas las cartas COMBO de su mano. Luego baraja su mazo. No se pueden activar COMBO en respuesta a esta carta.",
+        CodeType: CodeType.Play, IsCombo: true);
+    public static readonly CardDefinition NoOptions = new("sin-opciones", "Sin opciones", CardKind.Code,
+        "COMBO. Si tu adversario usa un efecto que te seleccione a ti o a las cartas que controlas: descarta toda la mano del adversario excepto 1 carta al azar.",
         CodeType: CodeType.Play, IsCombo: true);
     public static readonly CardDefinition DestinyPick = new("pua-del-destino", "Púa del Destino", CardKind.Code,
         "COMBO. Escoge uno: roba 1 carta, haz 1 punto de daño no letal a tu adversario o corrompe 1 carta de cualquier memoria. Como una acción en tu etapa de acciones, puedes corromper esta carta de tu memoria para usar su efecto.",
@@ -217,7 +226,7 @@ public static class CardCatalog
         CodeType: CodeType.Character);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore }.ToDictionary(c => c.Id);
 
     // A field instance can carry copied text and a different physical card.
     internal static string TextId(string id)

@@ -161,15 +161,34 @@ public sealed partial class GameEngine
         if (fromArea && !fromBonus || (fromBonus ? fieldCard == null : !InHand(rival, handIndex)))
             return CommandResult.Fail("Elige una carta de la mano del rival o de su Bonus.");
         var id = fromBonus ? fieldCard! : rival.Hand[handIndex];
-        State.Phase = Phase.Combat;
-        if (fromBonus && TryReplaceOpponentFieldEffect(actor, new(1 - actor, zone, -1, id)))
-            return CommandResult.Ok();
-        if (fromArea) TakeArea(rival, State.Active);
-        else if (fromBonus) TakeBonus(rival, State.Active);
-        else MoveCardBetweenHands(rival, State.Active, handIndex);
-        Log($"{State.Active.Name} toma {CardCatalog.Get(id).Name} de {rival.Name} ({(fromArea ? "Área" : fromBonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
-        if (fromBonus && !fromArea) RefillBonus(rival);
-        CompletePendingPlay();
+        var next = new EngineContinuation { Kind = ContinuationKind.TakeMagnetTarget, Actor = actor,
+            Target = new(1 - actor, fromBonus ? zone : FieldZone.Hand, fromBonus ? -1 : handIndex, id) };
+        if (!TryOfferTargetResponse(actor, 1 - actor, CardCatalog.Magnet.Id, continuation: next)) Continue(next);
         return CommandResult.Ok();
+    }
+
+    private void FinishMagnetChoice(EngineContinuation next)
+    {
+        var actor = next.Actor;
+        var rival = State.Players[1 - actor];
+        if (next.Target is not { } target || (target.Zone switch
+            {
+                FieldZone.Area => rival.Area,
+                FieldZone.Bonus => rival.Bonus,
+                _ => rival.Hand.ElementAtOrDefault(target.Index)
+            }) != target.CardId)
+        {
+            if (rival.Hand.Count == 0 && rival.Bonus == null && rival.Area == null) SkipMagnet(actor);
+            return;
+        }
+
+        State.Phase = Phase.Combat;
+        if (TryReplaceOpponentFieldEffect(actor, target)) return;
+        if (target.Zone == FieldZone.Area) TakeArea(rival, State.Active);
+        else if (target.Zone == FieldZone.Bonus) TakeBonus(rival, State.Active);
+        else MoveCardBetweenHands(rival, State.Active, target.Index);
+        Log($"{State.Active.Name} toma {CardCatalog.Get(target.CardId).Name} de {rival.Name} ({(target.Zone == FieldZone.Area ? "Área" : target.Zone == FieldZone.Bonus ? "Bonus" : "mano")}) por Magnet Shuffle.");
+        if (target.Zone == FieldZone.Bonus) RefillBonus(rival);
+        CompletePendingPlay();
     }
 }

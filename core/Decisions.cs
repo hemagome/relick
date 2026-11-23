@@ -17,7 +17,7 @@ public enum DecisionKind
 /// One choice of a pending decision. Choices are computed live by the card's effect each time they are needed,
 /// so they always reflect the current board and are never stored; only the decider ever receives them.
 /// </summary>
-public sealed class DecisionChoice
+public sealed record DecisionChoice
 {
     /// <summary>Full description for the decider ("Destruir Hoguera de Beto · equipo").</summary>
     public string Label { get; init; } = "";
@@ -27,6 +27,9 @@ public sealed class DecisionChoice
     public string Public { get; init; } = "";
     public string? CardId { get; init; }
     public FieldTarget? Field { get; init; }
+    /// <summary>The player explicitly targeted by an effect when there is no field target.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TargetPlayer { get; init; }
     /// <summary>Whose pile the card comes from (a memory), so a gallery can group it; null for the decider's own cards.</summary>
     public int? Owner { get; init; }
     /// <summary>Effect-specific payload: a deck position, whether to pay.</summary>
@@ -67,6 +70,8 @@ public sealed class PendingDecision
     public PendingAttackRoll? Attack { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public EngineContinuation? Continuation { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TargetResponse? TargetResponse { get; set; }
 
     public string Title() => CardCatalog.All.TryGetValue(Source, out var card) ? card.Name : RelikarioCatalog.NameOf(Source);
 }
@@ -103,11 +108,16 @@ internal abstract class CardRules
 /// </summary>
 internal abstract class CardEffect : CardRules
 {
+    /// <summary>The physical copy waits outside memory while its activation resolves.</summary>
+    public virtual bool HoldsActivationCard => false;
     /// <summary>Why the card cannot be activated now, beyond the common costs; <paramref name="excludedHand"/> is the card itself.
     /// Null by default: the card has no restriction of its own.</summary>
     public virtual string? Unavailable(GameEngine.EffectContext ctx, int excludedHand) => null;
     public abstract void Resolve(GameEngine.EffectContext ctx);
 }
+
+/// <summary>A COMBO that is offered when an opponent's effect selects the player or a card they control.</summary>
+internal interface ITargetResponse { }
 
 /// <summary>Moments of the turn when a card in play may act. Each moment's triggers run in their <c>Order</c>.</summary>
 internal enum TurnMoment { TurnStart, ActionStart, FinalStage }
@@ -196,8 +206,9 @@ internal static class CardEffects
             new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
-            new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(),
+            new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(), new NoOptionsEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new Compass16BitEffect(), new GhostDogEffect(),
+            new DualityCassetteEffect(), new GalacticEnergyCoreEffect(),
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new PlatformsEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
             GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect(), new SalvationTotemEffect() }.ToDictionary(e => e.CardId);
 
@@ -275,6 +286,12 @@ public sealed partial class GameEngine
         }
 
         public void Draw(int count, EngineContinuation? then = null) => _engine.DrawCards(Player, count, then);
+        public void ReturnMemoryCardsToDeck(IReadOnlyList<int> indices) => _engine.ReturnMemoryCardsToDeck(Actor, indices);
+        /// <summary>Finishes the held physical card by corruption. A copy replayed with Relikia is already corrupt.</summary>
+        public void CorruptActivationCard()
+        {
+            if (_engine._activeActivation is { } frame) _engine.FinishHeldCard(frame, corrupt: true);
+        }
         public void DealNonlethalDamage(int amount, EngineContinuation then)
         {
             then.NonlethalDamageTarget = 1 - Actor;
@@ -286,6 +303,15 @@ public sealed partial class GameEngine
         public void SwapHands() => _engine.SwapHands(Actor);
         /// <summary>Both players discard their hands and draw this card's <c>Draw</c>, with Mira de Sniper triggers in between.</summary>
         public void ReloadBothHands() => _engine.BeginReloadHands(Actor);
+        public bool CanRespondToTarget() => _engine.WaitingForTargetResponse(Actor);
+        public void DiscardHandExceptRandomCard(int seat)
+        {
+            var player = State.Players[seat];
+            var count = player.Hand.Count;
+            var discarded = count > 1 ? _engine.DiscardHandCards(seat, Random(count)) : [];
+            Announce($"{Card.Name} · {player.Name} descarta {Math.Max(0, count - 1)} carta(s).");
+            _engine.BeginSniperChoices(seat, discarded);
+        }
         /// <summary>Shows these Tótems de Salvación and places them with Tótem de Oro on top, through the engine's placement sequence.</summary>
         public void DeployGoldenTotem(int[] handIndices) => _engine.DeployGoldenTotem(Actor, handIndices);
         public void DeployGalacticShield() => _engine.DeployGalacticShield(Actor);
@@ -419,14 +445,17 @@ public sealed partial class GameEngine
         public void EndMindReset() { _engine.EndMindResetActivation(); _engine.CompleteEndTurnIfReady(); }
         /// <summary>Moves a memory card to this player's hand; a card from the rival's memory stays marked as foreign.</summary>
         public string TakeFromMemory(int owner, int index) => _engine.TakeFromMemory(Actor, owner, index, Card.Name);
+        public int CorruptDeckTop(int count) => _engine.CorruptDeckTop(Player, count);
         /// <summary>Moves a corrupted card to this player's hand and returns its hand slot; a rival's card stays marked as foreign.</summary>
         public int TakeCorruptedCard(int owner, int index)
         {
-            var cards = State.Players[owner].CorruptedMemory;
+            var source = State.Players[owner];
+            var id = source.CorruptedMemory[index];
             var slot = Player.Hand.Count;
-            Player.Hand.Add(cards[index]);
-            cards.RemoveAt(index);
+            source.CorruptedMemory.RemoveAt(index);
+            Player.Hand.Add(id);
             if (owner != Actor) _engine.MarkBorrowedHandCard(Player, slot);
+            _engine.NotifyPileMove(source, id, CardZone.Corrupted, slot, CardZone.Hand, destinationPlayer: Actor, sourceIndex: index);
             return slot;
         }
         /// <summary>Moves <paramref name="owner"/>'s Bonus to this player's hand, without refilling it.</summary>
@@ -479,6 +508,8 @@ public sealed partial class GameEngine
     public IReadOnlyList<DecisionChoice> DecisionChoices(int actor)
     {
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor) return [];
+        if (decision.TargetResponse != null)
+            return [new() { Label = "Dejar resolver el efecto", Button = "Pasar", Public = "deja resolver el efecto rival.", RequiresAcknowledgement = true }];
         if (CardEffects.For(decision.Source) is { } effect)
             return effect.Choices(EffectFor(actor, decision.Source), decision);
         if (decision.Source == CardCatalog.CopyHelmet.Id) return CopyHelmetChoices(decision);
@@ -499,8 +530,11 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void ApplyDecision(PendingDecision decision, DecisionChoice choice)
+    private void ApplyDecision(PendingDecision decision, DecisionChoice choice, bool allowTargetResponse = true)
     {
+        if (decision.TargetResponse != null) { ResumeTargetedEffect(decision); return; }
+        if (allowTargetResponse && (choice.TargetPlayer ?? choice.Field?.Owner) is int target &&
+            TryOfferTargetResponse(decision.Decider, target, decision.Source, choice: choice)) return;
         State.PendingDecision = decision.Suspended;
         State.Phase = decision.ResumePhase;
         if (CardEffects.For(decision.Source) is { } effect)

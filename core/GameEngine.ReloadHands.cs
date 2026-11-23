@@ -23,22 +23,36 @@ public sealed partial class GameEngine
         foreach (var owner in new[] { actor, 1 - actor })
         {
             var p = State.Players[owner];
-            if (p.Hand.Count > 0) HandDiscarded?.Invoke(owner, p.Hand.Count);
             Log($"{p.Name} descarta su mano de {p.Hand.Count} carta(s) por Cartucho de Re-carga.");
-            for (var i = 0; i < p.Hand.Count; i++)
-            {
-                // One face-down packet is announced above; borrowed copies still reach their owner's memory.
-                var landed = SendToMemory(p, p.Hand[i], CardZone.Hand, i, notify: false);
-                if (landed == null || !CardCatalog.Get(p.Hand[i]).EquipOnDiscard) continue;
-                pending.SniperIndices[owner].Add(landed.Index); sniperOwners[owner].Add(landed.Owner);
-            }
-            p.Hand.Clear(); p.HideHandCards(); p.ForeignHandSlots = null;
-            p.GhostDogReveals = null; p.LockedGhostCards = null;
-            p.ClearCorruptionMarks(CardZone.Hand);
+            var discarded = DiscardHandCards(owner);
+            pending.SniperIndices[owner].AddRange(discarded.Select(card => card.Index));
+            sniperOwners[owner].AddRange(discarded.Select(card => card.Owner));
+            if (discarded.Any(card => card.Owner != owner)) pending.SniperOwners = sniperOwners;
         }
-        if (Enumerable.Range(0, 2).Any(owner => sniperOwners[owner].Any(seat => seat != owner))) pending.SniperOwners = sniperOwners;
         State.Phase = Phase.ReloadResolving;
         ContinueReloadHands();
+    }
+
+    private List<MemorySelection> DiscardHandCards(int owner, int keep = -1)
+    {
+        var player = State.Players[owner];
+        var indices = Enumerable.Range(0, player.Hand.Count).Where(index => index != keep).ToArray();
+        var snipers = new List<MemorySelection>();
+        if (indices.Length == 0) return snipers;
+        HandDiscarded?.Invoke(owner, indices.Length);
+        // Send in hand order, then remove backwards so ownership, locks and reveals stay with the surviving copy.
+        foreach (var index in indices)
+        {
+            var id = player.Hand[index];
+            var landed = SendToMemory(player, id, CardZone.Hand, index, notify: false);
+            if (landed != null && CardCatalog.Get(id).EquipOnDiscard) snipers.Add(landed);
+        }
+        foreach (var index in indices.Reverse())
+        {
+            ShiftTargetedHandChoice(owner, index);
+            player.RemoveHandCard(index);
+        }
+        return snipers;
     }
 
     private void ContinueReloadHands()

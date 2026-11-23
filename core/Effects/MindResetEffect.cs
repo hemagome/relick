@@ -43,7 +43,7 @@ internal sealed class MindResetEffect : CardEffect
             return s.Players.All(p => p.Hand.Count == 0) ? [End("No quedan manos objetivo: finalizar", "sin manos objetivo")]
                 : Enumerable.Range(0, s.Players.Length).Where(seat => s.Players[seat].Hand.Count > 0).Select(seat => new DecisionChoice
                 {
-                    Label = $"Mirar mano de {ctx.PlayerName(seat)}", Button = seat == ctx.Actor ? "Mi mano" : "Mano rival", Value = seat,
+                    Label = $"Mirar mano de {ctx.PlayerName(seat)}", Button = seat == ctx.Actor ? "Mi mano" : "Mano rival", Value = seat, TargetPlayer = seat,
                     Primary = seat != ctx.Actor, Public = $"revisa la mano de {ctx.PlayerName(seat)}."
                 }).ToList();
         var target = decision.ShowsHandOf!.Value; var hand = s.Players[target].Hand; var picked = Picked(decision);

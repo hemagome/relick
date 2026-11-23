@@ -43,12 +43,27 @@ public sealed partial class GameEngine
         else CardsReturnedToDeck?.Invoke(Seat(p));
     }
 
+    /// <summary>Corrupts the cards currently on top of the deck. The caller handles exhaustion before continuing its effect.</summary>
+    private int CorruptDeckTop(PlayerState p, int count)
+    {
+        var removed = Math.Min(count, p.Deck.Count);
+        var before = p.CorruptedMemory.Count;
+        for (var i = 0; i < removed; i++)
+        {
+            SendToMemory(p, p.Deck[0], CardZone.Deck, 0, marked: true);
+            p.Deck.RemoveAt(0);
+            p.RemoveCorruptionSlots(CardZone.Deck, 0);
+        }
+        return p.CorruptedMemory.Count - before;
+    }
+
     /// <summary>Returns where the card landed, or null when a trap leaves the game.</summary>
     private MemorySelection? SendHandToMemory(PlayerState p, int index, bool deferCorruption = false)
     {
         if (PlayableTomeCard(p, index) is { } tome) { InvertTomeCard(tome); return null; }
         var id = p.Hand[index];
         var landed = SendToMemory(p, id, CardZone.Hand, index, deferCorruption: deferCorruption);
+        ShiftTargetedHandChoice(Seat(p), index);
         p.RemoveHandCard(index);
         return landed;
     }
@@ -82,7 +97,7 @@ public sealed partial class GameEngine
         if (corrupt)
         {
             State.Players[owner].CorruptedMemory.Add(physical!);
-            Log($"Una carta de {State.Players[owner].Name} se corrompe al ir a la memoria por el efecto de Osamu.");
+            Log($"Una carta de {State.Players[owner].Name} se corrompe al ir a la memoria.");
             return null;
         }
         var memory = State.Players[owner].Memory;
@@ -129,6 +144,21 @@ public sealed partial class GameEngine
         memory.RemoveAt(source.Index);
         ShiftSniperIndices(source.Owner, source.Index);
         return id;
+    }
+
+    private void ReturnMemoryCardsToDeck(int owner, IReadOnlyList<int> indices)
+    {
+        var player = State.Players[owner];
+        var ordered = indices.Order().ToArray();
+        var cards = ordered.Select(index => player.Memory[index]).ToArray();
+        foreach (var index in ordered.Reverse()) RemoveMemoryCard(new(owner, index));
+        foreach (var id in cards)
+        {
+            player.Deck.Add(id);
+            NotifyPileMove(player, id, CardZone.Memory, destination: CardZone.Deck);
+        }
+        Shuffle(player);
+        if (cards.Length > 0) CardsReturnedToDeck?.Invoke(owner);
     }
 
     /// <summary>Returns the seat whose deck received the card, or -1 when a trap left the game.</summary>

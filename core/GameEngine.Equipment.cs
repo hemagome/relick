@@ -103,10 +103,12 @@ public sealed partial class GameEngine
             landed.Owner == Seat(p) ? "va a su memoria" : $"va a la memoria de {State.Players[landed.Owner].Name}, su dueño")}.");
     }
 
-    private void BeginEquipmentInstall(EngineActivation frame)
+    private void BeginEquipmentInstall(EngineActivation frame, bool offerResponse = true)
     {
         frame.CanInterrupt = false;
         var recipient = frame.EquipmentRecipient;
+        if (offerResponse && frame.EquipOpponent && TryOfferTargetResponse(frame.Actor, recipient, frame.CardId,
+            continuation: new EngineContinuation { Kind = ContinuationKind.InstallOpponentEquipment, Actor = frame.Actor })) return;
         if (frame.EquipOpponent && State.Players[recipient].Equipment is { } equipment &&
             TryReplaceOpponentFieldEffect(frame.Actor, new(recipient, FieldZone.Equipment, -1, equipment),
                 new EngineContinuation { Kind = ContinuationKind.BlockOpponentEquipment, Actor = frame.Actor }))

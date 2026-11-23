@@ -65,7 +65,7 @@ public partial class OnlineArena
         _ => null
     };
 
-    // A field card returned to a hand: Value is its hand slot and SourceIndex the field slot it leaves.
+    // Value is the hand slot and SourceIndex the slot in the zone the card leaves.
     private static bool ReturnsToHand(DuelVisualEvent cue) =>
         cue is { Kind: DuelVisualKind.Pile, Destination: CardZone.Hand, FieldMove: false } && cue.Source != CardZone.Hand;
 
@@ -208,10 +208,11 @@ public partial class OnlineArena
                 result[cue] = new Flight(cue, origin, face, OriginRotation: rotation, StartsFaceUp: false);
                 continue;
             }
-            if (source == CardZone.ShieldCharge && cue.Destination == CardZone.Hand)
+            if (source is CardZone.ShieldCharge or CardZone.Corrupted && cue.Destination == CardZone.Hand)
             {
-                // A face-down charge leaves its shield and turns over only on the side of its owner, who may see it.
-                var face = cue.Player == current.MySeat ? current.Players[cue.Player].Hand.ElementAtOrDefault(cue.Value) : null;
+                // A face-down card turns over only on the side of the player receiving it.
+                var handOwner = PileRecipient(cue);
+                var face = handOwner == current.MySeat ? current.Players[handOwner].Hand.ElementAtOrDefault(cue.Value) : null;
                 result[cue] = new Flight(cue, origin, face, OriginRotation: rotation, StartsFaceUp: false, EndsFaceUp: face != null);
                 continue;
             }
@@ -222,7 +223,7 @@ public partial class OnlineArena
                     OriginRotation: (node?.Rotation ?? 0) + (Flight.SidewaysZone(source) ? Mathf.Pi / 2 : 0), StartsFaceUp: true, EndsFaceUp: true);
                 continue;
             }
-            if (ReturnsToHand(cue) && source != CardZone.ShieldCharge)
+            if (ReturnsToHand(cue))
             {
                 // Flauta de Vidrio and similar returns: public on the field, the card turns face down only on its way
                 // into a hand the viewer cannot see.

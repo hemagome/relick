@@ -1,5 +1,76 @@
 # Cartas
 
+## Núcleo Energético Galáctico x3
+
+`nucleo-energetico-galactico-clean.png` restaura la carta UT-25/50 con la
+herramienta integrada `image_gen`. Se retiró la marca diagonal y se conservaron
+los textos y créditos impresos.
+
+Código Objeto de una acción. Requiere tres cartas de Ataque en la memoria
+propia. Si hay más de tres, el jugador elige las copias. Las tres vuelven al
+mazo juntas, se baraja y se roban dos cartas. Al final se corrompe la copia
+activada en la memoria de su dueño original. Si se juega desde Tomo de Magia,
+se aplica la inversión del Tomo. Si se usa con Relikia, la copia ya se corrompe
+como parte de esa activación. Error de Carga y Caja de Cartón pueden responder
+antes de que empiece el efecto, según las reglas de activación de cada uno.
+
+«x3» forma parte del nombre impreso. La carta usa el límite general de dos
+copias por nombre en el formato personalizado.
+[Catálogo oficial](https://www.relicktcg.com/cat%C3%A1logo/expansiones/universo-tridimensional) ·
+[Reglamento oficial, §§ 4.7, 6.5, 8.2 y 9.1](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the supplied full Spanish ReLick card NÚCLEO ENERGÉTICO GALÁCTICO x3 (UT-25/50). Remove ONLY the large repeated translucent diagonal RELICK watermarks. Reconstruct the artwork under the overlays by following the existing crystalline outlines and exact colors of the three yellow, blue and red energy cores, their white highlights, the red and dark maroon radial burst, and the gray circuit traces and frame. Keep the full flat front-facing portrait card edge to edge, with original 697:987 geometry, borders, printed layout and lettering. Exact print: OBJETO; CÓDIGO; NÚCLEO ENERGÉTICO GALÁCTICO x3; ENVÍA EXACTAMENTE 3 CARTAS DE ATAQUE DE TU MEMORIA A TU MAZO, REVUELVE Y ROBA 2 CARTAS. LUEGO CORROMPE ESTA CARTA. Footer: UT-25/50, FONDO: FREEPIK, ©2018 FUYUHIRO GUSHIKEN. Preserve all original small credits. No cropping, added margins, new text, or redesign.
+
+</details>
+
+## Casete de Dualidad
+
+`casete-de-dualidad-clean.png` restaura la carta DT-4/100 con la herramienta
+integrada `image_gen`. Se retiró la marca diagonal y se conservaron los textos
+y créditos impresos.
+
+Código Objeto de una acción. Se usa el resultado final del dado para corromper
+las cartas disponibles del tope del mazo. Quien juega el Casete elige qué mitad
+de ese grupo añade a su mano, redondeando hacia arriba cuando sea impar.
+Un resultado de 6 permite tomar después una carta adicional de las corruptas
+de cualquiera de los dos jugadores. Una carta rival conserva su titularidad.
+
+Si se vacía el mazo, el agotamiento se resuelve antes de elegir qué recuperar.
+El grupo de cartas del Casete se fija con las que salieron del mazo original.
+Se aplican las ventanas habituales de Error de Carga y Caja de Cartón.
+[Reglamento oficial, §§ 1.3, 4.7 y 6.6](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore the supplied complete Spanish ReLick card CASETE DE DUALIDAD (DT-4/100). Edit the attached image of the card, removing only the repeated large translucent diagonal RELICK watermark overlays throughout the scan. Reconstruct the obscured pink cassette, magenta bat wing on the left, cyan feathered wing on the right, purple dotted radial background, and gray circuit lines, following the existing shapes and colors. Preserve the flat front-facing full edge-to-edge card, original 697:987 aspect ratio, border, margins, proportions, layout, type, and red emphasis. Preserve this print exactly: OBJETO; CÓDIGO; CASETE DE DUALIDAD; LANZA 1D6 Y CORROMPE ESE NÚMERO DE CARTAS DEL TOPE DE TU MAZO: AÑADE LA MITAD DE ESAS CARTAS CORRUPTAS A TU MANO. SI SACAS 6: AÑADE UNA CARTA CORRUPTA. Footer: DT-4/100, ILUS. GELPATLU FONDO. FREEPIK, ©2018 FUYUHIRO GUSHIKEN. Keep the original small illustration, background and copyright credits. No new imagery, text, margins, or cropping.
+
+</details>
+
+## Sin opciones
+
+La imagen `sin-opciones-clean.png` restaura la carta UT-46/50 con la herramienta integrada
+`image_gen`. Se retiró la marca diagonal y se conservaron las reglas y los créditos.
+
+Es un Código Jugada COMBO de una acción, disponible en el editor de mazos.
+La respuesta se ofrece cuando un efecto rival elige al jugador, su mano o una carta
+que controla. Los ataques normales y los efectos generales sin selección no abren
+esa ventana. El rival conserva una carta al azar de las que aún tiene en la mano.
+Las demás se descartan según su titularidad y resuelven sus disparadores de descarte.
+Luego se retoma el efecto original y se comprueba que el objetivo siga disponible.
+Se aplican la preferencia de respuestas COMBO y Error de Carga.
+[Reglamento oficial, §§ 5.2, 5.4 y 6.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Edit the attached original portrait trading card ‘SIN OPCIONES’ for the ReLick game. Remove ONLY the four large translucent diagonal ‘RELICK’ watermark overlays, reconstructing the circuit traces and the angular dark panel and glitch illustration behind them. Keep the exact original border, cropping, proportions, design, colors, and Spanish typography. Preserve every printed label and the small original set, illustration and copyright credits at the bottom, including ©2018. The rules read ‘SI TU ADVERSARIO USA UN EFECTO QUE TE SELECCIONE A TI O A LAS CARTAS QUE CONTROLAS: DESCARTA TODA LA MANO DEL ADVERSARIO EXCEPTO 1 CARTA AL AZAR.’ Return the whole card, edge to edge as in the reference, with no new text or elements.
+
+</details>
+
 ## Brújula 16 Bits
 
 La imagen adjunta `brujula-16bits.png` (NS-15/150, ilustración de Stivart) se restauró con la herramienta integrada `image_gen` y se incorporó como `brujula-16bits-clean.png`.

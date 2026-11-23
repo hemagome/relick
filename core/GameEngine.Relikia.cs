@@ -126,15 +126,8 @@ public sealed partial class GameEngine
         EndRelikiaChoice();
         if (reward == RelikiaReward.OpponentDiscards)
         {
-            var rival = 1 - actor;
-            State.DiscardsRemaining = Math.Min(2, State.Players[rival].Hand.Count);
-            Log($"{State.Players[actor].Name} obliga a {State.Players[rival].Name} a descartar {State.DiscardsRemaining} carta(s) por Relikia.");
-            if (State.DiscardsRemaining > 0)
-            {
-                State.DiscardPlayer = rival;
-                State.DiscardResumePhase = Phase.Actions;
-                State.Phase = Phase.Discard;
-            }
+            var next = new EngineContinuation { Kind = ContinuationKind.RelikiaOpponentDiscards, Actor = actor };
+            if (!TryOfferTargetResponse(actor, 1 - actor, RelikiaEffects.Get(RelikiaEffect.ClaimBonus).Name, continuation: next)) Continue(next);
         }
         else
         {
@@ -143,6 +136,17 @@ public sealed partial class GameEngine
             if (State.CorruptionsRemaining > 0) BeginRelikiaChoice(RelikiaChoice.CorruptCode);
         }
         return CommandResult.Ok();
+    }
+
+    private void ResolveRelikiaOpponentDiscards(int actor)
+    {
+        var rival = 1 - actor;
+        State.DiscardsRemaining = Math.Min(2, State.Players[rival].Hand.Count);
+        Log($"{State.Players[actor].Name} obliga a {State.Players[rival].Name} a descartar {State.DiscardsRemaining} carta(s) por Relikia.");
+        if (State.DiscardsRemaining == 0) return;
+        State.DiscardPlayer = rival;
+        State.DiscardResumePhase = Phase.Actions;
+        State.Phase = Phase.Discard;
     }
 
     public CommandResult ResolveRelikiaCorruption(int actor, int owner, int memoryIndex)

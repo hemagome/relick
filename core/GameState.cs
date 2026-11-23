@@ -355,7 +355,7 @@ public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, in
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool IronwingPaid = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole, GhostDog }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole, GhostDog, DualityCassette }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, [property: JsonPropertyName("YunoStopped")] bool RerollStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 

@@ -31,7 +31,8 @@ public sealed partial class GameEngine
         if (equip)
             BeginActivation(new EngineActivation(actor, CardCatalog.Sniper.Id, 0, 0, State.Phase)
                 { Kind = ActivationKind.Equipment, MemoryIndex = index, MemoryOwner = owner == actor ? null : owner, FinishSniperExchange = true,
-                    Parent = State.PendingTurnBuff != null || State.PendingReload != null ? _activeActivation : null });
+                    Parent = State.PendingTurnBuff != null || State.PendingReload != null || State.PendingDecision?.TargetResponse != null
+                        ? _activeActivation : null });
         else
         {
             MoveMemoryCardToField(new(owner, index), p);

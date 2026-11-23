@@ -217,6 +217,9 @@ public sealed partial class GameEngine
     {
         var state = State;
         if (state.IsOver || state.Phase.IsTurnStage() || state.Phase is Phase.Preparation or Phase.Finished) return null;
+        if (state.Phase == Phase.Decision && state.PendingDecision is { TargetResponse: { } response } decision)
+            return new DuelResolutionView { Actor = response.SourcePlayer, DecisionPlayer = decision.Decider,
+                CardId = CardCatalog.All.ContainsKey(decision.Source) ? decision.Source : "", Status = DuelResolutionStatus.Response };
         var frame = state.PendingDecision?.Source == CardCatalog.ComboParry.Id ? _activeActivation :
             _activationChain.FirstOrDefault() ?? _activeActivation;
         var card = frame?.CardId ?? state.PendingCode?.CardId ?? state.PendingAttack?.SkillId ?? state.PendingAttackRoll?.SkillId ??

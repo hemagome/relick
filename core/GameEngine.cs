@@ -236,7 +236,8 @@ public sealed partial class GameEngine
         var p = State.Players[actor];
         var card = CardCatalog.Get(PlayableHandCard(p, handIndex)!);
         if (card.Id == CardCatalog.CopyHelmet.Id) return PlayCopyHelmet(actor, handIndex);
-        if (card.Id == CardCatalog.MagicTome.Id || card.Id == CardCatalog.GalacticShield.Id || handIndex >= TomeHandBase &&
+        if (CardEffects.For(card.Id) is CardEffect { HoldsActivationCard: true } ||
+            card.Id == CardCatalog.MagicTome.Id || card.Id == CardCatalog.GalacticShield.Id || handIndex >= TomeHandBase &&
             (card.Id == CardCatalog.Robotize.Id || card.Id == CardCatalog.GoldenTotem.Id))
         {
             var frame = new EngineActivation(actor, card.Id, card.ActionCost, CodePrCost(card), State.Phase);
@@ -440,6 +441,7 @@ public sealed partial class GameEngine
 
     private void CompletePendingPlay()
     {
+        if (FinishPlayedTargetResponse()) return;
         if (_activeActivation == null && _ramResolutions.LastOrDefault() is { } ram &&
             State.Phase == ram.PlayPhase)
         {

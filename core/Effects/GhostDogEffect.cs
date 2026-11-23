@@ -98,7 +98,8 @@ internal sealed class GhostDogEffect : CardEffect, ITurnTrigger
 
     private static DecisionChoice Choice(GameEngine.EffectContext ctx, int owner, int index, string id, string zone) => new()
     {
-        CardId = id, Value = index, Owner = owner, Label = $"{CardCatalog.Get(id).Name} · {zone} de {ctx.PlayerName(owner)}",
+        CardId = id, Value = index, Owner = owner, TargetPlayer = index == -1 ? owner : null,
+        Label = $"{CardCatalog.Get(id).Name} · {zone} de {ctx.PlayerName(owner)}",
         Button = "Añadir a mano", Public = $"añade una carta de {zone} de {ctx.PlayerName(owner)} con Perro Fantasma."
     };
 }

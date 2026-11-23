@@ -151,19 +151,20 @@ public sealed class DuelSnapshot
     {
         var s = game.State;
         var stagePhase = s.Phase == Phase.DestructionResponse ? s.PendingDestruction!.ResumePhase : s.Phase;
+        if (s.Phase == Phase.SniperChoice) stagePhase = s.PendingSniper!.ResumePhase;
+        if (s.Phase == Phase.ErrorResponse && s.PendingDecision?.TargetResponse != null) stagePhase = Phase.Decision;
         if (s.Phase == Phase.TrapCraftChoice) stagePhase = s.TrapCraftResumePhase!.Value;
         if (s.Phase == Phase.ErrorResponse && game.IsFieldCodeActivation) stagePhase = Phase.Combat;
         if (s.PendingTurnBuff != null) stagePhase = s.PendingTurnBuff.ResumePhase;
         if (s.PendingReload != null && !s.IsOver) stagePhase = Phase.Actions;
         if (s.PendingGoldenTotem != null && !s.IsOver) stagePhase = Phase.Actions;
         var stageDecision = s.PendingDecision ?? s.PendingTurnBuff?.Decision;
-        if (stagePhase == Phase.Decision && stageDecision?.Source == CardCatalog.ComboParry.Id)
+        while (stagePhase == Phase.Decision && stageDecision != null)
         {
             stagePhase = stageDecision.ResumePhase;
             stageDecision = stageDecision.Suspended;
         }
         return stagePhase == Phase.SniperChoice ? s.PendingSniper!.ResumePhase : stagePhase is Phase.CodeResponse or Phase.ErrorResponse or Phase.RelikiaChoice ? Phase.Actions :
-            stagePhase == Phase.Decision ? stageDecision!.ResumePhase :
             stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice ? (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase : stagePhase == Phase.Discard ? s.DiscardResumePhase :
             stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase;
     }

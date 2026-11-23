@@ -99,16 +99,8 @@ public sealed partial class GameEngine
             return;
         }
         var slots = chosen?.ToArray() ?? attacks;
-        var returning = slots.Order().Select(i => p.Memory[i]).ToArray();
-        foreach (var index in slots.OrderDescending()) RemoveMemoryCard(new(actor, index));
-        foreach (var id in returning)
-        {
-            p.Deck.Add(id);
-            NotifyPileMove(p, id, CardZone.Memory, destination: CardZone.Deck);
-        }
-        Log($"{p.Name} devuelve {returning.Length} Ataque(s) de su memoria al mazo y lo baraja al evolucionar.");
-        Shuffle(p);
-        if (returning.Length > 0) CardsReturnedToDeck?.Invoke(actor);
+        ReturnMemoryCardsToDeck(actor, slots);
+        Log($"{p.Name} devuelve {slots.Length} Ataque(s) de su memoria al mazo y lo baraja al evolucionar.");
         CompletePendingPlay();
     }
 

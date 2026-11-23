@@ -22,9 +22,9 @@ internal sealed class PointsIncreaseEffect : CardEffect
         Enumerable.Range(0, ctx.State.Players.Length).SelectMany(seat => new[]
         {
             new DecisionChoice { Label = $"Aumentar PR de {ctx.PlayerName(seat)}", Button = seat == ctx.Actor ? $"+{decision.Value} a mis PR" : $"+{decision.Value} al rival",
-                Value = seat * 2 + 1, Primary = seat == ctx.Actor, Public = $"aumenta los PR de {ctx.PlayerName(seat)}." },
+                Value = seat * 2 + 1, TargetPlayer = seat, Primary = seat == ctx.Actor, Public = $"aumenta los PR de {ctx.PlayerName(seat)}." },
             new DecisionChoice { Label = $"Disminuir PR de {ctx.PlayerName(seat)}", Button = seat == ctx.Actor ? $"−{decision.Value} a mis PR" : $"−{decision.Value} al rival",
-                Value = seat * 2, Public = $"reduce los PR de {ctx.PlayerName(seat)}." }
+                Value = seat * 2, TargetPlayer = seat, Public = $"reduce los PR de {ctx.PlayerName(seat)}." }
         }).ToList();
 
     public override void Choose(GameEngine.EffectContext ctx, PendingDecision decision, DecisionChoice choice)
