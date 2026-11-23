@@ -77,7 +77,7 @@ public static class ArenaPresentation
     }
 
     /// <summary>Lets a player's name open their profile card with a click or a tap.</summary>
-    private static void OpensProfile(Label name, string playerName, Action? profile)
+    internal static void OpensProfile(Label name, string playerName, Action? profile)
     {
         if (profile == null) return;
         name.MouseFilter = Control.MouseFilterEnum.Stop;
@@ -118,6 +118,9 @@ public static class ArenaPresentation
     {
         const float W = BoardCanvas.CardWidth, H = BoardCanvas.CardHeight;
         const float top = 5, bottom = top + H + 10;
+        // The Relikario's markers take a short band, so its equipment row rises and the cards on the
+        // Relikario have room to stack downward, each leaving the top of the one under it in sight.
+        const float heroHeight = HeroHeight, row = top + heroHeight + 8;
         var accent = enemy ? Coral : Mint;
         T Put<T>(T node, float x, float fromSeam, float width, float height) where T : Control
             => canvas.PlaceField(node, enemy, x, fromSeam, width, height);
@@ -148,7 +151,7 @@ public static class ArenaPresentation
         for (var slot = 0; slot < track.ExchangeButtons.Length; slot++)
             Put(track.ExchangeButtons[slot], (column - H - stack.X) / 2 + slot * stack.X, exchangeTop + slot * stack.Y, H, W);
 
-        // Relikario: portrait beside its name, lives, actions, Destreza and PR.
+        // Relikario: portrait beside its lives, actions and Destreza.
         var hero = new HBoxContainer { Name = $"Hero{index}", MouseFilter = Control.MouseFilterEnum.Ignore };
         hero.AddThemeConstantOverride("separation", 4);
         var stand = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -162,13 +165,7 @@ public static class ArenaPresentation
             stand.AddChild(new Control { CustomMinimumSize = portrait.CustomMinimumSize, SizeFlagsVertical = Control.SizeFlags.ExpandFill,
                 MouseFilter = Control.MouseFilterEnum.Ignore });
         else stand.AddChild(portrait);
-        // Whose turn it is lives in the turn plate's status cell; the name is only the name.
-        var ownerName = Heading(owner.Name, 17, accent);
-        ownerName.Name = $"PlayerName{index}"; ownerName.ClipText = true; ownerName.TooltipText = owner.Name; info.AddChild(ownerName);
-        OpensProfile(ownerName, owner.Name, actions.Profile);
-        var name = Text($"{RelikarioCatalog.NameOf(owner.RelikarioId)} · Lv {owner.Level}", 11, BoardArt.Muted);
-        name.ClipText = true; name.Name = $"RelikarioName{index}"; name.TooltipText = $"{owner.Name} · {RelikarioCatalog.NameOf(owner.RelikarioId)} · Vida máxima: {owner.MaxHealth}";
-        info.AddChild(name);
+        // Name, profile and level live elsewhere: the corner plate and the zone above the deck.
         life.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         life.ReachedZero = owner.HasReachedZero;
         life.SetHealth(owner.Health, owner.MaxHealth);
@@ -184,17 +181,8 @@ public static class ArenaPresentation
             star.TooltipText = "Estrella del Fontanero: no recibe daño y multiplica su daño hasta el final de este turno.";
             stats.AddChild(star);
         }
-        var resources = new ResourceBadge { Name = $"ResourceBadge{index}", Amount = owner.Pr, SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin };
-        if (!enemy && actions.Relikia is { } relikia) resources.Activated = () => relikia(resources);
-        info.AddChild(resources);
-        if (!enemy)
-        {
-            var evolve = Button(stand, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
-            evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 12); evolve.TooltipText = actions.EvolutionHint;
-            evolve.CustomMinimumSize = new(0, 28); evolve.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
-            if (actions.CanEvolve && owner.Level == 1) InviteEvolution(evolve);
-        }
-        canvas.PlaceTableHud(hero, BoardCanvas.FieldRect(enemy, 306, top, 286, H));
+        canvas.PlaceTableHud(hero, BoardCanvas.FieldRect(enemy, 306, top, 286, heroHeight));
+        RelikiaZone(canvas, owner, index, enemy, actions);
         if (canvas.TableView) canvas.PlaceFigure(portrait, enemy);
 
         var equipmentStatus = owner.Equipment switch
@@ -208,20 +196,21 @@ public static class ArenaPresentation
             Card = owner.Equipment == null ? null : CardCatalog.Get(owner.Equipment), Counters = owner.EquipmentCounters,
             Accent = new("7cc8ff"), LargePreview = true, SlotWidth = W,
             StackCopies = canvas.TableView ? owner.EquipmentStackedCopies + 1 : 0 };
-        equipment.Pressed += actions.Equipment; Put(equipment, 306, bottom, W, H);
+        equipment.Pressed += actions.Equipment; Put(equipment, 306, row, W, H);
         if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W, canvas.TableView) is { } lights)
             Put(lights, 996, bottom, W, H); // Under its owner's Memory: beside it would cover the other seat's Bonus.
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
             TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
-            SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0, Groups = RelikarioGroups.For(owner) };
-        attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, bottom, W, H);
+            SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0, Groups = RelikarioGroups.For(owner),
+            StackReach = bottom - row };
+        attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, row, W, H);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
             // Gold lies over the equipment it protects, leaving a strip of that card in sight.
             var cover = new ZoneCardButton { Name = $"EquipmentCoverZone{index}", Caption = "ORO", SlotWidth = W,
                 Card = CardCatalog.Get(covers[^1]), Accent = BoardArt.Gold, StatusText = covers.Length > 1 ? $"×{covers.Length}" : "",
                 StackCopies = canvas.TableView ? covers.Length : 0 };
-            cover.Pressed += actions.EquipmentCovers; Put(cover, 306 + 42, bottom, W, H);
+            cover.Pressed += actions.EquipmentCovers; Put(cover, 306 + 42, row, W, H);
         }
 
         // Skills: 500 and 1000 PR above, 0 and 300 PR below.
@@ -244,12 +233,46 @@ public static class ArenaPresentation
         }
 
         Put(MemoryPile(owner, index, accent, actions.Memory, board: true, raised: canvas.TableView), 996, top, W, H);
-        // Center each deck vertically in the outer column, beside the opposing Bonus zone.
-        var deckRow = canvas.TableView ? (top + bottom) / 2 : bottom;
+        // The deck sits low in the outer column, under the Relikia zone.
+        var deckRow = bottom;
         // Room for a full deck's top, which appears displaced outward, inside the table's texture.
         var deckInset = canvas.TableView ? 18 : 0;
         Put(new DeckStack { Name = $"DeckStack{index}", Amount = owner.DeckCount, Accent = accent, Board = true,
             RaisedPile = canvas.TableView, Sleeve = owner.Sleeve }, BoardCanvas.DesignWidth - W - deckInset, deckRow, W, H);
+    }
+
+    internal const float HeroHeight = 130;
+
+    /// <summary>
+    /// Above the deck: the Relick Points as a large heptagon, which opens the Relikia effects for its
+    /// owner, and under it the level: the evolution button for the viewer, a plain marker for the rival.
+    /// </summary>
+    private static void RelikiaZone(BoardCanvas canvas, DuelPlayerView owner, int index, bool enemy, ArenaPlayerActions actions)
+    {
+        var zone = new VBoxContainer { Name = $"RelikiaZone{index}", Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
+        zone.AddThemeConstantOverride("separation", 4);
+        var resources = new ResourceBadge { Name = $"ResourceBadge{index}", Amount = owner.Pr, Large = true,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
+        if (!enemy && actions.Relikia is { } relikia) resources.Activated = () => relikia(resources);
+        zone.AddChild(resources);
+        if (!enemy)
+        {
+            var evolve = Button(zone, owner.Level == 1 ? "Lv 2 ↑" : "Lv 2 ✓", actions.Evolve, !actions.CanEvolve);
+            evolve.Name = "EvolveRelikario"; evolve.AddThemeFontSizeOverride("font_size", 13); evolve.TooltipText = actions.EvolutionHint;
+            evolve.CustomMinimumSize = new(96, 28); evolve.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+            if (actions.CanEvolve && owner.Level == 1) InviteEvolution(evolve);
+        }
+        else
+        {
+            var level = Heading($"Lv {owner.Level}", 15, owner.Level > 1 ? BoardArt.Gold : BoardArt.Muted);
+            level.Name = $"RelikarioLevel{index}"; level.HorizontalAlignment = HorizontalAlignment.Center;
+            level.CustomMinimumSize = new(96, 28); level.VerticalAlignment = VerticalAlignment.Center;
+            level.TooltipText = $"{RelikarioCatalog.NameOf(owner.RelikarioId)} · Nivel {owner.Level}";
+            level.MouseFilter = Control.MouseFilterEnum.Pass;
+            zone.AddChild(level);
+        }
+        // Shrunk to its depth on the table, so the near seat's zone never grows over its deck.
+        canvas.PlaceTableHud(zone, BoardCanvas.FieldRect(enemy, 1146, 2, 286, 184), fitDepth: true);
     }
 
     /// <summary>The turn plate on the divider, in the pocket between both skill blocks.</summary>
@@ -543,7 +566,9 @@ public static class ArenaPresentation
         }
         else
         {
-            cards = fanned ? new HandFan { Headroom = raised ? DesktopHandHeadroom : 4, MaximumAngle = raised ? 3 : 8, Spread = raised }
+            cards = fanned ? new HandFan { Headroom = raised ? DesktopHandHeadroom : 4, MaximumAngle = raised ? 3 : 8, Spread = raised,
+                    // The board's corners hold the profile plates; a spreading hand keeps clear of them.
+                    SideMargin = raised ? 330 : 0 }
                 : GalleryContents(fitted ? fittedColumns : railColumns, DeckChoiceGap);
             for (var i = 0; i < hand.Count; i++)
             {

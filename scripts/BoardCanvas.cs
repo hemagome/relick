@@ -67,7 +67,7 @@ public partial class BoardCanvas : Control
     {
         const float center = 388;
         const float width = 180, height = 168;
-        var contact = new Vector2(enemy ? DesignWidth - center : center, Seam + (enemy ? -27 : 158));
+        var contact = new Vector2(enemy ? DesignWidth - center : center, Seam + (enemy ? -27 : ArenaPresentation.HeroHeight - 2));
         Add(portrait, new Rect2(contact, new Vector2(width, height)), BoardAnchor.Middle, Layer.Figure);
     }
 

@@ -45,8 +45,8 @@ public partial class OnlineArena
             var shieldNode = (ZoneCardButton)ZoneNode(0, CardZone.GalacticShield, 0)!;
             var attached = (AttachmentStack)ZoneNode(0, CardZone.Attached, -1)!;
             if (shieldNode.Card?.Id != shield.Id || shieldNode.PresentedShieldCharges != 3 ||
-                !shieldNode.CardRect.HasArea() || attached.CardRect.End.X > shieldNode.Position.X)
-                throw new Exception($"El tablero debe mostrar el Escudo y conservar espacio para el Ataque anexo ({size}).");
+                !shieldNode.CardRect.HasArea() || (attached.Board ? shieldNode.Position.Y <= attached.CardRect.Position.Y : attached.CardRect.End.X > shieldNode.Position.X))
+                throw new Exception($"El tablero debe mostrar el Escudo apilado bajo el Ataque anexo, dejando ver su parte superior ({size}).");
             await CheckAttachmentLoadFlights(shieldVisuals, shieldOrigins, loads, shieldNode, () => shieldNode.PresentedShieldCharges!.Value, faceUp: false);
             ResetAnimations();
             shieldNode.EmitSignal(BaseButton.SignalName.Pressed);

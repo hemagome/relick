@@ -364,11 +364,13 @@ public partial class ResourceBadge : Control
     /// <summary>Set before the badge enters the tree to turn the counter into a button.</summary>
     public Action? Activated { get; set; }
     public bool Interactive => Activated != null;
+    /// <summary>The board's counter: a large heptagon with the amount at its heart.</summary>
+    internal bool Large { get; init; }
     private bool _hover, _held;
 
     public override void _Ready()
     {
-        CustomMinimumSize = new(94, 30);
+        CustomMinimumSize = Large ? new(150, 150) : new(94, 30);
         Resized += QueueRedraw;
         if (Activated == null)
         {
@@ -409,10 +411,43 @@ public partial class ResourceBadge : Control
         }
     }
 
+    public override bool _HasPoint(Vector2 point) => !Large ? base._HasPoint(point) :
+        point.DistanceTo(Size / 2) <= Math.Min(Size.X, Size.Y) / 2 - 4;
+
+    private static Vector2[] Heptagon(Vector2 center, float radius) =>
+        Enumerable.Range(0, 7).Select(i => center + Vector2.FromAngle(-Mathf.Pi / 2 + i * Mathf.Tau / 7) * radius).ToArray();
+
+    private void DrawLarge(bool active)
+    {
+        var center = Size / 2;
+        var radius = Math.Min(Size.X, Size.Y) / 2 - 6;
+        var outer = Heptagon(center, radius);
+        var glow = BoardArt.Tint(BoardArt.Gold, active ? 0.42f : Amount > 0 ? 0.24f : 0.08f);
+        for (var ring = 3; ring >= 1; ring--)
+            DrawColoredPolygon(Heptagon(center, radius + ring * 3), BoardArt.Tint(glow, glow.A * 0.35f));
+        DrawColoredPolygon(outer, active ? new Color("242536") : new Color("171824"));
+        DrawColoredPolygon(Heptagon(center, radius * 0.82f), new Color(1, 1, 1, active ? 0.05f : 0.03f));
+        var edge = BoardArt.Tint(BoardArt.Gold, Amount > 0 ? active ? 1f : 0.88f : active ? 0.8f : 0.45f);
+        DrawPolyline([.. outer, outer[0]], edge, active ? 3.5f : 2.5f, true);
+        var inner = Heptagon(center, radius * 0.82f);
+        DrawPolyline([.. inner, inner[0]], BoardArt.Tint(BoardArt.Gold, 0.3f), 1.2f, true);
+        BoardArt.Icon(this, GameIcon.Gem, center + new Vector2(0, -radius * 0.5f), radius * 0.2f, BoardArt.Gold);
+        var font = RelickVisuals.Display;
+        var text = Amount.ToString();
+        var fontSize = (int)(radius * 0.6f);
+        while (fontSize > 12 && font.GetStringSize(text, fontSize: fontSize).X > radius * 1.35f) fontSize--;
+        var width = font.GetStringSize(text, fontSize: fontSize).X;
+        var baseline = center.Y + radius * 0.06f + (font.GetAscent(fontSize) - font.GetDescent(fontSize)) / 2;
+        DrawString(font, new(center.X - width / 2, baseline), text, HorizontalAlignment.Left, -1, fontSize, BoardArt.Gold);
+        BoardArt.CenterText(this, Interactive ? "PR  ▾" : "PR", center + new Vector2(0, radius * 0.56f), (int)Math.Max(11, radius * 0.17f),
+            BoardArt.Tint(BoardArt.Gold, active ? 1f : 0.75f));
+    }
+
     public override void _Draw()
     {
         var rect = new Rect2(Vector2.Zero, Size);
         var active = Interactive && (_hover || _held || HasFocus());
+        if (Large) { DrawLarge(active); return; }
         RelickVisuals.Shadow(this, rect.Grow(-3), BoardArt.Tint(BoardArt.Gold, active ? 0.38f : Amount > 0 ? 0.22f : 0.06f), active ? 10 : 6);
         BoardArt.Plate(this, rect, active ? new Color("242536") : new Color("191a26"),
             BoardArt.Tint(BoardArt.Gold, Amount > 0 ? active ? 1f : 0.85f : active ? 0.8f : 0.4f), 8, active ? 2 : 1);
@@ -808,7 +843,7 @@ public partial class ZoneCardButton : Button
     /// <summary>A place that only exists while a card is on it, like the second card of the canje stack.</summary>
     internal bool HideWhenEmpty { get; init; }
     /// <summary>The hue of the group this card heads, shared with the cards it keeps under it.</summary>
-    internal Color? GroupHue { get; init; }
+    internal CardGroup? Group { get; init; }
     private bool Vacant => HideWhenEmpty && PresentedCard == null;
     internal int StackCopies { get; init; }
     internal int? ShieldCharges { get; init; }
@@ -952,7 +987,7 @@ public partial class ZoneCardButton : Button
         }
         else if (card != null)
             BoardArt.Icon(this, BoardArt.CardIcon(card), Size / 2, 32, Accent);
-        if (GroupHue is { } hue && showCard) DrawRect(CardRect.Grow(1), hue, false, 2);
+        if (Group is { } group && showCard) AttachmentStack.GroupMark(this, CardRect, group);
         if (Playable && showCard) RelickVisuals.Playable(this, CardRect);
         if (showCard && PresentedStatus is { Length: > 0 } status) BoardArt.CardBadge(this, StackCopies > 1 ? CardRect.End : Size, status);
         if (PresentedCounters is { } counters) CardCounterBadge.Paint(this, CardCounterBadge.OnCard(CardRect, counters), counters);
@@ -973,15 +1008,23 @@ public partial class AttachmentStack : Button
     internal bool RaisedPile { get; init; }
     /// <summary>What lies on the Relikario, grouped by host; the top card shows its own group's cards peeking out.</summary>
     internal IReadOnlyList<CardGroup> Groups { get; init; } = [];
-    private const float MemberPeek = 7;
-    private CardGroup? TopGroup => Board ? RelikarioGroups.Top(Groups, PresentedTopCardId) is { Linked: true } group ? group : null : null;
-    private int PeekingMembers => TopGroup is { } group ? Math.Min(3, group.Members.Count) : 0;
+    /// <summary>
+    /// On the board, how far below the slot the pile may reach: each card on the Relikario lies a
+    /// little lower than the one before, so the top of every card under it stays in sight.
+    /// </summary>
+    internal float StackReach { get; init; }
+    /// <summary>Cards drawn in the board's stack: the attached ones shown, then each Galactic Shield.</summary>
+    internal int Entries => _previews.Length + (Board ? ShieldCount : 0);
+    internal int PreviewCount => _previews.Length;
+    private float EntryStep => Board && Entries > 1 ? Math.Min(30, StackReach / (Entries - 1)) : 0;
+    internal float EntryOffset(int entry) => entry * EntryStep;
+    private string[] _previewIds = [];
     private int _pendingTomeCards;
     internal int PresentedTomeCards => TomeCardCount - _pendingTomeCards;
     private int _pendingArrivals;
     private int PresentedCardCount => Cards.Count - _pendingArrivals;
     private int Amount => PresentedCardCount + PresentedTomeCards;
-    private float PileWidth => Size.X / (Cards.Count == 0 ? 1 : ShieldCount + 1);
+    private float PileWidth => Board ? Size.X : Size.X / (Cards.Count == 0 ? 1 : ShieldCount + 1);
     private Texture2D[] _previews = [];
     private Texture2D[] _presentedPreviews = [];
     internal string? TopCardId { get; private set; }
@@ -1036,12 +1079,13 @@ public partial class AttachmentStack : Button
     {
         var cards = Cards.Take(count).OrderBy(id => !DeckRules.IsAttack(CardCatalog.Get(id))).TakeLast(3).ToArray();
         top = cards.LastOrDefault();
+        if (count == Cards.Count) _previewIds = cards;
         return cards.Select(id => BoardArt.LoadCardArtwork(CardCatalog.Get(id), RelikarioId)).OfType<Texture2D>().ToArray();
     }
 
     private Rect2 PreviewRect(Texture2D[] previews, int index)
     {
-        if (Board) return BoardArt.FitArtwork(previews[index], new Rect2(4, 4, PileWidth - 8, Size.Y - 8 - PeekingMembers * MemberPeek));
+        if (Board) return BoardArt.FitArtwork(previews[index], new Rect2(4, 4 + EntryOffset(index), PileWidth - 8, Size.Y - 8));
         var offset = Math.Min(14, PileWidth / 6);
         var spread = (previews.Length - 1) * offset;
         var area = new Rect2(4 + index * offset, 4, PileWidth - 8 - spread, Size.Y - 8);
@@ -1072,29 +1116,36 @@ public partial class AttachmentStack : Button
         }
         else if (_presentedPreviews.Length == 0)
             BoardArt.Icon(this, GameIcon.Cards, new Vector2(PileWidth, Size.Y) / 2, 32, BoardArt.Muted);
-        for (var i = Board ? Math.Max(0, _presentedPreviews.Length - 1) : 0; i < _presentedPreviews.Length; i++)
+        for (var i = 0; i < _presentedPreviews.Length; i++)
         {
             var footprint = PreviewRect(_presentedPreviews, i);
             var rect = Raise(footprint, Amount);
-            if (RaisedPile && Amount > 1) RaisedStack.Draw(this, this, footprint, Amount);
+            if (RaisedPile && Amount > 1 && Entries == 1) RaisedStack.Draw(this, this, footprint, Amount);
             else RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
-            if (Board && TopGroup is { } group) DrawMembers(rect, group);
             DrawTextureRect(_presentedPreviews[i], rect, false);
-            if (Board && TopGroup is { } linked) DrawRect(rect.Grow(1), linked.Hue, false, 2);
+            if (Board && GroupOf(i) is { } group) GroupMark(this, rect, group);
         }
         if (Amount > 1) BoardArt.CardBadge(this, RaisedPile ? CardRect.End : new(PileWidth, Size.Y), $"×{Amount}");
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, !Disabled && IsHovered(), HasFocus());
     }
 
-    /// <summary>The top card's own cards lie under it, each showing a band in the group's hue.</summary>
-    private void DrawMembers(Rect2 host, CardGroup group)
+    public override bool _HasPoint(Vector2 point) =>
+        new Rect2(0, 0, Size.X, Size.Y + (Board ? EntryOffset(Math.Max(0, Entries - 1)) : 0)).HasPoint(point);
+
+    private CardGroup? GroupOf(int preview) => preview < _previewIds.Length && _presentedPreviews == _previews
+        ? Groups.FirstOrDefault(group => group.Zone == FieldZone.Attached && group.Linked && group.HostId == _previewIds[preview]) : null;
+
+    /// <summary>
+    /// A card heading a group: an outline in its hue and, in the strip that stays in sight, how many
+    /// cards it keeps under it.
+    /// </summary>
+    internal static void GroupMark(CanvasItem canvas, Rect2 card, CardGroup group)
     {
-        for (var m = PeekingMembers; m >= 1; m--)
-        {
-            var band = new Rect2(host.Position + new Vector2(0, m * MemberPeek), host.Size);
-            DrawRect(band, BoardArt.Tint(RelickVisuals.Playmat.Background, 1));
-            DrawRect(band, BoardArt.Tint(group.Hue, 0.35f + 0.2f * (PeekingMembers - m)), false, 2);
-        }
+        canvas.DrawRect(card.Grow(1), group.Hue, false, 2);
+        var chip = new Rect2(card.End.X - 30, card.Position.Y + 3, 27, 17);
+        canvas.DrawRect(chip, BoardArt.Tint(RelickVisuals.Playmat.Background, 0.92f));
+        canvas.DrawRect(chip, group.Hue, false, 1.5f);
+        BoardArt.CenterText(canvas, $"+{group.Members.Count}", chip.GetCenter() + new Vector2(0, 1), 11, group.Hue);
     }
 }
 

@@ -382,6 +382,19 @@ public partial class OnlineArena : Control
             Side(1);
             Side(0);
 
+            // Each duelist's public identity in an empty corner beside the hands: ours under our canje,
+            // the rival's in the band above its field, opposite the logo.
+            for (var relative = 0; relative < 2; relative++)
+            {
+                var seat = relative == 0 ? s.MySeat : 1 - s.MySeat;
+                var player = relativePlayers[relative];
+                var plate = new ProfilePlate { Name = $"ProfilePlate{relative}", Index = relative, View = PublicProfile(seat, player.Name),
+                    Accent = relative == 0 ? ArenaPresentation.Mint : ArenaPresentation.Coral, Slim = relative == 1,
+                    Opened = ProfilesShown ? () => ShowProfile(seat, player.Name, seat == s.MySeat) : null };
+                if (relative == 0) canvas.Place(plate, new Rect2(12, BoardCanvas.DesignHeight - 110, 316, 98), BoardAnchor.Bottom);
+                else canvas.Place(plate, new Rect2(BoardCanvas.DesignWidth - 12 - 316, 4, 316, 36), BoardAnchor.Top);
+            }
+
             // Classic cuts the fan at the top edge. On the table it is held beyond the far rail.
             const float rivalBand = ArenaPresentation.DesktopHandVisible;
             const float rivalFanHeight = BoardCanvas.CardHeight + 60;

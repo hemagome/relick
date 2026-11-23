@@ -16,8 +16,8 @@ public partial class OnlineArena
             if (player.GalacticShieldCharges is not { Length: > 0 } charges ||
                 ZoneNode(relative, CardZone.Attached, -1) is not AttachmentStack anchor) continue;
 
-            var firstSlot = player.Attached.Length > 0 ? 1 : 0;
-            var columns = firstSlot + charges.Length;
+            // Each Shield lies a little lower than the card before it, leaving that card's top in sight.
+            var firstEntry = anchor.PreviewCount;
             for (var i = 0; i < charges.Length; i++)
             {
                 var slot = i;
@@ -26,11 +26,21 @@ public partial class OnlineArena
                     Name = GalacticShieldNodeName(relative, slot), Caption = "SOBRE RELIKARIO",
                     Card = CardCatalog.GalacticShield, Accent = new Color("6ee3bd"), SlotWidth = 1,
                     ShieldCharges = charges[slot],
-                    GroupHue = anchor.Groups.FirstOrDefault(group => group.Zone == FieldZone.GalacticShield && group.Index == slot) is { Linked: true } group ? group.Hue : null,
+                    Group = anchor.Groups.FirstOrDefault(group => group.Zone == FieldZone.GalacticShield && group.Index == slot && group.Linked),
                     StackCopies = anchor.RaisedPile ? charges[slot] + 1 : 0
                 };
                 shield.Pressed += () => SelectField(owner, FieldZone.GalacticShield, slot);
                 anchor.AddChild(shield);
+                if (anchor.Board)
+                {
+                    shield.AnchorRight = shield.AnchorBottom = 1;
+                    shield.OffsetLeft = shield.OffsetRight = 0;
+                    shield.OffsetTop = shield.OffsetBottom = anchor.EntryOffset(firstEntry + slot);
+                    continue;
+                }
+                // The stacked layouts keep a column per Shield beside the attached cards.
+                var firstSlot = player.Attached.Length > 0 ? 1 : 0;
+                var columns = firstSlot + charges.Length;
                 shield.AnchorLeft = (float)(firstSlot + slot) / columns;
                 shield.AnchorRight = (float)(firstSlot + slot + 1) / columns;
                 shield.AnchorBottom = 1;

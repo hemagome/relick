@@ -96,9 +96,12 @@ public partial class OnlineArena
                         "Falta profundidad en una de las pilas.");
                     var table = ProjectedTable.Of(memory);
                     Check(table != null, "La memoria sigue dibujándose como un rectángulo de pantalla.");
-                    var deckCenter = table!.ScreenPoint(deck, deck.Size / 2).Y;
-                    var columnCenter = table.ScreenPoint(memory, memory.Size / 2 + new Vector2(0, (BoardCanvas.CardHeight + 10) / 2)).Y;
-                    Check(Math.Abs(deckCenter - columnCenter) < 9, "El mazo no está centrado en su columna.");
+                    // The deck lies low in the outer column, under the Relick Points and the level.
+                    var deckRect = ZoneRect(deck);
+                    var deckEdges = new[] { deckRect.Position.Y, deckRect.End.Y };
+                    var relikia = Board<Control>($"RelikiaZone{side}").GetGlobalRect();
+                    Check(side == 0 ? deckEdges.Min() >= relikia.End.Y - 2 : deckEdges.Max() <= relikia.Position.Y + 2,
+                        $"El mazo debe quedar bajo la zona de PR: {deckEdges.Min()}–{deckEdges.Max()}, {relikia}.");
                     var lift = table.ScreenPoint(deck, deck.TopRect.GetCenter()) - table.ScreenPoint(deck, deck.Size / 2);
                     Check(lift.Y < -1 && (side == 0 ? lift.X > 1 : lift.X < -1),
                         "La tapa del mazo debe elevarse hacia arriba y hacia fuera para descubrir su frente y su costado interior.");

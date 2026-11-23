@@ -9,6 +9,8 @@ public partial class HandFan : Control
     internal float Headroom { get; init; } = 4;
     internal float MaximumAngle { get; init; } = 8;
     internal bool Spread { get; init; }
+    /// <summary>Width kept free on each side when the cards spread out; a crowded hand may still use it.</summary>
+    internal float SideMargin { get; init; }
     /// <summary>The rival's fan: it hangs from the top edge, so the arc and the tilt are mirrored.</summary>
     internal bool Mirrored { get; init; }
     internal bool HeldOffTable { get; init; }
@@ -42,7 +44,7 @@ public partial class HandFan : Control
         var step = face.X * (HeldOffTable ? .36f : .55f);
         // The minimum footprint keeps the tight overlap; a wide board lets the cards breathe.
         var spread = Spread && cards.Length > 1
-            ? Math.Clamp((Size.X - face.X - 40) / (cards.Length - 1), step, face.X * 0.8f) : step;
+            ? Math.Clamp((Size.X - 2 * SideMargin - face.X - 40) / (cards.Length - 1), step, face.X * 0.8f) : step;
         if (HeldOffTable && cards.Length > 1)
             spread = Math.Min(step, Math.Max(1, (Size.X - face.X - 90) / (cards.Length - 1)));
         var halfCount = (cards.Length - 1) / 2f;

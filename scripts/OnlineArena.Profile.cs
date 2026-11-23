@@ -10,10 +10,14 @@ public partial class OnlineArena
 
     private bool ProfilesShown => TestProfiles != null || Connection?.ProfilesAvailable == true;
 
+    /// <summary>A seat's published profile, or the defaults under its name until one arrives.</summary>
+    private ProfileView PublicProfile(int seat, string name) =>
+        TestProfiles?.Invoke(seat) ?? (Connection?.RoomProfile(seat) is { } info ? ProfileView.From(info) : null) ?? ProfileView.Default(name);
+
     internal void ShowProfile(int seat, string name, bool own)
     {
         if (GetNodeOrNull("ProfilePopup") != null) return;
-        var view = TestProfiles?.Invoke(seat) ?? (Connection?.RoomProfile(seat) is { } info ? ProfileView.From(info) : null) ?? ProfileView.Default(name);
+        var view = PublicProfile(seat, name);
         if (TestProfiles == null && Connection?.RoomStanding(seat) is { } standing)
             view = view with
             {
