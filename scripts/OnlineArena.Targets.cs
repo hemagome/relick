@@ -57,7 +57,7 @@ public partial class OnlineArena
         var s = _snapshot!;
         return move.Kind switch
         {
-            DuelMoveKind.IronwingFire or DuelMoveKind.IronwingRoll =>
+            DuelMoveKind.IronwingFire or DuelMoveKind.IronwingRoll or DuelMoveKind.SkillAction =>
                 field.Owner == s.MySeat && field.Zone == FieldZone.Skill && field.Index == move.Index,
             // A card decision names its board target; a hand is one zone, its card drawn at random.
             _ when option?.Field is { Zone: FieldZone.TomeCard } tome && IsHandAction(move.Kind) =>
@@ -77,7 +77,7 @@ public partial class OnlineArena
 
     private bool IsFieldActivation(DuelOption option) => option.Move.Kind switch
     {
-        DuelMoveKind.FieldCode or DuelMoveKind.UsePurpleRing or DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => true,
+        DuelMoveKind.FieldCode or DuelMoveKind.SkillAction or DuelMoveKind.UsePurpleRing or DuelMoveKind.Pc or DuelMoveKind.Pendant or DuelMoveKind.BoxDefense => true,
         _ when option.Field?.Zone == FieldZone.TomeCard && IsHandAction(option.Move.Kind) => true,
         DuelMoveKind.CodeResponse => option.Move.Flag,
         // Choices that spend one of the decider's own cards light it up as an activation, not as a target.
@@ -213,7 +213,7 @@ public partial class OnlineArena
             tile.Targetable = tile.Skill != null && (available.Contains(tile.SkillIndex) || s.Options.Any(option => MatchesField(option, field)));
             tile.Playable = showActivations && tile.Skill != null &&
                 (tile.SkillIndex == learningReroll && tile.Skill.Id == CardCatalog.Reverse.Id || s.Options.Any(o =>
-                    o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction or DuelMoveKind.IronwingRoll or DuelMoveKind.IronwingFire &&
+                    o.Move.Kind is DuelMoveKind.DestinyDefense or DuelMoveKind.ProtectDestruction or DuelMoveKind.IronwingRoll or DuelMoveKind.IronwingFire or DuelMoveKind.SkillAction &&
                     o.Move.Index == tile.SkillIndex));
             tile.Chosen = tile.Skill != null && (_fieldSelection == field || tile.SkillIndex == _selectedSkill && (attack || _skillContext));
             if (tile.Targetable) _pulsingTargets.Add(tile);

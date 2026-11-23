@@ -218,7 +218,7 @@ public partial class OnlineArena
             indices = indices.Where(i => MatchesField(s.Options[i], field)).ToList();
         else
         {
-            indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.Relikia or DuelMoveKind.FieldCode or DuelMoveKind.Magnet or DuelMoveKind.UsePurpleRing ||
+            indices.RemoveAll(i => s.Options[i].Move.Kind is DuelMoveKind.Relikia or DuelMoveKind.FieldCode or DuelMoveKind.SkillAction or DuelMoveKind.Magnet or DuelMoveKind.UsePurpleRing ||
                 s.Options[i].Move.Kind == DuelMoveKind.Choose && s.Options[i].Field is { } target &&
                 !(selectedCombo >= 0 && target.Zone == FieldZone.Hand && target.Owner == s.MySeat));
             indices.RemoveAll(i => IsHandAction(s.Options[i].Move.Kind) && !_selected.Contains(s.Options[i].Move.Index));

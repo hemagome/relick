@@ -22,6 +22,10 @@ public sealed class PlayerState
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int WildDriveRedirects { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SearchActivationUsed { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HashSet<int>? SearchedHandSlots { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool AutoPassCombos { get; internal set; }
     /// <summary>
     /// Cosmetic sleeve and die from the player's deck; no rule reads them. Null means the classic ones, which keeps
@@ -148,6 +152,7 @@ public sealed class PlayerState
         Hand.RemoveAt(index);
         GhostDogReveals = ShiftHandSlots(GhostDogReveals, index);
         LockedGhostCards = ShiftHandSlots(LockedGhostCards, index);
+        SearchedHandSlots = ShiftHandSlots(SearchedHandSlots, index);
         RemoveCorruptionSlots(CardZone.Hand, index);
         var remaining = _revealedHandSlots.Where(slot => slot != index).Select(slot => slot > index ? slot - 1 : slot).ToArray();
         _revealedHandSlots.Clear();
@@ -334,6 +339,8 @@ public sealed class GameState
     public List<DiscardTriggerBatch>? DiscardTriggers { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public EngineContinuation? WdPayment { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PendingSearchActivation? SearchActivation { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ZahiraRolledThisFinal { get; internal set; }
     // Next Zahira Flair of the waiting player that still has to roll in this final stage.
@@ -363,7 +370,7 @@ public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, in
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool IronwingPaid = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole, GhostDog, DualityCassette }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole, GhostDog, DualityCassette, TurboAttackDamage, RollingShuffleDamage, RollingShuffleReward, RollingShuffleAction }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, [property: JsonPropertyName("YunoStopped")] bool RerollStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 
@@ -380,7 +387,8 @@ public sealed record PendingAttack(int Attacker, string SkillId, int Damage, boo
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Reward = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] EngineContinuation? ApplyDamage = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] EngineContinuation? AfterDamage = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] EngineContinuation? AfterDamage = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool RewardRollPending = false);
 
 public readonly record struct CommandResult(bool Success, string Message)
 {

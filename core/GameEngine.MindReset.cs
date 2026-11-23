@@ -34,11 +34,11 @@ public sealed partial class GameEngine
         return null;
     }
 
-    private CommandResult PlayMindReset(int actor, int index)
+    private CommandResult PlayMindReset(int actor, int index, int actionCost)
     {
         var p = State.Players[actor]; var card = CardCatalog.Get(PlayableHandCard(p, index)!);
-        SendHandToMemory(p, index); p.ActionsLeft -= card.ActionCost;
-        BeginActivation(new EngineActivation(actor, card.Id, card.ActionCost, 0, State.Phase)
+        SendHandToMemory(p, index); p.ActionsLeft -= actionCost;
+        BeginActivation(new EngineActivation(actor, card.Id, actionCost, 0, State.Phase)
             { Kind = ActivationKind.MindReset, Parent = _activeActivation });
         return CommandResult.Ok();
     }

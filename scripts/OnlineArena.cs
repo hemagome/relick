@@ -103,6 +103,7 @@ public partial class OnlineArena : Control
     private bool ChoosingDeckGallery => !ViewingBoardDuringGallery && ChoosingDeckSearch && (ChoosingOsamuCards ||
         ChoosingCopyTarget || _snapshot!.Decision?.Source == CardCatalog.KonamyCode.Id || _snapshot.Decision?.Source == CardCatalog.EquipmentRaid.Id ||
         _snapshot.Decision?.Source == CardCatalog.Ellie.Id || _snapshot.Decision?.Source == CardCatalog.Compass16Bit.Id ||
+        _snapshot.Decision?.Source == CardCatalog.RollingShuffle.Id ||
         _snapshot.Decision?.Source == RelikarioCatalog.IronwingLv2.Id);
     private bool ChoosingMemoryRecovery => Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingCorruption => _snapshot is { Phase: Phase.RelikiaChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Corrupt);

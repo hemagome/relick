@@ -45,11 +45,11 @@ internal sealed class EllieEffect : CardEffect
         ctx.Announce($"{ctx.Player.Name} añade una carta de su mazo a su mano con Ellie.");
         if (decision.Value == MaxCards)
         {
-            ctx.MoveDeckCardToHand(choice.Value, ctx.Then(Pick));
+            ctx.SearchDeckCardToHand(choice.Value, ctx.Then(Pick), finishSearch: false);
             return;
         }
         ctx.EndActivation();
-        ctx.MoveDeckCardToHand(choice.Value);
+        ctx.SearchDeckCardToHand(choice.Value);
     }
 
     public override void Continue(GameEngine.EffectContext ctx, string step, EngineContinuation next) => AskForCard(ctx, 1);

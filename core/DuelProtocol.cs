@@ -34,7 +34,7 @@ public enum DuelMoveKind
     Pendant, PassDefense, BoxDefense, DestinyDefense, Magnet, SkipMagnet, CodeResponse, PassError, Relikia, Placement,
     Reward, Corrupt, Concede, Recycle, Pc, Sniper, Dexterity, LearningDie, ProtectDestruction, TurnBuffDiscard,
     FieldCode, EffectDamage, ComboResponses, TrapCraft, Choose, RelikarioSearch, ActivateArea, UsePurpleRing, DestinyPickMemory, IronwingDie,
-    IronwingRoll, IronwingFire, RevealGhostDog, PrepareD10, ConvertD10, WdBoost
+    IronwingRoll, IronwingFire, RevealGhostDog, PrepareD10, ConvertD10, WdBoost, SkillAction
 }
 
 // Indices refer exclusively to an authenticated player's server-issued options at one revision.
@@ -68,6 +68,7 @@ public sealed class DuelMove
         DuelMoveKind.PrepareD10 => game.PrepareD10(actor, Flag),
         DuelMoveKind.ConvertD10 => game.ConvertD10(actor),
         DuelMoveKind.WdBoost => game.UseWdBoost(actor),
+        DuelMoveKind.SkillAction => game.UseSkillAction(actor, Index),
         DuelMoveKind.Learn => game.Learn(actor, Index),
         DuelMoveKind.Attack => game.Attack(actor, Index, Value),
         DuelMoveKind.PlayCode => game.PlayCode(actor, Index),

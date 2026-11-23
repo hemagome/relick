@@ -31,6 +31,6 @@ internal sealed class KonamyCodeEffect : CardEffect
         ctx.Announce($"{ctx.Player.Name} añade una no-habilidad a su mano con {ctx.Card.Name}.");
         // The search is over before the card moves, so emptying the deck recycles outside this activation.
         ctx.EndActivation();
-        ctx.MoveDeckCardToHand(choice.Value);
+        ctx.SearchDeckCardToHand(choice.Value);
     }
 }

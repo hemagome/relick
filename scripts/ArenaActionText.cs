@@ -48,7 +48,7 @@ internal static class ArenaActionText
         DuelMoveKind.Corrupt => "Corromper",
         DuelMoveKind.DestinyPickMemory => "Activar",
         DuelMoveKind.Recycle => "Reciclar",
-        DuelMoveKind.FieldCode => "Activar",
+        DuelMoveKind.FieldCode or DuelMoveKind.SkillAction => "Activar",
         DuelMoveKind.Sniper => option.Move.Flag ? "Equipar" : "Canjear",
         DuelMoveKind.TrapCraft => option.Label,
         DuelMoveKind.Relikia => option.Move.Value == (int)RelikiaEffect.ReplayCode ? "Activar" : RelikiaEffects.Get((RelikiaEffect)option.Move.Value).Name,
@@ -132,7 +132,7 @@ internal static class ArenaActionText
                 if (card.Id == CardCatalog.VictoriousManualControl.Id) return CardCost(card);
                 return Resources(card.ActionCost, GameEngine.CodePrCost(card), card.DiscardCost);
             case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch:
-            case DuelMoveKind.DestinyPickMemory: case DuelMoveKind.RevealGhostDog: return "1 acción";
+            case DuelMoveKind.DestinyPickMemory: case DuelMoveKind.RevealGhostDog: case DuelMoveKind.SkillAction: return "1 acción";
             case DuelMoveKind.UsePurpleRing:
             case DuelMoveKind.Choose when s.Decision?.Source == CardCatalog.PurpleRing.Id && option.Field != null:
                 return "Destruye Anillo Morado";

@@ -80,6 +80,7 @@ public sealed partial class GameEngine
         var die = pending.Die;
         var p = State.Players[pending.Attacker];
         var skill = CardCatalog.Get(pending.SkillId);
+        if (CardEffects.For(skill.Id) is IAttackDamageRoll roll && roll.TryRollDamage(EffectFor(pending.Attacker, skill.Id), pending)) return;
         if (RollTurboDamage(pending)) return;
         var attackDamageBonus = pending.SuperAttack ? CardCatalog.SuperAttack.DamageBonus : 0;
         if (pending.NormalDamage is int normal && pending.CriticalDamage is int critical)

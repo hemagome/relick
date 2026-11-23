@@ -106,6 +106,14 @@ public static class DuelOptions
                     Add(DuelMoveKind.Advance, s.ExtraCombatStages > 0 ? "Repetir etapa de combate" : "Ir a acciones");
                     break;
                 case Phase.Actions:
+                    for (var slot = 0; slot < p.Skills.Count; slot++)
+                    {
+                        if (!game.CanUseSkillAction(actor, slot)) continue;
+                        var id = p.Skills[slot];
+                        Add(DuelMoveKind.SkillAction, $"Activar {Card(id)} · 1 acción", slot);
+                        result[^1].Field = new(actor, FieldZone.Skill, slot, id);
+                        result[^1].CardId = id;
+                    }
                     if (game.CanUseOsamuSearch(actor)) Add(DuelMoveKind.RelikarioSearch, "Buscar con Osamu Lv 2 · 1 acción");
                     foreach (var i in game.DestinyPickMemorySlots(actor))
                         Add(DuelMoveKind.DestinyPickMemory, $"Activar Púa del Destino · memoria {i + 1}", i);

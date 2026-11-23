@@ -85,7 +85,7 @@ public sealed partial class GameEngine
             }
             else
             {
-                State.PendingReload = null; State.Phase = Phase.Actions; _activeActivation = frame.Parent;
+                State.PendingReload = null; State.Phase = frame.ResumePhase; _activeActivation = frame.Parent;
                 State.LastCombat = "Cartucho de Re-carga · Ambos jugadores han robado 4 cartas.";
                 Log(State.LastCombat);
                 CompletePendingPlay();

@@ -125,6 +125,26 @@ internal interface IAttackDamageEffect
     bool TryPrepareDamage(GameEngine.EffectContext ctx, EngineContinuation applyDamage);
 }
 
+internal interface IAttackDamageRoll
+{
+    bool TryRollDamage(GameEngine.EffectContext ctx, PendingAttackRoll attack);
+}
+
+internal interface IAttackRewardRoll
+{
+    void RollReward(GameEngine.EffectContext ctx);
+}
+
+internal interface ISkillAction
+{
+    void Activate(GameEngine.EffectContext ctx);
+}
+
+internal interface IDeckSearchTrigger
+{
+    bool TryOffer(GameEngine.EffectContext ctx, IReadOnlyList<int> handSlots, EngineContinuation? then);
+}
+
 /// <summary>Moments of the turn when a card in play may act. Each moment's triggers run in their <c>Order</c>.</summary>
 internal enum TurnMoment { TurnStart, ActionStart, FinalStage }
 
@@ -215,6 +235,7 @@ internal static class CardEffects
             new VictoriousManualControlEffect(), new EllieEffect(), new RobotizeEffect(), new ComboParryEffect(), new NoOptionsEffect(),
             new DestinyPickEffect(), new MagicTomeEffect(), new GlassFluteEffect(), new Compass16BitEffect(), new GhostDogEffect(),
             new DualityCassetteEffect(), new GalacticEnergyCoreEffect(), new SecretRoomEffect(), new BulletEffect(), new WildAimEffect(),
+            new TurboAttackEffect(), new RollingShuffleEffect(),
             new MouseBikeEffect(), new ThiefGhostEffect(), new FutureEraEffect(), new PlatformsEffect(), new ZahiraFlairEffect(), new PurpleRingEffect(),
             GuardEquipmentEffect.Bonfire, GuardEquipmentEffect.DiamondHelmet, GuardEquipmentEffect.MetalHood, new SniperScopeEffect(), new TurboSwordEffect(), new SalvationTotemEffect() }.ToDictionary(e => e.CardId);
 
@@ -315,6 +336,8 @@ public sealed partial class GameEngine
         }
         public void CorruptMemoryCard(int owner, int index) => _engine.Corrupt(Actor, owner, index);
         public int Heal(int amount) => _engine.Heal(Player, amount);
+        public int Heal(int seat, int amount) => _engine.Heal(State.Players[seat], amount);
+        public void DealDamage(int seat, int amount) => _engine.DealDamage(seat, amount, source: Actor);
         /// <summary>Swaps the whole hands of both players; each copy keeps its owner and whether it was revealed.</summary>
         public void SwapHands() => _engine.SwapHands(Actor);
         /// <summary>Both players discard their hands and draw this card's <c>Draw</c>, with Mira de Sniper triggers in between.</summary>
@@ -440,6 +463,15 @@ public sealed partial class GameEngine
         /// </summary>
         public void Roll(DiePurpose purpose, string step) =>
             _engine.RollWithRelikario(Player, purpose, new DieEffect { Purpose = purpose, Actor = Actor, SkillId = Card.Id, Step = step });
+        public void RollAttackDamage(DiePurpose purpose, string step, PendingAttackRoll attack) =>
+            _engine.RollWithRelikario(Player, purpose, new DieEffect { Purpose = purpose, Actor = Actor, SkillId = Card.Id, Step = step, SkillAttack = attack });
+        public bool DealsNormalDamage(PendingAttackRoll attack) => attack.Die is 4 or 5 || attack.Die < 4 && _engine.HasStackedTotem(Actor);
+        public void ResolveAttackWithDamage(PendingAttackRoll attack, int damage) => _engine.ResolveRolledAttackDamage(attack, damage);
+        public void SetAttackReward(int reward)
+        {
+            State.PendingAttack = State.PendingAttack! with { Reward = reward, RewardRollPending = false };
+            _engine.CompletePendingPlay();
+        }
 
         /// <summary>The player must discard <paramref name="count"/> cards through the shared discard flow, which owns its triggers.</summary>
         public void RequireDiscard(int count)
@@ -447,7 +479,7 @@ public sealed partial class GameEngine
             State.DiscardsRemaining = Math.Min(count, Player.Hand.Count);
             _engine._activeActivation = null;
             if (State.DiscardsRemaining == 0) return;
-            State.DiscardPlayer = Actor; State.DiscardResumePhase = Phase.Actions; State.Phase = Phase.Discard;
+            State.DiscardPlayer = Actor; State.DiscardResumePhase = State.Phase; State.Phase = Phase.Discard;
         }
 
         public IEnumerable<MemorySelection> RecoverableMemoryCards() => _engine.RecoverableMemoryCards();
@@ -463,6 +495,7 @@ public sealed partial class GameEngine
         public void EndMindReset() { _engine.EndMindResetActivation(); _engine.CompleteEndTurnIfReady(); }
         /// <summary>Moves a memory card to this player's hand; a card from the rival's memory stays marked as foreign.</summary>
         public string TakeFromMemory(int owner, int index) => _engine.TakeFromMemory(Actor, owner, index, Card.Name);
+        public string TakeFromMemory(int owner, int recipient, int index) => _engine.TakeFromMemory(recipient, owner, index, Card.Name);
         public int CorruptDeckTop(int count) => _engine.CorruptDeckTop(Player, count);
         /// <summary>Moves a corrupted card to this player's hand and returns its hand slot; a rival's card stays marked as foreign.</summary>
         public int TakeCorruptedCard(int owner, int index)
@@ -491,6 +524,11 @@ public sealed partial class GameEngine
             new EngineContinuation { Kind = ContinuationKind.RefillDone, Actor = Actor,
                 Next = new EngineContinuation { Kind = ContinuationKind.CompleteExchange, Actor = Actor } });
         public void MoveDeckCardToHand(int deckIndex, EngineContinuation? then = null) => _engine.MoveDeckCard(Player, deckIndex, false, then);
+        public void SearchDeckCardToHand(int deckIndex, EngineContinuation? then = null, bool finishSearch = true) =>
+            _engine.MoveSearchedDeckCardToHand(Player, deckIndex, then, finishSearch: finishSearch);
+        public bool CanActivateSearchedHandCard(int handIndex) => _engine.CanActivateSearchedHandCard(Actor, handIndex);
+        public void ActivateSearchedHandCard(int handIndex, EngineContinuation? then, bool onOpponent) =>
+            _engine.ActivateSearchedHandCard(Actor, handIndex, then, onOpponent);
         public int Random(int exclusiveMax) => _engine._random.Next(exclusiveMax);
         /// <summary>Ends the activation before the effect's last move, as a search does before taking its card.</summary>
         public void EndActivation() => _engine.ReleaseActiveActivation();

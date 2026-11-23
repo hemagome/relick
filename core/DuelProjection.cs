@@ -156,8 +156,8 @@ public sealed class DuelSnapshot
         if (s.Phase == Phase.TrapCraftChoice) stagePhase = s.TrapCraftResumePhase!.Value;
         if (s.Phase == Phase.ErrorResponse && game.IsFieldCodeActivation) stagePhase = Phase.Combat;
         if (s.PendingTurnBuff != null) stagePhase = s.PendingTurnBuff.ResumePhase;
-        if (s.PendingReload != null && !s.IsOver) stagePhase = Phase.Actions;
-        if (s.PendingGoldenTotem != null && !s.IsOver) stagePhase = Phase.Actions;
+        if ((s.PendingReload != null || s.PendingGoldenTotem != null) && !s.IsOver)
+            stagePhase = s.SearchActivation?.ResumePhase ?? Phase.Actions;
         var stageDecision = s.PendingDecision ?? s.PendingTurnBuff?.Decision;
         while (stagePhase == Phase.Decision && stageDecision != null)
         {
@@ -168,7 +168,8 @@ public sealed class DuelSnapshot
         if (stagePhase is Phase.DieRerollChoice or Phase.RecycleChoice)
             stagePhase = (s.PendingDieRoll ?? s.PendingTurnBuff?.DieRoll)!.ResumePhase;
         if (stagePhase == Phase.WdResolving) stagePhase = s.WdPayment?.Attack != null ? Phase.Combat : s.WdPayment?.Die?.ResumePhase ?? Phase.Actions;
-        return stagePhase is Phase.CodeResponse or Phase.ErrorResponse or Phase.RelikiaChoice ? Phase.Actions :
+        return stagePhase is Phase.CodeResponse or Phase.ErrorResponse ? s.SearchActivation?.ResumePhase ?? Phase.Actions :
+            stagePhase == Phase.RelikiaChoice ? Phase.Actions :
             stagePhase == Phase.Discard ? s.DiscardResumePhase :
             stagePhase is Phase.DefenseChoice or Phase.MagnetChoice or Phase.AttackRerollChoice or Phase.EffectDamageChoice ? Phase.Combat : stagePhase;
     }

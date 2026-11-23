@@ -1,5 +1,45 @@
 # Cartas
 
+## Relick Turbo Attack (L8B-13/40)
+
+[`turbo-attack-clean.png`](turbo-attack-clean.png) restaura el escaneo adjunto
+`turbo-attack.png` con la herramienta integrada `image_gen`.
+
+Habilidad de Osamu. Un D6 aparte fija el daño normal en 2 con un resultado
+par o 3 con uno impar. El crítico es 5 y el premio es 400 PR. Una vez por turno,
+al concluir una búsqueda que trajo Códigos o Equipos del mazo a la mano,
+permite activar o equipar una de esas copias sin gastar una acción. Se
+aplican sus demás costes, requisitos y respuestas. Pasar deja disponible
+la opción para otra búsqueda.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore this exact full landscape Relick game card. Remove only the large repeated translucent diagonal RELICK watermark overlays, including faint strokes over the face, hair, hands, sword, artwork, name bar, and translucent rules panel. Restore underlying linework and colors where the overprint was. Preserve the flat full-width card, dark outer margin, 987:697 proportions, Osamu with red glasses, black-violet hair, sword with gray gamepad guard and blue circuits, the inset portrait, the blue hex lattice, blue gems, and the original layout and lettering. Exact printed text in place: “© 2018 FUYUHIRO GUSHIKEN”; “RELICK TURBO ATTACK”; “L8B-13/40”; “ATAQUE-HABILIDAD”; “UNA VEZ POR TURNO: AL BUSCAR CÓDIGOS” / “Y/O EQUIPOS DE TU MAZO A TU MANO: PUEDES” / “ACTIVAR/EQUIPAR UNO INMEDIATAMENTE” / “(ESTO NO CUENTA COMO UNA ACCIÓN)”; “DAÑO NORMAL” with the original die icon and “PAR: 2” / “IMPAR: 3”; “DAÑO CRÍTICO” with “5”; “PREMIO” with “400 PR”. Preserve credits, typography, and symbols. No crop, new elements, or redesign. Return only the clean card.
+
+</details>
+
+## Relick Rolling Shuffle (L8B-12/40)
+
+[`rolling-shuffle-clean.png`](rolling-shuffle-clean.png) restaura el escaneo adjunto
+`rolling-shuffle.png` con la herramienta integrada `image_gen`.
+
+Habilidad de Yuno. El daño normal es 2. El daño crítico y el premio de un
+ataque exitoso se calculan con tiradas separadas. El crítico es 1D6 + 1 y el
+premio es 100 × 1D6 + 100 PR.
+Desde las habilidades enseñadas puede gastar 1 acción para aplicar los
+seis resultados impresos. Con un 5, el rival toma la quinta carta desde el
+tope de su memoria normal si existe. Con un 6, se eligen dos de las primeras
+seis cartas del mazo propio, o las disponibles si quedan menos de dos.
+Las demás conservan su orden.
+
+<details>
+<summary>Prompt de restauración</summary>
+
+> Use case: precise-object-edit. Restore this exact full landscape Relick game card. Remove only the large repeated translucent diagonal RELICK watermark overlays, including faint strokes over the face, hair, glove, red clothing, background, name bar, and translucent rules panel. Restore underlying linework and colors where the overprint was. Preserve the full dark outer margin, 987:697 proportions, Yuno in red with his raised armored fist, cyan lightning, original pose and expression, inset portrait, red circuit background, red gems, and exact original layout and lettering. Exact printed text in place: “© 2018 FUYUHIRO GUSHIKEN”; “RELICK ROLLING SHUFFLE”; “L8B-12/40”; “ATAQUE-HABILIDAD”; “COMO UNA DE TUS ACCIONES PUEDES LANZAR 1D6:” / “1-PIERDES 1 VIDA.” / “2- ROBA 2 CARTAS.” / “3-TU OPONENTE GANA 3 VIDAS.” / “4- GANA 400 PR.” / “5-TU OPONENTE COGE LA 5 CARTA DE SU MEMORIA.” / “6-MIRA LAS 6 CARTAS DE LA PARTE SUPERIOR DEL MAZO Y COGE 2.”; “DAÑO NORMAL” with “2”; “DAÑO CRÍTICO” with the original die icon followed by “+1”; “PREMIO” and original small die icon above “X 100 + 100” and “PR”. Preserve credits, typography, and symbols. No crop, new elements, or redesign. Return only the clean card.
+
+</details>
+
 ## Relick Wild Aim
 
 [Wild Aim (L8B-14/40)](wild-aim-clean.png) se restauró con la herramienta

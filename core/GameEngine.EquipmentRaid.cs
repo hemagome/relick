@@ -78,7 +78,7 @@ public sealed partial class GameEngine
                     PresentRaidSideB(holder, 1 - actor);
                 }
                 else
-                    MoveDeckCard(p, choice.Value, false, new EngineContinuation { Kind = ContinuationKind.AreaRaidSideB, Actor = 1 - actor, Value = holder });
+                    MoveSearchedDeckCardToHand(p, choice.Value, new EngineContinuation { Kind = ContinuationKind.AreaRaidSideB, Actor = 1 - actor, Value = holder });
                 break;
             case RaidEquip:
                 var next = new EngineContinuation { Kind = ContinuationKind.EquipFromDeck, Actor = actor, Value = choice.Value, Text = choice.CardId! };

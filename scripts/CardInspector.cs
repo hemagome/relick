@@ -60,6 +60,8 @@ internal sealed record AttackOutlook(int Normal, int Critical, bool RandomNormal
         if (SkillId == CardCatalog.TurboSword.Id)
             return die switch { 4 => Range(1, 3), 5 => Range(2, 5), _ => Range(4, 7) };
         if (SkillId == CardCatalog.TurboOverlap.Id && die == 6) return Range(1, 6);
+        if (SkillId == CardCatalog.TurboAttack.Id && die < 6) return die == 4 ? Range(1, 2) : Range(2, 3);
+        if (SkillId == CardCatalog.RollingShuffle.Id && die == 6) return Range(2, 7);
         var amount = GameEngine.DamageFor(die, Normal, Critical) * DamageMultiplier;
         if (SkillId == CardCatalog.WildAim.Id)
             return die == 6 ? $"≥{amount}" : Range(GameEngine.DamageFor(die, Normal, Critical),

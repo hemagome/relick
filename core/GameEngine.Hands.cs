@@ -26,6 +26,7 @@ public sealed partial class GameEngine
         // travel with those exact copies, not with the slots on their old owner.
         (p.Hand, rival.Hand) = (rival.Hand, p.Hand);
         (p.LockedGhostCards, rival.LockedGhostCards) = (rival.LockedGhostCards, p.LockedGhostCards);
+        p.SearchedHandSlots = null; rival.SearchedHandSlots = null;
         p.GhostDogReveals = null; rival.GhostDogReveals = null;
         // Ownership stays with each copy: what was the rival's own is now borrowed, and vice versa.
         var borrowed = p.ForeignHandSlots ?? []; var rivalBorrowed = rival.ForeignHandSlots ?? [];

@@ -94,7 +94,7 @@ public sealed partial class GameEngine
         var actor = decision.Decider;
         if (decision.Step == OverlapDamageChoice)
         {
-            ResolveTurboAttack(decision.Attack!, choice.Value);
+            ResolveRolledAttackDamage(decision.Attack!, choice.Value);
             return;
         }
         var next = decision.Attack != null ? new EngineContinuation { Kind = ContinuationKind.ResolveSkillAttack, Actor = actor, Attack = decision.Attack } : null;
@@ -113,7 +113,7 @@ public sealed partial class GameEngine
         else
         {
             Log($"{p.Name} añade una carta de su mazo a su mano con {decision.Title()}.");
-            MoveDeckCard(p, choice.Value, false, next, mark);
+            MoveSearchedDeckCardToHand(p, choice.Value, next, mark);
         }
     }
 
@@ -139,14 +139,14 @@ public sealed partial class GameEngine
         if (effect.Purpose == DiePurpose.TurboSwordDamage)
         {
             var damage = attack.Die == 6 ? Math.Max(4, die + 1) : Math.Max(2, die - 1);
-            ResolveTurboAttack(attack, damage);
+            ResolveRolledAttackDamage(attack, damage);
         }
         else if (effect.Slot == 0)
         {
             effect.Slot = die;
             RollWithRelikario(State.Players[effect.Actor], effect.Purpose, effect, effect.OverlapSecondDie);
         }
-        else if (effect.OverlapSecondDie == null && effect.Slot == die) ResolveTurboAttack(attack, die);
+        else if (effect.OverlapSecondDie == null && effect.Slot == die) ResolveRolledAttackDamage(attack, die);
         else AskDecision(new PendingDecision
         {
             Source = attack.SkillId, Step = OverlapDamageChoice, Decider = attack.Attacker, Kind = DecisionKind.Confirm,
@@ -155,7 +155,7 @@ public sealed partial class GameEngine
         });
     }
 
-    private void ResolveTurboAttack(PendingAttackRoll attack, int damage)
+    private void ResolveRolledAttackDamage(PendingAttackRoll attack, int damage)
     {
         var skill = CardCatalog.Get(attack.SkillId);
         if (attack.Die == 6) skill = skill with { CriticalDamage = damage };

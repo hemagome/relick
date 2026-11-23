@@ -136,6 +136,7 @@ public sealed partial class GameEngine
                  PlayableCards(actor).Any(entry => CanLearnSkill(p, CardCatalog.Get(entry.Id)))),
             Phase.Actions => (AvailableActions(actor) > 0 && PlayableCards(actor).Any(c => p.Bonus != null || CardCatalog.Get(c.Id).Kind == CardKind.Equipment ||
                 CanActivateArea(actor, c.Index) || CodeUnavailableReason(actor, c.Index) == null || CanRevealGhostDog(actor, c.Index))) ||
+                Enumerable.Range(0, p.Skills.Count).Any(slot => CanUseSkillAction(actor, slot)) ||
                 CanUseOsamuSearch(actor) || DestinyPickMemorySlots(actor).Any() || RelikiaEffects.All.Any(e => CanUseRelikiaEffect(actor, e.Id)),
             Phase.Discard => State.DiscardsRemaining > 0 && p.Hand.Count > 0,
             Phase.Final => p.Hand.Count > MaxHandSize,
@@ -233,14 +234,20 @@ public sealed partial class GameEngine
     {
         var error = CodeUnavailableReason(actor, handIndex);
         if (error != null) return CommandResult.Fail(error);
+        return ActivateHandCode(actor, handIndex);
+    }
+
+    private CommandResult ActivateHandCode(int actor, int handIndex, int? actionCost = null)
+    {
         var p = State.Players[actor];
         var card = CardCatalog.Get(PlayableHandCard(p, handIndex)!);
+        var actions = actionCost ?? card.ActionCost;
         if (card.Id == CardCatalog.CopyHelmet.Id) return PlayCopyHelmet(actor, handIndex);
         if (CardEffects.For(card.Id) is CardEffect { HoldsActivationCard: true } ||
             card.Id == CardCatalog.MagicTome.Id || card.Id == CardCatalog.GalacticShield.Id || handIndex >= TomeHandBase &&
             (card.Id == CardCatalog.Robotize.Id || card.Id == CardCatalog.GoldenTotem.Id))
         {
-            var frame = new EngineActivation(actor, card.Id, card.ActionCost, CodePrCost(card), State.Phase);
+            var frame = new EngineActivation(actor, card.Id, actions, CodePrCost(card), State.Phase);
             HoldActivationCard(frame, handIndex);
             p.ActionsLeft -= frame.Actions;
             p.Relikia -= frame.Pr;
@@ -249,7 +256,7 @@ public sealed partial class GameEngine
             return CommandResult.Ok();
         }
         // Resetear la Mente keeps its own activation: no PR cost and no "juega" line, as before it became a module.
-        if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex);
+        if (card.Id == CardCatalog.MindReset.Id) return PlayMindReset(actor, handIndex, actions);
         if (card.CancelActivation) return PlayLoadError(actor, handIndex);
         if (card.RerollOwnDie || card.SetOwnDie > 0) return PlayRerollCombo(actor, handIndex);
         var deferCorruption = (card.Id == CardCatalog.GoldenTotem.Id || card.Id == CardCatalog.Robotize.Id) &&
@@ -259,10 +266,10 @@ public sealed partial class GameEngine
         var played = robotize ? SendToMemory(p, card.Id, CardZone.Hand, handIndex, notify: false, deferCorruption: deferCorruption)
             : SendHandToMemory(p, handIndex, deferCorruption);
         if (robotize) p.RemoveHandCard(handIndex);
-        p.ActionsLeft -= card.ActionCost;
+        p.ActionsLeft -= actions;
         p.Relikia -= CodePrCost(card);
         Log($"{p.Name} juega {card.Name}.");
-        ActivateCode(actor, card, false, played?.Index ?? -1, played?.Owner, deferCorruption);
+        ActivateCode(actor, card, false, played?.Index ?? -1, played?.Owner, deferCorruption, actionCost: actions);
         return CommandResult.Ok();
     }
 
@@ -404,6 +411,8 @@ public sealed partial class GameEngine
             player.LockedGhostCards = null;
             player.AttackRerollUsedThisTurn = false;
             player.WildDriveRedirects = 0;
+            player.SearchActivationUsed = false;
+            player.SearchedHandSlots = null;
             player.RelikarioSearchUsedThisTurn = false;
             player.BonusEffectUsed = false; player.ExchangeEffectsUsed = null; player.IronwingFireUsed = null;
         }
@@ -445,6 +454,7 @@ public sealed partial class GameEngine
     {
         if (TryRunDiscardEffects() || TryFinishWdPayment()) return;
         if (FinishPlayedTargetResponse()) return;
+        if (TryResumeSearchActivation()) return;
         if (_activeActivation == null && _ramResolutions.LastOrDefault() is { } ram &&
             State.Phase == ram.PlayPhase)
         {

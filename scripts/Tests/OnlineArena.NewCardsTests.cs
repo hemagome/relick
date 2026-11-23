@@ -227,6 +227,7 @@ public partial class OnlineArena
         CheckIronwingDieChoices();
         CheckWdDieChoices();
         CheckWildAimChoice();
+        CheckRollingShuffleAction();
 
         for (var result = 1; result <= 10; result++)
         {
@@ -444,6 +445,34 @@ public partial class OnlineArena
         if (_deckSearchOptions.Single().CardId != CardCatalog.Bullet.Id ||
             !_snapshot!.Options.Any(option => option.Label == "Borrar selección" && PresentsOption(option)))
             throw new Exception("La siguiente selección debe excluir la carta marcada y ofrecer borrarla.");
+    }
+
+    private void CheckRollingShuffleAction()
+    {
+        var rolling = CardCatalog.RollingShuffle;
+        var turbo = CardCatalog.TurboAttack;
+        if (BoardArt.LoadCardArtwork(rolling)?.ResourcePath != "res://assets/cards/rolling-shuffle-clean.png" ||
+            BoardArt.LoadCardArtwork(turbo)?.ResourcePath != "res://assets/cards/turbo-attack-clean.png" ||
+            AttackOutlook.For(rolling, 0).Damage(6) != "2–7" || AttackOutlook.For(turbo, 0).Damage(5) != "2–3")
+            throw new Exception("El inspector debe mostrar las dos cartas y sus daños variables.");
+
+        var attack = CardCatalog.Attack.Id;
+        var game = GameEngine.FromOpening(new DuelOpening
+        {
+            Names = ["Ana", "Beto"], Hands = [[], []], Decks = [[attack, attack], [attack]],
+            Bonuses = [null, null], StartingSeat = 0
+        }, new SeededRandom(26));
+        game.State.Phase = Phase.Actions;
+        game.State.Active.Skills.Add(rolling.Id);
+        ResetAnimations();
+        var snapshot = DuelSnapshot.For(game, 0, 20);
+        PresentTestSnapshot(snapshot);
+        var option = snapshot.Options.Single(move => move.Move.Kind == DuelMoveKind.SkillAction);
+        if (option.Field?.CardId != rolling.Id || !MatchesField(option, (0, FieldZone.Skill, 0)))
+            throw new Exception("Rolling Shuffle debe ofrecer su activación en la carta enseñada.");
+        SelectSkill(0);
+        if (!PresentsOption(option) || ArenaActionText.Cost(option, snapshot) != "1 acción")
+            throw new Exception("El tablero debe permitir activar Rolling Shuffle por una acción.");
     }
 
     private async Task CheckAreaAndDeckArrivals()

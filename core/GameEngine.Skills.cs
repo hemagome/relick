@@ -4,6 +4,20 @@ public sealed partial class GameEngine
 {
     public int DefenseDiscardCost => State.PendingAttack?.Critical == true ? 4 : 3;
 
+    public bool CanUseSkillAction(int actor, int slot) => ValidateAction(actor) == null &&
+        CardEffects.For(State.Active.Skills.ElementAtOrDefault(slot)) is ISkillAction &&
+        !EffectsSuppressed(actor, FieldZone.Skill, slot);
+
+    public CommandResult UseSkillAction(int actor, int slot)
+    {
+        if (!CanUseSkillAction(actor, slot)) return CommandResult.Fail("Esta habilidad requiere una acción disponible.");
+        var id = State.Active.Skills[slot];
+        State.ActionsLeft--;
+        Log($"{State.Active.Name} activa {CardCatalog.Get(id).Name} (1 acción).");
+        ((ISkillAction)CardEffects.For(id)!).Activate(EffectFor(actor, id));
+        return CommandResult.Ok();
+    }
+
     private bool TryFinishWithGameOver()
     {
         if (State.IsOver) return false;
@@ -151,6 +165,13 @@ public sealed partial class GameEngine
         {
             State.PendingAttack = attack with { AfterDamage = null };
             Continue(afterDamage);
+            return true;
+        }
+        if (attack.RewardRollPending) return false;
+        if (attack.RewardPending && attack.Reward == null && CardEffects.For(attack.SkillId) is IAttackRewardRoll roll)
+        {
+            State.PendingAttack = attack with { RewardRollPending = true };
+            roll.RollReward(EffectFor(attack.Attacker, attack.SkillId));
             return true;
         }
         State.PendingAttack = null;

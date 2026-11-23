@@ -14,12 +14,13 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex, int? memoryOwner = null, bool corruptOnMemory = false)
+    private void ActivateCode(int actor, CardDefinition card, bool fromMemory, int memoryIndex, int? memoryOwner = null,
+        bool corruptOnMemory = false, int? actionCost = null)
     {
         var parry = card.Id == CardCatalog.ComboParry.Id;
         var response = State.Phase == Phase.Decision ? State.PendingDecision?.TargetResponse : null;
         if (response != null) response.Played = true;
-        var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : card.ActionCost,
+        var frame = new EngineActivation(actor, card.Id, fromMemory ? 2 : actionCost ?? card.ActionCost,
             CodePrCost(card) + (fromMemory ? 400 : 0), State.Phase)
         {
             Kind = ActivationKind.Code, FromMemory = fromMemory, MemoryIndex = memoryIndex, MemoryOwner = memoryOwner == actor ? null : memoryOwner,

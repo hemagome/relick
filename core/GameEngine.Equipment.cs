@@ -17,12 +17,17 @@ public sealed partial class GameEngine
     {
         var error = ValidateAction(actor);
         if (error != null) return CommandResult.Fail(error);
+        return EquipHandCard(actor, handIndex, onOpponent, actionCost: 1);
+    }
+
+    private CommandResult EquipHandCard(int actor, int handIndex, bool onOpponent, int actionCost)
+    {
         var p = State.Players[actor];
         if (PlayableHandCard(p, handIndex) is not { } id || CardCatalog.Get(id).Kind != CardKind.Equipment)
             return CommandResult.Fail("Selecciona un equipo que puedas usar.");
         if (onOpponent && id != CardCatalog.MetalHood.Id && id != CardCatalog.ThiefGhost.Id)
             return CommandResult.Fail("Este equipo no se puede colocar en el campo rival.");
-        var frame = new EngineActivation(actor, id, 1, 0, State.Phase)
+        var frame = new EngineActivation(actor, id, actionCost, 0, State.Phase)
         {
             Kind = ActivationKind.Equipment, EquipOpponent = onOpponent || id == CardCatalog.ThiefGhost.Id
         };
@@ -35,7 +40,7 @@ public sealed partial class GameEngine
             frame.MemoryIndex = waiting.Index;
             frame.MemoryOwner = waiting.Owner == actor ? null : waiting.Owner;
         }
-        State.ActionsLeft--;
+        p.ActionsLeft -= actionCost;
         BeginActivation(frame);
         return CommandResult.Ok();
     }
@@ -44,11 +49,12 @@ public sealed partial class GameEngine
     {
         var frame = _activeActivation!; var p = State.Players[frame.EquipmentRecipient];
         var card = CardCatalog.Get(frame.CardId);
+        var cost = frame.Actions == 0 ? "sin gastar acción" : "1 acción";
         if (card.LightEquipment)
         {
             var slot = p.LightEquipment?.Count ?? 0;
             InstallActivationCard(frame, p, CardZone.LightEquipment, slot, light: true);
-            Log($"{p.Name} se equipa {card.Name} como equipo ligero (1 acción).");
+            Log($"{p.Name} se equipa {card.Name} como equipo ligero ({cost}).");
             CompleteActivationIfFinished();
             return;
         }
@@ -68,8 +74,8 @@ public sealed partial class GameEngine
                 NotifyPileMove(State.Players[frame.Actor], card.Id, CardZone.Activation, destination: CardZone.Equipment,
                     destinationPlayer: frame.EquipmentRecipient);
             Log(frame.EquipOpponent
-                ? $"{State.Players[frame.Actor].Name} equipa {card.Name} a {p.Name} (1 acción)."
-                : $"{p.Name} pone {card.Name} en su zona de equipo (1 acción).");
+                ? $"{State.Players[frame.Actor].Name} equipa {card.Name} a {p.Name} ({cost})."
+                : $"{p.Name} pone {card.Name} en su zona de equipo ({cost}).");
             if (card.Heal > 0) Heal(p, card.Heal);
             if (frame.FinishSniperExchange) CompleteExchange(p);
             if (card.StoreDie) RollEquipmentStorage(p);

@@ -21,6 +21,10 @@ internal static class DiePurposes
         [DiePurpose.TurboSwordDefense] = new("Turbo Sword · Defensa", CardCatalog.TurboSword.Id),
         [DiePurpose.TurboSwordDamage] = new("Turbo Sword · Daño", CardCatalog.TurboSword.Id),
         [DiePurpose.TurboOverlapDamage] = new("Turbo Overlap · Dado de daño", CardCatalog.TurboOverlap.Id),
+        [DiePurpose.TurboAttackDamage] = new("Turbo Attack · Daño normal", CardCatalog.TurboAttack.Id),
+        [DiePurpose.RollingShuffleDamage] = new("Rolling Shuffle · Daño crítico", CardCatalog.RollingShuffle.Id),
+        [DiePurpose.RollingShuffleReward] = new("Rolling Shuffle · Premio", CardCatalog.RollingShuffle.Id),
+        [DiePurpose.RollingShuffleAction] = new("Rolling Shuffle · Efecto", CardCatalog.RollingShuffle.Id),
         // The resolution view never named a card from these two purposes; they keep it that way (null) until
         // someone decides it should.
         [DiePurpose.BlackHole] = new("Agujero Negro · Dado de Área", null),
