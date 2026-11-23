@@ -108,7 +108,7 @@ public static class ArenaPresentation
 
     /// <summary>
     /// One duelist's half of the desktop board, with every card at the same size. From the outer
-    /// edge inward: canje under the Bonus and Área frame that straddles the divider, the Relikario
+    /// edge inward: the canje stack beyond the Bonus zone (Bonus and Área), the Relikario
     /// over its equipment, the four skills in a 2×2 block, the memory and the deck. The rival's
     /// half is the same field turned around.
     /// </summary>
@@ -122,10 +122,12 @@ public static class ArenaPresentation
         T Put<T>(T node, float x, float fromSeam, float width, float height) where T : Control
             => canvas.PlaceField(node, enemy, x, fromSeam, width, height);
 
-        // Bonus and Área share one frame, half on each field, next to their owner's canje.
+        // One Bonus zone on its owner's field, wide enough for the Bonus and an Área side by side;
+        // a lone Bonus sits in its centre. The canje lies beyond it, with a second card stacked on the first.
+        const float column = 302, frameTop = 8, frameHeight = H + 21, pair = 6;
         var frame = new Panel { Name = $"BonusFrame{index}", MouseFilter = Control.MouseFilterEnum.Ignore };
         frame.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(BoardArt.Tint(RelickVisuals.Playmat.Surface, 0.94f), BoardArt.Tint(accent, 0.8f), 10, 2));
-        Put(frame, 0, -112.5f, 302, 225);
+        Put(frame, 0, frameTop, column, frameHeight);
         var track = new ExchangeTrack { Name = $"BonusTrack{index}", Detached = true, OwnerCaption = index == 0 ? "TÚ" : "RIVAL",
             ExchangeCards = owner.Exchange.Select(CardCatalog.Get).ToArray(), Preparing = preparing, RelikarioId = owner.RelikarioId,
             BonusEffectUsed = owner.BonusEffectUsed, ExchangeEffectsUsed = owner.ExchangeEffectsUsed ?? Array.Empty<int>(),
@@ -136,10 +138,15 @@ public static class ArenaPresentation
         track.AreaInspected += actions.Area;
         track.Build();
         canvas.Place(track, new Rect2(), BoardAnchor.Top);
-        Put(track.AreaButton!, 8, -H / 2, W, H);
-        Put(track.BonusButton, 156, -H / 2, W, H);
+        var pairLeft = (column - 2 * W - pair) / 2;
+        var cardTop = frameTop + (frameHeight - H) / 2;
+        Put(track.AreaButton!, pairLeft, cardTop, W, H);
+        Put(track.BonusButton, owner.Area == null ? (column - W) / 2 : pairLeft + W + pair, cardTop, W, H);
+        // The second exchanged card lies on the first, shifted outward so a strip of the first stays in sight.
+        var stack = new Vector2(24, 34);
+        var exchangeTop = frameTop + frameHeight + 11;
         for (var slot = 0; slot < track.ExchangeButtons.Length; slot++)
-            Put(track.ExchangeButtons[slot], (302 - H) / 2, 115 + slot * (W + 10), H, W);
+            Put(track.ExchangeButtons[slot], (column - H - stack.X) / 2 + slot * stack.X, exchangeTop + slot * stack.Y, H, W);
 
         // Relikario: portrait beside its name, lives, actions, Destreza and PR.
         var hero = new HBoxContainer { Name = $"Hero{index}", MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -206,7 +213,7 @@ public static class ArenaPresentation
             Put(lights, 996, bottom, W, H); // Under its owner's Memory: beside it would cover the other seat's Bonus.
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
             TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
-            SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0 };
+            SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0, Groups = RelikarioGroups.For(owner) };
         attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, bottom, W, H);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {
@@ -237,7 +244,7 @@ public static class ArenaPresentation
         }
 
         Put(MemoryPile(owner, index, accent, actions.Memory, board: true, raised: canvas.TableView), 996, top, W, H);
-        // Center each deck vertically in the outer column, just beyond the opposing Bonus/Área frame.
+        // Center each deck vertically in the outer column, beside the opposing Bonus zone.
         var deckRow = canvas.TableView ? (top + bottom) / 2 : bottom;
         // Room for a full deck's top, which appears displaced outward, inside the table's texture.
         var deckInset = canvas.TableView ? 18 : 0;
@@ -344,7 +351,7 @@ public static class ArenaPresentation
         permanent.AddThemeConstantOverride("separation", 6);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
             TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
-            ShieldCount = owner.GalacticShieldCharges?.Length ?? 0 };
+            ShieldCount = owner.GalacticShieldCharges?.Length ?? 0, Groups = RelikarioGroups.For(owner) };
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
         if (owner.EquipmentCovers is { Length: > 0 } covers)
         {

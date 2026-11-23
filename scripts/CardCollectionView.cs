@@ -3,6 +3,9 @@ using Relick.Core;
 
 namespace Relick;
 
+/// <summary>A heading over the cards from <see cref="Start"/> on, in the hue of the group they form.</summary>
+internal sealed record CollectionSection(int Start, string Heading, Color? Hue = null);
+
 // A snapshot of authorized cards: selection only changes this viewer's shared inspector.
 public partial class CardCollectionView : HBoxContainer
 {
@@ -12,6 +15,8 @@ public partial class CardCollectionView : HBoxContainer
     public Func<int, bool>? Inverted { get; init; }
     public int? FaceDownStart { get; init; }
     public string? Sleeve { get; init; }
+    /// <summary>Groups the gallery under headings, such as each card on a Relikario with the cards under it.</summary>
+    internal IReadOnlyList<CollectionSection>? Sections { get; init; }
     public float InspectorWidth { get; init; } = 340;
     public event Action<int>? CardPressed;
     public event Action<int>? SelectionChanged;
@@ -53,7 +58,25 @@ public partial class CardCollectionView : HBoxContainer
         GridContainer? grid = null;
         for (var index = 0; index < Cards.Count; index++)
         {
-            if (index == 0 || index == FaceDownStart)
+            if (Sections?.FirstOrDefault(section => section.Start == index) is { } section)
+            {
+                var heading = ArenaPresentation.Text(section.Heading, 14, section.Hue ?? BoardArt.Muted);
+                heading.Name = "CollectionSection" + _grids.Count;
+                sections.AddChild(heading);
+                grid = new GridContainer { Name = "CollectionCards" + (_grids.Count == 0 ? "" : _grids.Count.ToString()), Columns = 1 };
+                grid.AddThemeConstantOverride("h_separation", 10); grid.AddThemeConstantOverride("v_separation", 10);
+                if (section.Hue is { } hue)
+                {
+                    // The group's cards sit on a band of its hue, the same one the board draws around them.
+                    var band = new PanelContainer { Name = "CollectionGroup" + _grids.Count };
+                    band.AddThemeStyleboxOverride("panel", RelickVisuals.Frame(BoardArt.Tint(hue, 0.10f), BoardArt.Tint(hue, 0.9f), 8, 2));
+                    band.AddChild(grid);
+                    sections.AddChild(band);
+                }
+                else sections.AddChild(grid);
+                _grids.Add(grid);
+            }
+            else if (Sections == null && (index == 0 || index == FaceDownStart))
             {
                 var faceDown = index == FaceDownStart;
                 if (FaceDownStart.HasValue)

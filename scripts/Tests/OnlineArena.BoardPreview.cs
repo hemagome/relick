@@ -43,6 +43,36 @@ public partial class OnlineArena
                 _relikiaMenu?.Hide(); _relikiaPreview = null; RefreshInspector(); await Layout();
             }
 
+            // The Bonus zone with an Área beside the Bonus, and a canje holding two stacked cards.
+            game.State.Players[0].Area = CardCatalog.Platforms.Id;
+            game.State.Players[0].Exchange.AddRange([CardCatalog.Attack.Id, CardCatalog.Bonfire.Id]);
+            game.State.Players[1].Exchange.Add(CardCatalog.Reroll.Id);
+            ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, 0, 902)); await Layout();
+            await Capture($"zonas-{tag}");
+            game.State.Players[1].Area = CardCatalog.BlackHole.Id;
+            game.State.Players[1].Exchange.Add(CardCatalog.MindReset.Id);
+            game.State.Players[0].Area = null;
+            ResetAnimations(); PresentTestSnapshot(DuelSnapshot.For(game, 0, 903)); await Layout();
+            await Capture($"zonas-rival-{tag}");
+
+            // Cards on the Relikario with cards under them: the pile, the peek and the grouped gallery.
+            var linked = DuelSnapshot.For(game, 0, 904);
+            var mine = linked.Players[0];
+            mine.Attached = [CardCatalog.Pendant.Id, CardCatalog.MagicTome.Id];
+            mine.TomeCards = [new(0, CardCatalog.Senshuni.Id, false, FieldZone.Attached, 1), new(1, CardCatalog.Attack.Id, true, FieldZone.Attached, 1)];
+            mine.GalacticShieldCharges = [2];
+            ResetAnimations(); PresentTestSnapshot(linked); await Layout();
+            await Capture($"relikario-{tag}");
+            if (_root!.FindChild("AttachmentStack0", true, false) is AttachmentStack pile)
+            {
+                pile.EmitSignal(Control.SignalName.MouseEntered); await Layout();
+                await Capture($"relikario-vistazo-{tag}");
+                pile.EmitSignal(Control.SignalName.MouseExited);
+            }
+            SelectFieldPile(0, FieldZone.Attached); await Layout();
+            await Capture($"relikario-consulta-{tag}");
+            GetNodeOrNull<AcceptDialog>("CardCollectionDialog")?.QueueFree(); await Layout();
+
             var disk = GameEngine.FromOpening(new DuelOpening
             {
                 Names = ["Ana", "Beto"], StartingSeat = 0,

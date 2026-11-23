@@ -135,12 +135,17 @@ public partial class OnlineArena
         };
         if (zone == FieldZone.Attached && player.TomeCards?.Any(card => card.HostZone == zone) == true)
         {
-            ShowTomePile(owner, zone, ids);
+            ShowRelikarioGroups(owner);
             return;
         }
         var targetable = _snapshot.Options.Any(o =>
             o.Move.Kind is DuelMoveKind.Choose or DuelMoveKind.UsePurpleRing && o.Field is { } t && t.Owner == owner && t.Zone == zone);
         if (ids.Length == 1 && (targetable || zone == FieldZone.LightEquipment)) { SelectField(owner, zone, 0); return; }
+        if (zone == FieldZone.Attached && RelikarioGroups.For(player).Any(group => group.Linked))
+        {
+            ShowRelikarioGroups(owner);
+            return;
+        }
         var relikario = player.RelikarioId;
         var title = zone switch
         {
@@ -149,6 +154,39 @@ public partial class OnlineArena
             _ => AttachmentStack.Location(ids, RelikarioCatalog.DisplayNameOf(relikario))
         };
         ShowCards(title, ids, select: targetable ? index => SelectField(owner, zone, index) : null, relikarioOf: _ => relikario);
+    }
+
+    /// <summary>
+    /// Everything on a Relikario, one heading per card: the card first, then the cards under it,
+    /// on a band of the hue the board uses for that group.
+    /// </summary>
+    private void ShowRelikarioGroups(int owner)
+    {
+        var player = _snapshot!.Players[owner];
+        var groups = RelikarioGroups.For(player);
+        var ids = new List<string?>();
+        var sections = new List<CollectionSection>();
+        var entries = new List<(CardGroup Group, CardGroupMember? Member)>();
+        foreach (var group in groups)
+        {
+            sections.Add(new(ids.Count, group.Heading, group.Linked ? group.Hue : null));
+            ids.Add(group.HostId); entries.Add((group, null));
+            foreach (var member in group.Members) { ids.Add(member.CardId); entries.Add((group, member)); }
+        }
+        var relikario = player.RelikarioId;
+        ShowCards($"Sobre {RelikarioCatalog.DisplayNameOf(relikario)} · {player.Name}", ids,
+            select: index =>
+            {
+                var (group, member) = entries[index];
+                if (member == null) { SelectField(owner, group.Zone, group.Index, inspectTome: false); return; }
+                if (member.TomeSlot < 0) return;
+                var child = player.TomeCards!.First(card => card.Slot == member.TomeSlot);
+                var snapshot = _snapshot!;
+                var cost = snapshot.MySeat == owner && snapshot.Options.Any(option => option.Move.Kind == DuelMoveKind.DestinyDefense);
+                if (cost && child.HandIndex is int handIndex) ToggleHandSelection(handIndex);
+                else SelectField(owner, FieldZone.TomeCard, child.Slot);
+            }, relikarioOf: _ => relikario, inverted: index => entries[index].Member?.Inverted == true,
+            sleeve: player.Sleeve, sections: sections);
     }
 
     private void ShowTomePile(int owner, FieldZone zone, string[] hosts, int? hostSlot = null)

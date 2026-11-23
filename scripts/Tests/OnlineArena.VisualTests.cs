@@ -97,7 +97,7 @@ public partial class OnlineArena
             await Layout(0);
             var destinations = _moveButtons.Where(button => PresentedOption(button) is { Move.Kind: DuelMoveKind.Choose, Field: not null }).ToArray();
             var labels = destinations.Select(button => button.Text).ToHashSet();
-            var tomeLabel = $"Tomo en canje 1 · carta 2 · Campo rival\n{CardCatalog.Attack.Name}";
+            var tomeLabel = $"Tomo en canje (abajo) · carta 2 · Campo rival\n{CardCatalog.Attack.Name}";
             if (destinations.Length != game.ZahiraTargets(0).Count() || labels.Count != destinations.Length ||
                 destinations.Any(button => button.AutowrapMode != TextServer.AutowrapMode.WordSmart) ||
                 !labels.Contains($"Habilidad 4 · Campo rival\n{CardCatalog.Destiny.Name}") ||

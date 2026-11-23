@@ -75,7 +75,7 @@ internal static class ArenaActionText
             FieldZone.TomeCard => ZahiraTomeLocation(owner.TomeCards, host.Index),
             FieldZone.Bonus => "Bonus",
             FieldZone.Area => "Área",
-            FieldZone.Exchange => $"Canje {position}",
+            FieldZone.Exchange => owner.Exchange.Length > 1 ? $"Canje · {StackPlace(host.Index)}" : "Canje",
             FieldZone.Zahira => $"Trampa {GameEngine.ZahiraSlot(host.Index) + 1}",
             _ => "Campo"
         };
@@ -84,13 +84,16 @@ internal static class ArenaActionText
         return $"{zone} · {side}\n{card}";
     }
 
+    /// <summary>The canje is one stack: its first card lies under the second.</summary>
+    private static string StackPlace(int index) => index == 0 ? "abajo" : "encima";
+
     private static string ZahiraTomeLocation(TomeCardView[]? cards, int slot)
     {
         if (cards?.FirstOrDefault(card => card.Slot == slot) is not { } target) return $"Tomo · carta {slot + 1}";
         var host = target.HostZone switch
         {
             FieldZone.Bonus => "Bonus",
-            FieldZone.Exchange => $"canje {target.HostIndex + 1}",
+            FieldZone.Exchange => $"canje ({StackPlace(target.HostIndex)})",
             _ => $"anexo {target.HostIndex + 1}"
         };
         var position = cards.Count(card => card.HostZone == target.HostZone && card.HostIndex == target.HostIndex && card.Slot <= slot);

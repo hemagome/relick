@@ -143,6 +143,7 @@ public partial class OnlineArena : Control
         BuildStageBanner();
         _cardActions.AddThemeConstantOverride("separation", 4);
         AddChild(_cardActions);
+        AddChild(_groupPeek);
         AddChild(_responseChain);
         AddChild(_impacts); _impacts.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_evolution); _evolution.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -572,7 +573,9 @@ public partial class OnlineArena : Control
         _opponentCards.Clear(); _opponentCards.AddRange(_root.FindChildren("OpponentHandCard*", "Button", true, false).OfType<OpponentHandCard>());
         PlaceGalacticShields(s);
         PlaceZahiras(s);
+        BindRelikarioPeeks(s);
         MoveChild(_cardActions, GetChildCount() - 1);
+        MoveChild(_groupPeek, GetChildCount() - 1);
         MoveChild(_diceOverlay, GetChildCount() - 1);
         if (_evolution.Visible) MoveChild(_evolution, GetChildCount() - 1);
         if (_openingPlaymats.Visible)
@@ -825,14 +828,14 @@ public partial class OnlineArena : Control
 
     private void ShowCards(string title, IReadOnlyList<string?> ids, Action<int>? select = null,
         Func<int, string?>? relikarioOf = null, DuelSnapshot? memoryActivation = null, Func<int, bool>? inverted = null,
-        int? faceDownStart = null, string? sleeve = null)
+        int? faceDownStart = null, string? sleeve = null, IReadOnlyList<CollectionSection>? sections = null)
     {
         if (GetChildren().OfType<Window>().Any(w => w.Visible)) return;
         var dialog = new AcceptDialog { Name = "CardCollectionDialog", Title = title, OkButtonText = "Volver al duelo" };
         if (ids.Count > 0)
         {
             var view = new CardCollectionView { Cards = ids, ShortScreen = Short, RelikarioOf = relikarioOf, Inverted = inverted,
-                FaceDownStart = faceDownStart, Sleeve = sleeve,
+                FaceDownStart = faceDownStart, Sleeve = sleeve, Sections = sections,
                 InspectorWidth = Short ? 260 : Math.Clamp(Size.X * 0.3f, 320, 380),
                 CustomMinimumSize = new(Math.Min(960, Size.X - 72), Math.Min(480, Size.Y - 140)) };
             if (select != null) view.CardPressed += index => { select(index); dialog.QueueFree(); };

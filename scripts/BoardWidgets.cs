@@ -755,6 +755,7 @@ public partial class ExchangeTrack : VBoxContainer
             {
                 Name = Detached ? $"{Name}ExchangeCard{slot}" : $"ExchangeCard{slot}", Caption = "CANJE", Accent = Accent, Compact = Compact,
                 Layout = ZoneCardLayout.Landscape, EffectUsed = ExchangeEffectsUsed.Contains(slot), SizeFlagsStretchRatio = 1.25f,
+                HideWhenEmpty = Detached && slot > 0,
                 StatusText = ShieldStatus(slot),
                 CustomMinimumSize = new(0, TrackWidth > 0 ? 86 : 0),
                 Card = slot < ExchangeCards.Count ? ExchangeCards[slot] : null, RelikarioId = RelikarioId
@@ -776,7 +777,7 @@ public partial class ExchangeTrack : VBoxContainer
             {
                 Name = $"AreaZone{Name.ToString().Replace("BonusTrack", "")}", Caption = "ÁREA", Card = AreaCard,
                 SlotWidth = Detached ? BoardCanvas.CardWidth : Compact ? 54 : 70, Compact = Compact,
-                Accent = Accent, StatusText = AreaSide == null ? "" : $"LADO {AreaSide}"
+                Accent = Accent, StatusText = AreaSide == null ? "" : $"LADO {AreaSide}", HideWhenEmpty = Detached
             };
             AreaButton.Pressed += () => AreaInspected?.Invoke();
             row.AddChild(AreaButton);
@@ -804,6 +805,11 @@ public partial class ZoneCardButton : Button
     public float SlotWidth { get; init; }
     public ZoneCardLayout Layout { get; init; }
     public bool EffectUsed { get; init; }
+    /// <summary>A place that only exists while a card is on it, like the second card of the canje stack.</summary>
+    internal bool HideWhenEmpty { get; init; }
+    /// <summary>The hue of the group this card heads, shared with the cards it keeps under it.</summary>
+    internal Color? GroupHue { get; init; }
+    private bool Vacant => HideWhenEmpty && PresentedCard == null;
     internal int StackCopies { get; init; }
     internal int? ShieldCharges { get; init; }
     public CardDefinition? Card { get; set; }
@@ -865,8 +871,8 @@ public partial class ZoneCardButton : Button
     internal Rect2 CardRect => ArtworkRect(Artwork);
     private int PresentedCopies => StackCopies - _pendingShieldCharges - (AwaitingEquipment ? 1 : 0);
 
-    public override bool _HasPoint(Vector2 point) =>
-        new Rect2(Vector2.Zero, Size).HasPoint(point) || StackCopies > 1 && CardRect.HasPoint(point);
+    public override bool _HasPoint(Vector2 point) => !Vacant &&
+        (new Rect2(Vector2.Zero, Size).HasPoint(point) || StackCopies > 1 && CardRect.HasPoint(point));
 
     internal Rect2 ArtworkRect(Texture2D? artwork) => RaisedStack.Top(this, Footprint(artwork), StackCopies);
 
@@ -915,6 +921,7 @@ public partial class ZoneCardButton : Button
 
     public override void _Draw()
     {
+        if (Vacant) return;
         var bounds = new Rect2(0, 0, Size.X, Size.Y);
         var card = PresentedCard;
         var showCard = card != null;
@@ -945,6 +952,7 @@ public partial class ZoneCardButton : Button
         }
         else if (card != null)
             BoardArt.Icon(this, BoardArt.CardIcon(card), Size / 2, 32, Accent);
+        if (GroupHue is { } hue && showCard) DrawRect(CardRect.Grow(1), hue, false, 2);
         if (Playable && showCard) RelickVisuals.Playable(this, CardRect);
         if (showCard && PresentedStatus is { Length: > 0 } status) BoardArt.CardBadge(this, StackCopies > 1 ? CardRect.End : Size, status);
         if (PresentedCounters is { } counters) CardCounterBadge.Paint(this, CardCounterBadge.OnCard(CardRect, counters), counters);
@@ -963,6 +971,11 @@ public partial class AttachmentStack : Button
     /// <summary>On the desktop board the top card fills the zone; the count tells how many lie under it.</summary>
     public bool Board { get; init; }
     internal bool RaisedPile { get; init; }
+    /// <summary>What lies on the Relikario, grouped by host; the top card shows its own group's cards peeking out.</summary>
+    internal IReadOnlyList<CardGroup> Groups { get; init; } = [];
+    private const float MemberPeek = 7;
+    private CardGroup? TopGroup => Board ? RelikarioGroups.Top(Groups, PresentedTopCardId) is { Linked: true } group ? group : null : null;
+    private int PeekingMembers => TopGroup is { } group ? Math.Min(3, group.Members.Count) : 0;
     private int _pendingTomeCards;
     internal int PresentedTomeCards => TomeCardCount - _pendingTomeCards;
     private int _pendingArrivals;
@@ -1028,7 +1041,7 @@ public partial class AttachmentStack : Button
 
     private Rect2 PreviewRect(Texture2D[] previews, int index)
     {
-        if (Board) return BoardArt.FitArtwork(previews[index], new Rect2(4, 4, PileWidth - 8, Size.Y - 8));
+        if (Board) return BoardArt.FitArtwork(previews[index], new Rect2(4, 4, PileWidth - 8, Size.Y - 8 - PeekingMembers * MemberPeek));
         var offset = Math.Min(14, PileWidth / 6);
         var spread = (previews.Length - 1) * offset;
         var area = new Rect2(4 + index * offset, 4, PileWidth - 8 - spread, Size.Y - 8);
@@ -1065,10 +1078,23 @@ public partial class AttachmentStack : Button
             var rect = Raise(footprint, Amount);
             if (RaisedPile && Amount > 1) RaisedStack.Draw(this, this, footprint, Amount);
             else RelickVisuals.Shadow(this, new Rect2(rect.Position + new Vector2(0, 2), rect.Size).Grow(-2), new Color(0, 0, 0, 0.5f), 6);
+            if (Board && TopGroup is { } group) DrawMembers(rect, group);
             DrawTextureRect(_presentedPreviews[i], rect, false);
+            if (Board && TopGroup is { } linked) DrawRect(rect.Grow(1), linked.Hue, false, 2);
         }
         if (Amount > 1) BoardArt.CardBadge(this, RaisedPile ? CardRect.End : new(PileWidth, Size.Y), $"×{Amount}");
         RelickVisuals.Interaction(this, new Rect2(Vector2.Zero, Size), false, false, !Disabled && IsHovered(), HasFocus());
+    }
+
+    /// <summary>The top card's own cards lie under it, each showing a band in the group's hue.</summary>
+    private void DrawMembers(Rect2 host, CardGroup group)
+    {
+        for (var m = PeekingMembers; m >= 1; m--)
+        {
+            var band = new Rect2(host.Position + new Vector2(0, m * MemberPeek), host.Size);
+            DrawRect(band, BoardArt.Tint(RelickVisuals.Playmat.Background, 1));
+            DrawRect(band, BoardArt.Tint(group.Hue, 0.35f + 0.2f * (PeekingMembers - m)), false, 2);
+        }
     }
 }
 
