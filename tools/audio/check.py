@@ -9,7 +9,9 @@ root = Path(__file__).resolve().parents[2]
 music = {"menu": (144, 126, True), "yuno-combat": (192, 160, True), "yuno-climax": (160, 168, True),
          "yuno-to-combat": (8, 160, False), "yuno-to-climax": (8, 168, False),
          "osamu-combat": (160, 144, True), "osamu-climax": (128, 174, True),
-         "ironwing-combat": (160, 156, True), "ironwing-climax": (144, 180, True)}
+         "ironwing-combat": (160, 156, True), "ironwing-climax": (144, 180, True),
+         "yuno-oro-combat": (192, 168, True), "yuno-oro-climax": (160, 176, True),
+         "wd-combat": (160, 152, True), "wd-climax": (160, 184, True)}
 paths = [path for folder in ("music", "sfx") for path in (root / "assets/audio" / folder).iterdir()]
 for path in sorted(paths):
     if path.suffix not in (".wav", ".ogg"):

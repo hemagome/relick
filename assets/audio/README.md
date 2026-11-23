@@ -13,8 +13,12 @@ Las composiciones instrumentales se sintetizan específicamente para este proyec
 | `music/osamu-climax.ogg` | La última orden | Cero vidas contra Osamu. 174 BPM, el motivo del combate en los metales y cuerdas en semicorcheas. 44,1 s. |
 | `music/ironwing-combat.ogg` | Órbita de combate | Duelo contra Ironwing. 156 BPM, sintetizador FM, bajo en octavas y un interludio de flauta. 61,5 s. |
 | `music/ironwing-climax.ogg` | Última maniobra | Cero vidas contra Ironwing. 180 BPM, el mismo motivo con notas más cortas, cuerdas y timbales. 48 s. |
+| `music/yuno-oro-combat.ogg` | Estela dorada | Duelo contra Yuno oro. 168 BPM, rock orquestal en re mayor: sintetizador líder con eco, guitarras saturadas dobladas, coro, arpegios de estrella fugaz y un estribillo a cuatro tiempos tras una subida bVI–bVII. 68,6 s. |
+| `music/yuno-oro-climax.ogg` | Cuásar dorado | Cero vidas contra Yuno oro. 176 BPM, tema en re menor sobre un riff de guitarra, una subida con coro y el despertar en re mayor a toda orquesta. 54,5 s. |
+| `music/wd-combat.ogg` | Temporada de caza | Duelo contra WD. 152 BPM, re mayor, chiptune de 8 bits: dos canales de pulso, bajo de triángulo, batería de ruido y disparos de pistola de luz, con una melodía de marcha alegre y una sección de arpegios de aleteo. 63,2 s. |
+| `music/wd-climax.ogg` | Última bala | Cero vidas contra WD. 184 BPM, re menor, el tema con eco, un giro frigio, una persecución con bajo cromático y un final de disparos. 52,2 s. |
 
-Las piezas comparten re como centro tonal. Los clímax retoman el motivo del combate de cada Relikario. En las piezas en bucle, las reverberaciones y las colas de las notas se pliegan sobre el comienzo para mantener continuidad. Los puentes conservan su cola después del último pulso para que suene sobre la pieza siguiente. Los archivos `.import` conservan el tempo, el compás, la longitud musical y la repetición.
+Los temas de Yuno oro rinden homenaje al estilo de los finales de rock orquestal del anime de duelos de los 2000, con melodías propias; los de WD, a los juegos de caza con pistola de luz de 8 bits. Las piezas comparten re como centro tonal. Los clímax retoman el motivo del combate de cada Relikario. En las piezas en bucle, las reverberaciones y las colas de las notas se pliegan sobre el comienzo para mantener continuidad. Los puentes conservan su cola después del último pulso para que suene sobre la pieza siguiente. Los archivos `.import` conservan el tempo, el compás, la longitud musical y la repetición.
 
 | Efecto | Duración | Diseño |
 | --- | --- | --- |

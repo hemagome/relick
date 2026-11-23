@@ -1,6 +1,6 @@
 // Original Relick score: an orchestral synthesizer and the game's compositions.
 // Build: g++ -O2 -std=c++17 -pthread tools/audio/score.cpp -o /tmp/relick-score
-// Run: /tmp/relick-score /tmp/relick-audio-wav [--stems]
+// Run: /tmp/relick-score /tmp/relick-audio-wav [--stems] [--only=yuno-oro|wd]
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -922,10 +922,490 @@ void renderIronwing(const std::filesystem::path &output, bool stems) {
     }
 }
 
+// ---------------------------------------------------------------- Yuno oro
+// Yuno oro, in homage to the rock-orchestral finales of 2000s duel anime: a supersaw lead
+// with echoes, doubled overdriven guitars, choir, rising "shooting star" arpeggios and a
+// four-on-the-floor chorus. Original melodies; the tonal centre stays on D.
+const Chord Em{4, 7, 11}, Fs{6, 10, 1};
+
+// Synth lead: three detuned saws and a sub-octave sine through a sweeping low-pass.
+void synthLead(Bus &b, Rng &g, double t0, double dur, double midi, double vel, double pan) {
+    double f = hz(midi), attack = 0.006, release = 0.14; int n = int((dur + release) * SR); long i0 = std::lround(t0 * SR);
+    const double cents[3] = {-9, 0, 9}, spread[3] = {-0.35, 0, 0.35};
+    double vibPhase = g.uni();
+    for (int v = 0; v < 3; v++) {
+        double detune = std::pow(2.0, (cents[v] + g.bi() * 2) / 1200.0), phase = g.uni(), a = 0, c = 0, subPhase = g.uni();
+        Pan p(pan + spread[v]);
+        for (int i = 0; i < n; i++) {
+            double t = double(i) / SR;
+            double vib = 1 + 0.005 * smooth((t - 0.22) / 0.3) * std::sin(TAU * (5.6 * t + vibPhase));
+            double dt = f * detune * vib / SR; phase += dt; if (phase >= 1) phase -= 1;
+            double s = 2 * phase - 1;
+            if (phase < dt) { double x = phase / dt; s -= x + x - x * x - 1; }
+            else if (phase > 1 - dt) { double x = (phase - 1) / dt; s -= x * x + x + x + 1; }
+            double cutoff = std::min(12000.0, f * 3 + 1800 + 2600 * std::exp(-t / 0.25)), k = 1 - std::exp(-TAU * cutoff / SR);
+            a += k * (s - a); c += k * (a - c);
+            subPhase += f * 0.5 * vib / SR;
+            double e = smooth(t / attack) * (0.82 + 0.18 * std::exp(-t / 0.1)) * (t > dur ? std::exp(-(t - dur) / (release * 0.3)) : 1) * smooth((n - i) / 200.0);
+            b.add(i0 + i, (c + (v == 1 ? 0.35 * std::sin(TAU * subPhase) : 0)) * e * vel * 0.42, p.l, p.r);
+        }
+    }
+}
+
+// Choir "ah": detuned saws through three vowel formants.
+void choirVoice(Bus &b, Rng &g, double t0, double dur, double midi, double vel, double pan) {
+    double f = hz(midi), attack = 0.18, release = 0.4; int n = int((dur + release) * SR); long i0 = std::lround(t0 * SR);
+    const double formant[3] = {760, 1150, 2850}, q[3] = {6, 8, 11}, level[3] = {1, 0.55, 0.22};
+    double c0[3], c1[3], c2[3], c3[3], c4[3];
+    for (int k = 0; k < 3; k++) {
+        double w = TAU * formant[k] / SR, alpha = std::sin(w) / (2 * q[k]), a0 = 1 + alpha;
+        c0[k] = alpha / a0; c1[k] = 0; c2[k] = -alpha / a0; c3[k] = -2 * std::cos(w) / a0; c4[k] = (1 - alpha) / a0;
+    }
+    for (int v = 0; v < 4; v++) {
+        double detune = std::pow(2.0, (g.bi() * 12) / 1200.0), phase = g.uni(), rate = 4.8 + g.uni(), vp = g.uni();
+        double x1 = 0, x2 = 0, y1[3] = {}, y2[3] = {}; Pan p(pan + (v - 1.5) * 0.25);
+        for (int i = 0; i < n; i++) {
+            double t = double(i) / SR;
+            phase += f * detune * (1 + 0.004 * smooth(t / 0.5) * std::sin(TAU * (rate * t + vp))) / SR; if (phase >= 1) phase -= 1;
+            double x = 2 * phase - 1, out = 0;
+            for (int k = 0; k < 3; k++) {
+                double y = c0[k] * x + c1[k] * x1 + c2[k] * x2 - c3[k] * y1[k] - c4[k] * y2[k];
+                y2[k] = y1[k]; y1[k] = y; out += y * level[k];
+            }
+            x2 = x1; x1 = x;
+            double e = smooth(t / attack) * (t > dur ? std::exp(-(t - dur) / (release * 0.3)) : 1) * smooth((n - i) / 300.0);
+            b.add(i0 + i, out * e * vel * 1.6, p.l, p.r);
+        }
+    }
+}
+
+// Power chord (root, fifth, octave) strummed on a plucked string; `drive` distorts the bus.
+void powerChord(Bus &b, Rng &g, double t0, double dur, int root, double vel, double pan, bool mute) {
+    const int interval[3] = {0, 7, 12};
+    for (int k = 0; k < 3; k++)
+        pluck(b, g, t0 + k * 0.005 + g.uni() * 0.002, root + interval[k], vel * (k == 2 ? 0.7 : 1), pan, mute ? 0.28 : 3.2, mute ? 0.55 : 0.12, mute ? std::min(dur, 0.14) : dur);
+}
+
+void drive(Bus &b, double pre, double cutoff) {
+    double k = 1 - std::exp(-TAU * cutoff / SR), norm = std::tanh(pre);
+    for (auto *ch : {&b.l, &b.r}) {
+        double hp = 0, a = 0, c = 0;
+        for (auto &x : *ch) {
+            hp += 0.011 * (x - hp);
+            double y = std::tanh(pre * (x - hp)) / norm;
+            a += k * (y - a); c += k * (a - c); x = float(c);
+        }
+    }
+}
+
+// Ping-pong echo for the lead.
+void echo(Bus &b, double seconds, double feedback, double mix) {
+    int d = int(seconds * SR); size_t n = b.l.size();
+    std::vector<float> wl(n), wr(n); double lp = 0, rp = 0;
+    for (size_t i = d; i < n; i++) {
+        lp += 0.35 * (b.r[i - d] + feedback * wr[i - d] - lp); rp += 0.35 * (b.l[i - d] + feedback * wl[i - d] - rp);
+        wl[i] = float(lp); wr[i] = float(rp);
+    }
+    for (size_t i = 0; i < n; i++) { b.l[i] += float(mix * wl[i]); b.r[i] += float(mix * wr[i]); }
+}
+
+struct Band {
+    Orchestra o; Bus &lead, &guitar, &choir, &sparkle;
+    Band(Mix &m) : o(m), lead(m.bus("lead", 0.27, 0.30)), guitar(m.bus("guitar", 0.062, 0.10)), choir(m.bus("choir", 0.12, 0.55)), sparkle(m.bus("sparkle", 0.45, 0.60)) {}
+};
+
+void leadLine(Mix &m, Band &band, const std::vector<Note> &notes, double vel, int transpose) {
+    for (auto &note : notes)
+        synthLead(band.lead, m.g, m.at(note.beat), m.span(note.len) * 0.95, note.pitch + transpose, vel * (0.92 + m.g.bi() * 0.04), 0);
+}
+
+void choirChord(Mix &m, Band &band, double beat, double beats, const Chord &c, double vel) {
+    int pcs[3] = {c.root, c.third, c.fifth};
+    for (int k = 0; k < 3; k++) choirVoice(band.choir, m.g, m.at(beat), m.span(beats), up(pcs[k], 57), vel, (k - 1) * 0.5);
+    choirVoice(band.choir, m.g, m.at(beat), m.span(beats), up(c.root, 45), vel * 0.8, 0);
+}
+
+// A falling star: sixteenths rising through the chord over two octaves and back down.
+void starArp(Mix &m, Band &band, double bar, const Chord &c, double vel, int beats = 4) {
+    int pcs[3] = {c.root, c.third, c.fifth}, tones[7];
+    int base = up(c.root, 74);
+    for (int k = 0; k < 7; k++) tones[k] = up(pcs[k % 3], k ? tones[k - 1] + 1 : base);
+    for (int step = 0; step < beats * 4; step++) {
+        int index = step % 12 < 7 ? step % 12 : 12 - step % 12;
+        pluck(band.sparkle, m.g, m.exact(bar + step * 0.25), tones[index], vel * (step % 4 ? 0.6 : 1), (index - 3) * 0.22, 1.4, 0.05);
+        if (step % 4 == 0) bell(band.sparkle, m.exact(bar + step * 0.25), tones[index] + 12, vel * 0.35, -(index - 3) * 0.2);
+    }
+}
+
+// "Estela dorada": 168 bpm, 48 bars. Intro, A, A', B (relative minor), bVI–bVII build,
+// chorus in D, tag back into the intro.
+const Chord oroCombatChords[48] = {D, D, G, A, D, A, Bm, Fsm, G, D, Em, A, D, A, Bm, Fsm, G, A, D, D,
+    Bm, G, D, A, Bm, G, Em, Fs, G, A, Bb, C, D, A, Bm, G, D, A, G, A, Bb, C, D, D, G, A, Bb, A};
+int oroCombatPart(int bar) { return bar < 4 ? 0 : bar < 12 ? 1 : bar < 20 ? 2 : bar < 28 ? 3 : bar < 32 ? 4 : bar < 44 ? 5 : 6; }
+const char *oroHead = "f#5:1.5 a5:.5 d6:1 c#6:.5 d6:.5 | e6:1.5 c#6:.5 a5:2 | d6:1 c#6:.5 b5:.5 f#5:1 b5:1 | a5:1.5 c#6:.5 f#5:2 | ";
+const std::string oroIntro = "d6:.5 e6:.5 g6:1 b6:2 | a6:1 c#7:1 e7:2";
+const std::string oroA = std::string(oroHead) + "g5:1 b5:.5 d6:.5 g6:1.5 f#6:.5 | f#6:1 e6:.5 d6:.5 a5:2 | g5:1 b5:.5 e6:.5 d6:1 c#6:1 | e6:2 a5:.5 b5:.5 c#6:1";
+const std::string oroA2 = std::string(oroHead) + "g5:1 b5:.5 d6:.5 g6:1.5 a6:.5 | a6:1 g6:.5 f#6:.5 e6:1 c#6:1 | d6:4 | r:2 a5:.5 b5:.5 d6:1";
+const std::string oroB = "f#6:2 d6:1 b5:1 | d6:1.5 b5:.5 g5:2 | a5:1 d6:1 f#6:1.5 e6:.5 | e6:2 c#6:2 | "
+    "d6:1 f#6:1 b6:2 | b6:1 a6:.5 g6:.5 d6:2 | e6:1 g6:1 b6:1 g6:1 | a#6:2 f#6:1 c#6:1";
+const std::string oroBuild = "g5:.5 b5:.5 d6:.5 g6:.5 r:1 d6:.5 g6:.5 | a5:.5 c#6:.5 e6:.5 a6:.5 r:1 e6:.5 a6:.5 | "
+    "bb5:.5 d6:.5 f6:.5 bb6:.5 r:.5 f6:.5 bb6:1 | c6:.5 e6:.5 g6:.5 c7:.5 e6:.5 g6:.5 c7:1";
+const std::string oroChorus = "a6:2 f#6:1 d6:1 | e6:1.5 f#6:.5 e6:1 c#6:1 | d6:1.5 c#6:.5 b5:1 d6:1 | g6:3 f#6:.5 e6:.5 | "
+    "f#6:2 a6:1 d7:1 | c#7:1.5 b6:.5 a6:1 e6:1 | g6:1 f#6:.5 g6:.5 b6:1 a6:1 | a6:3 r:1 | "
+    "bb6:1.5 a6:.5 f6:2 | g6:1.5 a6:.5 c7:2 | d7:4 | d7:2 a6:1 f#6:1";
+const std::string oroTag = "d6:.5 d6:.5 r:.5 d6:.5 e6:1 g6:1 | e6:.5 e6:.5 r:.5 e6:.5 f#6:1 a6:1 | f6:1 d6:.5 bb5:.5 f6:1 bb6:1 | a6:1 e6:1 c#6:1 a5:1";
+
+// "Cuásar dorado": 176 bpm, 40 bars. D minor theme low and high, a rising lift, the
+// awakening in D major and a minor tag that falls back to the riff.
+const Chord oroClimaxChords[40] = {Dm, Bb, F, C, Dm, Bb, Gm, A, Dm, Bb, F, C, Dm, Bb, Gm, A,
+    Bb, C, Dm, F, Gm, C, F, A, D, G, A, D, Bm, G, A, A, Bb, C, D, D, Gm, A, Bb, A};
+int oroClimaxPart(int bar) { return bar < 8 ? 0 : bar < 16 ? 1 : bar < 24 ? 2 : bar < 36 ? 3 : 4; }
+const std::string quasarTheme = "d5:.5 f5:.5 a5:1 d6:1 c6:.5 a5:.5 | bb5:1.5 a5:.5 f5:2 | c6:.5 a5:.5 f5:1 a5:1 c6:1 | e6:1.5 d6:.5 c6:1 g5:1 | "
+    "d6:.5 e6:.5 f6:1 e6:.5 d6:.5 a5:1 | d6:1 bb5:.5 f5:.5 bb5:1 d6:1 | g6:1.5 f6:.5 d6:1 bb5:1 | a5:.5 c#6:.5 e6:.5 g6:.5 a6:2";
+const std::string quasarLift = "f6:2 d6:1 bb5:1 | g6:2 e6:1 c6:1 | a6:1.5 g6:.5 f6:1 d6:1 | c6:3 r:1 | "
+    "bb5:1 d6:1 g6:2 | g6:1 a6:.5 bb6:.5 c7:2 | a6:1.5 f6:.5 c6:1 f6:1 | e6:1 c#6:1 a6:2";
+const std::string quasarAwake = "f#6:1.5 e6:.5 d6:1 a6:1 | b6:2 a6:1 g6:1 | e6:1.5 f#6:.5 g6:1 c#7:1 | d7:3 r:1 | "
+    "f#6:1 d6:.5 f#6:.5 b6:2 | b6:1 c#7:.5 d7:.5 g6:2 | a6:1.5 b6:.5 c#7:1 e7:1 | e7:2 c#7:1 a6:1 | "
+    "d7:1.5 c7:.5 bb6:2 | e7:1.5 d7:.5 c7:2 | d7:4 | d7:2 a6:1 f#6:1";
+const std::string quasarTag = "g6:.5 g6:.5 r:.5 g6:.5 f6:.5 d6:.5 bb5:1 | a5:.5 c#6:.5 e6:.5 a6:.5 g6:.5 e6:.5 c#6:.5 a5:.5 | "
+    "bb5:.5 d6:.5 f6:.5 bb6:.5 a6:.5 f6:.5 d6:.5 bb5:.5 | a6:2 r:2";
+
+void yunoOroArrangement(Mix &m, bool climax) {
+    Band band(m); Orchestra &o = band.o;
+    const int bars = m.beats / 4;
+    for (int bar = 0; bar < bars; ++bar) {
+        const double beat = bar * 4.0;
+        const Chord &chord = climax ? oroClimaxChords[bar] : oroCombatChords[bar];
+        const int part = climax ? oroClimaxPart(bar) : oroCombatPart(bar);
+        const bool nextChanges = bar + 1 < bars && (climax ? oroClimaxPart(bar + 1) : oroCombatPart(bar + 1)) != part;
+        const bool lastBar = nextChanges || bar == bars - 1;
+        // Roles per section.
+        const bool intro = !climax && part == 0, verse = !climax && (part == 1 || part == 2), calm = !climax && part == 3;
+        const bool build = !climax && part == 4, chorus = (!climax && part == 5) || (climax && part == 3);
+        const bool tag = (!climax && part == 6) || (climax && part == 4), lift = climax && part == 2, riff = climax && part < 2;
+        const int root = up(chord.root, 33), gtr = up(chord.root, 40);
+
+        // Bass: rock eighths, octave pops in the chorus, quarters in the intro.
+        for (int step = 0; step < 8; ++step) {
+            if (intro && bar < 2 && step % 2) continue;
+            int pitch = root + ((chorus && step % 2) || (riff && (step == 2 || step == 6)) ? 12 : 0);
+            bool accent = step == 0 || step == 3 || step == 6;
+            bassNote(m, o, beat + step * 0.5, intro && bar < 2 ? 0.9 : 0.42, pitch, accent ? 0.78 : 0.52, !(intro && bar < 2));
+        }
+
+        // Doubled guitars, hard left and right.
+        for (double side : {-0.85, 0.85}) {
+            if (intro && bar < 2) continue;
+            if (calm || lift || (intro && bar >= 2)) {
+                powerChord(band.guitar, m.g, m.at(beat), m.span(2.4), gtr, 0.8, side, false);
+                powerChord(band.guitar, m.g, m.at(beat + 2.5), m.span(1.4), gtr, 0.7, side, false);
+                continue;
+            }
+            for (int step = 0; step < 8; ++step) {
+                bool open = step == 0 || step == 3 || step == 6;
+                int pitch = gtr;
+                if (riff && step >= 6) pitch = gtr + (step == 6 ? 3 : 5);
+                if (tag) open = step == 0 || step == 4;
+                powerChord(band.guitar, m.g, m.at(beat + step * 0.5), m.span(open ? (step == 6 ? 1.0 : 1.5) : 0.5), pitch, open ? 0.85 : 0.6, side, !open);
+            }
+        }
+
+        // Orchestra.
+        if (verse || chorus || riff) figure(m, o, beat, chord, chorus ? 0.5 : 0.44, chorus || climax, 0);
+        if (!(intro && bar < 2)) chordPad(m, o, beat, 3.9, chord, calm || lift ? 0.6 : 0.42, 55);
+        if (calm || lift || chorus || build) choirChord(m, band, beat, 3.9, chord, chorus ? 0.55 : 0.5);
+        if (calm || lift) hornPad(m, o, beat, 3.9, chord, 0.5);
+        if (build || (tag && !climax) || (climax && part == 1 && bar % 2)) stabs(m, o, beat, chord, 0.7);
+        if (intro || build || (chorus && bar % 2 == 0) || (lift && bar % 2 == 0)) starArp(m, band, beat, chord, intro ? 0.55 : 0.42);
+
+        // Drums.
+        if (intro) {
+            if (bar < 2) { kick(o.kick, m.g, m.exact(beat), 0.7, true); for (int q = 0; q < 16; q++) hat(o.hats, m.g, m.exact(beat + q * 0.25), q % 4 ? 0.18 : 0.3, false); }
+            else kit(m, o, beat, 3, 0.7, bar == 3);
+        } else if (calm || lift) {
+            kit(m, o, beat, lift ? 0 : 1, 0.68, lastBar);
+        } else if (build) {
+            kick(o.kick, m.g, m.exact(beat), 0.8, false); kick(o.kick, m.g, m.exact(beat + 2), 0.75, false);
+            snareRoll(m, o, beat, beat + 4, bar % 4 < 2 ? 0.5 : 0.25, 0.35 + 0.1 * (bar % 4), 0.55 + 0.12 * (bar % 4));
+            timpani(o.timpani, m.g, m.exact(beat), up(chord.root, 41), 0.75);
+        } else if (chorus) {
+            kit(m, o, beat, 2, 0.74, lastBar);
+            timpani(o.timpani, m.g, m.exact(beat), up(chord.root, 41), 0.65);
+            if (bar % 2 == 0) cymbal(o.cymbals, m.g, m.exact(beat), 0.42);
+        } else {
+            kit(m, o, beat, verse && part == 1 ? 0 : 3, 0.72, lastBar);
+            if (climax) timpani(o.timpani, m.g, m.exact(beat), up(chord.root, 41), 0.6);
+        }
+        if (nextChanges || bar == bars - 1) cymbal(o.cymbals, m.g, m.exact(beat + 4), 0.45, m.span(climax ? 2 : 3));
+        else if (bar % 8 == 0 || (climax && bar % 4 == 0)) cymbal(o.cymbals, m.g, m.exact(beat), 0.45);
+    }
+
+    // Melodies.
+    auto at = [&](int bar) { return bar * 4.0; };
+    if (!climax) {
+        leadLine(m, band, parse(oroIntro, at(2)), 0.8, -12);
+        auto a = parse(oroA, at(4)), a2 = parse(oroA2, at(12)), b = parse(oroB, at(20)), build = parse(oroBuild, at(28)), chorus = parse(oroChorus, at(32)), tag = parse(oroTag, at(44));
+        leadLine(m, band, a, 0.85, 0); line(m, o, Violins, a, 0.55, -12);
+        leadLine(m, band, a2, 0.88, 0); line(m, o, Violins, a2, 0.6, -12); line(m, o, Horns, a2, 0.5, -12);
+        line(m, o, Violins, b, 0.78, -12); line(m, o, Flute, b, 0.55, 0); line(m, o, Horns, b, 0.45, -24);
+        leadLine(m, band, build, 0.8, -12); line(m, o, Trumpets, build, 0.75, -12);
+        leadLine(m, band, chorus, 0.9, -12); line(m, o, Violins, chorus, 0.62, 0); line(m, o, Trumpets, chorus, 0.82, -12); line(m, o, Horns, chorus, 0.62, -24);
+        leadLine(m, band, tag, 0.85, 0); line(m, o, Trumpets, tag, 0.78, -12);
+    } else {
+        auto low = parse(quasarTheme, at(0)), high = parse(quasarTheme, at(8)), lift = parse(quasarLift, at(16)), awake = parse(quasarAwake, at(24)), tag = parse(quasarTag, at(36));
+        line(m, o, Horns, low, 0.9, -12); line(m, o, Violins, low, 0.5, -12, -0.1);
+        leadLine(m, band, high, 0.88, 0); line(m, o, Trumpets, high, 0.78, 0); line(m, o, Violins, high, 0.6, 0);
+        line(m, o, Violins, lift, 0.8, -12); line(m, o, Flute, lift, 0.55, 0); line(m, o, Horns, lift, 0.55, -24);
+        leadLine(m, band, awake, 0.92, -12); line(m, o, Violins, awake, 0.62, 0); line(m, o, Trumpets, awake, 0.85, -12); line(m, o, Horns, awake, 0.65, -24);
+        leadLine(m, band, tag, 0.85, -12); line(m, o, Trumpets, tag, 0.8, -12); line(m, o, Violins, tag, 0.6, 0);
+    }
+
+    drive(band.guitar, 5.0, 4200);
+    echo(band.lead, m.span(0.75), 0.32, 0.28);
+}
+
+void renderYunoOro(const std::filesystem::path &output, bool stems) {
+    std::thread jobs[2];
+    for (int climax = 0; climax < 2; ++climax)
+        jobs[climax] = std::thread([&, climax] {
+            const char *base = climax ? "yuno-oro-climax" : "yuno-oro-combat";
+            Mix m(climax ? 176 : 168, climax ? 160 : 192, 6, true, climax ? 0x51554153 : 0x4f524f31);
+            yunoOroArrangement(m, climax);
+            double gain = 0;
+            const auto path = (output / base).string();
+            writeWav(path + ".wav", master(m, .72, 2.2, climax ? .165 : .155, gain, stems ? path : ""));
+        });
+    for (auto &job : jobs) job.join();
+}
+
+// ---------------------------------------------------------------- WD
+// WD, in homage to 8-bit light-gun hunting games: two pulse channels, a stepped triangle
+// bass, LFSR noise drums and gunshots. Combat is a jaunty D major march; zero lives is a
+// D minor chase with a chromatic climb. Original melodies.
+const Chord Ab{8, 0, 3};
+
+double polySaw(double ph, double dt) {
+    double s = 2 * ph - 1;
+    if (ph < dt) { double x = ph / dt; s -= x + x - x * x - 1; }
+    else if (ph > 1 - dt) { double x = (ph - 1) / dt; s -= x * x + x + x + 1; }
+    return s;
+}
+// The console's 16 volume steps.
+double steps16(double e) { return std::floor(std::clamp(e, 0.0, 1.0) * 15 + 0.5) / 15; }
+
+// Pulse channel: band-limited pulse of the given duty, stepped envelope, optional vibrato and slide.
+void pulse(Bus &b, double t0, double dur, double midi, double vel, double pan, double duty, double decay = 0, double sustain = 1, bool vibrato = false, double slideFrom = 0) {
+    int n = int((dur + 0.03) * SR); long i0 = std::lround(t0 * SR); double phase = 0; Pan p(pan);
+    for (int i = 0; i < n; i++) {
+        double t = double(i) / SR, m = midi;
+        if (slideFrom) m = slideFrom + (midi - slideFrom) * smooth(t / std::max(dur, 1e-3));
+        double f = hz(m) * (vibrato ? 1 + 0.006 * smooth((t - 0.2) / 0.15) * std::sin(TAU * 6 * t) : 1), dt = f / SR;
+        phase += dt; if (phase >= 1) phase -= 1;
+        double other = phase - duty; if (other < 0) other += 1;
+        double s = 0.5 * (polySaw(phase, dt) - polySaw(other, dt));
+        double e = decay > 0 ? std::max(sustain, std::exp(-t / decay)) : 1;
+        e = steps16(e) * smooth(i / 60.0) * (t > dur ? std::max(0.0, 1 - (t - dur) / 0.03) : 1);
+        b.add(i0 + i, s * e * vel, p.l, p.r);
+    }
+}
+
+// Triangle channel: 32-step triangle without volume control.
+void triangle(Bus &b, double t0, double dur, double midi, double vel, double slideTo = 0, double slideTime = 0) {
+    int n = int((dur + 0.01) * SR); long i0 = std::lround(t0 * SR); double phase = 0, lp = 0;
+    for (int i = 0; i < n; i++) {
+        double t = double(i) / SR, m = slideTime > 0 ? midi + (slideTo - midi) * std::min(1.0, t / slideTime) : midi;
+        phase += hz(m) / SR; if (phase >= 1) phase -= 1;
+        int idx = int(phase * 32); double v = (idx < 16 ? idx : 31 - idx) / 7.5 - 1;
+        lp += 0.5 * (v - lp);
+        double e = smooth(i / 100.0) * smooth((n - i) / 100.0);
+        b.add(i0 + i, lp * e * vel, 0.7071, 0.7071);
+    }
+}
+
+// Noise channel: 15-bit LFSR clocked at `rate`; short mode gives the metallic loop.
+void noise(Bus &b, double t0, double length, double rate, bool shortMode, double vel, double decay, double pan = 0) {
+    int n = int(length * SR); long i0 = std::lround(t0 * SR); uint16_t reg = 1; double clock = 0; Pan p(pan);
+    for (int i = 0; i < n; i++) {
+        clock += rate / SR;
+        while (clock >= 1) { clock -= 1; int bit = (reg ^ (reg >> (shortMode ? 6 : 1))) & 1; reg = uint16_t((reg >> 1) | (bit << 14)); }
+        double t = double(i) / SR, e = steps16(std::exp(-t / decay)) * smooth(i / 40.0) * smooth((n - i) / 100.0);
+        b.add(i0 + i, ((reg & 1) ? 1.0 : -1.0) * e * vel, p.l, p.r);
+    }
+}
+
+// The console's output filter, which also keeps the encoder from overshooting square edges.
+void outputFilter(Bus &b, double cutoff) {
+    double k = 1 - std::exp(-TAU * cutoff / SR);
+    for (auto *ch : {&b.l, &b.r}) { double a = 0, c = 0; for (auto &x : *ch) { a += k * (x - a); c += k * (a - c); x = float(c); } }
+}
+
+struct Chip {
+    Bus &lead, &second, &tri, &drums, &fx;
+    Chip(Mix &m) : lead(m.bus("pulse1", 0.25, 0.35)), second(m.bus("pulse2", 0.22, 0.35)), tri(m.bus("triangle", 0.095, 0.05)),
+        drums(m.bus("noise", 0.19, 0.10)), fx(m.bus("shots", 0.26, 0.35)) {}
+};
+
+void chipKick(Mix &m, Chip &c, double beat, double vel) { triangle(c.tri, m.exact(beat), 0.11, 62, vel, 30, 0.08); }
+void chipSnare(Mix &m, Chip &c, double beat, double vel) { noise(c.drums, m.exact(beat), 0.16, 12000, false, vel, 0.06, 0.05); }
+void chipHat(Mix &m, Chip &c, double beat, double vel, bool open = false) { noise(c.drums, m.exact(beat), open ? 0.25 : 0.05, 44100, false, vel * 0.55, open ? 0.08 : 0.014, 0.25); }
+void chipCrash(Mix &m, Chip &c, double beat, double vel) { noise(c.drums, m.exact(beat), 1.2, 30000, false, vel * 0.6, 0.35, -0.2); }
+// Light-gun shot: a noise blast and a falling pulse.
+void shot(Mix &m, Chip &c, double beat, double vel) {
+    noise(c.fx, m.exact(beat), 0.35, 9000, false, vel, 0.09, 0.15);
+    pulse(c.fx, m.exact(beat), 0.14, 40, vel * 0.5, -0.1, 0.5, 0.05, 0, false, 88);
+}
+
+void chipLine(Mix &m, Chip &c, const std::vector<Note> &notes, double vel, int transpose, double duty, bool echo) {
+    for (auto &note : notes) {
+        double d = m.span(note.len) * (note.len <= 0.25 ? 0.8 : 0.9);
+        pulse(c.lead, m.exact(note.beat), d, note.pitch + transpose, vel, -0.12, duty, 0.5, 0.62, note.len >= 1);
+        if (echo) pulse(c.second, m.exact(note.beat + 0.5), d, note.pitch + transpose, vel * 0.42, 0.35, 0.125, 0.4, 0.5, note.len >= 1);
+    }
+}
+
+// Sixteenth arpeggio through the chord over two octaves: the flutter of wings.
+void flutter(Mix &m, Chip &c, double bar, const Chord &ch, double vel, int base = 69) {
+    int pcs[3] = {ch.root, ch.third, ch.fifth}, tones[6];
+    for (int k = 0; k < 6; k++) tones[k] = up(pcs[k % 3], k ? tones[k - 1] + 1 : base);
+    for (int step = 0; step < 16; step++) {
+        int index = step % 10 < 6 ? step % 10 : 10 - step % 10;
+        pulse(c.second, m.exact(bar + step * 0.25), m.span(0.2), tones[index], vel * (step % 4 ? 0.7 : 1), 0.3, 0.25, 0.08, 0.3);
+    }
+}
+
+// "Temporada de caza": 152 bpm, 40 bars. Ready jingle, A, A', B, a flying section, tag.
+const Chord wdCombatChords[40] = {D, D, G, A, D, G, D, A, D, G, A, D, D, G, D, A, D, G, A, D,
+    Bm, G, Em, A, Fsm, Bm, G, A, Bb, C, D, D, Bb, C, A, A, G, A, D, A};
+int wdCombatPart(int bar) { return bar < 4 ? 0 : bar < 12 ? 1 : bar < 20 ? 2 : bar < 28 ? 3 : bar < 36 ? 4 : 5; }
+const std::string wdIntro = "d5:.5 f#5:.5 a5:.5 d6:1 r:1.5 | r:4 | g5:.5 b5:.5 d6:.5 g6:1 r:1.5 | a5:.5 c#6:.5 e6:.5 a6:1 r:1.5";
+const char *wdHead = "a5:.5 f#5:.5 a5:.5 d6:1 a5:.5 f#5:1 | g5:.5 b5:.5 d6:.5 g6:1 d6:.5 b5:1 | a5:.75 a5:.25 f#5:.5 a5:.5 d6:.5 e6:.5 f#6:1 | e6:1 c#6:.5 a5:.5 e5:1 r:1 | ";
+const std::string wdA = std::string(wdHead) + "a5:.5 f#5:.5 a5:.5 d6:1 a5:.5 f#5:1 | g5:.5 b5:.5 d6:.5 g6:.5 b6:1 a6:.5 g6:.5 | f#6:.5 e6:.5 c#6:.5 e6:.5 a6:1 g6:.5 e6:.5 | d6:1 a5:.5 f#5:.5 d5:1 r:1";
+const std::string wdA2 = std::string(wdHead) + "d6:.5 a5:.5 d6:.5 f#6:1 d6:.5 a5:1 | b5:.5 d6:.5 g6:.5 b6:.5 d7:1 b6:1 | a6:.75 g6:.25 f#6:.5 e6:.5 c#6:.5 e6:.5 a5:1 | d6:2 r:1 a5:.5 c#6:.5";
+const std::string wdB = "d6:1.5 c#6:.5 b5:1 f#5:1 | g5:1.5 a5:.5 b5:1 d6:1 | e6:1.5 d6:.5 b5:1 g5:1 | a5:3 r:1 | "
+    "c#6:1.5 b5:.5 a5:1 c#6:1 | d6:1.5 e6:.5 f#6:2 | g6:1 f#6:.5 e6:.5 d6:1 b5:1 | c#6:1 e6:1 a6:1 r:1";
+const std::string wdFly = "d6:2 f6:2 | e6:2 g6:2 | f#6:4 | a6:2 f#6:1 d6:1 | bb6:2 f6:2 | c7:2 g6:2 | a6:2 e6:1 c#6:1 | e6:2 a6:2";
+const std::string wdTag = "d6:.5 r:.5 d6:.5 r:.5 b5:.5 d6:.5 g6:1 | e6:.5 r:.5 e6:.5 r:.5 c#6:.5 e6:.5 a6:1 | f#6:.5 a6:.5 d7:1 a6:.5 f#6:.5 d6:1 | e6:1 r:1 a5:.5 c#6:.5 e6:1";
+
+// "Última bala": 184 bpm, 40 bars. Theme, theme with echo, a Phrygian turn, a chromatic
+// chase and a tag of shots.
+const Chord wdClimaxChords[40] = {Dm, Bb, Gm, A, Dm, Bb, C, A, Dm, Bb, Gm, A, Dm, Bb, C, A,
+    Gm, Dm, Eb, A, Gm, Dm, Eb, A, Dm, Eb, E, F, Fs, G, Ab, A, Bb, C, Dm, Dm, Bb, C, A, A};
+int wdClimaxPart(int bar) { return bar < 8 ? 0 : bar < 16 ? 1 : bar < 24 ? 2 : bar < 32 ? 3 : 4; }
+const std::string wdLast = "d6:.5 d6:.25 d6:.25 f6:.5 a6:.5 g6:.5 f6:.5 e6:.5 f6:.5 | d6:1 bb5:.5 d6:.5 f6:1.5 r:.5 | "
+    "g6:.5 g6:.25 g6:.25 bb6:.5 g6:.5 d6:.5 bb5:.5 g5:1 | a5:.5 c#6:.5 e6:.5 a6:.5 g6:.5 e6:.5 c#6:1 | "
+    "d6:.5 f6:.5 a6:1 a6:.5 g6:.5 f6:1 | f6:.5 d6:.5 bb5:1 bb5:.5 c6:.5 d6:1 | e6:.5 g6:.5 c7:1 bb6:.5 g6:.5 e6:1 | c#6:.5 e6:.5 a6:.5 e6:.5 c#6:.5 a5:.5 r:1";
+const std::string wdTurn = "bb5:2 d6:1 g6:1 | f6:2 e6:1 d6:1 | eb6:1.5 g6:.5 bb6:2 | a6:2 e6:1 c#6:1 | "
+    "d6:1 g6:1 bb6:2 | a6:1 f6:1 d6:2 | g6:1 bb6:1 eb7:2 | c#7:2 a6:2";
+const std::string wdLastTag = "f6:.5 r:.5 f6:.5 r:.5 d6:.5 f6:.5 bb6:1 | g6:.5 r:.5 g6:.5 r:.5 e6:.5 g6:.5 c7:1 | a6:1.5 g6:.5 f6:1 d6:1 | a5:.5 d6:.5 f6:.5 a6:.5 d7:2 | "
+    "d7:.5 r:.5 d7:.5 r:.5 bb6:.5 f6:.5 d6:1 | e7:.5 r:.5 e7:.5 r:.5 c7:.5 g6:.5 e6:1 | c#7:1 a6:1 e6:1 c#6:1 | a5:1 r:3";
+
+void wdArrangement(Mix &m, bool climax) {
+    Chip c(m);
+    const int bars = m.beats / 4;
+    for (int bar = 0; bar < bars; ++bar) {
+        const double beat = bar * 4.0;
+        const Chord &ch = climax ? wdClimaxChords[bar] : wdCombatChords[bar];
+        const int part = climax ? wdClimaxPart(bar) : wdCombatPart(bar);
+        const bool lastBar = bar == bars - 1 || (climax ? wdClimaxPart(bar + 1) : wdCombatPart(bar + 1)) != part;
+        const int root = up(ch.root, 38), fifth = up(ch.fifth, root - 12);
+        const bool intro = !climax && part == 0, tag = (!climax && part == 5) || (climax && part == 4);
+        const bool fly = !climax && part == 4, chase = climax && part == 3, calm = !climax && part == 3;
+
+        // Triangle bass.
+        if (climax) {
+            for (int step = 0; step < 8; step++) {
+                if (part == 2 && step % 4 == 1) continue;
+                triangle(c.tri, m.exact(beat + step * 0.5), m.span(0.42), root + (step % 2 ? 12 : 0), 0.9);
+            }
+        } else if (intro && bar < 2) {
+            triangle(c.tri, m.exact(beat), m.span(bar == 0 ? 3.9 : 0.9), root, 0.9);
+            if (bar == 0) chipHat(m, c, beat + 3, 0.8, true);
+        } else if (calm) {
+            triangle(c.tri, m.exact(beat), m.span(1.9), root, 0.9);
+            triangle(c.tri, m.exact(beat + 2), m.span(1.4), fifth + 12, 0.9);
+            triangle(c.tri, m.exact(beat + 3.5), m.span(0.45), root + 12, 0.9);
+        } else if (fly) {
+            for (int step = 0; step < 8; step++) triangle(c.tri, m.exact(beat + step * 0.5), m.span(0.42), root + (step % 2 ? 12 : 0), 0.9);
+        } else {
+            for (int q = 0; q < 4; q++) triangle(c.tri, m.exact(beat + q), m.span(0.7), q % 2 ? fifth : root, 0.9);
+            triangle(c.tri, m.exact(beat + 3.5), m.span(0.4), root + 12, 0.9);
+        }
+
+        // Second pulse: offbeat chord stabs, or the flutter of wings.
+        const bool stabs = (!climax && (part == 1 || tag || (intro && bar >= 2))) || (climax && (part == 2 || tag));
+        if (stabs)
+            for (int q = 0; q < 4; q++) {
+                pulse(c.second, m.exact(beat + q + 0.5), m.span(0.3), up(ch.third, 66), 0.75, 0.3, 0.125, 0.1, 0.3);
+                pulse(c.second, m.exact(beat + q + 0.75), m.span(0.2), up(ch.fifth, 66), 0.55, 0.3, 0.125, 0.08, 0.25);
+            }
+        if (fly || chase || (climax && part == 0)) flutter(m, c, beat, ch, chase ? 0.85 : 0.75, climax ? 62 : 69);
+        if (intro && bar == 1)
+            for (int k = 0; k < 16; k++) pulse(c.second, m.exact(beat + k * 0.125), m.span(0.11), k % 2 ? 83 : 81, 0.6, 0.3, 0.25, 0.05, 0.4);
+
+        // Chase: the lead trembles between root and fifth over the chromatic climb.
+        if (chase)
+            for (int k = 0; k < 16; k++)
+                pulse(c.lead, m.exact(beat + k * 0.25), m.span(0.2), (k % 2 ? up(ch.fifth, 74) : up(ch.root, 74)), 0.8, -0.12, 0.25, 0.1, 0.5);
+
+        // Noise drums.
+        if (intro && bar < 2) {
+            if (bar == 1) { shot(m, c, beat + 2, 0.9); shot(m, c, beat + 3, 1.0); }
+        } else {
+            const bool driving = climax || fly;
+            if (climax && part != 2) for (double k : {0.0, 1.5, 2.0, 3.0}) chipKick(m, c, beat + k, 1.0);
+            else if (fly) for (int q = 0; q < 4; q++) chipKick(m, c, beat + q, 1.0);
+            else { chipKick(m, c, beat, 1.0); chipKick(m, c, beat + 2, 0.9); }
+            if (lastBar) {
+                chipSnare(m, c, beat + 1, 0.9);
+                for (int k = 0; k < 8; k++) chipSnare(m, c, beat + 2 + k * 0.25, 0.5 + 0.06 * k);
+            } else if (calm) {
+                chipSnare(m, c, beat + 2, 0.8);
+            } else {
+                chipSnare(m, c, beat + 1, 0.9); chipSnare(m, c, beat + 3, 0.9);
+            }
+            int hats = driving ? 16 : 8;
+            for (int k = 0; k < hats; k++) chipHat(m, c, beat + k * 4.0 / hats, k * 4 % hats == 0 ? 1.0 : 0.6, !driving && k == 7 && !lastBar);
+        }
+        if ((bar % 8 == 0 && bar > 0 && !intro) || (!climax && bar == 4)) chipCrash(m, c, beat, 0.9);
+        if (tag && (bar % 4 == 0 || bar % 4 == 1)) { shot(m, c, beat + 0.5, 0.8); shot(m, c, beat + 1.5, 0.85); }
+        if (bar == bars - 1 && climax) for (double k : {1.0, 2.0, 3.0}) shot(m, c, beat + k, 0.5 + 0.07 * k);
+        if (bar == bars - 1 && !climax) shot(m, c, beat + 1, 0.9);
+    }
+
+    if (!climax) {
+        chipLine(m, c, parse(wdIntro, 0), 0.85, 0, 0.5, false);
+        chipLine(m, c, parse(wdA, 16), 0.85, 0, 0.25, false);
+        chipLine(m, c, parse(wdA2, 48), 0.85, 0, 0.25, true);
+        chipLine(m, c, parse(wdB, 80), 0.82, 0, 0.5, true);
+        chipLine(m, c, parse(wdFly, 112), 0.85, 0, 0.125, false);
+        chipLine(m, c, parse(wdTag, 144), 0.88, 0, 0.25, false);
+    } else {
+        chipLine(m, c, parse(wdLast, 0), 0.85, -12, 0.25, false);
+        chipLine(m, c, parse(wdLast, 32), 0.85, 0, 0.125, true);
+        chipLine(m, c, parse(wdTurn, 64), 0.85, -12, 0.5, false);
+        chipLine(m, c, parse(wdLastTag, 128), 0.88, -12, 0.25, false);
+    }
+    for (Bus *bus : {&c.lead, &c.second, &c.tri, &c.drums, &c.fx}) outputFilter(*bus, 9000);
+}
+
+void renderWd(const std::filesystem::path &output, bool stems) {
+    for (bool climax : {false, true}) {
+        const char *base = climax ? "wd-climax" : "wd-combat";
+        Mix m(climax ? 184 : 152, 160, 4, true, climax ? 0x57444c42 : 0x57444348);
+        wdArrangement(m, climax);
+        double gain = 0;
+        const auto path = (output / base).string();
+        writeWav(path + ".wav", master(m, .6, 1.3, .15, gain, stems ? path : ""));
+    }
+}
+
 int main(int argc, char **argv) {
     std::filesystem::path output = argc > 1 ? argv[1] : "/tmp/relick-audio-wav";
-    bool stems = argc > 2 && std::string(argv[2]) == "--stems";
+    bool stems = false; std::string only;
+    for (int i = 2; i < argc; i++) { std::string arg = argv[i]; if (arg == "--stems") stems = true; else if (arg.rfind("--only=", 0) == 0) only = arg.substr(7); }
     std::filesystem::create_directories(output);
+    if (only == "yuno-oro") { renderYunoOro(output, stems); return 0; }
+    if (only == "wd") { renderWd(output, stems); return 0; }
     auto name = [&](const char *file) { return (output / file).string(); };
     auto stem = [&](const char *file) { return stems ? name(file) : std::string(); };
     std::thread calm([&] {
@@ -954,6 +1434,8 @@ int main(int argc, char **argv) {
         writeWav(name("osamu-climax.wav"), master(m, 0.73, 2.1, 0.165, gain, stem("osamu-climax")));
     }
     renderIronwing(output, stems);
+    renderYunoOro(output, stems);
+    renderWd(output, stems);
     std::cout << "Relick score written to " << output.string() << "\n";
     return 0;
 }

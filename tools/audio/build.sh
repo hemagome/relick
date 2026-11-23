@@ -8,7 +8,7 @@ g++ -O2 -std=c++17 -pthread "$relick_audio_root/tools/audio/score.cpp" -o "$reli
 "$relick_audio_tmp/render" "$relick_audio_tmp/wav"
 "$relick_audio_tmp/score" "$relick_audio_tmp/wav"
 mkdir -p "$relick_audio_root/assets/audio/music" "$relick_audio_root/assets/audio/sfx"
-for relick_song in menu yuno-combat yuno-climax yuno-to-combat yuno-to-climax osamu-combat osamu-climax ironwing-combat ironwing-climax; do
+for relick_song in menu yuno-combat yuno-climax yuno-to-combat yuno-to-climax osamu-combat osamu-climax ironwing-combat ironwing-climax yuno-oro-combat yuno-oro-climax wd-combat wd-climax; do
   ffmpeg -hide_banner -loglevel error -y -i "$relick_audio_tmp/wav/$relick_song.wav" -c:a libvorbis -q:a 5 -metadata artist=Relick -metadata comment='Original procedural composition in D minor' "$relick_audio_root/assets/audio/music/$relick_song.ogg"
 done
 for relick_sound in card-draw heal attack deck-saved opening-life; do

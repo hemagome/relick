@@ -1,4 +1,4 @@
-[gd_resource type="AudioStreamInteractive" load_steps=10 format=3]
+[gd_resource type="AudioStreamInteractive" load_steps=14 format=3]
 
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/menu.ogg" id="1"]
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/yuno-combat.ogg" id="2"]
@@ -9,9 +9,13 @@
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/osamu-climax.ogg" id="7"]
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/ironwing-combat.ogg" id="8"]
 [ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/ironwing-climax.ogg" id="9"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/yuno-oro-combat.ogg" id="10"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/yuno-oro-climax.ogg" id="11"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/wd-combat.ogg" id="12"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/music/wd-climax.ogg" id="13"]
 
 [resource]
-clip_count = 9
+clip_count = 13
 clip_0/name = &"Menu"
 clip_0/stream = ExtResource("1")
 clip_0/auto_advance = 0
@@ -41,6 +45,18 @@ clip_7/auto_advance = 0
 clip_8/name = &"Climax:ironwing"
 clip_8/stream = ExtResource("9")
 clip_8/auto_advance = 0
+clip_9/name = &"Combat:yuno-oro"
+clip_9/stream = ExtResource("10")
+clip_9/auto_advance = 0
+clip_10/name = &"Climax:yuno-oro"
+clip_10/stream = ExtResource("11")
+clip_10/auto_advance = 0
+clip_11/name = &"Combat:wd"
+clip_11/stream = ExtResource("12")
+clip_11/auto_advance = 0
+clip_12/name = &"Climax:wd"
+clip_12/stream = ExtResource("13")
+clip_12/auto_advance = 0
 _transitions = {
 Vector2i(-1, -1): {
 "fade_beats": 4.0,
@@ -91,6 +107,18 @@ Vector2i(5, 6): {
 "to_time": 1
 },
 Vector2i(7, 8): {
+"fade_beats": 2.0,
+"fade_mode": 3,
+"from_time": 2,
+"to_time": 1
+},
+Vector2i(9, 10): {
+"fade_beats": 2.0,
+"fade_mode": 3,
+"from_time": 2,
+"to_time": 1
+},
+Vector2i(11, 12): {
 "fade_beats": 2.0,
 "fade_mode": 3,
 "from_time": 2,

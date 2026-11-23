@@ -24,7 +24,7 @@ Para añadir otro Relikario, agrega dos clips en `music.tres` llamados exactamen
 
 ## Transiciones
 
-Cada pieza tiene su propio compás y tempo. Los temas de Yuno empiezan con un puente de dos compases sobre la dominante. En los combates de Osamu e Ironwing, el clímax entra al siguiente compás con un fundido cruzado de dos pulsos.
+Cada pieza tiene su propio compás y tempo. Los temas de Yuno empiezan con un puente de dos compases sobre la dominante. En los combates de Osamu, Ironwing, Yuno oro y WD, el clímax entra al siguiente compás con un fundido cruzado de dos pulsos.
 
 | Pieza | Tempo y compás | Duración |
 | --- | --- | --- |
@@ -37,6 +37,10 @@ Cada pieza tiene su propio compás y tempo. Los temas de Yuno empiezan con un pu
 | Climax:osamu | 174 BPM, 4/4, 128 pulsos | 44,1 s |
 | Combat:ironwing | 156 BPM, 4/4, 160 pulsos | 61,5 s |
 | Climax:ironwing | 180 BPM, 4/4, 144 pulsos | 48 s |
+| Combat:yuno-oro | 168 BPM, 4/4, 192 pulsos | 68,6 s |
+| Climax:yuno-oro | 176 BPM, 4/4, 160 pulsos | 54,5 s |
+| Combat:wd | 152 BPM, 4/4, 160 pulsos | 63,2 s |
+| Climax:wd | 184 BPM, 4/4, 160 pulsos | 52,2 s |
 
 | Cambio | Salida | Puente | Llegada |
 | --- | --- | --- | --- |

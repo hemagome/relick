@@ -4,7 +4,7 @@ Cartas restauradas con ImageGen a partir de los escaneos adjuntos por el usuario
 
 Multi Drive calcula el daño y el premio con la mano al resolver el ataque. El daño normal es la mitad de las cartas en mano, redondeada hacia arriba. Cada fallo confirmado permite pagar un nuevo relanzamiento.
 
-WD usa la música predeterminada de Yuno. Su animación de combate y el disparo verde se dibujan en el tablero a partir del retrato.
+WD tiene música propia: `Combat:wd` y `Climax:wd` (véase [Audio](../../audio/README.md)). Su animación de combate y el disparo verde se dibujan en el tablero a partir del retrato.
 
 ## Archivos y prompts
 
