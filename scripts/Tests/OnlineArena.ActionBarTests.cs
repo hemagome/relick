@@ -47,8 +47,7 @@ public partial class OnlineArena
             _root?.FindChild("ResourceBadge0", true, false) is ResourceBadge badge)
         {
             OpenRelikiaMenu(badge);
-            // Godot gives the header its index (0) as id, the same as ChangeBonus: search below it.
-            var item = _relikiaMenu is { } relikia ? Enumerable.Range(1, relikia.ItemCount - 1).FirstOrDefault(
+            var item = _relikiaMenu is { } relikia ? Enumerable.Range(0, relikia.ItemCount).FirstOrDefault(
                 i => !relikia.IsItemSeparator(i) && relikia.GetItemId(i) == option.Move.Value, -1) : -1;
             if (_relikiaMenu != null && item >= 0 && !_relikiaMenu.IsItemDisabled(item))
             {

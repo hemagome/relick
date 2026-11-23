@@ -70,15 +70,11 @@ public partial class OnlineArena
         _relikiaMenu = menu;
         ArenaViewport.TouchMenu(menu);
 
-        var player = s.Players[s.MySeat];
         var legal = s.Options.Select((option, index) => (option, index))
             .Where(entry => entry.option.Move.Kind == DuelMoveKind.Relikia).ToArray();
 
         // The desktop rail shows each effect's sheet, costs included, so its menu only names them.
         var named = _showcase != null;
-        menu.AddItem(named ? "EFECTOS DE RELIKIA" : $"EFECTOS DE RELIKIA · {player.Pr} PR · {player.Actions} ACCIONES", -1);
-        menu.SetItemDisabled(0, true);
-        menu.AddSeparator();
         _relikiaRows.Clear();
         float Measured()
         {
