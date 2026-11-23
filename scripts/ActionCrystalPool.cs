@@ -101,6 +101,55 @@ public partial class ActionCrystalPool : Control
         }
     }
 
+    private static readonly Dictionary<(int, Color), ImageTexture> Icons = [];
+
+    /// <summary>
+    /// A row of lit action crystals as a texture, for places that take an icon rather than a control,
+    /// such as a menu entry showing what an effect costs.
+    /// </summary>
+    internal static ImageTexture Icon(int count, Color accent)
+    {
+        if (Icons.TryGetValue((count, accent), out var cached)) return cached;
+        const int width = 13, height = 18, samples = 4;
+        var image = Image.CreateEmpty(Math.Max(1, count * width), height, false, Image.Format.Rgba8);
+        var center = new Vector2(6.5f, 9);
+        Vector2[] shape = [new(0, -8.5f), new(5.5f, -3.3f), new(4.2f, 4.6f), new(0, 8.5f), new(-4.2f, 4.6f), new(-5.5f, -3.3f)];
+        static bool Inside(Vector2[] polygon, Vector2 point)
+        {
+            for (var i = 0; i < polygon.Length; i++)
+            {
+                var a = polygon[i]; var b = polygon[(i + 1) % polygon.Length];
+                if ((b - a).Cross(point - a) < 0) return false;
+            }
+            return true;
+        }
+        Color Shade(Vector2 local)
+        {
+            // Lit facet above, shaded facet on the right, as the board's crystals.
+            if (local.Y < -3.3f + Math.Abs(local.X) * 0.1f && local.Y < 0) return accent.Lightened(0.4f);
+            if (local.X > 0 && local.Y > -1) return accent.Darkened(0.3f);
+            return accent;
+        }
+        for (var crystal = 0; crystal < count; crystal++)
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            Color sum = new(0, 0, 0, 0);
+            for (var sy = 0; sy < samples; sy++)
+            for (var sx = 0; sx < samples; sx++)
+            {
+                var local = new Vector2(x + (sx + .5f) / samples, y + (sy + .5f) / samples) - center;
+                if (!Inside(shape, local)) continue;
+                var color = Shade(local);
+                sum += new Color(color.R, color.G, color.B, 1);
+            }
+            var coverage = sum.A / (samples * samples);
+            if (coverage <= 0) continue;
+            image.SetPixel(crystal * width + x, y, new Color(sum.R / sum.A, sum.G / sum.A, sum.B / sum.A, coverage));
+        }
+        return Icons[(count, accent)] = ImageTexture.CreateFromImage(image);
+    }
+
     private void DrawCrystal(Vector2 center, float energy)
     {
         Vector2[] points = [center + new Vector2(0, -13), center + new Vector2(8, -5), center + new Vector2(6, 7),

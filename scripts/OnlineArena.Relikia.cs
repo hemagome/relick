@@ -74,6 +74,7 @@ public partial class OnlineArena
             .Where(entry => entry.option.Move.Kind == DuelMoveKind.Relikia).ToArray();
 
         // The desktop rail shows each effect's sheet, costs included, so its menu only names them.
+        // Every entry carries one action crystal per action it costs.
         var named = _showcase != null;
         _relikiaRows.Clear();
         float Measured()
@@ -89,7 +90,8 @@ public partial class OnlineArena
             var available = legal.Any(entry => entry.option.Move.Value == (int)effect.Id);
             var cost = effect.Id == RelikiaEffect.ReplayCode ? $"{effect.Cost} PR + código" : $"{effect.Cost} PR";
             var item = menu.ItemCount;
-            menu.AddItem(named ? effect.Name : $"{effect.Name} · {cost} · {effect.ActionLabel}", (int)effect.Id);
+            menu.AddIconItem(ActionCrystalPool.Icon(effect.Actions, ArenaPresentation.Mint),
+                named ? effect.Name : $"{effect.Name} · {cost} · {effect.ActionLabel}", (int)effect.Id);
             menu.SetItemTooltip(item, named ? $"{cost} · {effect.ActionLabel}\n{effect.Text}" : effect.Text);
             if (!available) menu.SetItemDisabled(item, true);
             _relikiaRows.Add((Measured(), effect.Id));
