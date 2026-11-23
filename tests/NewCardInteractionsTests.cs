@@ -270,8 +270,17 @@ static class NewCardInteractionsTests
         {
             var (g, random) = Fixture([Attack, Dog], []);
             g.State.Players[1].CorruptedMemory.Add(Flute);
+            var cues = DuelVisualEvents.Capture(g);
             Check(g.RevealGhostDog(0, 1).Success);
             Check(DuelSnapshot.For(g, 1, 1).Players[0].Hand[1] == Dog);
+            // Both duelists learn which slot turned face up; the rival still sees nothing of the other card.
+            Check(cues.Single() is { Kind: DuelVisualKind.Reveal, Player: 0, Value: 1 });
+            foreach (var seat in new[] { 0, 1 })
+            {
+                var view = DuelSnapshot.For(g, seat, 1).Players[0];
+                Check(view.RevealedHand!.SequenceEqual([1]) && view.ArmedHand!.SequenceEqual([1]));
+            }
+            Check(DuelSnapshot.For(g, 1, 1).Players[0].Hand[0] == null && DuelSnapshot.For(g, 0, 1).Players[1].RevealedHand == null);
             g.State.Active.RemoveHandCard(0);
             g.State.ExtraActionStages = 1;
             Check(g.Advance(0).Success);

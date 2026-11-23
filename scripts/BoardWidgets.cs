@@ -1110,7 +1110,16 @@ public partial class HandCard : Button
     /// <summary>False when the surrounding section already names the owner.</summary>
     public bool ShowOwnerBadge { get; set; } = true;
     internal bool ShowsRivalOwnerEdge => ShowOwnerBadge && OwnerIsForeign;
+    /// <summary>Face up for the rival too: the card carries an eye badge.</summary>
+    public bool Revealed { get; init; }
+    /// <summary>A revealed Perro Fantasma that fires at the start of the next action stage: an hourglass joins the eye.</summary>
+    public bool Armed { get; init; }
+    /// <summary>Progress of the reveal (rise, turn, settle), or negative when idle.</summary>
+    private float _reveal = -1;
+    internal bool PlayingReveal => _reveal >= 0;
+    internal const float RevealSeconds = 1.1f;
     private float _hover;
+    private Vector2 _drawOrigin, _drawScale = Vector2.One;
     private Texture2D? _artwork;
     internal Texture2D? FaceTexture => _artwork;
     internal Rect2 VisibleFaceRect
@@ -1134,15 +1143,41 @@ public partial class HandCard : Button
         CustomMinimumSize = (Wide ? new Vector2(177, 133) : new Vector2(126, 184)) * PresentationScale;
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         MouseDefaultCursorShape = CursorShape.PointingHand;
-        TooltipText = OriginalOwner is { } owner
+        TooltipText = (OriginalOwner is { } owner
             ? $"{Card.Name}\n{Card.Text}\nDueño original: {owner.Name}" + (OwnerIsForeign ? " · carta prestada" : "")
-            : $"{Card.Name}\n{Card.Text}";
+            : $"{Card.Name}\n{Card.Text}") + RevealNote(Revealed, Armed);
         var emptyStyle = new StyleBoxEmpty();
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) AddThemeStyleboxOverride(state, emptyStyle);
         SetProcess(false);
         if (Lifts && _chosen) { _hover = 1; ZIndex = 1; }
         FocusEntered += UpdatePreview; FocusExited += UpdatePreview;
         MouseEntered += UpdatePreview; MouseExited += UpdatePreview;
+    }
+
+    internal static string RevealNote(bool revealed, bool armed) => !revealed ? "" :
+        "\nREVELADA · tu rival la ve." + (armed ? "\nSe activa gratis al inicio de tu próxima etapa de acciones si sigue en tu mano." : "");
+
+    /// <summary>The card rises from the hand, turns over and settles back with its eye badge.</summary>
+    public void PlayReveal(bool reducedMotion)
+    {
+        if (reducedMotion) return;
+        _reveal = 0; ZIndex = 3; SetProcess(true); QueueRedraw();
+    }
+
+    /// <summary>0 → 1 → 0: the card rises in the first quarter, holds while it turns, and settles in the last one.</summary>
+    internal static float RevealEnvelope(float t)
+    {
+        if (t < 0) return 0;
+        var k = t < 0.25f ? t / 0.25f : t > 0.75f ? (1 - t) / 0.25f : 1;
+        return k * k * (3 - 2 * k);
+    }
+
+    /// <summary>Horizontal squash of the turn (between 30 % and 60 % of the reveal) and whether the turn is past its edge.</summary>
+    internal static (float Squash, bool Turned) RevealTurn(float t)
+    {
+        if (t < 0) return (1, true);
+        var u = Math.Clamp((t - 0.3f) / 0.3f, 0, 1);
+        return (Math.Max(0.035f, Math.Abs(Mathf.Cos(u * Mathf.Pi))), u >= 0.5f);
     }
 
     private void UpdatePreview()
@@ -1155,16 +1190,24 @@ public partial class HandCard : Button
 
     public override void _Process(double delta)
     {
+        if (_reveal >= 0)
+        {
+            _reveal += (float)delta / RevealSeconds;
+            if (_reveal >= 1) { _reveal = -1; ZIndex = InFan ? RestingLayer : 0; }
+            QueueRedraw();
+        }
         var target = IsHovered() || InFan && HasFocus() || Lifts && _chosen ? 1f : 0f;
-        if (Math.Abs(_hover - target) < 0.001f) { _hover = target; SetProcess(false); return; }
+        if (Math.Abs(_hover - target) < 0.001f) { _hover = target; if (_reveal < 0) SetProcess(false); return; }
         _hover = Mathf.Lerp(_hover, target, Math.Min(1, (float)delta * 14));
         QueueRedraw();
     }
     private (Rect2 Rect, float Scale, Vector2 Origin) FacePose()
     {
-        var y = 7 - _hover * (InFan ? Lift : 5);
+        // Only the fan leaves room above the cards; a scrolling row or gallery would clip a rising card.
+        var rise = InFan ? RevealEnvelope(_reveal) : 0;
+        var y = 7 - _hover * (InFan ? Lift : 5) - rise * 46;
         var r = new Rect2(new Vector2(1, y), Face);
-        var zoom = Zoom;
+        var zoom = Zoom * (1 + 0.16f * rise);
         var scale = PresentationScale * zoom;
         var origin = new Vector2(DrawSize.X / 2, r.End.Y) * PresentationScale * (1 - zoom);
         return (r, scale, origin);
@@ -1176,8 +1219,12 @@ public partial class HandCard : Button
         var icon = BoardArt.CardIcon(Card);
         var (r, scale, origin) = FacePose();
         var y = r.Position.Y;
+        // While it is revealed the card turns about its vertical axis; skills keep their rotated landscape art still.
+        var squash = Card.Kind == CardKind.Skill ? 1 : RevealTurn(_reveal).Squash;
+        origin.X += DrawSize.X / 2 * scale * (1 - squash);
+        _drawOrigin = origin; _drawScale = new Vector2(scale * squash, scale);
         // A raised card grows from its lower edge, so neighbours keep their place in the fan.
-        DrawSetTransform(origin, 0, Vector2.One * scale);
+        DrawSetTransform(origin, 0, _drawScale);
         RelickVisuals.Shadow(this, new Rect2(r.Position + new Vector2(0, 4 + 5 * _hover), r.Size).Grow(-3), new Color(0, 0, 0, 0.5f), (int)(9 + 7 * _hover), 8);
         if (_artwork != null)
         {
@@ -1201,6 +1248,7 @@ public partial class HandCard : Button
             var imageScale = Math.Min(r.Size.X / imageSize.X, r.Size.Y / imageSize.Y);
             var extent = imageSize * imageScale;
             DrawTextureRect(_artwork, new Rect2(r.Position + (r.Size - extent) / 2, extent), false);
+            if (!RevealTurn(_reveal).Turned) DrawRect(new Rect2(r.Position + (r.Size - extent) / 2, extent), new Color(0.04f, 0.05f, 0.09f, 0.55f));
 
             DrawSelection(y);
             return;
@@ -1232,6 +1280,33 @@ public partial class HandCard : Button
             DrawLine(new Vector2(3, y + 8), new Vector2(3, rect.End.Y - 8), color, 4, true);
             DrawLine(new Vector2(7, y + 2), new Vector2(rect.End.X - 6, y + 2), color, 3, true);
         }
+        var rise = RevealEnvelope(_reveal);
+        if (rise > 0) RelickVisuals.Shadow(this, rect.Grow(2), BoardArt.Tint(BoardArt.Gold, 0.55f * rise), 14, 10);
+        // Icons set their own transform, so the badge is drawn in the button's space.
+        if (Revealed && RevealTurn(_reveal).Turned)
+            RevealBadge(this, _drawOrigin + new Vector2(rect.End.X - 4, y + 4) * _drawScale, Armed, _drawScale.Y);
+    }
+
+    /// <summary>
+    /// The eye badge of a card shown face up in hand, hanging from <paramref name="corner"/> (the face's top-right),
+    /// with an hourglass beside it while a Perro Fantasma waits for the next action stage.
+    /// </summary>
+    internal static float RevealBadgeHeight(float size) => 32 * size;
+
+    internal static void RevealBadge(CanvasItem c, Vector2 corner, bool armed, float size)
+    {
+        c.DrawSetTransform(Vector2.Zero, 0, Vector2.One);
+        var radius = RevealBadgeHeight(size) / 2;
+        var width = armed ? radius * 3.6f : radius * 2;
+        var plate = new Rect2(corner - new Vector2(width, 0), new Vector2(width, radius * 2));
+        RelickVisuals.Shadow(c, plate, new Color(0, 0, 0, 0.55f), (int)(6 * size), (int)radius);
+        var box = new StyleBoxFlat { BgColor = new Color(0.05f, 0.06f, 0.1f, 0.94f), BorderColor = BoardArt.Gold, AntiAliasing = true };
+        box.SetBorderWidthAll(Math.Max(1, (int)Math.Round(2 * size))); box.SetCornerRadiusAll((int)radius);
+        c.DrawStyleBox(box, plate);
+        var eye = new Vector2(plate.End.X - radius, plate.Position.Y + radius);
+        BoardArt.Icon(c, GameIcon.Eye, eye, radius * 1.3f, BoardArt.Gold);
+        if (armed) BoardArt.Icon(c, GameIcon.Hourglass, eye - new Vector2(radius * 1.6f, 0), radius * 1.1f, RelickVisuals.State.Own);
+        c.DrawSetTransform(Vector2.Zero, 0, Vector2.One);
     }
 
 }

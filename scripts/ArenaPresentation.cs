@@ -490,6 +490,7 @@ public static class ArenaPresentation
     public static ScrollContainer Hand(Node parent, IReadOnlyList<string> hand, Func<int, bool> selected,
         Action<int> pressed, bool preparing, bool shortScreen, string? title = null, int railColumns = 0, bool useFan = true,
         bool desktop = false, IReadOnlyList<HandSection>? sections = null, Func<int, CardOwner?>? ownerOf = null,
+        Func<int, (bool Revealed, bool Armed)>? revealOf = null,
         int viewerSeat = -1, int stackColumns = 0, string? relikario = null, int fittedColumns = 0)
     {
         var grouped = sections is { Count: > 0 };
@@ -540,9 +541,11 @@ public static class ArenaPresentation
             for (var i = 0; i < hand.Count; i++)
             {
                 var slot = i;
+                var reveal = revealOf?.Invoke(i) ?? default;
                 var card = new HandCard
                 {
                     Name = $"HandCard{i}", Card = CardCatalog.Get(hand[i]), Chosen = selected(i), Mulligan = preparing,
+                    Revealed = reveal.Revealed, Armed = reveal.Armed,
                     InFan = fanned, Lift = raised ? DesktopHandLift : 9, OriginalOwner = ownerOf?.Invoke(i), RelikarioId = relikario,
                     ViewerSeat = viewerSeat >= 0 ? viewerSeat : null,
                     PresentationScale = fanned ? raised ? DesktopHandScale : HandFan.CardScale : DeckChoiceCardScale(desktop, shortScreen)

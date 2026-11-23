@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer, DieAdjustment, MemoryClaim, HandDiscard, HandSteal, Chain, Guard }
+public enum DuelVisualKind { Die, Attack, Hit, Draw, Return, Shuffle, BonusPlace, BonusClaim, Pile, Heal, HandTransfer, DieAdjustment, MemoryClaim, HandDiscard, HandSteal, Chain, Guard, Reveal }
 
 // Public presentation cues for ONE accepted revision. Never include card identities,
 // deck order, random tapes or hidden state. Clients discard cues on recovery/gaps.
@@ -82,6 +82,8 @@ public static class DuelVisualEvents
         game.HandDiscarded += (owner, count) => events.Add(new()
             { Kind = DuelVisualKind.HandDiscard, Player = owner, Value = count, Source = CardZone.Hand, Destination = CardZone.Memory });
         game.CardDrawn += (player, slot) => Add(DuelVisualKind.Draw, player, slot);
+        // The revealed card is public from now on (DuelPlayerView.RevealedHand), so its slot gives nothing away.
+        game.HandCardRevealed += (player, slot) => Add(DuelVisualKind.Reveal, player, slot);
         game.CardReturnedToDeck += (player, slot, _) => events.Add(new()
             { Kind = DuelVisualKind.Return, Player = player, Value = slot,
                 DestinationPlayer = game.State.Players[player].IsForeignHandCard(slot) ? 1 - player : null });

@@ -65,6 +65,13 @@ public sealed class DuelPlayerView
     // the array itself is omitted when no slot is visible.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int?[]? HandOwners { get; set; }
+    // Hand slots shown face up to both players, ascending; omitted when none is. The owner sees every card anyway,
+    // so this is what tells them which ones the rival can see too.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? RevealedHand { get; set; }
+    // Revealed Perro Fantasma slots that fire for free at the start of their owner's next action stage.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? ArmedHand { get; set; }
     public int CorruptedCount { get; set; }
     // Both players may inspect the face-down portion, ordered from nearest the face-up cards to the bottom.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -207,6 +214,8 @@ public sealed class DuelSnapshot
                 // Ownership is only disclosed for slots whose identity is already visible;
                 // a hidden card must not leak whether it originally belonged to the rival.
                 HandOwners = VisibleHandOwners(s, p, index, seat),
+                RevealedHand = p.RevealedHandSlots.Count == 0 ? null : p.RevealedHandSlots.ToArray(),
+                ArmedHand = p.GhostDogReveals?.Where(p.IsHandCardRevealed).Order().ToArray() is { Length: > 0 } armed ? armed : null,
                 Skills = p.Skills.ToArray(), SkillPositions = Enumerable.Range(0, p.Skills.Count).Select(p.SkillPosition).ToArray(), Counters = Enumerable.Range(0, p.Skills.Count).Select(p.CountersOnSkill).ToArray(),
                 BonusEffectUsed = p.BonusEffectUsed, ExchangeEffectsUsed = p.ExchangeEffectsUsed?.ToArray(),
                 ZahiraHost = p.ZahiraHost, ZahiraHost2 = p.ZahiraHost2,

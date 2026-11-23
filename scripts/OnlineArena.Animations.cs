@@ -495,6 +495,7 @@ public partial class OnlineArena
                     }));
                     break;
                 case DuelVisualKind.Guard: _pendingGuards.Add(cue); break;
+                case DuelVisualKind.Reveal: PlayReveal(cue); break;
                 case DuelVisualKind.Heal when cue.Value > 0:
                     _pendingImpacts.Add((cue.Player, cue.Value, false));
                     _pendingPortraits.Add((cue.Player, PortraitMotion.Heal)); break;

@@ -532,6 +532,7 @@ public partial class OnlineArena : Control
                 galleryTitle, choiceGallery ? 0 : railColumns,
                 useFan: !ChoosingRecycling && !ChoosingEffectCards, desktop: desktop,
                 sections: sections, ownerOf: ChoosingEffectCards || ChoosingRecycling ? null : index => HandCardOwner(s.MySeat, index),
+                revealOf: choiceGallery || _handDeparture != null ? null : index => HandReveal(s.MySeat, index),
                 viewerSeat: s.MySeat, stackColumns: desktop ? 7 : 0,
                 relikario: s.Players[s.MySeat].RelikarioId, fittedColumns: deckColumns);
         if (choiceGallery)
@@ -667,8 +668,10 @@ public partial class OnlineArena : Control
         {
             var id = hand[i];
             var owner = HandCardOwner(1 - _snapshot.MySeat, i);
+            var (revealed, armed) = id == null ? default : HandReveal(1 - _snapshot.MySeat, i);
             var card = new OpponentHandCard { Name = $"OpponentHandCard{i}", PublicCard = id == null ? null : CardCatalog.Get(id), Sleeve = opponent.Sleeve,
-                OriginalOwner = owner, RelikarioId = opponent.RelikarioId, ViewerSeat = _snapshot.MySeat, FaceSize = face };
+                OriginalOwner = owner, RelikarioId = opponent.RelikarioId, ViewerSeat = _snapshot.MySeat, FaceSize = face,
+                Revealed = revealed, Armed = armed, RevealRoom = boardFace != null };
             var index = i;
             card.Pressed += () => SelectField(1 - _snapshot!.MySeat, FieldZone.Hand, index); row.AddChild(card);
         }
@@ -685,6 +688,13 @@ public partial class OnlineArena : Control
         var owners = holder == s.MySeat && _handDeparture != null ? _handDeparture.Owners : s.Players[holder].HandOwners;
         return owners is { } seats && index >= 0 && index < seats.Length && seats[index] is int owner
             ? new CardOwner(owner, s.Players[owner].Name, s.Players[owner].RelikarioId) : null;
+    }
+
+    /// <summary>Whether a hand slot is shown face up to both duelists, and whether it is a Perro Fantasma waiting to fire.</summary>
+    private (bool Revealed, bool Armed) HandReveal(int holder, int index)
+    {
+        var p = _snapshot!.Players[holder];
+        return (p.RevealedHand?.Contains(index) == true, p.ArmedHand?.Contains(index) == true);
     }
 
     private string HandArtworkRelikario(int holder, int index) =>

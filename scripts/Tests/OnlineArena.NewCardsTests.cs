@@ -217,6 +217,7 @@ public partial class OnlineArena
             if (PresentedButton(reveal) is not CardActionButton { Text: "Revelar", Symbol: GameIcon.Eye } button ||
                 button.GetParent() != _cardActions || !button.TooltipText.Contains("próxima etapa de acciones"))
                 throw new Exception("Perro Fantasma debe mostrar Revelar con un ojo y conservar el momento de activación en la ayuda.");
+            await CheckGhostDogReveal(dog, seat, index, reveal);
         }
 
         await CheckAreaAndDeckArrivals();
