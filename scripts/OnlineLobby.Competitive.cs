@@ -84,7 +84,7 @@ public partial class OnlineLobby
     /// <summary>Why a room closed: for a rated one, what it cost or paid.</summary>
     private string ClosedRoomNotice(string code)
     {
-        const string plain = "La sala se cerró. Puedes crear otra o entrar con un código nuevo.";
+        const string plain = "";
         if (code.Length == 0 || _lobby.RatedResult is not { } result || result.RoomCode != code) return plain;
         var note = result.Note.Length > 0 ? " " + result.Note : "";
         return result.Before == result.After ? "La sala se cerró." + note : $"ELO {result.Before} → {result.After} ({result.After - result.Before:+#;-#}).{note}";
