@@ -188,9 +188,10 @@ public partial class OnlineArena
             (DuelMoveKind.Advance or DuelMoveKind.Concede or DuelMoveKind.Evolve or DuelMoveKind.DestinyPickMemory or
                 DuelMoveKind.PrepareD10 or DuelMoveKind.PassError)).ToList();
         bool IsCombo(int index) => IsComboActivation(s.Options[index], s);
-        var selectedCombo = ShowCardActivations ? indices.FirstOrDefault(i => IsCombo(i) &&
+        var selectedCombos = ShowCardActivations ? indices.Where(i => IsCombo(i) &&
             (_fieldSelection is { } source ? MatchesField(s.Options[i], source) :
-                !_skillContext && _selected.Count == 1 && s.Options[i].Field == null && _selected.Contains(s.Options[i].Move.Index)), -1) : -1;
+                !_skillContext && _selected.Count == 1 && s.Options[i].Field == null && _selected.Contains(s.Options[i].Move.Index))).ToArray() : [];
+        var selectedCombo = selectedCombos.FirstOrDefault(-1);
         indices.RemoveAll(IsCombo);
         var cardAnchoring = !NeedsDecisionPrompt(s);
         if (ViewingBoardDuringGallery)
@@ -294,7 +295,8 @@ public partial class OnlineArena
             _cardActionAnchor = _fieldSelection is { } source
                 ? FieldActionAnchor(source) : _handCards.ElementAtOrDefault(s.Options[selectedCombo].Move.Index);
             if (_cardActionAnchor != null)
-                _cardActions.MoveChild(AddOption(_cardActions, selectedCombo, primary: true), 0);
+                foreach (var (index, position) in selectedCombos.Select((option, position) => (option, position)))
+                    _cardActions.MoveChild(AddOption(_cardActions, index, primary: position == 0), position);
         }
         PositionCardActions();
         var costs = indices.Select(i => ArenaActionText.Cost(s.Options[i], s)).Where(v => v.Length > 0).Distinct().ToArray();
@@ -647,6 +649,8 @@ public partial class OnlineArena
     private string ChoiceOrigin(DuelOption option) => option.Move.Kind switch
     {
         DuelMoveKind.Corrupt => "Memoria de " + _snapshot!.Players[option.Move.Target].Name,
+        DuelMoveKind.Choose when option.Owner is int handOwner && ChoosingLetterHand =>
+            "Mano de " + _snapshot!.Players[handOwner].Name,
         DuelMoveKind.Choose when option.Owner is int owner => "Memoria de " + _snapshot!.Players[owner].Name,
         DuelMoveKind.Relikia => "Tu memoria · la copia se corromperá",
         _ => "Confirma la carta seleccionada."

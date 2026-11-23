@@ -2,7 +2,9 @@ namespace Relick.Core;
 
 public sealed record TomeCardView(int Slot, string CardId, bool Inverted, FieldZone HostZone, int HostIndex,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    int? HandIndex = null);
+    int? HandIndex = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool Above = false);
 
 public sealed class DuelPlayerView
 {
@@ -201,7 +203,8 @@ public sealed class DuelSnapshot
             LastCombat = s.LastCombat, EndReason = s.IsOver ? game.PublicEndReason : null, Resolution = game.PublicResolution(),
             ErrorAfterDie = s.ErrorAfterDie && s.Phase == Phase.ErrorResponse,
             Decision = s.Phase == Phase.Decision && s.PendingDecision is { } decision ? new DecisionView { Source = decision.Source, Decider = decision.Decider,
-                Kind = decision.Kind, Title = decision.Title(), Instruction = decision.Instruction } : null,
+                Kind = decision.Kind, Title = decision.Title(), Instruction = decision.Instruction,
+                ShowsHandOf = seat == decision.Decider ? decision.ShowsHandOf : null } : null,
             History = game.PublicHistory?.Entries.ToList(),
             Options = seat < 0 ? [] : DuelOptions.For(game, seat),
             Players = s.Players.Select((p, index) => new DuelPlayerView

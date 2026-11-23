@@ -18,13 +18,14 @@ public partial class ResponseChain : Control
         public int Actor { get; init; }
         public string CardId { get; init; } = "";
         public bool Attack { get; init; }
+        public bool PlaceLetter { get; init; }
         public Texture2D? Art { get; init; }
         public Outcome Target { get; set; }
         public Outcome Outcome { get; set; }
         // Seconds since this module started to slot in; negative while it waits for the previous one.
         public double Age { get; set; }
         public double OutcomeAge { get; set; }
-        public bool Matches(PublicChainLink other) => other.Actor == Actor && other.CardId == CardId && other.Attack == Attack;
+        public bool Matches(PublicChainLink other) => other.Actor == Actor && other.CardId == CardId && other.Attack == Attack && other.PlaceLetter == PlaceLetter;
     }
 
     internal const double EnterSeconds = 0.34, TraceSeconds = 0.2, Stagger = 0.26, StepSeconds = 0.5, HoldSeconds = 1.1,
@@ -165,7 +166,7 @@ public partial class ResponseChain : Control
             var wait = (i - kept) * Stagger;
             _links.Add(new Link
             {
-                Actor = link.Actor, CardId = link.CardId, Attack = link.Attack,
+                Actor = link.Actor, CardId = link.CardId, Attack = link.Attack, PlaceLetter = link.PlaceLetter,
                 Art = card == null ? null : CardShowcase.Artwork(card),
                 Age = !animate || ReducedMotion ? EnterSeconds + TraceSeconds : Math.Min(start, 0) - wait
             });
@@ -327,7 +328,7 @@ public partial class ResponseChain : Control
         DrawRect(new Rect2(stripRect.Position, new Vector2(stripRect.Size.X, 2)), BoardArt.Tint(owner, alpha));
         var ownerSize = (int)Math.Clamp(strip * 0.62f, 8, 12);
         DrawString(font, new Vector2(stripRect.Position.X, stripRect.Position.Y + strip * 0.5f + ownerSize * 0.38f),
-            link.Attack ? (link.Actor == _mySeat ? "TU ATAQUE" : "ATAQUE RIVAL") : link.Actor == _mySeat ? "TÚ" : "RIVAL",
+            link.PlaceLetter ? "COLOCAR" : link.Attack ? (link.Actor == _mySeat ? "TU ATAQUE" : "ATAQUE RIVAL") : link.Actor == _mySeat ? "TÚ" : "RIVAL",
             HorizontalAlignment.Center, stripRect.Size.X, ownerSize, BoardArt.Tint(owner, alpha));
         // Address tile: the link's position in the chain.
         var tile = Math.Clamp(rect.Size.X * 0.3f, 16, 30);

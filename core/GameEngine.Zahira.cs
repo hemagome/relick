@@ -117,6 +117,7 @@ public sealed partial class GameEngine
     private void ChangeZahiraHosts(int owner, FieldZone zone, int index, int count = 1, FieldTarget? movedTo = null)
     {
         if (zone == FieldZone.Zahira) index = ZahiraIndex(ZahiraSlot(index));
+        ChangeOverlayHosts(owner, zone, index, count, movedTo);
         foreach (var (trapOwner, slot, host) in Zahiras().ToList())
         {
             var p = State.Players[trapOwner];

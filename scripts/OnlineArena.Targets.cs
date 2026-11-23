@@ -105,10 +105,12 @@ public partial class OnlineArena
     private void SelectField(int owner, FieldZone zone, int index, bool inspectTome = true)
     {
         if (IsAnimating) return;
-        if (inspectTome && zone is FieldZone.Bonus or FieldZone.Exchange &&
-            _snapshot!.Players[owner].TomeCards?.Any(child => child.HostZone == zone && child.HostIndex == index) == true)
+        var hostIndex = zone == FieldZone.Equipment && index < 0 ? 0 : index;
+        if (inspectTome && zone != FieldZone.Relikario &&
+            _snapshot!.Players[owner].TomeCards?.Any(child => child.HostZone == zone && child.HostIndex == hostIndex) == true &&
+            FieldCardId((owner, zone, hostIndex)) is { } id)
         {
-            var id = FieldCardId((owner, zone, index))!;
+            index = hostIndex;
             ShowTomePile(owner, zone, [id], index);
             return;
         }
@@ -133,7 +135,7 @@ public partial class OnlineArena
             FieldZone.LightEquipment => player.LightEquipment ?? [],
             _ => player.Attached
         };
-        if (zone == FieldZone.Attached && player.TomeCards?.Any(card => card.HostZone == zone) == true)
+        if (zone == FieldZone.Attached && player.TomeCards?.Any(card => card.HostZone is FieldZone.Attached or FieldZone.Relikario) == true)
         {
             ShowRelikarioGroups(owner);
             return;
@@ -167,6 +169,13 @@ public partial class OnlineArena
         var ids = new List<string?>();
         var sections = new List<CollectionSection>();
         var entries = new List<(CardGroup Group, CardGroupMember? Member)>();
+        var relikarioCards = player.TomeCards?.Where(card => card.HostZone == FieldZone.Relikario).ToArray() ?? [];
+        if (relikarioCards.Length > 0) sections.Add(new(0, $"Sobre o debajo de {RelikarioCatalog.DisplayNameOf(player.RelikarioId)}"));
+        foreach (var child in relikarioCards)
+        {
+            ids.Add(child.CardId);
+            entries.Add((new(child.CardId, FieldZone.TomeCard, child.Slot, [], Colors.Transparent), null));
+        }
         foreach (var group in groups)
         {
             sections.Add(new(ids.Count, group.Heading, group.Linked ? group.Hue : null));
@@ -194,7 +203,7 @@ public partial class OnlineArena
         var player = _snapshot!.Players[owner];
         var children = player.TomeCards!.Where(card => card.HostZone == zone &&
             (!hostSlot.HasValue || card.HostIndex == hostSlot)).ToArray();
-        ShowCards("Tomo de Magia y cartas anexadas", hosts.Concat(children.Select(card => card.CardId)).ToArray(),
+        ShowCards("Carta y anexos", hosts.Concat(children.Select(card => card.CardId)).ToArray(),
             select: index =>
             {
                 if (index < hosts.Length) SelectField(owner, zone, hostSlot ?? index, inspectTome: false);

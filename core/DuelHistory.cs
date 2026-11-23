@@ -5,6 +5,8 @@ public sealed class PublicActivation
 {
     public int Actor { get; set; }
     public string CardId { get; set; } = "";
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool PlaceLetter { get; set; }
 }
 /// <summary>One resolved link of a public response chain. <see cref="Attack"/> marks the pending attack the chain answered;
 /// it is never canceled by the chain itself.</summary>
@@ -16,6 +18,8 @@ public sealed class PublicChainLink
     public bool Canceled { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool Attack { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool PlaceLetter { get; set; }
 }
 public sealed class DuelResolutionView
 {
@@ -23,6 +27,8 @@ public sealed class DuelResolutionView
     public int DecisionPlayer { get; set; }
     public string CardId { get; set; } = "";
     public DuelResolutionStatus Status { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool PlaceLetter { get; set; }
     public List<PublicActivation> Responses { get; set; } = [];
     /// <summary>The pending attack an open Error de Carga chain answers (a COMBO during combat); null otherwise.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -230,10 +236,10 @@ public sealed partial class GameEngine
             actor = die.Player;
             card = DiePurposes.CardId(die.Purpose);
         }
-        return new DuelResolutionView { Actor = actor, DecisionPlayer = state.DecisionPlayer, CardId = card ?? "",
+        return new DuelResolutionView { Actor = actor, DecisionPlayer = state.DecisionPlayer, CardId = card ?? "", PlaceLetter = frame?.PlaceLetter == true,
             Status = state.Phase is Phase.ErrorResponse or Phase.CodeResponse or Phase.DefenseChoice or Phase.DestructionResponse or Phase.EffectDamageChoice
                 ? DuelResolutionStatus.Response : DuelResolutionStatus.Resolving,
-            Responses = _activationChain.Skip(1).Select(f => new PublicActivation { Actor = f.Actor, CardId = f.CardId }).ToList(),
+            Responses = _activationChain.Skip(1).Select(f => new PublicActivation { Actor = f.Actor, CardId = f.CardId, PlaceLetter = f.PlaceLetter }).ToList(),
             Attack = _activationChain.Count > 0 && ChainAttack() is { } attack ? new PublicActivation { Actor = attack.Actor, CardId = attack.CardId } : null };
     }
 }
@@ -389,6 +395,7 @@ internal sealed class PublicDuelObservation : IDisposable
         string Target() => m.Target is 0 or 1 ? g.State.Players[m.Target].Name : "el objetivo";
         return m.Kind switch
         {
+            DuelMoveKind.PlayCode when m.Flag && CardCatalog.Get(source).Letter.HasValue => $"{name} activa {card} para colocarla encima de su Relikario.",
             DuelMoveKind.PlayCode or DuelMoveKind.ActivateArea => $"{name} activa {card}.",
             DuelMoveKind.Attack when actor is 0 or 1 && g.State.Players[actor].Hand.ElementAtOrDefault(m.Index) == CardCatalog.SuperAttack.Id
                 => $"{name} usa Súper Ataque con {card}.",

@@ -25,15 +25,18 @@ public sealed partial class GameEngine
         {
             RelikiaEffect.ChangeBonus when p.Exchange.Count != 0 => "Tu zona de canje debe estar vacía.",
             RelikiaEffect.ChangeBonus or RelikiaEffect.ClaimBonus when p.Bonus == null => "No tienes Bonus disponible.",
-            RelikiaEffect.ReplayCode when !p.Memory.Where(IsCode).Any(id => CodeEffectUnavailable(p, CardCatalog.Get(id), definition.Cost) == null) => "No tienes códigos sin corromper en tu memoria.",
+            RelikiaEffect.ReplayCode when !p.Memory.Where(IsCode).Any(id => ReplayEffectUnavailable(p, CardCatalog.Get(id), definition.Cost) == null) => "No tienes códigos sin corromper en tu memoria.",
             _ => null
         };
     }
 
     public bool CanReplayMemoryCode(int actor, int index) =>
         RelikiaCommonUnavailableReason(actor, RelikiaEffect.ReplayCode) == null &&
-        IsMemoryCode(actor, index) && CodeEffectUnavailable(State.Players[actor], CardCatalog.Get(State.Players[actor].Memory[index]),
+        IsMemoryCode(actor, index) && ReplayEffectUnavailable(State.Players[actor], CardCatalog.Get(State.Players[actor].Memory[index]),
             RelikiaEffects.Get(RelikiaEffect.ReplayCode).Cost) == null;
+
+    private string? ReplayEffectUnavailable(PlayerState player, CardDefinition card, int cost) =>
+        card.Letter.HasValue ? null : CodeEffectUnavailable(player, card, cost);
 
     public IReadOnlyList<int> ReplayableMemoryCodes(int actor)
     {
@@ -41,7 +44,7 @@ public sealed partial class GameEngine
         var result = new List<int>();
         var player = State.Players[actor]; var extraCost = RelikiaEffects.Get(RelikiaEffect.ReplayCode).Cost;
         for (var index = 0; index < player.Memory.Count; index++)
-            if (IsMemoryCode(actor, index) && CodeEffectUnavailable(player, CardCatalog.Get(player.Memory[index]), extraCost) == null) result.Add(index);
+            if (IsMemoryCode(actor, index) && ReplayEffectUnavailable(player, CardCatalog.Get(player.Memory[index]), extraCost) == null) result.Add(index);
         return result;
     }
 
@@ -55,7 +58,7 @@ public sealed partial class GameEngine
         var definition = RelikiaEffects.Get(effect);
         if (effect == RelikiaEffect.ReplayCode)
         {
-            var extraError = CodeEffectUnavailable(p, CardCatalog.Get(p.Memory[memoryIndex]), definition.Cost);
+            var extraError = ReplayEffectUnavailable(p, CardCatalog.Get(p.Memory[memoryIndex]), definition.Cost);
             if (extraError != null) return CommandResult.Fail(extraError);
         }
         p.Relikia -= definition.Cost;
@@ -81,7 +84,8 @@ public sealed partial class GameEngine
                 break;
             case RelikiaEffect.ReplayCode:
                 var code = CardCatalog.Get(p.Memory[memoryIndex]);
-                ActivateCode(actor, code, true, memoryIndex);
+                if (code.Letter.HasValue) AskLetterMode(actor, code, memoryIndex, definition.Actions, source: 1);
+                else ActivateCode(actor, code, true, memoryIndex);
                 break;
             case RelikiaEffect.ClaimBonus:
                 TakeBonus(p, p);

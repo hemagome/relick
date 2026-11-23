@@ -200,7 +200,7 @@ public static class ArenaPresentation
         if (LightEquipmentZone(owner, index, actions.LightEquipment, false, W, canvas.TableView) is { } lights)
             Put(lights, 996, bottom, W, H); // Under its owner's Memory: beside it would cover the other seat's Bonus.
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
-            TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
+            TomeCardCount = owner.TomeCards?.Count(card => card.HostZone is FieldZone.Attached or FieldZone.Relikario) ?? 0,
             SlotWidth = W, Board = true, RaisedPile = canvas.TableView, ShieldCount = owner.GalacticShieldCharges?.Length ?? 0, Groups = RelikarioGroups.For(owner),
             StackReach = bottom - row };
         attached.Pressed += actions.Attached; Put(attached, 306 + W + 10, row, W, H);
@@ -373,7 +373,7 @@ public static class ArenaPresentation
             SizeFlagsVertical = compact ? Control.SizeFlags.ShrinkCenter : Control.SizeFlags.Fill };
         permanent.AddThemeConstantOverride("separation", 6);
         var attached = new AttachmentStack { Name = $"AttachmentStack{index}", Cards = owner.Attached, RelikarioId = owner.RelikarioId,
-            TomeCardCount = owner.TomeCards?.Count(card => card.HostZone == FieldZone.Attached) ?? 0,
+            TomeCardCount = owner.TomeCards?.Count(card => card.HostZone is FieldZone.Attached or FieldZone.Relikario) ?? 0,
             ShieldCount = owner.GalacticShieldCharges?.Length ?? 0, Groups = RelikarioGroups.For(owner) };
         attached.Pressed += actions.Attached; permanent.AddChild(attached);
         if (owner.EquipmentCovers is { Length: > 0 } covers)

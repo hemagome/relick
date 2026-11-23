@@ -106,7 +106,7 @@ public partial class OnlineLobby
             // A new deck starts by choosing its Relikario.
             ((Button)screen.FindChild("NewDeck", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             var picker = screen.Picker!;
-            Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 4 && picker.Selected.Id == "yuno",
+            Expect(picker.Tiles.Count == 18 && RelikarioCatalog.Roster.Count(r => r.Playable) == 5 && picker.Selected.Id == "yuno",
                 "el selector no lista los 18 Relikarios con Yuno elegido.");
             Expect(picker.Tiles["yuno"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
                 picker.Tiles["osamu"].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
@@ -135,13 +135,23 @@ public partial class OnlineLobby
             Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: false } wd && wd.Text.Contains("WD") &&
                 RelikarioPicker.Card("wd", 1) != null && RelikarioPicker.Card("wd", 2) != null,
                 "WD debe mostrar sus dos cartas y permitir crear un mazo.");
+            var gold = RelikarioCatalog.YunoOro.Id;
+            picker.Tiles[gold].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: false } goldDeck && goldDeck.Text.Contains("Yuno Oro") &&
+                RelikarioPicker.Card(gold, 1) != null && RelikarioPicker.Card(gold, 2) != null &&
+                picker.Tiles[gold].FindChild("Portrait", true, false) is TextureRect { Texture: not null } &&
+                DeckRules.DefaultAttackArt(gold) == CardCatalog.AttackYunoOro.Id &&
+                BoardArt.LoadCardArtwork(CardCatalog.GoldDigger, gold) != null,
+                "Yuno Oro debe mostrar retrato, dos niveles, Ataque propio y la ilustración de Gold Digger.");
             picker.Tiles["godkira"].EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Expect(picker.FindChild("CreateDeck", true, false) is Button { Disabled: true, Text: "Próximamente" } && picker.FindChild("ComingSoonNote", true, false) != null,
                 "un Relikario sin programar permite crear un mazo.");
             if (picker.FindChild("FilterAvailable", true, false) is Button { Visible: true } available)
             {
                 available.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-                Expect(picker.Tiles.Values.Count(tile => tile.Visible) == 4 && picker.Selected.Id == "yuno", "el filtro Disponibles debe mostrar a Yuno, Osamu, Ironwing y WD.");
+                var visible = picker.Tiles.Where(entry => entry.Value.Visible).Select(entry => entry.Key).ToHashSet();
+                Expect(visible.SetEquals(RelikarioCatalog.Playable.Select(form => form.Id)) && picker.Selected.Id == "yuno",
+                    "el filtro Disponibles debe mostrar todos los Relikarios jugables.");
                 ((Button)picker.FindChild("FilterAll", true, false)).EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             }
             else picker.Tiles["yuno"].EmitSignal(BaseButton.SignalName.Pressed);

@@ -111,6 +111,8 @@ public sealed class PlayerState
     public bool AttackRerollUsedThisTurn { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool RelikarioSearchUsedThisTurn { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool GoldDiggerUsed { get; internal set; }
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HashSet<int>? IronwingFireUsed { get; internal set; }
     [JsonInclude]
@@ -304,6 +306,8 @@ public sealed class GameState
     /// <summary>During <see cref="ErrorAfterDie"/> for a COMBO that rerolled a die: the rest of its effect, run if it is not canceled.</summary>
     [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public EngineContinuation? PendingAfterError { get; internal set; }
+    [JsonInclude, JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public EngineContinuation? AfterCardDiscard { get; internal set; }
     [JsonInclude]
     public List<ActivationInfo> ActivationChain { get; internal set; } = new();
     /// <summary>The decision a card effect is waiting for (<see cref="Phase.Decision"/>).</summary>
@@ -368,13 +372,14 @@ public sealed record PendingAttackRoll(int Attacker, string SkillId, int Die, in
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? CriticalDamage = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EffectsSuppressed = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SuperAttack = false,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool IronwingPaid = false);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool IronwingPaid = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool NaturalD6Six = false);
 
-public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole, GhostDog, DualityCassette, TurboAttackDamage, RollingShuffleDamage, RollingShuffleReward, RollingShuffleAction }
+public enum DiePurpose { MagnetDamage, Recycling, Relikia, ExtraLife, PointsChange, Dodge, PcStore, SkillLearning, FieldCombat, QuickLoad, Zahira, TurboSwordDamage, TurboSwordDefense, TurboOverlapDamage, BlackHole, GhostDog, DualityCassette, TurboAttackDamage, RollingShuffleDamage, RollingShuffleReward, RollingShuffleAction, GoldDigger, LetterL, LetterC }
 public sealed record PendingDieRoll(int Player, DiePurpose Purpose, int Die, Phase ResumePhase, int Rerolls = 0, bool WasRerolled = false, bool Modified = false, [property: JsonPropertyName("YunoStopped")] bool RerollStopped = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int LearningRerolls = 0);
 
-public sealed record ActivationInfo(int Actor, string CardId, int ActionsPaid, int PrPaid);
+public sealed record ActivationInfo(int Actor, string CardId, int ActionsPaid, int PrPaid, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool PlaceLetter = false);
 
 
 public sealed record PendingCode(int Actor, string CardId, bool FromMemory, int MemoryIndex, Phase ResumePhase);

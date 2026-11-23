@@ -44,8 +44,8 @@ public sealed partial class GameEngine
         }
         else
         {
-            if (fromMemory) CorruptActivationCode(actor, memoryIndex);
-            ResolveCode(State.Players[actor], card);
+            if (fromMemory && _activeActivation?.PlaceLetter != true) CorruptActivationCode(actor, memoryIndex);
+            ResolveCodeMode(actor, card);
         }
     }
 
@@ -65,8 +65,8 @@ public sealed partial class GameEngine
         else
         {
             State.PendingCode = null;
-            if (pending.FromMemory) CorruptActivationCode(pending.Actor, pending.MemoryIndex);
-            ResolveCode(State.Players[pending.Actor], card);
+            if (pending.FromMemory && _activeActivation?.PlaceLetter != true) CorruptActivationCode(pending.Actor, pending.MemoryIndex);
+            ResolveCodeMode(pending.Actor, card);
         }
         CompleteActivationIfFinished();
         return CommandResult.Ok();

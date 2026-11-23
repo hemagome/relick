@@ -28,13 +28,13 @@ public sealed partial class GameEngine
     private void BeginActivation(EngineActivation frame)
     {
         _activeActivation = frame;
-        if (frame.CanInterrupt && (HasLoadError(1 - frame.Actor) || HasComboParry(1 - frame.Actor) || HasInitialCopyResponse(frame))) OpenErrorChain(frame, frame.ResumePhase);
+        if (frame.CanInterrupt && (HasLoadError(1 - frame.Actor) || HasComboParry(1 - frame.Actor) || HasInitialCopyResponse(frame) || HasLetterRamResponse(1 - frame.Actor, frame.PlaceLetter, opening: true))) OpenErrorChain(frame, frame.ResumePhase);
         else { ResumeActivation(frame); CompleteActivationIfFinished(); }
     }
     private void OpenErrorChain(EngineActivation frame, Phase resume)
     {
         _activationChain.Clear(); _activationChain.Add(frame); _errorResumePhase = resume;
-        State.ActivationChain.Clear(); State.ActivationChain.Add(new(frame.Actor, frame.CardId, frame.Actions, frame.Pr));
+        State.ActivationChain.Clear(); State.ActivationChain.Add(new(frame.Actor, frame.CardId, frame.Actions, frame.Pr, frame.PlaceLetter));
         State.ErrorResponder = 1 - frame.Actor; State.Phase = Phase.ErrorResponse;
     }
     private CommandResult PlayLoadError(int actor, int index)
@@ -65,7 +65,7 @@ public sealed partial class GameEngine
         {
             var links = new List<PublicChainLink>();
             if (ChainAttack() is { } attack) links.Add(attack);
-            links.AddRange(_activationChain.Select(f => new PublicChainLink { Actor = f.Actor, CardId = IsCopyHelmetFrame(f) ? CardCatalog.CopyHelmet.Id : f.CardId, Canceled = f.Canceled }));
+            links.AddRange(_activationChain.Select(f => new PublicChainLink { Actor = f.Actor, CardId = IsCopyHelmetFrame(f) ? CardCatalog.CopyHelmet.Id : f.CardId, Canceled = f.Canceled, PlaceLetter = f.PlaceLetter }));
             ChainResolved(links);
         }
         var frames = _activationChain.ToArray();
@@ -173,6 +173,7 @@ public sealed partial class GameEngine
 
     private void CompleteActivationIfFinished()
     {
+        if (State.IsOver) return;
         if (TryRunDiscardEffects()) return;
         if (FinishPlayedTargetResponse()) return;
         if (State.Phase == Phase.ReloadResolving && State.PendingReload != null) { ContinueReloadHands(); return; }
@@ -180,6 +181,9 @@ public sealed partial class GameEngine
         {
             CompleteTurnBuff(); return;
         }
+        if (_activeActivation is { } letter && CardCatalog.Get(letter.CardId).Letter.HasValue &&
+            State.Phase == letter.ResumePhase && State.Phase != Phase.ErrorResponse)
+            ReleaseActiveActivation();
         if (State.Phase is Phase.Draw or Phase.Actions or Phase.Combat or Phase.Final or Phase.Finished ||
             _activeActivation?.FieldCardId is { } id && CardCatalog.PhysicalId(id) == CardCatalog.CopyHelmet.Id &&
             _ramResolutions.LastOrDefault()?.PlayPhase == State.Phase)

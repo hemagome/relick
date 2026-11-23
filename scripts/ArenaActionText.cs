@@ -12,6 +12,7 @@ internal static class ArenaActionText
         DuelMoveKind.Attack when option.Field?.Zone == FieldZone.TomeCard =>
             $"Atacar con {CardCatalog.Get(s.Players[s.MySeat].Skills[option.Move.Value]).Name}",
         DuelMoveKind.Attack => "Atacar",
+        DuelMoveKind.PlayCode when option.Move.Flag => $"Colocar {HandCard(option, s)?.Letter}",
         DuelMoveKind.PlayCode => "Activar",
         DuelMoveKind.Equip when option.Move.Flag => "Equipar al rival",
         DuelMoveKind.Equip when HandCard(option, s)?.Id == CardCatalog.MetalHood.Id => "Equiparme",
@@ -132,6 +133,7 @@ internal static class ArenaActionText
         {
             case DuelMoveKind.PlayCode:
                 var card = HandCard(option, s)!;
+                if (m.Flag && card.Letter is { } letter) return Resources(card.ActionCost, 0);
                 if (card.Id == CardCatalog.VictoriousManualControl.Id) return CardCost(card);
                 return Resources(card.ActionCost, GameEngine.CodePrCost(card), card.DiscardCost);
             case DuelMoveKind.Equip: case DuelMoveKind.Exchange: case DuelMoveKind.RelikarioSearch:

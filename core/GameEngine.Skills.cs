@@ -5,7 +5,8 @@ public sealed partial class GameEngine
     public int DefenseDiscardCost => State.PendingAttack?.Critical == true ? 4 : 3;
 
     public bool CanUseSkillAction(int actor, int slot) => ValidateAction(actor) == null &&
-        CardEffects.For(State.Active.Skills.ElementAtOrDefault(slot)) is ISkillAction &&
+        State.Active.Skills.ElementAtOrDefault(slot) is { } id && CardEffects.For(id) is ISkillAction action &&
+        action.CanActivate(EffectFor(actor, id)) &&
         !EffectsSuppressed(actor, FieldZone.Skill, slot);
 
     public CommandResult UseSkillAction(int actor, int slot)

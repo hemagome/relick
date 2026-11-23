@@ -124,7 +124,8 @@ public sealed partial class GameEngine
             return actor == State.DecisionPlayer;
         if (ValidateTurn(actor) != null) return false;
         var p = State.Active;
-        if (PlayableCards(actor).Any(card => CardCatalog.Get(card.Id).IsCombo && CodeUnavailableReason(actor, card.Index) == null)) return true;
+        if (PlayableCards(actor).Any(card => CodeUnavailableReason(actor, card.Index, placeLetter: true) == null ||
+            CardCatalog.Get(card.Id).IsCombo && CodeUnavailableReason(actor, card.Index) == null)) return true;
         if (CanEvolve(actor)) return true;
         if (AvailablePurpleRings(actor).Any(c => CanUsePurpleRing(actor, c.Index))) return true;
         if (IronwingFireDestructions(actor).Any()) return true;
@@ -213,7 +214,7 @@ public sealed partial class GameEngine
             SkillSlot: skill.DamagePerReroll > 0 && !suppressed ? skillIndex : null,
             NormalDamage: skill.DamagePerReroll > 0 && !suppressed ? skill.NormalDamageAt(p.CountersOnSkill(skillIndex)) : null,
             CriticalDamage: skill.DamagePerReroll > 0 && !suppressed ? skill.CriticalDamageAt(p.CountersOnSkill(skillIndex)) : null,
-            EffectsSuppressed: suppressed, SuperAttack: superAttack);
+            EffectsSuppressed: suppressed, SuperAttack: superAttack, NaturalD6Six: !modified && !CurrentDieIsD10 && die == 6);
         State.Phase = Phase.AttackRerollChoice;
         State.LastCombat = p.Relikario.Family == RelikarioCatalog.Ironwing.Id || p.Relikario.Family == RelikarioCatalog.Wd.Id
             ? $"{p.Name} · Dado de ataque {die} · Conserva o modifica el resultado"
@@ -230,24 +231,33 @@ public sealed partial class GameEngine
         _ => 0
     };
 
-    public CommandResult PlayCode(int actor, int handIndex)
+    public CommandResult PlayCode(int actor, int handIndex, bool placeLetter = false)
     {
-        var error = CodeUnavailableReason(actor, handIndex);
+        var error = CodeUnavailableReason(actor, handIndex, placeLetter);
         if (error != null) return CommandResult.Fail(error);
+        var card = CardCatalog.Get(PlayableHandCard(State.Players[actor], handIndex)!);
+        if (card.Letter != null || State.Phase == Phase.ErrorResponse && CanJoinLetterRam(actor, card))
+            return ActivateLetterRamCard(actor, handIndex, card, placeLetter, card.ActionCost);
         return ActivateHandCode(actor, handIndex);
     }
 
-    private CommandResult ActivateHandCode(int actor, int handIndex, int? actionCost = null)
+    private CommandResult ActivateHandCode(int actor, int handIndex, int? actionCost = null, bool discardToActivate = false)
     {
         var p = State.Players[actor];
         var card = CardCatalog.Get(PlayableHandCard(p, handIndex)!);
         var actions = actionCost ?? card.ActionCost;
+        if (card.Letter != null)
+        {
+            AskLetterMode(actor, card, handIndex, actions);
+            return CommandResult.Ok();
+        }
         if (card.Id == CardCatalog.CopyHelmet.Id) return PlayCopyHelmet(actor, handIndex);
         if (CardEffects.For(card.Id) is CardEffect { HoldsActivationCard: true } ||
             card.Id == CardCatalog.MagicTome.Id || card.Id == CardCatalog.GalacticShield.Id || handIndex >= TomeHandBase &&
             (card.Id == CardCatalog.Robotize.Id || card.Id == CardCatalog.GoldenTotem.Id))
         {
-            var frame = new EngineActivation(actor, card.Id, actions, CodePrCost(card), State.Phase);
+            var frame = new EngineActivation(actor, card.Id, actions, CodePrCost(card), State.Phase)
+                { DiscardedToActivate = discardToActivate };
             HoldActivationCard(frame, handIndex);
             p.ActionsLeft -= frame.Actions;
             p.Relikia -= frame.Pr;
@@ -266,6 +276,7 @@ public sealed partial class GameEngine
         var played = robotize ? SendToMemory(p, card.Id, CardZone.Hand, handIndex, notify: false, deferCorruption: deferCorruption)
             : SendHandToMemory(p, handIndex, deferCorruption);
         if (robotize) p.RemoveHandCard(handIndex);
+        if (discardToActivate) RecordDiscard(actor, card.Id, played);
         p.ActionsLeft -= actions;
         p.Relikia -= CodePrCost(card);
         Log($"{p.Name} juega {card.Name}.");
@@ -410,6 +421,7 @@ public sealed partial class GameEngine
         {
             player.LockedGhostCards = null;
             player.AttackRerollUsedThisTurn = false;
+            player.GoldDiggerUsed = false;
             player.WildDriveRedirects = 0;
             player.SearchActivationUsed = false;
             player.SearchedHandSlots = null;
@@ -452,7 +464,14 @@ public sealed partial class GameEngine
 
     private void CompletePendingPlay()
     {
+        if (State.IsOver) return;
         if (TryRunDiscardEffects() || TryFinishWdPayment()) return;
+        if (State.AfterCardDiscard is { } afterDiscard && State.Phase.IsTurnStage() && State.PendingSniper == null)
+        {
+            State.AfterCardDiscard = null;
+            Continue(afterDiscard);
+            return;
+        }
         if (FinishPlayedTargetResponse()) return;
         if (TryResumeSearchActivation()) return;
         if (_activeActivation == null && _ramResolutions.LastOrDefault() is { } ram &&

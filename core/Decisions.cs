@@ -84,6 +84,8 @@ public sealed class DecisionView
     public DecisionKind Kind { get; set; }
     public string Title { get; set; } = "";
     public string Instruction { get; set; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ShowsHandOf { get; set; }
 }
 
 /// <summary>
@@ -137,6 +139,7 @@ internal interface IAttackRewardRoll
 
 internal interface ISkillAction
 {
+    bool CanActivate(GameEngine.EffectContext ctx) => true;
     void Activate(GameEngine.EffectContext ctx);
 }
 
@@ -163,7 +166,7 @@ internal interface ITurnTrigger
 }
 
 /// <summary>How a card would leave the field.</summary>
-internal enum FieldLeave { Destroy, Return }
+internal enum FieldLeave { Destroy, Return, Corrupt }
 
 /// <summary>Order of the replacements when a card would leave the field; the rules fix it.</summary>
 internal enum LeaveStep { Protect, Cover }
@@ -228,7 +231,9 @@ internal interface IDamageTrigger
 internal static class CardEffects
 {
     private static readonly IReadOnlyDictionary<string, CardRules> Registered =
-        new CardRules[] { new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
+        new CardRules[] { new GoldDiggerEffect(), new LetterEffect(CardCatalog.LetterR), new LetterEffect(CardCatalog.LetterE),
+            new LetterEffect(CardCatalog.LetterL), new LetterEffect(CardCatalog.LetterI), new LetterEffect(CardCatalog.LetterC),
+            new LetterEffect(CardCatalog.LetterK), new BlueEggEffect(), new TimeBombEffect(), new KonamyCodeEffect(), new ExtraLifeEffect(),
             new PointsIncreaseEffect(), new QuickLoadEffect(), new FloppyDiskEffect(), new SenshuniEffect(), new MindSwapEffect(),
             new ReloadCartridgeEffect(), new TripleAttackEffect(), new MindResetEffect(),
             new DodgeEffect(), new GoldenTotemEffect(), new TakeEquipmentEffect(), new GalacticShieldEffect(),
@@ -333,6 +338,43 @@ public sealed partial class GameEngine
         {
             then.NonlethalDamageTarget = 1 - Actor;
             _engine.DealDamage(1 - Actor, amount, completed: then, source: Actor);
+        }
+        public void ResolveMonkeyName(int index) => _engine.ResolveMonkeyName(Actor, index);
+        public IEnumerable<(int Index, string Id)> EnergyCodes(int excludedHand = -1) => _engine.EnergyCodes(Actor, excludedHand);
+        public void ActivateEnergyCode(int index) => _engine.ActivateEnergyCode(Actor, index);
+        public void CorruptField(FieldTarget field, EngineContinuation then) => _engine.CorruptField(Actor, field, then);
+        public void CorruptHand(int owner, int index) => _engine.CorruptHand(owner, index);
+        public List<int> MillDeckTop(int count) => _engine.MillDeckTop(Actor, count);
+        public void ExhaustIfEmpty() { if (Player.Deck.Count == 0) _engine.Exhaust(Player); }
+        public void BottomMemoryCard(int owner, int index) => _engine.BottomMemoryCard(owner, index);
+        public IEnumerable<string> CloneableMemory() => _engine.CloneableMemory(Actor);
+        public void CloneMemoryCard(string id) => _engine.CloneMemoryCard(Actor, id);
+        public void OverlayMemoryCard(int owner, int index, FieldTarget host, bool above) => _engine.OverlayMemoryCard(owner, index, host, above);
+        public IEnumerable<FieldTarget> StraightenableCards() => _engine.FieldCards().Where(target => target.Zone == FieldZone.TomeCard &&
+            State.TomeCards?.Any(card => card.Slot == target.Index && card.Inverted) == true);
+        public void StraightenCard(FieldTarget target)
+        {
+            var cards = State.TomeCards!;
+            var slot = cards.FindIndex(card => card.Slot == target.Index);
+            cards[slot] = cards[slot] with { Inverted = false };
+        }
+        public void InspectDeckTop()
+        {
+            if (Player.Deck.Count > 0) Ask("inspect", DecisionKind.ChooseCard, "Mira la primera carta de tu mazo.");
+        }
+        public void BottomDeckTop()
+        {
+            var id = Player.Deck[0];
+            var marked = Player.CorruptsOnMemory(CardZone.Deck, 0);
+            Player.Deck.RemoveAt(0);
+            Player.RemoveCorruptionSlots(CardZone.Deck, 0);
+            if (marked) Player.MarkForCorruption(CardZone.Deck, Player.Deck.Count);
+            Player.Deck.Add(id);
+        }
+        public void DiscardThenDraw(int index, int count)
+        {
+            State.AfterCardDiscard = new EngineContinuation { Kind = ContinuationKind.Draw, Actor = Actor, Count = count };
+            _engine.BeginSniperChoices(Actor, _engine.DiscardHandCardsForCost(Actor, [index]));
         }
         public void CorruptMemoryCard(int owner, int index) => _engine.Corrupt(Actor, owner, index);
         public int Heal(int amount) => _engine.Heal(Player, amount);
@@ -566,6 +608,9 @@ public sealed partial class GameEngine
         if (State.Phase != Phase.Decision || State.PendingDecision is not { } decision || decision.Decider != actor) return [];
         if (decision.TargetResponse != null)
             return [new() { Label = "Dejar resolver el efecto", Button = "Pasar", Public = "deja resolver el efecto rival.", RequiresAcknowledgement = true }];
+        if (decision.Step == LetterMode) return AvailableLetterModes(decision);
+        if (decision.Source == RelikarioCatalog.YunoOro.Id || decision.Source == RelikarioCatalog.YunoOroLv2.Id)
+            return GoldRelikarioChoices(decision);
         if (IsWdDecision(decision)) return WdChoices(decision);
         if (CardEffects.For(decision.Source) is { } effect)
             return effect.Choices(EffectFor(actor, decision.Source), decision);
@@ -594,7 +639,10 @@ public sealed partial class GameEngine
             TryOfferTargetResponse(decision.Decider, target, decision.Source, choice: choice)) return;
         State.PendingDecision = decision.Suspended;
         State.Phase = decision.ResumePhase;
-        if (IsWdDecision(decision)) ResolveWdChoice(decision, choice);
+        if (decision.Step == LetterMode) ApplyLetterMode(decision, choice);
+        else if (decision.Source == RelikarioCatalog.YunoOro.Id || decision.Source == RelikarioCatalog.YunoOroLv2.Id)
+            ApplyGoldRelikarioChoice(decision, choice);
+        else if (IsWdDecision(decision)) ResolveWdChoice(decision, choice);
         else if (CardEffects.For(decision.Source) is { } effect)
             effect.Choose(EffectFor(decision.Decider, decision.Source), decision, choice);
         else if (decision.Source == CardCatalog.CopyHelmet.Id) AddCopyHelmetToRam(decision, choice);

@@ -1,6 +1,10 @@
 namespace Relick.Core;
 
-public sealed record TomeCard(int Slot, string HostId, string CardId, int OriginalOwner, bool Marked, bool Inverted = false);
+public sealed record TomeCard(int Slot, string HostId, string CardId, int OriginalOwner, bool Marked, bool Inverted = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    FieldTarget? OverlayHost = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool Above = false);
 
 public sealed partial class GameEngine
 {
@@ -37,7 +41,7 @@ public sealed partial class GameEngine
         }
     }
 
-    private IEnumerable<TomeCard> TomeChildren(string host) => (State.TomeCards ?? []).Where(card => card.HostId == host).OrderBy(card => card.Slot);
+    private IEnumerable<TomeCard> TomeChildren(string host) => (State.TomeCards ?? []).Where(card => card.OverlayHost == null && card.HostId == host).OrderBy(card => card.Slot);
 
     private TomeCard[]? TakeTomeAttachments(string host)
     {
@@ -82,6 +86,9 @@ public sealed partial class GameEngine
         for (var i = 0; i < p.AttachedCards.Count; i++) Add(p.AttachedCards[i], FieldZone.Attached, i);
         for (var i = 0; i < p.Exchange.Count; i++) Add(p.Exchange[i], FieldZone.Exchange, i);
         if (p.Bonus is { } bonus) Add(bonus, FieldZone.Bonus, -1);
+        foreach (var child in State.TomeCards ?? [])
+            if (child.OverlayHost is { } host && host.Owner == owner)
+                cards.Add(new(child.Slot, child.CardId, child.Inverted, host.Zone, host.Index, Above: child.Above));
         return cards.Count == 0 ? null : cards.ToArray();
     }
 
@@ -89,6 +96,7 @@ public sealed partial class GameEngine
     {
         var child = State.TomeCards?.Find(card => card.Slot == slot);
         if (child == null) return null;
+        if (child.OverlayHost is { } host) return host.Owner == owner ? host.Zone : null;
         var p = State.Players[owner];
         if (p.AttachedCards.Contains(child.HostId)) return FieldZone.Attached;
         if (p.Bonus == child.HostId) return FieldZone.Bonus;
@@ -99,7 +107,8 @@ public sealed partial class GameEngine
     {
         var p = State.Players[owner];
         foreach (var child in State.TomeCards ?? [])
-            if (p.AttachedCards.Contains(child.HostId) || p.Bonus == child.HostId || p.Exchange.Contains(child.HostId))
+            if (child.OverlayHost is { } host ? host.Owner == owner :
+                p.AttachedCards.Contains(child.HostId) || p.Bonus == child.HostId || p.Exchange.Contains(child.HostId))
                 yield return new(owner, FieldZone.TomeCard, child.Slot, child.CardId);
     }
 
@@ -119,6 +128,7 @@ public sealed partial class GameEngine
 
     private bool TomeProtects(PlayerState p, TomeCard card)
     {
+        if (card.OverlayHost != null) return false;
         var parent = p.AttachedCards.IndexOf(card.HostId);
         var actor = Seat(p);
         var active = parent >= 0 ? !EffectsSuppressed(actor, FieldZone.Attached, parent) :
@@ -154,6 +164,7 @@ public sealed partial class GameEngine
         }
         frame.HeldCard = p.Hand[handIndex];
         frame.CorruptOnMemory = p.CorruptsOnMemory(CardZone.Hand, handIndex);
+        ShiftTargetedHandChoice(frame.Actor, handIndex);
         if (p.RemoveHandCard(handIndex)) frame.MemoryOwner = 1 - frame.Actor;
     }
 
@@ -188,6 +199,10 @@ public sealed partial class GameEngine
             (State.TomeCards ??= []).Add(source);
             InvertTomeCard(source);
         }
-        else SendToMemory(State.Players[frame.MemorySeat], physical, CardZone.Activation, -1, marked: marked);
+        else
+        {
+            var landed = SendToMemory(State.Players[frame.MemorySeat], physical, CardZone.Activation, -1, marked: marked);
+            if (frame.DiscardedToActivate) RecordDiscard(frame.Actor, physical, landed);
+        }
     }
 }

@@ -75,6 +75,7 @@ public partial class OnlineArena
             _resolutionStage!.Text = IsAnimating ? "RESOLVIENDO" : ResolutionStatus(status) + (live != null ? " · " + HistoryPlayer(live.DecisionPlayer) : "");
             if (!IsAnimating && s.Winner != null) _resolutionStage.Text = s.Winner == -1 ? "EMPATE" : "VICTORIA · " + HistoryPlayer(s.Winner.Value);
             var card = HistoryCard(live?.CardId ?? latest!.CardId);
+            if (live?.PlaceLetter == true) card += " · Colocar letra";
             _resolutionSource.Text = card.Length > 0 ? HistoryPlayer(live?.Actor ?? latest!.SourceActor) + " · " + card : live != null ? latest?.Text ?? "" : "";
             _resolutionSource.Visible = _resolutionSource.Text.Length > 0;
             _resolutionSource.TooltipText = _resolutionSource.Text;

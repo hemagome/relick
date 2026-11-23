@@ -67,6 +67,7 @@ public sealed partial class GameEngine
 
     private void ResolveConfirmedAttackDie(PendingAttackRoll pending)
     {
+        if (OfferGoldAttackLetter(pending)) return;
         if (!OfferMultiDriveRetry(pending)) ResolveAfterSkillRetry(pending);
     }
 
@@ -85,6 +86,8 @@ public sealed partial class GameEngine
         var attackDamageBonus = pending.SuperAttack ? CardCatalog.SuperAttack.DamageBonus : 0;
         if (pending.NormalDamage is int normal && pending.CriticalDamage is int critical)
             skill = skill with { NormalDamage = normal, CriticalDamage = critical };
+        if (!pending.EffectsSuppressed && skill.Id == CardCatalog.GoldDigger.Id)
+            skill = skill with { CriticalDamage = 1 + RelikarioLetterCount(p) };
         if (!pending.EffectsSuppressed && skill.Id == CardCatalog.WildDrive.Id)
             skill = skill with { CriticalDamage = Math.Max(4, p.Memory.Count(id => DeckRules.IsAttack(CardCatalog.Get(id)))) };
         if (!pending.EffectsSuppressed && skill.Id == CardCatalog.MultiDrive.Id)

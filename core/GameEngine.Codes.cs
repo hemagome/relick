@@ -84,7 +84,7 @@ public sealed partial class GameEngine
         if ((card.RerollOwnDie || card.SetOwnDie > 0) && !OwnDiePending(Array.IndexOf(State.Players, p))) return "Requiere un dado propio pendiente.";
         return null;
     }
-    public string? CodeUnavailableReason(int actor, int handIndex)
+    public string? CodeUnavailableReason(int actor, int handIndex, bool placeLetter = false)
     {
         if (actor < 0 || actor >= 2 || State.IsOver || State.Phase == Phase.Preparation) return "No puedes jugar ahora.";
         var p = State.Players[actor];
@@ -99,9 +99,14 @@ public sealed partial class GameEngine
         if (card.IsCombo && p.AutoPassCombos && (actor != State.CurrentPlayer ||
             !State.Phase.IsTurnStage()))
             return "Activa las respuestas COMBO para responder con esta carta.";
+        if (placeLetter && card.Letter == null) return "No puedes colocar esta carta encima de tu Relikario.";
+        if (State.Phase == Phase.ErrorResponse && (card.Letter.HasValue || _activationChain.Any(frame => frame.PlaceLetter)) &&
+            !card.CancelActivation && card.Id != CardCatalog.CopyHelmet.Id && card.Id != CardCatalog.ComboParry.Id &&
+            !CanJoinLetterRam(actor, card))
+            return "Espera a recibir prioridad para responder a la letra.";
         if (!card.IsCombo) { var error = ValidateTurn(actor, Phase.Actions); if (error != null) return error; }
         if (AvailableActions(actor) < card.ActionCost) return "No quedan acciones disponibles.";
-        return CodeEffectUnavailable(p, card, excludedHand: handIndex);
+        return placeLetter ? null : CodeEffectUnavailable(p, card, excludedHand: handIndex);
     }
 
     private bool OwnDiePending(int actor) => State.Phase == Phase.AttackRerollChoice ? State.PendingAttackRoll?.Attacker == actor

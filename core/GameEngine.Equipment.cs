@@ -226,6 +226,10 @@ public sealed partial class GameEngine
         if (actor < 0 || actor >= State.Players.Length || actor != State.DecisionPlayer) return false;
         if (EffectsSuppressed(actor, FieldZone.Relikario)) return false;
         var p = State.Players[actor];
+        if (p.Relikario == RelikarioCatalog.YunoOro)
+            return !p.AttackRerollUsedThisTurn && DistinctRelikarioLetters(p) >= 2 &&
+                (State.Phase == Phase.AttackRerollChoice && State.PendingAttackRoll?.Attacker == actor ||
+                 State.Phase == Phase.DieRerollChoice && State.PendingDieRoll?.Player == actor);
         if (State.Phase == Phase.AttackRerollChoice && State.PendingAttackRoll is { } attack)
             return p.Relikario.CanRerollAttack && attack.Die != 1 && !attack.RerollStopped && attack.Rerolls < p.Relikario.MaxRerolls &&
                 (attack.Rerolls > 0 || !p.AttackRerollUsedThisTurn);

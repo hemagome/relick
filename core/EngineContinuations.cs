@@ -1,6 +1,6 @@
 namespace Relick.Core;
 
-public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie, TakeMagnetTarget, RelikiaOpponentDiscards, InstallOpponentEquipment, DiscardEffectsComplete, WdBoostPaid, MultiDrivePaid, ApplyAttackDamage, DeckSearchFinished }
+public enum ContinuationKind { Draw, MoveHand, MoveBonus, RefillDone, RefillBonus, RelikiaPlacement, RollRelikia, ResumeCombo, ResumeMindReset, CompleteExchange, AttackDieReady, AttackOneEquipment, UsePendant, UsePc, BoxDefense, BoxCode, EquipInstall, ApplyDamage, FinishAttackDamage, RerollDraw, TurnStartDraw, FieldCodeReward, QuickLoadDie, ReloadHandsResume, DrawStageReady, ReplaceEquipment, GoldenTotemPlacement, PlaceSuperMagnet, PlaceZahira, FinishZahiraDestruction, CardEffectStep, ResolveSkillAttack, AreaRaidSideB, EquipFromDeck, CheckAreaEquipDeck, PurpleRingPoints, LoadGalacticShield, OrientMovedArea, ConfirmedAttackDie, ConfirmedEffectDie, BreakRobotize, BlockOpponentEquipment, BreakMetalHood, IronwingBonus, IronwingRoll, IronwingFireDamage, IronwingFireDestroy, IronwingFieldDestroyed, BlackHoleOtherSide, BlackHoleDestroy, BlackHoleCardDestroyed, BlackHoleFinish, IronwingDiePaid, LoadMagicTome, FieldReturned, BikeTurnStart, GhostAttackDie, GhostEffectDie, TakeMagnetTarget, RelikiaOpponentDiscards, InstallOpponentEquipment, DiscardEffectsComplete, WdBoostPaid, MultiDrivePaid, ApplyAttackDamage, DeckSearchFinished, ResolveSkillAttackAfterLetter }
 public sealed class EngineContinuation
 {
     public ContinuationKind Kind { get; set; }
@@ -8,6 +8,8 @@ public sealed class EngineContinuation
     public int Count { get; set; }
     public int Value { get; set; }
     public bool Flag { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CorruptTarget { get; set; }
     public bool Prevented { get; set; }
     public FieldTarget? Target { get; set; }
     public string Text { get; set; } = "";
@@ -58,6 +60,10 @@ public sealed class EngineActivation
     public string CardId { get; set; } = "";
     public Phase ResumePhase { get; set; }
     public ActivationKind Kind { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool PlaceLetter { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool DiscardedToActivate { get; set; }
     public bool Canceled { get; set; }
     public bool ReplayCorrupted { get; set; }
     public bool FinishSniperExchange { get; set; }
@@ -100,6 +106,10 @@ public sealed partial class GameEngine
         var p = State.Players[next.Actor];
         switch (next.Kind)
         {
+            case ContinuationKind.ResolveSkillAttackAfterLetter:
+                Shuffle(p);
+                if (!OfferMultiDriveRetry(next.Attack!)) ResolveAfterSkillRetry(next.Attack!);
+                break;
             case ContinuationKind.AttackDieReady: ContinueAttackDie(); break;
             case ContinuationKind.ConfirmedAttackDie: ResolveConfirmedAttackDie(next.Attack!); break;
             case ContinuationKind.ConfirmedEffectDie: ApplyDieEffect(next.SavedDieEffect!, next.Value); break;

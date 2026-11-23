@@ -45,7 +45,10 @@ public sealed partial class GameEngine
         return CommandResult.Ok();
     }
 
-    private IReadOnlyList<DecisionChoice> CopyHelmetChoices(PendingDecision decision) =>
+    private IReadOnlyList<DecisionChoice> CopyHelmetChoices(PendingDecision decision) => decision.Step == "letter-copy"
+        ? LetterModeChoices(_activationChain[decision.Picks![0]].CardId, decision.Picks[0])
+            .Where(choice => choice.Button == "Colocar" || _activationChain[choice.Value].CardId != CardCatalog.LetterR.Id ||
+                decision.Decider == State.CurrentPlayer).ToArray() :
         _activationChain.Select((frame, index) => (frame, index)).Where(link => CanCopyActivation(link.frame))
             .Select(link => new DecisionChoice
             {
@@ -58,22 +61,29 @@ public sealed partial class GameEngine
     {
         var actor = decision.Decider;
         var source = _activationChain[choice.Value].CardId;
+        if (choice.Button == "Copiar" && CardCatalog.Get(source).Letter != null)
+        {
+            AskDecision(new PendingDecision { Source = decision.Source, Step = "letter-copy", Kind = DecisionKind.Confirm,
+                Decider = actor, Value = decision.Value, Picks = [choice.Value],
+                Instruction = "Elige cómo activar la copia de la letra." });
+            return;
+        }
         var frame = new EngineActivation(actor, source, CardCatalog.CopyHelmet.ActionCost, 0, _errorResumePhase)
         {
-            Kind = ActivationKind.Code, FieldCardId = FieldInstance(source, CardCatalog.CopyHelmet.Id)
+            Kind = ActivationKind.Code, PlaceLetter = choice.Button == "Colocar", FieldCardId = FieldInstance(source, CardCatalog.CopyHelmet.Id)
         };
         HoldActivationCard(frame, decision.Value);
         State.Players[actor].ActionsLeft -= frame.Actions;
         _activationChain.Add(frame);
-        State.ActivationChain.Add(new(actor, CardCatalog.CopyHelmet.Id, frame.Actions, 0));
-        Log($"{State.Players[actor].Name} responde con Casco de Copias para clonar {CardCatalog.Get(source).Name}.");
+        State.ActivationChain.Add(new(actor, CardCatalog.CopyHelmet.Id, frame.Actions, 0, frame.PlaceLetter));
+        Log($"{State.Players[actor].Name} responde con Casco de Copias para clonar {CardCatalog.Get(source).Name} y {(frame.PlaceLetter ? "colocarla encima de su Relikario" : "resolver su efecto")}.");
         GiveRamPriority(1 - actor);
     }
 
     private void GiveRamPriority(int actor)
     {
         State.ErrorResponder = actor;
-        if (!HasLoadError(actor) && !HasCopyHelmet(actor)) ResolveErrorChain();
+        if (!HasLoadError(actor) && !HasCopyHelmet(actor) && !HasLetterRamResponse(actor, _activationChain.Any(frame => frame.PlaceLetter))) ResolveErrorChain();
     }
 
     private void ResolveRamWithCopies(EngineActivation[] links)
@@ -106,7 +116,7 @@ public sealed partial class GameEngine
             if (clone.Canceled) { FinishHeldCard(clone); continue; }
             var card = CardCatalog.Get(clone.CardId);
             clone.ResumePhase = batch.PlayPhase;
-            var reason = CodeEffectUnavailable(State.Players[clone.Actor], card, excludedHand: int.MaxValue);
+            var reason = clone.PlaceLetter ? null : CodeEffectUnavailable(State.Players[clone.Actor], card, excludedHand: int.MaxValue);
             if (reason != null)
             {
                 FinishHeldCard(clone);

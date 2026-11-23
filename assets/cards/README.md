@@ -1050,3 +1050,9 @@ El Tomo conserva sus anexos al moverse por el campo. La galería de la zona mues
 > Precise object edit of the attached complete Spanish Relick card (card filename stem). Remove ONLY the repeated translucent diagonal RELICK overlay from the artwork/background. Reconstruct the exact underlying colors and linework, preserving the complete portrait card, original framing, proportions, illustration and layout. Preserve all original lettering exactly as provided, including type banners, name, rules, collector number and bottom artist/copyright credits. No redraw, new details, cropping, padding, or changes to the printed card. Return the complete cleaned card.
 
 </details>
+
+### Letras de RELICK y Relick Gold Digger
+
+Las seis letras proceden de los archivos R.png, E.png, L.png, I.png, C.png y K.png suministrados con el diseño. Se restauró el arte de cada letra con ImageGen integrado y se conservaron los textos de reglas y créditos del archivo original. Se usó el mismo prompt de restauración para cada carta, documentado en la carpeta de [Yuno Oro](../characters/yuno-oro/README.md). La habilidad Relick Gold Digger usa el original GoldDigger.png, que ya tenía el arte limpio.
+
+La opción de investigar de Código Caótico deja la carta del tope en su lugar o la envía al fondo. El mazo de caso se usa al abrir un caso. [Reglas oficiales de investigación](https://www.relicktcg.com/reglas/mec%C3%A1nicas/investigar)

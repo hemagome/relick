@@ -71,7 +71,7 @@ public sealed class DuelMove
         DuelMoveKind.SkillAction => game.UseSkillAction(actor, Index),
         DuelMoveKind.Learn => game.Learn(actor, Index),
         DuelMoveKind.Attack => game.Attack(actor, Index, Value),
-        DuelMoveKind.PlayCode => game.PlayCode(actor, Index),
+        DuelMoveKind.PlayCode => game.PlayCode(actor, Index, Flag),
         DuelMoveKind.DestinyPickMemory => game.UseDestinyPickFromMemory(actor, Index),
         DuelMoveKind.Equip => game.Equip(actor, Index, Flag),
         DuelMoveKind.ActivateArea => game.ActivateArea(actor, Index),

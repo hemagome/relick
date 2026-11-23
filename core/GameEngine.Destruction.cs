@@ -24,9 +24,10 @@ public sealed partial class GameEngine
     private void RequestDestruction(FieldTarget target, EngineContinuation? completed = null, LeaveStep? after = null)
     {
         if (State.IsOver) return;
-        if (TryReplaceFieldLeave(target, FieldLeave.Destroy, completed, after)) return;
+        var leave = completed?.CorruptTarget == true ? FieldLeave.Corrupt : FieldLeave.Destroy;
+        if (TryReplaceFieldLeave(target, leave, completed, after)) return;
         var p = State.Players[target.Owner];
-        if (EligibleDestructionProtectors(target).Any())
+        if (leave == FieldLeave.Destroy && EligibleDestructionProtectors(target).Any())
         {
             State.PendingDestruction = new() { Target = target, ResumePhase = State.Phase, Completed = completed };
             State.Phase = Phase.DestructionResponse;
@@ -34,7 +35,7 @@ public sealed partial class GameEngine
             State.LastCombat = $"{p.Name} · Puede sacrificar Reverse Shuffle para proteger {name}.";
             return;
         }
-        DestroyCardNow(target);
+        DestroyCardNow(target, corrupt: completed?.CorruptTarget == true);
         Continue(completed);
     }
 
@@ -62,22 +63,23 @@ public sealed partial class GameEngine
             if (pending.Completed != null) pending.Completed.Prevented = true;
             Log($"{State.Players[actor].Name} destruye Reverse Shuffle en lugar de su otra carta.");
         }
-        else DestroyCardNow(pending.Target);
+        else DestroyCardNow(pending.Target, corrupt: pending.Completed?.CorruptTarget == true);
         State.PendingDestruction = null;
         Continue(pending.Completed);
         CompleteActivationIfFinished();
         return CommandResult.Ok();
     }
 
-    private void DestroyCardNow(FieldTarget target)
+    private void DestroyCardNow(FieldTarget target, bool corrupt = false)
     {
+        if (corrupt) MarkFieldForCorruption(target);
         var p = State.Players[target.Owner];
         switch (target.Zone)
         {
             case FieldZone.TomeCard:
                 if (State.TomeCards?.Find(card => card.Slot == target.Index) is { } child)
                 {
-                    if (TomeProtects(p, child))
+                    if (TomeProtects(p, child) && !corrupt)
                     {
                         if (!child.Inverted) InvertTomeCard(child);
                         return;

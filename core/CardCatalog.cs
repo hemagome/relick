@@ -22,6 +22,7 @@ public sealed record CardDefinition(
     // Deckbuilding data: null affinity means the card fits any Relikario. Special marks the printed "S" skills.
     string? Relikario = null, bool Special = false, bool LightEquipment = false)
 {
+    public char? Letter { get; init; }
     public string? ArtworkLabel { get; init; }
 
     public int NormalDamageAt(int counters) => MaxNormalDamage > 0 ? Math.Min(MaxNormalDamage, NormalDamage + counters * DamagePerReroll) : NormalDamage + counters * DamagePerReroll;
@@ -43,6 +44,7 @@ public sealed record CardDefinition(
         "multi-drive" => "Cartas en mano · mín. 4",
         "wild-aim" => "3 + descartes",
         "rolling-shuffle" => "1D6 + 1",
+        "gold-digger" => "1 + letras",
         _ => CriticalDamageAt(counters).ToString()
     };
     public string RewardText => Id switch
@@ -56,6 +58,26 @@ public sealed record CardDefinition(
 
 public static class CardCatalog
 {
+    public static readonly CardDefinition GoldDigger = new("gold-digger", "Relick Gold Digger", CardKind.Skill,
+        "Una vez por turno, en tu etapa de acciones, paga una acción y lanza 1D6−2. Envía esa cantidad de cartas del tope de tu mazo a tu memoria. Puedes añadir una de ellas a tu mano. Si añades una letra, gana 500 PR.",
+        2, 1, 500, Relikario: RelikarioCatalog.YunoOro.Id);
+    public static readonly CardDefinition LetterR = new("letter-r", "El Nombre del Mono", CardKind.Code,
+        "En tu turno, mira la mano rival y envía una carta que no sea habilidad de Relikario al fondo del mazo de su dueño. Si su nombre contiene la primera letra de tu Relikario, añádela a tu mano.",
+        CodeType: CodeType.Object, IsCombo: true) { Letter = 'R' };
+    public static readonly CardDefinition LetterE = new("letter-e", "Energía Combo", CardKind.Code,
+        "Descarta un Código de tu mano y actívalo.", CodeType: CodeType.Object, IsCombo: true) { Letter = 'E' };
+    public static readonly CardDefinition LetterL = new("letter-l", "Letra Corrupta", CardKind.Code,
+        "Lanza 1D6 y corrompe una carta que no sea habilidad. 1: tu campo. 2: cualquier memoria. 3–5: cualquier campo o memoria. 6: una del campo, una de cualquier memoria y una de cualquier mano.",
+        CodeType: CodeType.Object) { Letter = 'L' };
+    public static readonly CardDefinition LetterI = new("letter-i", "Inteligencia del Héroe", CardKind.Code,
+        "Gana una acción extra este turno. Usar esta carta no cuenta como acción.",
+        CodeType: CodeType.Object, IsCombo: true, ActionCost: 0) { Letter = 'I' };
+    public static readonly CardDefinition LetterC = new("letter-c", "Código Caótico en 8Bits", CardKind.Code,
+        "Lanza 1D6. 1: investiga una carta o endereza una carta en el campo. 2: devuelve tres cartas de cualquier memoria al fondo del mazo de su dueño. 3: descarta una carta y roba tres. 4: clona una carta de tu memoria. 5: coloca hasta dos cartas de cualquier memoria encima o debajo de una carta en el campo. 6 o en vida cero: elige un efecto.",
+        CodeType: CodeType.Object) { Letter = 'C' };
+    public static readonly CardDefinition LetterK = new("letter-k", "Kombate Mortal", CardKind.Code,
+        "Ganas al reunir R, E, L, I, C y K simultáneamente encima de tu Relikario.",
+        CodeType: CodeType.Object) { Letter = 'K' };
     public static readonly CardDefinition SuperAttack = new("super-attack", "Súper Ataque", CardKind.Attack,
         "Canjea dos Ataques para crearlo en tu mano. Se considera un Ataque y no cuesta acción. Al atacar con esta carta, suma +2 al D6 de ataque (máximo 5) y +2 al daño del ataque.",
         CodeType: CodeType.Trap, ActionCost: 0, DamageBonus: 2);
@@ -173,6 +195,7 @@ public static class CardCatalog
     public static readonly CardDefinition AttackOsamuDt = Attack with { Id = "attack-osamu-dt73", ArtworkLabel = "Osamu (DT-73/100)", Relikario = RelikarioCatalog.Osamu.Id };
     public static readonly CardDefinition AttackYunoL8b = Attack with { Id = "attack-yuno-l8b8", ArtworkLabel = "Yuno (L8B-8/40)", Relikario = RelikarioCatalog.Yuno.Id };
     public static readonly CardDefinition AttackOsamuL8b = Attack with { Id = "attack-osamu-l8b9", ArtworkLabel = "Osamu (L8B-9/40)", Relikario = RelikarioCatalog.Osamu.Id };
+    public static readonly CardDefinition AttackYunoOro = Attack with { Id = "attack-yuno-oro", ArtworkLabel = "Yuno Oro", Relikario = RelikarioCatalog.YunoOro.Id };
     public static readonly CardDefinition AttackIronwingUt = Attack with { Id = "attack-ironwing-ut22", ArtworkLabel = "Ironwing (UT-22/50)", Relikario = RelikarioCatalog.Ironwing.Id };
     public static readonly CardDefinition AttackIronwingDt = Attack with { Id = "attack-ironwing-dt80", ArtworkLabel = "Ironwing (DT-80/100)", Relikario = RelikarioCatalog.Ironwing.Id };
     public static readonly CardDefinition AttackIronwingNs = Attack with { Id = "attack-ironwing-ns49", ArtworkLabel = "Ironwing (NS-49/150)", Relikario = RelikarioCatalog.Ironwing.Id };
@@ -265,7 +288,7 @@ public static class CardCatalog
         CodeType: CodeType.Character);
 
     public static readonly IReadOnlyDictionary<string, CardDefinition> All =
-        new[] { Attack, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackYunoL8b, AttackOsamuL8b, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore, SecretRoom, AttackWd, AttackWdNs, AttackWdDt, AttackWdL8b, WildDrive, MultiDrive, WildAim, TurboAttack, RollingShuffle, Bullet }.ToDictionary(c => c.Id);
+        new[] { Attack, AttackYunoOro, GoldDigger, LetterR, LetterE, LetterL, LetterI, LetterC, LetterK, AttackYuno, AttackOsamu, AttackYunoDt, AttackOsamuDt, AttackYunoL8b, AttackOsamuL8b, AttackIronwingUt, AttackIronwingDt, AttackIronwingNs, Magnet, Destiny, Reverse, TurboSword, TurboOverlap, IronwingRoll, IronwingFire, Game, Over, Pendant, Senshuni, CardboardBox, ExtraLife, PointsIncrease, BlueEgg, Reroll, LoadError, DiamondHelmet, TimeBomb, KonamyCode, MindSwap, Agility, MindReset, Dodge, Pc, Sniper, TripleAttack, Bonfire, FloppyDisk, PlumberStar, Jessica, QuickLoad, ReloadCartridge, TimeBender, Totem, GoldenTotem, SuperMagnet, ZahiraFlair, SuperAttack, TakeEquipment, EquipmentRaid, BlackHole, Platforms, PurpleRing, GalacticShield, VictoriousManualControl, Ellie, Robotize, ComboParry, MetalHood, DestinyPick, MagicTome, MouseBike, FutureEra, CopyHelmet, GlassFlute, Compass16Bit, ThiefGhost, GhostDog, NoOptions, DualityCassette, GalacticEnergyCore, SecretRoom, AttackWd, AttackWdNs, AttackWdDt, AttackWdL8b, WildDrive, MultiDrive, WildAim, TurboAttack, RollingShuffle, Bullet }.ToDictionary(c => c.Id);
 
     // A field instance can carry copied text and a different physical card.
     internal static string TextId(string id)

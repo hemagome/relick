@@ -23,7 +23,7 @@ public sealed partial class GameEngine
         var shields = player.GalacticShields ??= [];
         var slot = shields.Count;
         var id = frame.FieldCardId ?? frame.CardId;
-        if (frame.HeldCard == null) RemoveMemoryCard(new(frame.MemorySeat, frame.MemoryIndex));
+        if (frame.HeldCard == null && frame.FieldCardId == null) RemoveMemoryCard(new(frame.MemorySeat, frame.MemoryIndex));
         else id = InstallActivationCard(frame, player, CardZone.GalacticShield, slot);
         if (frame.CorruptOnMemory)
             player.MarkForCorruption(CardZone.GalacticShield, slot);

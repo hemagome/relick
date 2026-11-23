@@ -16,8 +16,8 @@ public partial class OnlineArena
         if (s.Phase != Phase.ErrorResponse || s.Resolution is not { } live || live.CardId.Length == 0) return [];
         var chain = new List<PublicChainLink>();
         if (live.Attack is { } attack) chain.Add(new() { Actor = attack.Actor, CardId = attack.CardId, Attack = true });
-        chain.Add(new() { Actor = live.Actor, CardId = live.CardId });
-        chain.AddRange(live.Responses.Select(r => new PublicChainLink { Actor = r.Actor, CardId = r.CardId }));
+        chain.Add(new() { Actor = live.Actor, CardId = live.CardId, PlaceLetter = live.PlaceLetter });
+        chain.AddRange(live.Responses.Select(r => new PublicChainLink { Actor = r.Actor, CardId = r.CardId, PlaceLetter = r.PlaceLetter }));
         return chain;
     }
 

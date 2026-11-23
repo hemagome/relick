@@ -45,6 +45,21 @@ public partial class OnlineArena
         search.SetComboResponses(0, false); ApplyPrivateComboPreference(DuelSnapshot.For(search, 0, 501));
         if (_selected.Count != 1 || !PresentsKind(DuelMoveKind.Choose) || BoardBuildCount != builds)
             throw new Exception("Cambiar COMBO pierde el objetivo o sus opciones autorizadas.");
+        var letters = GameEngine.FromOpening(new DuelOpening { Names = ["Ana", "Beto"], StartingSeat = 0,
+            Hands = [[CardCatalog.LetterK.Id], [CardCatalog.LetterI.Id]],
+            Decks = [Enumerable.Repeat("attack", 20).ToList(), Enumerable.Repeat("attack", 20).ToList()],
+            Bonuses = [null, null] }, new SeededRandom(8));
+        letters.State.Phase = Phase.Actions;
+        if (!letters.PlayCode(0, 0, placeLetter: true).Success || letters.State.Phase != Phase.ErrorResponse)
+            throw new Exception("La colocación de K debe ofrecer prioridad al rival.");
+        ResetAnimations();
+        PresentTestSnapshot(DuelSnapshot.For(letters, 1, 502));
+        SelectCard(0);
+        var modes = _moveButtons.Where(button => button.HasMeta("option_index"))
+            .Select(button => _snapshot!.Options[(int)button.GetMeta("option_index")].Move)
+            .Where(move => move.Kind == DuelMoveKind.PlayCode).Select(move => move.Flag).Order().ToArray();
+        if (!modes.SequenceEqual([false, true]))
+            throw new Exception("La carta letra con COMBO debe mostrar la colocación y el efecto durante la respuesta.");
         GD.Print("PVP_COMBO_RESPONSES_PASS · dos estados privados, ambos jugadores/asientos, cuatro tamaños y actualización sin animaciones.");
     }
 }

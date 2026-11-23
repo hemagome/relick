@@ -70,21 +70,29 @@ public static class RelikarioCatalog
         Level: 2, EvolutionCost: 1600, EvolutionHealing: 3)
         { BaseForm = "wd", EvolutionDiscards = 4, AttackDieBonusIncludingOne = 1 };
 
+    public static readonly RelikarioDefinition YunoOro = new("yuno-oro", "Yuno Oro", 8,
+        "Una vez por turno, si tienes dos letras distintas encima de tu Relikario, puedes relanzar uno de tus dados. Al obtener un 6 natural en tu D6 de ataque, busca una letra en tu mazo, añádela a tu mano y baraja.",
+        CanRerollAttack: true, CanRerollAnyDie: true, ConvertRerolledSix: false)
+        { EvolvesTo = "yuno-oro-lv2", DefaultAttackArtId = "attack-yuno-oro" };
+    public static readonly RelikarioDefinition YunoOroLv2 = new("yuno-oro-lv2", "Yuno Oro", 8,
+        "Al subir de nivel, coloca una letra de tu mazo, memoria o corruptas encima de tu Relikario. Suma +1 al D6 de ataque.",
+        Level: 2, EvolutionCost: 3500) { BaseForm = "yuno-oro", AttackDieBonusIncludingOne = 1 };
+
     /// <summary>Every programmed form, evolutions included, by Id.</summary>
     public static readonly IReadOnlyDictionary<string, RelikarioDefinition> All =
-        new[] { Yuno, YunoLv2, Osamu, OsamuLv2, Ironwing, IronwingLv2, Wd, WdLv2 }.ToDictionary(r => r.Id);
+        new[] { Yuno, YunoLv2, Osamu, OsamuLv2, Ironwing, IronwingLv2, Wd, WdLv2, YunoOro, YunoOroLv2 }.ToDictionary(r => r.Id);
 
     public static RelikarioDefinition? Find(string? id) => id != null && All.TryGetValue(id, out var r) ? r : null;
 
     /// <summary>Base forms a deck can be built around; evolutions are reached during the duel.</summary>
-    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno, Osamu, Wd, Ironwing];
+    public static readonly IReadOnlyList<RelikarioDefinition> Playable = [Yuno, Osamu, Wd, YunoOro, Ironwing];
 
     /// <summary>Every Relikario of the game, in the order the deck builder lists them. Only those with a
     /// definition are programmed and can have decks built for them; the rest are shown as coming soon.</summary>
     public static readonly IReadOnlyList<RelikarioEntry> Roster =
     [
         new("yuno", "Yuno", Yuno), new("osamu", "Osamu", Osamu), new("wd", "WD", Wd), new("godkira", "Godkira"), new("jen95", "Jen95"),
-        new("yuno-8bits", "Yuno 8 bits"), new("yuno-abogado", "Yuno abogado"), new("yuno-oro", "Yuno oro"), new("senshuni", "Senshuni"),
+        new("yuno-8bits", "Yuno 8 bits"), new("yuno-abogado", "Yuno abogado"), new("yuno-oro", "Yuno Oro", YunoOro), new("senshuni", "Senshuni"),
         new("zii-jay", "Zii Jay"), new("hiperman", "Hiperman"), new("ef-jen", "EF Jen"), new("ef-wd", "EF WD"), new("ironwing", "Ironwing", Ironwing),
         new("shuya", "Shuya"), new("zarpo", "Zarpo"), new("kael", "Kael"), new("kurtz", "Kurtz")
     ];

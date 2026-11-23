@@ -105,6 +105,8 @@ public partial class OnlineArena : Control
         _snapshot.Decision?.Source == CardCatalog.Ellie.Id || _snapshot.Decision?.Source == CardCatalog.Compass16Bit.Id ||
         _snapshot.Decision?.Source == CardCatalog.RollingShuffle.Id ||
         _snapshot.Decision?.Source == RelikarioCatalog.IronwingLv2.Id);
+    private bool ChoosingLetterHand => _snapshot?.Decision is { ShowsHandOf: not null } decision &&
+        (decision.Source == CardCatalog.LetterR.Id || decision.Source == CardCatalog.LetterL.Id);
     private bool ChoosingMemoryRecovery => Deciding == DecisionKind.ChooseCard && _snapshot!.Options.Any(o => o.Move.Kind == DuelMoveKind.Choose && o.Owner != null);
     private bool ChoosingCorruption => _snapshot is { Phase: Phase.RelikiaChoice } s && s.DecisionPlayer == s.MySeat && s.Options.Any(o => o.Move.Kind == DuelMoveKind.Corrupt);
     private bool ChoosingEffectCards => !ViewingBoardDuringGallery && (ChoosingDeckSearch || ChoosingMemoryRecovery || ChoosingCorruption || _showReplayMemory);
@@ -571,7 +573,8 @@ public partial class OnlineArena : Control
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, handPosition);
         _hand.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, handVerticalPosition);
         _handCards.Clear(); _handCards.AddRange(_hand.FindChildren("HandCard*", "Button", true, false).OfType<HandCard>());
-        if (choiceGallery && ChoosingCopyTarget)
+        if (choiceGallery && Deciding == DecisionKind.ChooseCard && _snapshot!.Decision is { } galleryDecision &&
+            (ChoosingCopyTarget || RelikarioCatalog.Find(galleryDecision.Source)?.Family == RelikarioCatalog.YunoOro.Id))
             for (var i = 0; i < _handCards.Count; i++)
                 _handCards[i].TooltipText = _deckSearchOptions[i].Label + "\n" + _handCards[i].Card.Text;
         _initialSkillCards.Clear(); _initialSkillCards.AddRange(_hand.FindChildren("InitialSkillCard*", "Button", true, false).OfType<HandCard>());

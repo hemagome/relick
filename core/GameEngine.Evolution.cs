@@ -9,7 +9,8 @@ public sealed partial class GameEngine
         if (error != null) return error;
         var p = State.Players[actor];
         if (State.Phase is not (Phase.Combat or Phase.Actions) &&
-            !((p.Relikario == RelikarioCatalog.Ironwing || p.Relikario == RelikarioCatalog.Wd) &&
+            !((p.Relikario == RelikarioCatalog.Ironwing || p.Relikario == RelikarioCatalog.Wd ||
+              p.Relikario == RelikarioCatalog.YunoOro) &&
                 State.Phase is Phase.Draw or Phase.Final))
             return "Completa el efecto pendiente antes de evolucionar.";
         var next = RelikarioCatalog.EvolutionFor(p.Relikario);
@@ -26,6 +27,10 @@ public sealed partial class GameEngine
         {
             if (PlayableCards(actor).Count(card => card.Field == null) < next.EvolutionDiscards)
                 return $"Necesitas {next.EvolutionDiscards} cartas en tu mano para evolucionar.";
+        }
+        else if (next == RelikarioCatalog.YunoOroLv2)
+        {
+            if (RelikarioLetterCount(p) < 5) return "Requiere cinco letras encima de tu Relikario.";
         }
         else if (!p.HasNaturalSix) return "Requiere haber obtenido un 6 natural en un D6 durante la partida, sin relanzarlo ni modificarlo.";
         if (p.Relikia < next.EvolutionCost) return $"Necesitas {next.EvolutionCost} PR para evolucionar.";
@@ -60,6 +65,8 @@ public sealed partial class GameEngine
             OfferOsamuSearch(actor, next.Id, OsamuEvolutionSearch);
         if (next == RelikarioCatalog.IronwingLv2 && !EffectsSuppressed(actor, FieldZone.Relikario))
             RecoverIronwingAttacks(actor);
+        if (next == RelikarioCatalog.YunoOroLv2 && !EffectsSuppressed(actor, FieldZone.Relikario))
+            OfferGoldEvolutionLetter(actor);
     }
 
     private void RegisterNaturalSix(PlayerState p, int die)

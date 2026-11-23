@@ -78,7 +78,8 @@ public partial class OnlineLobby
             foreach (var (index, name, bpm, beats) in new[]
             {
                 (5, "Combat:osamu", 144, 160), (6, "Climax:osamu", 174, 128),
-                (7, "Combat:ironwing", 156, 160), (8, "Climax:ironwing", 180, 144)
+                (7, "Combat:ironwing", 156, 160), (8, "Climax:ironwing", 180, 144),
+                (9, "Combat:yuno-oro", 168, 192), (10, "Climax:yuno-oro", 176, 160)
             })
             {
                 var song = template.GetClipStream(index) as AudioStreamOggVorbis;
@@ -86,7 +87,7 @@ public partial class OnlineLobby
                     song.BeatCount == beats && Math.Abs(song.GetLength() - beats * 60.0 / bpm) < .05,
                     $"El tema {name} no conserva el nombre, compás o bucle.");
             }
-            foreach (var combat in new[] { 5, 7 })
+            foreach (var combat in new[] { 5, 7, 9 })
                 Check(template.GetTransitionFromTime(combat, combat + 1) == AudioStreamInteractive.TransitionFromTime.NextBar &&
                     template.GetTransitionFadeMode(combat, combat + 1) == AudioStreamInteractive.FadeMode.Cross,
                     "El clímax directo debe entrar con fundido desde el siguiente compás.");
@@ -150,6 +151,15 @@ public partial class OnlineLobby
             music.PresentDuel("osamu", osamu);
             Check(music.EnemyTheme == "osamu" && music.DesiredClipIndex == 6, "Osamu pierde el clímax al curarse.");
 
+            var gold = Snapshot(Phase.Combat);
+            gold.Players[1].RelikarioId = RelikarioCatalog.YunoOro.Id;
+            music.PresentDuel("gold", gold); await Clip(9);
+            gold.Players[1].RelikarioId = RelikarioCatalog.YunoOroLv2.Id;
+            music.PresentDuel("gold", gold);
+            Check(music.EnemyTheme == "yuno-oro" && music.DesiredClipIndex == 9, "Yuno Oro pierde su tema al evolucionar.");
+            gold.Players[1].Health = 0;
+            music.PresentDuel("gold", gold); await Clip(10);
+
             foreach (var zeroSeat in new[] { 0, 1 })
             {
                 music.PresentDuel("zero-" + zeroSeat, Snapshot(Phase.Combat)); await Clip(1);
@@ -190,7 +200,7 @@ public partial class OnlineLobby
             await arena.CheckAudioPresentation();
             await CheckAudioControls();
             global.ShowMenu();
-            GD.Print("MUSIC_PASS · menú, combate y clímax de Yuno, Osamu e Ironwing, selección por rival, evolución y transiciones.");
+            GD.Print("MUSIC_PASS · menú, combate y clímax de Yuno, Osamu, Ironwing y Yuno Oro, selección por rival, evolución y transiciones.");
             // Let native audio mixing release active voices before engine teardown.
             global.Stop();
             foreach (var player in GetNode<SoundDirector>("/root/SoundDirector").GetChildren().OfType<AudioStreamPlayer>()) player.Stop();

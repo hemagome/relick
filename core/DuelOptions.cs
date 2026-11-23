@@ -15,11 +15,18 @@ public static class DuelOptions
         // COMBO may be legal during the other player's turn.
         var playable = game.PlayableCards(actor).ToArray();
         foreach (var entry in playable)
+        {
             if (game.CodeUnavailableReason(actor, entry.Index) == null)
             {
                 Add(DuelMoveKind.PlayCode, entry.Field == null ? $"Jugar {Card(entry.Id)} · carta {entry.Index + 1}" : $"Jugar {Card(entry.Id)} desde el Tomo", entry.Index);
                 if (entry.Field != null) SetTomeOption(entry.Field);
             }
+            if (CardCatalog.Get(entry.Id).Letter != null && game.CodeUnavailableReason(actor, entry.Index, placeLetter: true) == null)
+            {
+                Add(DuelMoveKind.PlayCode, $"Colocar {CardCatalog.Get(entry.Id).Letter} encima de tu Relikario", entry.Index, flag: true);
+                if (entry.Field != null) SetTomeOption(entry.Field);
+            }
+        }
         if (game.CanPrepareD10(actor))
         {
             var prepare = p.FutureDie == FutureDieState.Ready;
