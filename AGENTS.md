@@ -42,13 +42,13 @@ Lee solo lo que necesites. Cada documento enlaza al código que es su fuente de 
 | Añadir una carta | [docs/ADDING_CARD.md](docs/ADDING_CARD.md) y [core/AGENTS.md](core/AGENTS.md) |
 | Añadir un Relikario | [docs/ADDING_RELIKARIO.md](docs/ADDING_RELIKARIO.md) y [core/AGENTS.md](core/AGENTS.md) |
 | Implementar o reutilizar un efecto | [core/AGENTS.md](core/AGENTS.md#reutilizar-antes-de-crear), [docs/CARD_EFFECTS.md](docs/CARD_EFFECTS.md), [docs/CARD_TRIGGERS.md](docs/CARD_TRIGGERS.md) |
-| Modificar reglas globales | [core/AGENTS.md](core/AGENTS.md), [docs/RAM.md](docs/RAM.md), [docs/RULES_ENGINE_REVIEW.md](docs/RULES_ENGINE_REVIEW.md) |
+| Modificar reglas globales | [core/AGENTS.md](core/AGENTS.md), [docs/RAM.md](docs/RAM.md), [docs/CARD_TRIGGERS.md](docs/CARD_TRIGGERS.md) |
 | Clasificar una carta | [docs/CARD_TAXONOMY.md](docs/CARD_TAXONOMY.md) |
 | Networking y servidor | [server/AGENTS.md](server/AGENTS.md), [docs/PVP.md](docs/PVP.md), [docs/STACK.md](docs/STACK.md) |
 | Interfaz y animaciones | [scripts/AGENTS.md](scripts/AGENTS.md), [docs/UI.md](docs/UI.md) |
 | Pruebas | [tests/AGENTS.md](tests/AGENTS.md) |
 | Música y efectos de sonido | [docs/MUSIC.md](docs/MUSIC.md), [assets/audio/README.md](assets/audio/README.md) |
-| Licencias, recursos de terceros, publicación | [NOTICE.md](NOTICE.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [docs/PUBLICATION_AUDIT.md](docs/PUBLICATION_AUDIT.md) |
+| Licencias, recursos de terceros, publicación | [NOTICE.md](NOTICE.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [docs/PUBLISHING.md](docs/PUBLISHING.md) |
 
 ## Reglas obligatorias de integridad del juego
 
@@ -70,7 +70,7 @@ Ante cualquier duda de reglas o de interacción entre cartas, **pregunta antes d
 - El código original está bajo **PolyForm Noncommercial 1.0.0** (`SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0`). Es *source available*, no *open source*. No lo describas como código abierto.
 - La licencia **no cubre** marcas, nombres de cartas, textos de reglas, ilustraciones, escaneos, logotipos ni personajes de Relick o de terceros. Ver [NOTICE.md](NOTICE.md).
 - Las dependencias conservan sus licencias ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). No copies código de terceros dentro del repositorio sin documentar su licencia allí.
-- No añadas escaneos ni ilustraciones oficiales nuevas, ni imágenes generadas a partir de ellas, sin una autorización documentada del titular. Las imágenes de cartas nuevas se añaden **con su marca de agua**: no la quites ni edites esas imágenes con herramientas generativas (`image_gen` u otras). Hay recursos ya incluidos con este problema: están listados como bloqueantes en [docs/PUBLICATION_AUDIT.md](docs/PUBLICATION_AUDIT.md); no los copies como patrón.
+- No añadas escaneos ni ilustraciones oficiales nuevas, ni imágenes generadas a partir de ellas, sin una autorización documentada del titular. Las imágenes de cartas nuevas se añaden **con su marca de agua**: no la quites ni edites esas imágenes con herramientas generativas (`image_gen` u otras). Hay recursos ya incluidos con este problema: están listados como bloqueantes en [docs/PUBLISHING.md](docs/PUBLISHING.md); no los copies como patrón.
 - No escribas rutas personales, correos, tokens ni identificadores privados en archivos versionados.
 
 ## Definition of Done (carta o Relikario)

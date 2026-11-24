@@ -75,7 +75,7 @@ No incorpores sin una autorización verificable y documentada:
 - Textos de manuales, webs o reglamentos más allá de lo imprescindible para describir una regla.
 - Audio, fuentes, código o modelos de terceros cuya licencia no permita redistribuirlos, o que sea incompatible con el uso no comercial del proyecto.
 
-Las imágenes de cartas se añaden **con su marca de agua**: no la quites ni retoques la imagen con herramientas de edición generativa. Los recursos de terceros que sí puedan incluirse deben añadirse a [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) con su autor, origen y licencia. Ya hay recursos en el repositorio cuya situación está pendiente; están listados en [docs/PUBLICATION_AUDIT.md](docs/PUBLICATION_AUDIT.md) y no sirven de precedente.
+Las imágenes de cartas se añaden **con su marca de agua**: no la quites ni retoques la imagen con herramientas de edición generativa. Los recursos de terceros que sí puedan incluirse deben añadirse a [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) con su autor, origen y licencia. Ya hay recursos en el repositorio cuya situación está pendiente; están listados en [docs/PUBLISHING.md](docs/PUBLISHING.md) y no sirven de precedente.
 
 ## Licencia de las contribuciones
 

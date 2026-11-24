@@ -47,7 +47,7 @@ public static readonly CardDefinition AttackOsamuDt = Attack with
 
 ## 3. Ilustración
 
-> **Permisos antes que píxeles.** Las ilustraciones, escaneos, logotipos y textos impresos de Relick no están cubiertos por la licencia del código ([NOTICE.md](../NOTICE.md)). Solo añade una imagen si quien la aporta tiene derecho a distribuirla y queda documentado en [assets/cards/README.md](../assets/cards/README.md). Si no hay permiso, deja la carta sin imagen: la interfaz funciona igual y el hueco queda anotado como pendiente en [docs/PUBLICATION_AUDIT.md](PUBLICATION_AUDIT.md).
+> **Permisos antes que píxeles.** Las ilustraciones, escaneos, logotipos y textos impresos de Relick no están cubiertos por la licencia del código ([NOTICE.md](../NOTICE.md)). Solo añade una imagen si quien la aporta tiene derecho a distribuirla y queda documentado en [assets/cards/README.md](../assets/cards/README.md). Si no hay permiso, deja la carta sin imagen: la interfaz funciona igual y el hueco queda anotado como pendiente en [docs/PUBLISHING.md](PUBLISHING.md).
 
 - **La marca de agua se conserva.** Añade la imagen tal como se aportó, con su marca de agua, sus textos y sus créditos. No la quites ni la retoques con herramientas de edición generativa (`image_gen` u otras) ni de ningún otro modo.
 - Guárdala en `assets/cards/<id>-clean.png`. El sufijo `-clean` es solo la convención de nombre con la que la cargan `BoardArt.LoadCardArtwork` y `SkillArtwork`, sin registro; no significa que haya que limpiarla.

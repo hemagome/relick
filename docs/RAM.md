@@ -1,48 +1,44 @@
-# Validación de la RAM
+# Respuestas en cadena (RAM)
 
-Comparación del motor con las secciones 6.1 a 6.7 y A.2 del reglamento, del 16 de noviembre de 2026. Cada punto marcado como discrepancia se comprobó ejecutando el motor, no solo leyendo el código. No se cambió ninguna regla.
+Cómo resuelve el motor las respuestas a una activación, comparado con las secciones 6.1 a 6.7 y A.2 del reglamento. Las velocidades son 8 RAM (cartas normales), 16 RAM (COMBO) y 32 RAM (Error de Carga).
 
-## Lo que ya cumple
+## Lo que cumple
 
 | Regla | Comportamiento del motor |
 |---|---|
 | 6.3: una carta de 8 RAM no responde. | Un Código que no es COMBO solo se juega en tu etapa de acciones, sin nada pendiente. |
-| 6.3: solo 32 RAM responde a 32 RAM. | Con Error de Carga arriba de la cadena, el motor solo acepta otro Error de Carga; Estrella del Fontanero (16 RAM) se rechaza. |
-| 6.4: se resuelve en orden inverso y se omite lo cancelado. | La cadena de Error de Carga se recorre del último al primero, y cada Error que resuelve cancela el anterior. |
-| 6.5: Error de Carga devuelve la acción y los pagos del Código. | Se devuelven la acción y el coste en PR de la activación. El robo opcional de Huevo Azul se paga después de resolver, así que no hay nada que devolver; los duelos grabados con el coste anterior lo devuelven. |
-| 6.6: se usa el resultado final del dado. | La ventana del dado (relanzamientos del Relikario, Colgante, PC, destreza, Re-lanza, Agilidad) termina antes de aplicar el efecto. |
-| A.2: los objetivos se eligen al resolver; sin objetivo válido, el efecto falla. | Huevo Azul, Bomba de Tiempo, Konamy y Disquete eligen al resolver. Si una respuesta deja una decisión sin opciones, el efecto termina sin efecto en lugar de quedarse esperando. |
+| 6.3: solo 32 RAM responde a 32 RAM. | Con Error de Carga arriba de la cadena, el motor solo acepta otro Error de Carga. |
+| 6.4: se resuelve en orden inverso y se omite lo cancelado. | La cadena de activación se recorre del último eslabón al primero, y cada Error que resuelve cancela el anterior. |
+| 6.5: Error de Carga devuelve la acción y los pagos del Código. | Se devuelven la acción y los pagos que pide el propio texto del Código. |
+| 6.6: se usa el resultado final del dado. | La ventana del dado (relanzamientos del Relikario, Colgante, PC, Destreza, Re-lanza, Agilidad) termina antes de aplicar el efecto. |
+| A.2: los objetivos se eligen al resolver; sin objetivo válido, el efecto falla. | Huevo Azul, Bomba de Tiempo, Konamy, Disquete y las demás cartas con objetivo eligen al resolver. Si una respuesta deja una decisión sin opciones, el efecto termina sin efecto. |
 
-## Discrepancias
+## Decisiones de interpretación
 
-| # | Regla | Qué hace el motor | Comprobación |
-|---|---|---|---|
-| 1 | 6.1 y 6.3: un COMBO de 16 RAM puede responder a la activación de un Código de 8 RAM. | Solo existe ventana de respuesta si el rival tiene Error de Carga, y durante ella solo se acepta Error de Carga. Sin Error, el Código se resuelve al instante. | Senshuni contra un rival con Resetear la Mente: se resuelve sin ventana. Con Error en la mano del rival, Resetear se rechaza. |
-| 3 | 6.2: mientras el jugador activo conserva la prioridad, el rival espera. | El rival puede jugar sus COMBO en cualquier momento de las etapas abiertas del jugador activo, sin que haya nada a lo que responder. | Resetear la Mente del rival está permitido durante las acciones del jugador activo. |
-| 4 | 6.2: antes de pasar a la siguiente etapa se pasa la prioridad y el rival puede responder. | Avanzar de etapa no abre ninguna ventana para el rival. | Avanzar desde Acciones cambia de etapa al momento. |
-| 5 | 6.2: si quieres responder a tu propia carta, primero pasa la prioridad; si el rival pasa, puedes añadir tu respuesta. | Cuando el rival pasa, la cadena se resuelve; quien activó no recibe la prioridad. | Código propio, el rival pasa: se resuelve sin preguntar al activador. |
-| 6 | 6.1: con efectos simultáneos, el jugador activo añade primero los suyos, en el orden que elija. | Se ordenan por asiento (0 y después 1), sin elegir. Solo importa si hay sustituciones que decidir, como Reverse Shuffle. | Dado de ataque 1 en el turno del asiento 1: se destruye primero el Casco del asiento 0. |
-| 9 | 5.3 y 6.3: Súper Error de Carga (32 RAM). | No existe. | Pendiente de implementar con su receta y sus devoluciones completas. |
-| 10 | 6.7: clonar un efecto. | Ninguna carta clona todavía. | No aplica. |
+- **Error de Carga cancela equipos.** Manda el texto de la carta («Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria»), aunque el reglamento (6.5) hable solo de Códigos. Lo comprueba la prueba «Error cancela equipo nuevo».
+- **Rejugar un Código con Relikia es un efecto de Relikia.** Error de Carga no puede cancelarlo (6.5, A.2). El Código se resuelve al momento, con su coste de dos acciones y 400 PR y su corrupción. Caja de Cartón sí puede responder a un Código Objeto rejugado.
+- **Error de Carga después del dado.** Cuando el dado de una activación de Código es definitivo (tras los relanzamientos y modificadores de su dueño), el rival con Error de Carga puede responder antes de que siga el efecto. Si lo anula, el resto del texto no se aplica y se devuelve la acción; lo que ya ocurrió, como los robos iniciales de Carga Rápida, se queda. Un contraerror deja continuar el efecto con ese dado. La ventana no se abre durante la ventana de modificadores del dueño, ni para un Código rejugado con Relikia, ni para tiradas que no son del Código (reciclaje, Jessica Lee en juego). La vista lo indica con `ErrorAfterDie`. Re-lanza relanza un dado que ya existía, así que su ventana sigue al nuevo resultado y va antes de su robo; solo se abre si queda robo (1, 2 o 3).
 
-## Decisiones tomadas
+## Diferencias conocidas con el reglamento
 
-- **Error de Carga cancela equipos** (antes, discrepancia 7). Decidido el 16 de noviembre de 2026: manda el texto de la carta aunque el reglamento (6.5) hable solo de Códigos. El texto vigente es «Cuando un código se esté activando o cuando un equipo esté siendo equipado: cancélalo y envíalo a la memoria», y ya está en `CardCatalog`. El motor ya cancelaba equipos; lo comprueba la prueba «Error cancela equipo nuevo».
-- **Rejugar un Código con Relikia es un efecto de relikia** (antes, discrepancia 8). Decidido el mismo día: Error de Carga no puede cancelarlo (6.5, A.2). El Código se resuelve al momento, con su coste de dos acciones y 400 PR y su corrupción. Caja de Cartón sigue pudiendo responder a un Código Objeto rejugado, porque esta decisión solo se refiere a Error de Carga. Pruebas: Konamy, Cambio de Mentes y Vida Extra rejugados con Error en la mano del rival.
-- **Error de Carga después del dado** (antes, discrepancia 2). Implementado el 16 de noviembre de 2026. Cuando el dado de una activación de Código es definitivo (después de los relanzamientos y modificadores de su dueño), el rival con Error de Carga puede responder antes de que siga el efecto. Si lo anula, el resto del texto no se aplica y se devuelve la acción; lo que ya ocurrió, como los robos iniciales de Carga Rápida, se queda. Un contraerror deja continuar el efecto con ese dado. La ventana no se abre durante la ventana de modificadores del dueño, ni para un Código rejugado con Relikia, ni para tiradas que no son del Código (reciclaje, Jessica Lee en juego). Cubre Vida Extra, Aumento de Relick Points, Carga Rápida, Esquivar y Re-lanza. La vista lo indica con `ErrorAfterDie` y el cliente muestra «Dado final: N. Anula el código ahora o deja que termine su efecto». Re-lanza relanza un dado que ya existía, así que su ventana sigue al nuevo resultado y va antes de su robo; solo se abre si queda robo (1, 2 o 3). Si se anula, el dado relanzado se queda, porque ya ocurrió, y no roba.
-- **Qué devuelve Error de Carga.** Se devuelven la acción y los pagos del propio texto del Código, como pide 6.5. Ninguna carta actual tiene coste en PR propio; solo los duelos grabados con el Huevo Azul anterior recuperan sus 200 PR, como en el ejemplo del reglamento.
+| Regla | Qué hace el motor |
+|---|---|
+| 6.1 y 6.3: un COMBO de 16 RAM puede responder a la activación de un Código de 8 RAM. | La ventana de respuesta a una activación solo se abre si el rival tiene una carta que pueda usarla (Error de Carga, Combo Parry, Casco de Copias o una letra RELICK). Un COMBO cualquiera no responde a un Código. |
+| 6.2: mientras el jugador activo conserva la prioridad, el rival espera. | El rival puede jugar sus COMBO en cualquier momento de las etapas abiertas del jugador activo, sin que haya nada a lo que responder. |
+| 6.2: antes de pasar a la siguiente etapa se pasa la prioridad y el rival puede responder. | Avanzar de etapa no abre ninguna ventana para el rival. |
+| 6.2: para responder a tu propia carta, primero pasas la prioridad; si el rival pasa, puedes añadir tu respuesta. | Cuando el rival pasa, la cadena se resuelve; quien activó no recibe la prioridad. |
+| 6.1: con efectos simultáneos, el jugador activo añade primero los suyos, en el orden que elija. | Se ordenan por asiento (0 y después 1), sin elegir. Solo importa si hay sustituciones que decidir, como Reverse Shuffle. |
+| 5.3 y 6.3: Súper Error de Carga (32 RAM). | No existe. |
 
-- **Animación de la cadena en el cliente.** Añadida el 16 de noviembre de 2026. La vista pública (`DuelResolutionView`) trae además el ataque pendiente que responde la cadena (`Attack`), y al resolverse el motor publica un evento visual `Chain` con todos los eslabones en orden de activación y cuáles quedaron anulados. No revela nada nuevo: todas esas cartas ya eran públicas. El cliente dibuja la cadena como módulos de memoria numerados, con el arte, el color del dueño y su velocidad (Error de Carga 32 RAM, COMBO 16, el resto 8), y la recorre del último eslabón al primero marcando «RESUELTO» o «ANULADO»; el ataque queda como «CONTINÚA». Con movimiento reducido el resultado aparece de una vez. Solo se muestra con dos eslabones o más y nunca tapa los botones de respuesta.
+Las cuatro primeras tienen la misma causa: el motor no tiene una secuencia de RAM general con prioridad, sino ventanas concretas (la cadena de activación, Caja de Cartón, la defensa y el dado). Corregirlas requeriría:
 
-## Qué haría falta
+- **Una secuencia guardada en el estado**, donde cada entrada recuerde quién la activó, la carta, su velocidad y su paso.
+- **Prioridad explícita**: después de cada activación, de una tirada o del final de una etapa decide un jugador; pasar entrega la prioridad y, cuando ambos pasan, se resuelve la última entrada.
+- **La velocidad como dato de la carta** (8, 16 o 32 RAM), en lugar de deducirla de `IsCombo` y `CancelActivation`.
+- **Un pase automático**, que las preferencias de COMBO actuales ya permiten.
 
-Las discrepancias 1 a 5 tienen la misma causa: el motor no tiene una secuencia de RAM general con prioridad, solo ventanas sueltas (la cadena de Error, Caja de Cartón, la defensa y el dado). Corregirlas significa:
+Antes de construirlo hay que decidir cuánto se quiere preguntar en cada paso: una secuencia completa añade confirmaciones a la partida en línea.
 
-- **Una secuencia guardada en el estado.** Cada entrada recuerda quién la activó, la carta, su velocidad y en qué paso está.
-- **Prioridad explícita.** Después de cada activación, de una tirada o del final de una etapa, decide un jugador; pasar entrega la prioridad, y cuando ambos pasan se resuelve la última entrada.
-- **Velocidad como dato de la carta.** 8, 16 o 32 RAM, en lugar de deducirla de `IsCombo` y `CancelActivation`.
-- **Un ajuste automático para el pase.** Las preferencias de COMBO actuales ya sirven para que no haya que confirmar cada pase a mano.
+## Presentación de la cadena
 
-Las decisiones genéricas ya facilitan una parte: una tirada de una carta migrada pasa por un único punto (`EffectContext.Roll`), así que la ventana de Error tras el dado se añadiría ahí una sola vez para todas esas cartas.
-
-Antes de construirlo hay que decidir cuánto se quiere preguntar en cada paso. Una secuencia completa añade confirmaciones a la partida en línea.
+La vista pública (`DuelResolutionView`) incluye el ataque pendiente al que responde la cadena (`Attack`). Al resolverse, el motor publica un evento visual `Chain` con todos los eslabones en orden de activación y cuáles quedaron anulados; todas esas cartas ya eran públicas. El cliente dibuja la cadena como módulos de memoria numerados, con el arte, el color del dueño y su velocidad, y la recorre del último eslabón al primero marcando «RESUELTO» o «ANULADO»; el ataque queda como «CONTINÚA». Con movimiento reducido el resultado aparece de una vez. Solo se muestra con dos eslabones o más y nunca tapa los botones de respuesta.

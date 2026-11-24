@@ -2,7 +2,7 @@
 
 Componentes, dependencias y recursos de este repositorio que **no** son código original del proyecto y, por tanto, no están cubiertos por PolyForm Noncommercial 1.0.0 ([NOTICE.md](NOTICE.md)). Cada uno conserva su licencia y sus avisos de copyright.
 
-Revisado el 24 de noviembre de 2026 sobre las versiones fijadas en el repositorio. Las licencias de los paquetes NuGet se comprobaron en los propios paquetes (`~/.nuget/packages/<paquete>/2.16.1/`). Lo marcado como **pendiente** no se ha podido verificar y debe confirmarse antes de publicar ([docs/PUBLICATION_AUDIT.md](docs/PUBLICATION_AUDIT.md)).
+Las licencias corresponden a las versiones fijadas en el repositorio. Las de los paquetes NuGet se comprobaron en los propios paquetes (`~/.nuget/packages/<paquete>/2.16.1/`). Lo marcado como **pendiente** no se ha podido verificar y debe confirmarse antes de publicar ([docs/PUBLISHING.md](docs/PUBLISHING.md)).
 
 ## Motor y SDK
 
@@ -50,4 +50,4 @@ Los siguientes elementos pertenecen a Relick o a sus respectivos titulares (los 
 | Imágenes de los efectos de Relikia (procedencia no documentada) | `assets/relikia/*.webp` |
 | Nombres de cartas y personajes, y textos de reglas transcritos | `core/CardCatalog.cs`, `core/RelikarioCatalog.cs`, `core/RelikiaEffects.cs`, `assets/cards/README.md`, `assets/characters/*/README.md`, documentación |
 
-Estado y alternativas: [docs/PUBLICATION_AUDIT.md](docs/PUBLICATION_AUDIT.md).
+Estado y alternativas: [docs/PUBLISHING.md](docs/PUBLISHING.md).

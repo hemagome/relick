@@ -6,41 +6,24 @@ acción del dueño de la base, sin actualizar el cliente.
 
 ## Publicar
 
-Publicado el 22 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud con
-`--delete-data=never`, sin salas, partidas ni búsquedas abiertas. Los modos siguen
-cerrados: no hay temporada ni torneo abiertos.
-
-- **Plan de migración.** Solo creó 16 tablas y 15 vistas, y no cambió ni quitó nada.
-  Las cuentas, mazos, perfiles, registros y estilos de mazo conservaron su número.
-- **Programa.** Pasó de `3a28823f…` a `5e187268…`.
-- **Copia.** El programa anterior se extrajo de `st_module` y quedó en
-  `artifacts/maincloud-backup/relick-3a28823f-antes-de-competencias.wasm`, fuera de
-  Git. Su restauración y la migración se ensayaron en una base local.
-- **Local.** El mismo código está en `relick-dev` (`tests/server/dev`) y en
-  `relick-auth-check` (`server/spacetimedb`) del servidor de pruebas.
-- **Sin probar en Maincloud.** No se ejecutaron las pruebas de red, porque el módulo
-  real exige iniciar sesión con SpacetimeAuth.
-
-Para volver a publicar, usa el módulo real, nunca los de `tests/server`:
+Publicar el módulo es una decisión del propietario de la base. Usa siempre el módulo real, nunca los de `tests/server`, y conserva los datos:
 
 ```bash
-spacetime publish relick-pvp-dev-c2006ee7 --server maincloud --module-path server/spacetimedb --delete-data=never --no-config
+spacetime publish <base> --server maincloud --module-path server/spacetimedb --delete-data=never --no-config
 ```
 
-Un cliente anterior sigue jugando contra el módulo nuevo, y el cliente nuevo contra el
-anterior: oculta lo que ese servidor no ofrece. Las tablas nuevas ya no se pueden
-retirar con `--delete-data=never`. Haz una copia antes de cada publicación.
+`<base>` es la base configurada en `network/server.cfg`. El cliente oculta lo que el servidor no ofrece. Las tablas nuevas no se pueden retirar después con `--delete-data=never`: haz una copia antes de cada publicación.
 
 ## Administrar
 
 Con la identidad dueña de la base en la CLI:
 
 ```bash
-spacetime call --server maincloud relick-pvp-dev-c2006ee7 open_season '"Temporada 1"' 30
-spacetime call --server maincloud relick-pvp-dev-c2006ee7 close_season
-spacetime call --server maincloud relick-pvp-dev-c2006ee7 open_tournament '"Copa Relick"' 8 1440
-spacetime call --server maincloud relick-pvp-dev-c2006ee7 start_tournament
-spacetime call --server maincloud relick-pvp-dev-c2006ee7 cancel_tournament
+spacetime call --server maincloud <base> open_season '"Temporada 1"' 30
+spacetime call --server maincloud <base> close_season
+spacetime call --server maincloud <base> open_tournament '"Copa Relick"' 8 1440
+spacetime call --server maincloud <base> start_tournament
+spacetime call --server maincloud <base> cancel_tournament
 ```
 
 - `open_season`: nombre y días (1 a 365). Se cierra sola en su fecha.
@@ -100,7 +83,7 @@ queda como «Cuenta eliminada» y su rival avanza.
 | `Rewards.cs` | Premios, emblemas y lo que ve el rival |
 | `Personalization.cs` | Inicio, portadas y resultados por Relikario |
 
-Una sala sin fila en `room_mode` es privada, también las anteriores a la migración.
+Una sala sin fila en `room_mode` es privada.
 
 ## Pruebas
 

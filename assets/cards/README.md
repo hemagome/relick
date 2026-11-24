@@ -1,6 +1,6 @@
 # Cartas
 
-Las imágenes `<id>-clean.png` son los escaneos y archivos de cada carta tal como los aportó el usuario, **con su marca de agua**, convertidos a PNG sin otra edición (el sufijo `-clean` es solo la convención de nombre que usa el juego). Las restauraciones generativas anteriores se retiraron el 24 de noviembre de 2026. Los derechos de estas imágenes pertenecen a sus titulares ([NOTICE.md](../../NOTICE.md)); su situación está en [docs/PUBLICATION_AUDIT.md](../../docs/PUBLICATION_AUDIT.md).
+Las imágenes `<id>-clean.png` son los escaneos y archivos de cada carta tal como los aportó el usuario, **con su marca de agua**, convertidos a PNG sin otra edición (el sufijo `-clean` es solo la convención de nombre que usa el juego). Los derechos de estas imágenes pertenecen a sus titulares ([NOTICE.md](../../NOTICE.md)); su situación está en [docs/PUBLISHING.md](../../docs/PUBLISHING.md).
 
 Cada sección documenta las reglas y las interpretaciones confirmadas de la carta.
 
@@ -277,9 +277,7 @@ decisiones. Oro puede elegirse directamente con Huevo o Bomba y no protege a
 otros tipos de equipo ni a otro Oro. Si el equipo inferior desaparece, Oro
 permanece en la zona; eso no permite colocar otro Oro sin un equipo debajo.
 
-El tablero muestra Oro encima del equipo y permite inspeccionar todas las
-copias. Se conserva la privacidad de las cartas de mano que no se muestran.
-Una copia se añade a cada mazo nuevo: 42 cartas, incluidos doce Ataques.
+El tablero muestra Oro encima del equipo y permite inspeccionar todas las copias. Se conserva la privacidad de las cartas de mano que no se muestran.
 
 ## Tótem de Salvación
 
@@ -309,8 +307,6 @@ mantienen mitad/normal/crítico. Se aplican defensas y modificadores normales;
 el premio y los efectos críticos esperan a terminar las decisiones pendientes.
 La cancelación de daño conserva el robo de Jessica y el efecto crítico de Magnet.
 
-Una copia se añade a cada mazo nuevo: 41 cartas, incluidos doce Ataques.
-
 ## Doblador de Tiempo
 
 Código Objeto COMBO, una acción y cero PR, con dos descartes elegidos como coste.
@@ -333,8 +329,6 @@ se resuelven después de las respuestas de Caja; Error evita el descarte y su
 disparo. Relikia permite repetir Acciones desde memoria, cobra dos
 acciones y 400 PR y corrompe la copia cuando resuelve. El coste, las elecciones,
 el contexto interrumpido y las repeticiones pendientes se guardan al reconectar.
-
-Una copia se añade a cada mazo nuevo: 40 cartas, incluidos doce Ataques.
 
 ## Cartucho de Re-carga
 
@@ -359,8 +353,6 @@ el Cartucho. Durante las pausas de reciclaje se permiten los modificadores de da
 comunes. Los descartes se animan como paquetes sin revelar manos ocultas; las nuevas
 manos permanecen privadas y las cartas descartadas son públicas en memoria.
 
-Una copia se añade a cada mazo nuevo: 39 cartas, incluidos doce Ataques.
-
 ## Carga Rápida
 
 Código Jugada sin COMBO, una acción y cero PR. Primero roba dos cartas y después
@@ -382,8 +374,6 @@ dado; un agotamiento que termina el duelo interrumpe los pasos restantes. Las
 decisiones y cantidades de descarte persisten al reconectar; el límite de siete
 se comprueba al terminar el turno, después de todos los efectos.
 
-Una copia se añade a cada mazo nuevo: 38 cartas, incluidos doce Ataques.
-
 ## Jessica Lee
 
 Código Personaje con efecto de zona. Cada copia en el canje o Bonus propio puede
@@ -404,11 +394,7 @@ en juego (se enseña), antes de lanzar el dado, y enviar la copia de origen a me
 sin destruirla ni activar Reverse. Pasar la respuesta cierra la ventana para esa
 activación; mover el origen durante su resolución no habilita una nueva cancelación.
 
-En turnos posteriores no se abre respuesta de Error ni se permite jugarlo durante
-el dado de Jessica. El turno de entrada se guarda por copia al colocarla en canje
-o revelar un Bonus; pasar del Bonus al canje conserva su antigüedad y una copia
-nueva repuesta recibe su propio turno de entrada. Las copias de guardados anteriores
-sin historial de entrada se consideran ya establecidas, sin nueva ventana de Error.
+En turnos posteriores no se abre respuesta de Error ni se permite jugarlo durante el dado de Jessica. El turno de entrada se guarda por copia al colocarla en canje o revelar un Bonus; pasar del Bonus al canje conserva su antigüedad y una copia nueva repuesta recibe su propio turno de entrada.
 
 Mira de Sniper suma uno a los daños de Jessica y Estrella del Fontanero duplica el
 total antes de las reducciones del rival. Casco, Hoguera e inmunidad de Estrella se
@@ -416,8 +402,6 @@ aplican al daño. Si el rival puede activar Estrella, dispone de una respuesta a
 de recibir el daño. Un seis roba aunque el daño se absorba, después de las decisiones
 de destrucción pendientes; si el daño termina el duelo, no continúa el robo.
 El agotamiento y la recuperación de decisiones utilizan el flujo común.
-
-Una copia se añade a cada mazo nuevo: 37 cartas, incluidos doce Ataques.
 
 ## Estrella del Fontanero
 
@@ -446,8 +430,6 @@ no cancela Estrella.
 Relikia exige una carta de la mano como descarte y cobra sus dos acciones y 400 PR;
 su copia de Estrella se corrompe al resolver, con las respuestas comunes.
 
-Una copia se añade a cada mazo nuevo: 36 cartas, incluidos doce Ataques.
-
 ## Disquete
 
 Código Objeto sin COMBO, una acción y cero PR. El activador elige una carta de la
@@ -457,14 +439,7 @@ según lo confirmado por el usuario. Las cartas corruptas no son seleccionables.
 No permite activarse sin objetivos; mediante Relikia, la copia activada se corrompe
 y se requiere otra carta en las memorias.
 
-Admite Caja de Cartón. Error de Carga solo responde en la ventana inicial, antes
-de empezar la selección. Cancelar devuelve los costes según
-las reglas comunes. La elección persiste al reconectar. La interfaz muestra las
-cartas de ambas memorias y el dueño de cada origen, y anima el traslado a la mano
-del activador sin emitir un robo del mazo ni revelar permanentemente la carta.
-Resetear la Mente puede modificar los objetivos pendientes; si desaparecen todos,
-Disquete finaliza sin recuperar cartas. Una copia se añade a cada mazo nuevo:
-35 cartas en total, incluidos doce Ataques.
+Admite Caja de Cartón. Error de Carga solo responde en la ventana inicial, antes de empezar la selección. Cancelar devuelve los costes según las reglas comunes. La elección persiste al reconectar. La interfaz muestra las cartas de ambas memorias y el dueño de cada origen, y anima el traslado a la mano del activador sin emitir un robo del mazo ni revelar permanentemente la carta. Resetear la Mente puede modificar los objetivos pendientes; si desaparecen todos, Disquete finaliza sin recuperar cartas.
 
 ## Hoguera
 
@@ -474,16 +449,11 @@ anterior. Mientras está equipado convierte en cero cada daño recibido por su d
 sin anular el ataque, su premio ni sus otros efectos. Las vidas inevitables del
 segundo agotamiento conservan su regla común.
 
-Al inicio del siguiente turno propio se destruye a memoria antes de robar. La
-destrucción admite Reverse Shuffle y la decisión persiste al reconectar. Si Reverse
-sustituye esa destrucción, Hoguera permanece equipada; el disparador de «tu siguiente
-turno» ya se consumió y no se repite. Proteger el equipo anterior al intentar equipar
-Hoguera deja Hoguera en memoria sin curar. Destruirla o reemplazarla elimina su
-vencimiento pendiente. Una copia se añade a cada mazo nuevo: 34 cartas, doce Ataques.
+Al inicio del siguiente turno propio se destruye a memoria antes de robar. La destrucción admite Reverse Shuffle y la decisión persiste al reconectar. Si Reverse sustituye esa destrucción, Hoguera permanece equipada; el disparador de «tu siguiente turno» ya se consumió y no se repite. Proteger el equipo anterior al intentar equipar Hoguera deja Hoguera en memoria sin curar. Destruirla o reemplazarla elimina su vencimiento pendiente.
 
 ## Reverso
 
-`card-back.png` es la conversión a PNG, sin redimensionar ni retocar, del reverso aportado por el usuario (424 × 600 píxeles). Sustituye la versión anterior de 212 × 300 píxeles por su mayor resolución y detalle. La mano del adversario muestra una miniatura por carta, manteniendo la proporción de la imagen. Las cartas ocultas no reciben datos de identidad en sus controles visuales; solo las reveladas por efectos reciben y muestran su frente.
+`card-back.png` es la conversión a PNG, sin redimensionar ni retocar, del reverso aportado por el usuario (424 × 600 píxeles). La mano del adversario muestra una miniatura por carta, manteniendo la proporción de la imagen. Las cartas ocultas no reciben datos de identidad en sus controles visuales; solo las reveladas por efectos reciben y muestran su frente.
 
 ## Carta de ataque
 
@@ -530,51 +500,41 @@ tienen su propia ventana; cancelar un COMBO no cancela el efecto que interrumpi�
 
 Los identificadores son `reroll`, `points-increase`, `extra-life`, `cardboard-box` y `senshuni`.
 
-Caja de Cartón usa ahora la edición BY4-6/14 del PNG: «No recibir daño de un ataque»
-y «Cancelar la activación de un código que sea tipo objeto». Esta actualización
-solo sustituye la imagen y no modifica las reglas ya implementadas.
+Caja de Cartón corresponde a la edición BY4-6/14: «No recibir daño de un ataque» y «Cancelar la activación de un código que sea tipo objeto».
 
-Es equipo normal: resta dos a cada daño, con mínimo cero. Un 1 en cualquier tirada de ataque, también en un relanzamiento, destruye todos los cascos equipados y los envía a memoria de sus dueños. Unos en otros dados no lo destruyen. El mazo de prueba conserva 20 cartas: una copia de Casco sustituye una de Colgante.
+Es equipo normal: resta dos a cada daño, con mínimo cero. Un 1 en cualquier tirada de ataque, también en un relanzamiento, destruye todos los cascos equipados y los envía a memoria de sus dueños. Unos en otros dados no lo destruyen.
 
-Es código de tipo Objeto: elige equipo, Bonus o mano al azar, de cualquiera de los jugadores. La carta destruida va a memoria de su dueño; el Bonus se repone. La selección aleatoria se resuelve en el servidor y no enumera cartas de la mano rival. Respeta Caja de Cartón, Error de Carga y Relikia. Una copia sustituye una de Aumento de PR, manteniendo las 20 cartas.
+Es código de tipo Objeto: elige equipo, Bonus o mano al azar, de cualquiera de los jugadores. La carta destruida va a memoria de su dueño; el Bonus se repone. La selección aleatoria se resuelve en el servidor y no enumera cartas de la mano rival. Respeta Caja de Cartón, Error de Carga y Relikia.
 
-Conserva la secuencia de botones, las reglas y ambos créditos impresos. Es código de tipo Jugada, sin COMBO: cuesta una acción y permite elegir una no-habilidad del mazo propio para añadirla a la mano. La búsqueda y la identidad de la carta añadida son privadas. Conserva el orden del mazo restante: el texto no indica barajarlo. Error de Carga y Relikia utilizan sus ventanas y costes comunes; Caja de Cartón no cancela códigos Jugada. Una copia sustituye una de Caja de Cartón, conservando veinte cartas en los mazos nuevos.
+Es código de tipo Jugada, sin COMBO: cuesta una acción y permite elegir una no-habilidad del mazo propio para añadirla a la mano. La búsqueda y la identidad de la carta añadida son privadas. Conserva el orden del mazo restante: el texto no indica barajarlo. Error de Carga y Relikia utilizan sus ventanas y costes comunes; Caja de Cartón no cancela códigos Jugada.
 
-Es código Jugada, sin COMBO: una acción, cero PR, prohibido en el turno 1 global. Intercambia las manos restantes después de las respuestas, incluso con cero cartas. La propia carta queda en memoria o se corrompe si se activó mediante Relikia. Las cartas previamente reveladas conservan esa condición al cambiar de mano. Una copia sustituye una de Vida Extra en los mazos nuevos, conservando veinte cartas.
+Es código Jugada, sin COMBO: una acción, cero PR, prohibido en el turno 1 global. Intercambia las manos restantes después de las respuestas, incluso con cero cartas. La propia carta queda en memoria o se corrompe si se activó mediante Relikia. Las cartas previamente reveladas conservan esa condición al cambiar de mano.
 
 ## Agilidad al 100%
 
-Es código Jugada con COMBO, cuesta una acción incluso durante el ataque: fija en 5 un dado propio pendiente de ataque o efecto, sin relanzarlo ni robar cartas. Admite Error de Carga. Una copia sustituye una de Ataque en el mazo de 20 cartas.
+Es código Jugada con COMBO, cuesta una acción incluso durante el ataque: fija en 5 un dado propio pendiente de ataque o efecto, sin relanzarlo ni robar cartas. Admite Error de Carga.
 
 ## Resetear la Mente
 
-Código Jugada con COMBO, una acción. El activador elige un jugador y mira su mano
-solo en su vista privada. Selecciona dos copias distintas de las memorias normales
-(propias, rivales o una de cada una) y una no-habilidad de la mano objetivo. Las tres
-regresan al mazo de su dueño; se barajan los mazos afectados y solo el objetivo roba
-una carta. Las memorias corruptas no son seleccionables. Si al mirar solo hay
-habilidades, el efecto termina sin devolver cartas ni robar. Error de Carga puede
-anularlo y devolver el coste; Caja de Cartón no responde a códigos Jugada.
-Una copia sustituye una de Ataque, manteniendo el mazo de veinte cartas.
+Código Jugada con COMBO, una acción. El activador elige un jugador y mira su mano solo en su vista privada. Selecciona dos copias distintas de las memorias normales (propias, rivales o una de cada una) y una no-habilidad de la mano objetivo. Las tres regresan al mazo de su dueño; se barajan los mazos afectados y solo el objetivo roba una carta. Las memorias corruptas no son seleccionables. Si al mirar solo hay habilidades, el efecto termina sin devolver cartas ni robar. Error de Carga puede anularlo y devolver el coste; Caja de Cartón no responde a códigos Jugada.
 
 ## Esquivar
 
-Código Jugada COMBO, una acción del defensor. Ante un ataque pendiente lanza D6: 1–3 roba una carta y conserva la decisión de defensa; 4–6 niega el ataque completo, sin daño ni efecto crítico de Magnet y retirando el premio de ese ataque. Admite Error de Carga y modificadores del dado. Una copia sustituye una de Senshuni para conservar el mazo de veinte cartas.
+Código Jugada COMBO, una acción del defensor. Ante un ataque pendiente lanza D6: 1–3 roba una carta y conserva la decisión de defensa; 4–6 niega el ataque completo, sin daño ni efecto crítico de Magnet y retirando el premio de ese ataque. Admite Error de Carga y modificadores del dado.
 
 ## PC 8BITS
 
-Al equiparse, después de las respuestas de Error de Carga, lanza un dado y guarda su resultado sobre la carta. El valor es público y persiste al reconectar. Al decidir un dado propio de ataque o efecto puede destruirse: con 1–3 suma el valor guardado (máximo 5); con 4–6 sustituye el resultado por ese valor. No es relanzamiento ni convierte el resultado modificado en seis natural. La destrucción no cuesta otra acción; manda PC a memoria y elimina el valor guardado. Reemplazarlo también lo limpia. El dado al equipar admite los modificadores ya disponibles. Una copia sustituye una de Magnet Shuffle, conservando veinte cartas y ambos tipos de habilidad inicial.
+Al equiparse, después de las respuestas de Error de Carga, lanza un dado y guarda su resultado sobre la carta. El valor es público y persiste al reconectar. Al decidir un dado propio de ataque o efecto puede destruirse: con 1–3 suma el valor guardado (máximo 5); con 4–6 sustituye el resultado por ese valor. No es relanzamiento ni convierte el resultado modificado en seis natural. La destrucción no cuesta otra acción; manda PC a memoria y elimina el valor guardado. Reemplazarlo también lo limpia. El dado al equipar admite los modificadores ya disponibles.
 
 ## Mira de Sniper
 
-Conserva texto y créditos; puede presentar pequeñas diferencias generativas. Equipada suma uno al daño de ataques acertados, después del cálculo de mitad/normal/crítico, y al daño de efectos propios como Jessica Lee. Los efectos sin daño no reciben ese aumento. Cada ocasión de daño recibido añade un contador; al tercero se destruye a memoria. Los contadores se muestran públicamente, se guardan al reconectar y se reinician al equipar. Los descartes por efectos y por Destiny permiten equiparla gratis o colocarla en canje. Destrucción, canje y devolución al mazo no son descartes. El equipo gratuito admite Error de Carga, que no devuelve acciones al dueño porque no se gastaron. Una copia sustituye la segunda Destiny, manteniendo veinte cartas y ambas habilidades.
+Equipada suma uno al daño de ataques acertados, después del cálculo de mitad/normal/crítico, y al daño de efectos propios como Jessica Lee. Los efectos sin daño no reciben ese aumento. Cada ocasión de daño recibido añade un contador; al tercero se destruye a memoria. Los contadores se muestran públicamente, se guardan al reconectar y se reinician al equipar. Los descartes por efectos y por Destiny permiten equiparla gratis o colocarla en canje. Destrucción, canje y devolución al mazo no son descartes. El equipo gratuito admite Error de Carga, que no devuelve acciones al dueño porque no se gastaron.
 
 ## Triple Ataque Cruzado
 
-Jugada sin COMBO: una acción, cero PR. Añade tres cartas de tipo Ataque del mazo propio a la mano; si quedan menos, recupera las disponibles. Sin Ataques no se puede activar. No busca habilidades, no baraja y conserva el orden de las cartas restantes. Error de Carga puede cancelarla antes de la búsqueda; Caja de Cartón no responde. Admite Relikia. Si se toma la última carta del mazo, continúa el agotamiento normal; el reciclaje no añade objetivos nuevos a esta búsqueda. Las manos siguen siendo privadas. El mazo de desarrollo pasa a 23 cartas: tres Ataques y una copia de cada otra carta, sin retirar cartas existentes. Las notas anteriores de veinte cartas describen los mazos usados al incorporar cada carta en aquel momento.
+Jugada sin COMBO: una acción, cero PR. Añade tres cartas de tipo Ataque del mazo propio a la mano; si quedan menos, recupera las disponibles. Sin Ataques no se puede activar. No busca habilidades, no baraja y conserva el orden de las cartas restantes. Error de Carga puede cancelarla antes de la búsqueda; Caja de Cartón no responde. Admite Relikia. Si se toma la última carta del mazo, continúa el agotamiento normal; el reciclaje no añade objetivos nuevos a esta búsqueda. Las manos siguen siendo privadas.
 
-El mazo de desarrollo actual se amplió después a 32 cartas: doce Ataques y una
-copia de cada otra carta. Triple Ataque Cruzado sigue buscando como máximo tres.
+Triple Ataque Cruzado sigue buscando como máximo tres.
 
 ## Relick Reverse Shuffle
 
@@ -596,13 +556,7 @@ No protege cartas rivales, cartas descartadas ni cartas meramente devueltas al m
 Si se protege el equipo anterior al equipar otro, el anterior ocupa la única zona
 y el nuevo queda en memoria; no se permite tener dos equipos normales.
 
-Cada copia guarda sus propios aumentos; sacrificar una elimina sus contadores y
-conserva los de las restantes. Su espacio físico queda libre, sin mover las demás
-habilidades; enseñar otra utiliza el primer espacio libre y su coste correspondiente.
-Un ataque declarado conserva su daño aunque su
-habilidad salga del campo. La carta sacrificada va a memoria, sin activar descartes.
-Los daños y premios esperan las elecciones pendientes. Una copia se añade a cada
-mazo nuevo de desarrollo, que ahora contiene 33 cartas, incluidos doce Ataques.
+Cada copia guarda sus propios aumentos; sacrificar una elimina sus contadores y conserva los de las restantes. Su espacio físico queda libre, sin mover las demás habilidades; enseñar otra utiliza el primer espacio libre y su coste correspondiente. Un ataque declarado conserva su daño aunque su habilidad salga del campo. La carta sacrificada va a memoria, sin activar descartes. Los daños y premios esperan las elecciones pendientes.
 
 ## Tomo de Magia, Moto-Ratón, Era Futurista, Casco de Copias, Flauta de Vidrio, Fantasma Ladrón y Perro Fantasma
 

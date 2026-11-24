@@ -12,13 +12,13 @@ El autoload `MusicDirector` conserva un solo `AudioStreamPlayer` durante toda la
 
 Volver efectivamente al lobby restablece `Menu` y permite un nuevo combate sin heredar el clímax. Abrir ventanas, inspeccionar cartas, cambiar de turno, reconstruir el tablero y desconectarse temporalmente no reinician la reproducción.
 
-`DuelPlayerView.HasReachedZero` expone el indicador público que ya conserva el motor. Permite recuperar el clímax si se abre de nuevo el juego después de que un Relikario llegara a cero y se curara. Es un campo JSON opcional: las vistas anteriores siguen siendo compatibles. Para recuperar ese caso entre sesiones hace falta publicar también el servidor con la proyección actualizada; con un servidor anterior, el cliente detecta el cero actual y lo recuerda durante esa sesión.
+`DuelPlayerView.HasReachedZero` expone el indicador público que conserva el motor. Permite recuperar el clímax si se abre de nuevo el juego después de que un Relikario llegara a cero y se curara.
 
 ## Música del rival
 
 `DuelPlayerView.RelikarioId` identifica públicamente al personaje de cada jugador. El cliente consulta exclusivamente `Players[1 - MySeat].RelikarioId` para escoger los temas de combate y clímax. El personaje propio y quién llegue a cero no cambian esa selección. `yuno-lv2` es un alias musical de `yuno`, de modo que evolucionar conserva su identidad y el reloj musical.
 
-Las dos formas de Osamu comparten `Combat:osamu` y `Climax:osamu`. La preparación usa los Relikarios del reparto para elegir tema desde la selección de habilidad. Las vistas anteriores sin identidad y los personajes sin música asignada usan `DefaultEnemyTheme`, configurado como Yuno.
+Las dos formas de Osamu comparten `Combat:osamu` y `Climax:osamu`. La preparación usa los Relikarios del reparto para elegir tema desde la selección de habilidad. Los personajes sin música asignada usan `DefaultEnemyTheme`, configurado como Yuno.
 
 Para añadir otro Relikario, agrega dos clips en `music.tres` llamados exactamente `Combat:<id>` y `Climax:<id>`, con sus archivos correspondientes. Los índices son libres; el director busca por nombre. Las variantes pueden declararse en `ThemeAliases`, en el inspector del autoload. No hace falta cambiar el director para agregar un nuevo par de pistas. Los puentes `ToCombat:<id>` y `ToClimax:<id>` son opcionales: sin ellos se aplica el fundido general.
 
@@ -80,7 +80,7 @@ La arena llama a `PresentDuel(RoomCode, snapshot)` al presentar un estado autori
 
 Las vistas de recuperación y los cambios de diseño no reproducen efectos históricos: reutilizan el filtro existente de revisiones y las colas de animación.
 
-La sección **Sonido** de Ajustes y el parlante junto a la bandera blanca y la rueda dentada del duelo muestran los mismos controles persistentes (el del duelo, en un diálogo), independientes de la reconstrucción del tablero. Cada canal tiene un control de 0–100 % y un botón con un icono de parlante para silenciarlo y reactivarlo. Cuando el canal está silenciado o el volumen está en cero, el parlante aparece tachado y la barra y el porcentaje se muestran en gris. El botón conserva el porcentaje y se puede ajustar el nivel mientras el canal está silenciado. Los valores iniciales son 65 % para música y 80 % para efectos, con ambos canales activos. `AudioPreferences` aplica cada cambio al instante y guarda niveles y silencios en `user://audio.cfg`, con escritura diferida mientras se arrastra y guardado inmediato al confirmar o salir. Las configuraciones anteriores que solo contienen volúmenes siguen siendo compatibles. El bus Master tiene un limitador para las superposiciones.
+La sección **Sonido** de Ajustes y el parlante junto a la bandera blanca y la rueda dentada del duelo muestran los mismos controles persistentes (el del duelo, en un diálogo), independientes de la reconstrucción del tablero. Cada canal tiene un control de 0–100 % y un botón con un icono de parlante para silenciarlo y reactivarlo. Cuando el canal está silenciado o el volumen está en cero, el parlante aparece tachado y la barra y el porcentaje se muestran en gris. El botón conserva el porcentaje y se puede ajustar el nivel mientras el canal está silenciado. Los valores iniciales son 65 % para música y 80 % para efectos, con ambos canales activos. `AudioPreferences` aplica cada cambio al instante y guarda niveles y silencios en `user://audio.cfg`, con escritura diferida mientras se arrastra y guardado inmediato al confirmar o salir. El bus Master tiene un limitador para las superposiciones.
 
 Al cerrar la ventana, `QuitWithAudio` guarda las preferencias, libera las voces y los recursos y permite procesar su eliminación antes de terminar Godot. La salida tarda unos 150 ms y no añade confirmaciones. Las pruebas de interfaz y audio usan esa misma salida.
 

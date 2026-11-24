@@ -16,7 +16,7 @@ Simulador **no oficial**, desarrollado por la comunidad, del juego de cartas col
 
 ## Estado
 
-En desarrollo activo; todavía no hay una versión estable ni el repositorio es público. Antes de publicarlo hay bloqueantes legales pendientes, sobre todo los recursos gráficos de Relick incluidos ([docs/PUBLICATION_AUDIT.md](docs/PUBLICATION_AUDIT.md)).
+En desarrollo activo; todavía no hay una versión estable ni el repositorio es público. Antes de publicarlo hay bloqueantes legales pendientes, sobre todo los recursos gráficos de Relick incluidos ([docs/PUBLISHING.md](docs/PUBLISHING.md)).
 
 Funciona hoy, cubierto por las pruebas automáticas:
 
@@ -85,11 +85,11 @@ Cómo levantar el servidor local y publicar el módulo: [PvP · Desarrollo local
 
 `pruebas.sh` compila una vez, ejecuta el motor y reparte la interfaz entre varios procesos de Godot (`-j N`; por defecto, la mitad de los núcleos, hasta 8). Cada proceso usa su propio `user://`, así que no toca tus ajustes. Termina con `PRUEBAS_PASS` y código 0; si algo falla, dice qué comprobación y dónde quedan los registros. Guarda la duración de cada comprobación en `.godot/pruebas-tiempos.tsv` para repartirlas mejor en la siguiente ejecución.
 
-Sin el script (por ejemplo, en Windows): `dotnet run --project tests/Relick.Core.Tests.csproj` para el motor; para la interfaz, `dotnet build Relick.csproj` y luego `godot --headless --fixed-fps 145 --path . -- --pvp-ui-test` (`Godot_…_mono_win64.exe` en Windows). Termina con `PVP_UI_PASS` y código 0. `--fixed-fps 145` evita que Godot duerma entre frames sin pantalla y mantiene el paso de tiempo de siempre; sin él la prueba es correcta, pero tarda más del doble. Úsalo solo en pruebas sin servidor: las de red y audio dependen del reloj real. Los filtros (`--lobby-only`, `--decks-only`…) y las capturas renderizadas están en [Interfaz · Validación](docs/UI.md#validación).
+Sin el script (por ejemplo, en Windows): `dotnet run --project tests/Relick.Core.Tests.csproj` para el motor; para la interfaz, `dotnet build Relick.csproj` y luego `godot --headless --fixed-fps 145 --path . -- --pvp-ui-test` (`Godot_…_mono_win64.exe` en Windows). Termina con `PVP_UI_PASS` y código 0. `--fixed-fps 145` evita que Godot duerma entre frames sin pantalla y fija el paso de tiempo; sin él la prueba es correcta, pero tarda más del doble. Úsalo solo en pruebas sin servidor: las de red y audio dependen del reloj real. Los filtros (`--lobby-only`, `--decks-only`…) y las capturas renderizadas están en [Interfaz · Validación](docs/UI.md#validación).
 
 `./jugar.sh --headless --shutdown-test` cierra el juego con el finalizador de .NET cargado y debe terminar con código 0. Protege el arreglo de `ManagedShutdown` para una carrera de Godot .NET 4.7.2 que tumbaba el proceso al cerrar. Depende de un detalle interno del motor: repítela al actualizar Godot.
 
-Las pruebas de red necesitan un servidor local con el módulo de desarrollo, que **nunca** se publica en Maincloud:
+Las pruebas de red necesitan un servidor local con el módulo de desarrollo, que **nunca** se publica en un servidor remoto:
 
 ```bash
 spacetime start --listen-addr 127.0.0.1:3100
@@ -97,7 +97,7 @@ spacetime publish relick-dev --server http://127.0.0.1:3100 --module-path tests/
 dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj
 ```
 
-Variantes de la batería PvP y pruebas de escalabilidad: [PvP](docs/PVP.md#desarrollo-local) y [Escalabilidad](docs/SCALABILITY.md).
+Variantes de la batería PvP y pruebas de escalabilidad: [PvP](docs/PVP.md#pruebas-de-red) y [Escalabilidad](docs/SCALABILITY.md).
 
 ## Contribuir
 
@@ -131,7 +131,7 @@ network/              Conexión con SpacetimeDB y bindings generados
 server/spacetimedb/   Módulo autoritativo; compila el mismo core/
 assets/               Cartas, personajes, audio y marca
 tests/                Pruebas del motor
-tests/pvp/            Pruebas de red contra un servidor publicado
+tests/pvp/            Pruebas de red contra un servidor local
 tests/server/         Módulos de prueba (autenticación de desarrollo, vencimientos cortos), solo locales
 tools/audio/          Generadores de la música y los efectos originales
 ```
@@ -146,8 +146,8 @@ tools/audio/          Generadores de la música y los efectos originales
 - [Clasificación de cartas](docs/CARD_TAXONOMY.md)
 - [Efectos de carta como módulos](docs/CARD_EFFECTS.md) y [disparadores](docs/CARD_TRIGGERS.md)
 - [Respuestas en cadena (RAM)](docs/RAM.md)
-- [Auditoría previa a la publicación](docs/PUBLICATION_AUDIT.md), [aviso legal](NOTICE.md) y [avisos de terceros](THIRD_PARTY_NOTICES.md)
-- [Evaluación del motor](docs/RULES_ENGINE_REVIEW.md), [revisión DRY](docs/DRY_REVIEW.md) y [escalabilidad](docs/SCALABILITY.md)
+- [Escalabilidad: estado del duelo, límites y mediciones](docs/SCALABILITY.md)
+- [Antes de publicar](docs/PUBLISHING.md), [aviso legal](NOTICE.md) y [avisos de terceros](THIRD_PARTY_NOTICES.md)
 
 ## Licencia y propiedad intelectual
 
@@ -157,6 +157,6 @@ La licencia se aplica únicamente al código y los recursos originales cuyos der
 
 - [NOTICE.md](NOTICE.md): alcance de la licencia y aviso de proyecto no oficial.
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): Godot (MIT), SpacetimeDB (Business Source License 1.1), grabaciones CC0 y elementos de Relick.
-- [docs/PUBLICATION_AUDIT.md](docs/PUBLICATION_AUDIT.md): auditoría previa a la publicación y bloqueantes.
+- [docs/PUBLISHING.md](docs/PUBLISHING.md): lo que falta resolver antes de publicar.
 
 El juego muestra el mismo aviso en la pantalla de inicio de sesión, al pie de la página Jugar y en Ajustes → Acerca de, junto con las licencias de terceros.
