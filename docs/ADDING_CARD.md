@@ -52,7 +52,7 @@ public static readonly CardDefinition AttackOsamuDt = Attack with
 - **La marca de agua se conserva.** Añade la imagen tal como se aportó, con su marca de agua, sus textos y sus créditos. No la quites ni la retoques con herramientas de edición generativa (`image_gen` u otras) ni de ningún otro modo.
 - Guárdala en `assets/cards/<id>-clean.png`. El sufijo `-clean` es solo la convención de nombre con la que la cargan `BoardArt.LoadCardArtwork` y `SkillArtwork`, sin registro; no significa que haya que limpiarla.
 - Respeta la proporción de la carta impresa: 697 × 987 en vertical, o 987 × 697 en horizontal, como las habilidades. Solo se permite recortar el fondo sobrante o escalar; conserva márgenes, textos impresos y créditos, sin bordes nuevos.
-- Documenta la procedencia (quién la aportó y con qué permiso) en la sección de la carta en [assets/cards/README.md](../assets/cards/README.md). Las restauraciones y prompts que aparecen allí para cartas anteriores son un registro histórico, no un procedimiento a seguir.
+- Documenta la procedencia (quién la aportó y con qué permiso) en la sección de la carta en [assets/cards/README.md](../assets/cards/README.md).
 - Godot genera el archivo `.import` al abrir el proyecto en el editor, o con `godot --headless --path . --import`. Añade la imagen y su `.import` al mismo commit.
 
 ## 4. Reglas

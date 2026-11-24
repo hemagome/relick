@@ -2,45 +2,13 @@
 
 > **Registro histórico.** Las restauraciones con `image_gen` y la eliminación de marcas de agua que se describen aquí documentan cómo se hicieron estos recursos; no son un procedimiento a seguir. Las imágenes nuevas se añaden con su marca de agua y sin edición generativa ([Añadir un Relikario](../../../docs/ADDING_RELIKARIO.md#5-arte)). La situación de estos recursos está en [docs/PUBLICATION_AUDIT.md](../../../docs/PUBLICATION_AUDIT.md).
 
-Cartas restauradas con ImageGen a partir de los escaneos adjuntos por el usuario. Se retiró la marca diagonal de las ocho cartas y se conservaron los créditos impresos. El retrato se extrajo de WD Lv 1.
+`card-lv1.png`, `card-lv2.png` y las cartas propias de WD en `assets/cards/` son los escaneos aportados por el usuario, con su marca de agua, convertidos a PNG sin otra edición. El retrato se extrajo de WD Lv 1 con edición generativa antes de adoptar esa norma; el prompt de abajo es un registro histórico.
 
 Multi Drive calcula el daño y el premio con la mano al resolver el ataque. El daño normal es la mitad de las cartas en mano, redondeada hacia arriba. Cada fallo confirmado permite pagar un nuevo relanzamiento.
 
 WD tiene música propia: `Combat:wd` y `Climax:wd` (véase [Audio](../../audio/README.md)). Su animación de combate y el disparo verde se dibujan en el tablero a partir del retrato.
 
-## Archivos y prompts
-
-### wd-lv1.png → [card-lv1.png](card-lv1.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Portrait WD NIVEL 1 character card. Preserve 11 VIDA, DESTREZA 0, WD, NIVEL 1, the two bullets in the rules panel, BW5-1 / 14 and ©2018 FG. Preserve the original full pose, pointing the fictional cartoon blaster upper right, face, green WD cap, costume, emerald diagonal bands and black trim. Exact rules: AL ATACAR: PUEDES DESCARTAR CARTAS “BALA” Y/O CARTAS DE ATAQUE Y SUMA +1 AL D6 DE ATAQUE POR CADA CARTA DESCARTADA. (MÁX. 5). SIGUIENTE NIVEL: DESCARTAR 4 CARTAS DE TU MANO +1.600 PR. No cropping, redesign, new elements or new text. Return only the clean card.
-
-### wd-lv2.png → [card-lv2.png](card-lv2.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Portrait WD LV2 NIVEL 2 card. Preserve the foreground oversized fantastical blaster, WD's mask, green eye, white cap, green-white background, white border and original pose. Preserve: VIDA 11, AL SUBIR DE NIVEL: +3 VIDAS, WD LV2, NIVEL 2, DESCARTA +1, BW5-1 / 14 and ©2018 FG. Exact rules: AL LANZAR UN DADO: PUEDES DESCARTAR CUALQUIER CARTA Y SUMAR +1 AL DADO POR CADA CARTA. SUMA +1 AL D6 DE ATAQUE. No cropping, redesign, new elements or new text. Return only the clean card.
-
-### wild-drive.png → [wild-drive-clean.png](../../cards/wild-drive-clean.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Landscape RELICK WILD DRIVE skill. Preserve stylized silver fictional blaster, BANG! purple lettering, orange-yellow muzzle effect, gloved hand/portrait of WD, the printed green category tokens and every printed panel. DAÑO NORMAL 3. DAÑO CRÍTICO NÚMERO DE ATAQUES EN TU MEMORIA (MÍN. 4). PREMIO 400 PR. HABILIDAD. UNA VEZ POR TURNO, SI UNA DE TUS CARTAS ES DESCARTADA: PUEDES ENVIARLA A TU CANJE. BW4-2/14, FONDO: MACROVECTOR/FREEPIK, ©2018 FG. No cropping, redesign, new elements or new text. Return only the clean card.
-
-### multi-drive.png → [multi-drive-clean.png](../../cards/multi-drive-clean.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Landscape RELICK MULTI DRIVE skill. Preserve WD front-facing cartoon pose, fictional blaster, green BANG! lettering, yellow bursts, green background, inset portrait and all text panels. DAÑO NORMAL ?/2 MÍN. 2. DAÑO CRÍTICO ? MÍN. 4. PREMIO ?00 MÍN. 400 PR. HABILIDAD. SI FALLAS EL ATAQUE: PUEDES DESCARTAR UNA CARTA Y RELANZAR EL DADO DE ATAQUE. ?: CARTAS EN TU MANO. BW4-3/14, FONDO: MACROVECTOR/FREEPIK, ©2018 FG. No cropping, redesign, new elements or new text. Return only the clean card.
-
-### bala.png → [bala-clean.png](../../cards/bala-clean.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Portrait OBJETO · CÓDIGO card BALA. The cartoon gold bullet emblem is unchanged, including the black WD lettering, thick white outline and green radial beams. Text verbatim: SI ESTA CARTA ES DESCARTADA: ROBA 1 CARTA. SI ACTIVAS ESTA CARTA DE TU MANO: COLOCA 1D6 A 5 CARTAS DE DISTANCIA DE UN RELIKARIO Y LÁNZALO COMO UNA CANICA: SI TOCA UNA CARTA: DESTRÚYELA. SI TOCA LA CARTA DE RELIKARIO: -2 VIDAS. SI TOCA LA CABEZA DEL RELIKARIO: -4 VIDAS. Footer BW4-7/14 and ©2018 FUYUHIRO GUSHIKEN. No cropping, redesign, new elements or new text. Return only the clean card.
-
-### ataque1-wd.jpg → [attack-wd-clean.png](../../cards/attack-wd-clean.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Portrait classic WD ATAQUE card, black center, large simple white pixel-art WD symbol, neon green printed circuits, small white pixel glyphs and two black ATAQUE banners with green hexagonal jewels. Preserve both ATAQUE labels and ©2018 FUYUHIRO GUSHIKEN. No expansion number in this original. Keep graphic edges straight and pixelated. No cropping, redesign, new elements or new text. Return only the clean card.
-
-### ataque-wd-2.png → [attack-wd-ns43-clean.png](../../cards/attack-wd-ns43-clean.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Portrait NS-43/150 WD ATAQUE card. Preserve cropped masked blond character holding fictional silver cartoon blaster inside silver hexagon, WD lettering, green circuitry, white pixel emblem, pointing hand next to chunky metallic ATAQUE label, partly filled horizontal gauge, ©2018 FG and NS-43/150. No cropping, redesign, new elements or new text. Return only the clean card.
-
-### ataque-wd-3.png → [attack-wd-dt74-clean.png](../../cards/attack-wd-dt74-clean.png)
-
-> Use case: precise-object-edit. Restore this exact supplied ReLick card image for the game project. Remove ONLY the repeated large translucent diagonal RELICK watermark overlays, including over the art, text, symbols, borders and corners. Continue the underlying color and linework while keeping its original flat, full edge-to-edge scan, orientation, margins, geometry, positions, print, accent colors and attributions. Portrait DT-74/100 full-art WD attack. Preserve entire masked blond WD character, original cap with large green WD lettering, cartoon blaster, animated green glow and gold points, large neon 8-bit glyph at bottom, DT-74/100 and ©2018 FUYUHIRO GUSHIKEN. No added title or label. No cropping, redesign, new elements or new text. Return only the clean card.
+## Retrato
 
 ### wd-lv1.png → [portrait.png](portrait.png)
 

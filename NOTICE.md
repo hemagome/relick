@@ -24,7 +24,7 @@ Este aviso no es una licencia ni una autorización sobre la propiedad intelectua
 - **A qué se aplica:** únicamente al código y los recursos **originales** de este repositorio cuyos derechos pertenecen al titular del proyecto: por ejemplo, el motor de reglas (`core/`), el cliente (`scripts/`, `scenes/`), el servidor (`server/`), las pruebas, los scripts y las composiciones generadas por `tools/audio/`.
 - **A qué no se aplica:**
   - las marcas, el nombre y el logotipo de Relick;
-  - los nombres de cartas y de personajes, los textos de reglas impresos y las ilustraciones de Relick, incluidos los escaneos, sus restauraciones y las imágenes derivadas de ellos;
+  - los nombres de cartas y de personajes, los textos de reglas impresos y las ilustraciones de Relick, incluidos los escaneos y las imágenes derivadas de ellos;
   - el código y los recursos de terceros (dependencias, motor, grabaciones CC0), que conservan sus propias licencias y avisos, listados en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 PolyForm Noncommercial no sustituye ni modifica las licencias de los componentes de terceros.

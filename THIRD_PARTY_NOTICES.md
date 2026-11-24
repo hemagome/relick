@@ -45,9 +45,8 @@ Los siguientes elementos pertenecen a Relick o a sus respectivos titulares (los 
 | Elemento | Ubicación |
 |---|---|
 | Logotipo de Relick (cabecera de la web oficial) | `assets/brand/relick-logo.png` |
-| Escaneos restaurados de cartas y reverso | `assets/cards/*-clean.png`, `assets/cards/card-back.png` |
-| Cartas de Relikario, retratos, figuras y animaciones derivadas | `assets/characters/*/` |
-| Escaneos originales con marca de agua e imágenes intermedias | `output/imagegen/` |
+| Escaneos de cartas (con su marca de agua) y reverso | `assets/cards/*-clean.png`, `assets/cards/card-back.png` |
+| Cartas de Relikario (con su marca de agua), retratos, figuras y animaciones derivadas | `assets/characters/*/` |
 | Imágenes de los efectos de Relikia (procedencia no documentada) | `assets/relikia/*.webp` |
 | Nombres de cartas y personajes, y textos de reglas transcritos | `core/CardCatalog.cs`, `core/RelikarioCatalog.cs`, `core/RelikiaEffects.cs`, `assets/cards/README.md`, `assets/characters/*/README.md`, documentación |
 

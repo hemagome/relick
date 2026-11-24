@@ -9,9 +9,9 @@ Esto no es asesoramiento jurídico. Donde la situación depende de permisos que 
 | Área | Resultado |
 |---|---|
 | Credenciales y secretos | Ninguno encontrado en el árbol ni en el historial |
-| Información personal | Correo personal en los metadatos de los commits; rutas locales con el nombre de usuario en 7 archivos |
-| Archivos generados innecesarios | `output/imagegen/` (41 imágenes, 32 MB); historial de 340 MB empaquetados |
-| Propiedad intelectual de Relick | Logotipo, 92 escaneos restaurados de cartas, 30 imágenes de personajes, escaneos originales, textos de reglas |
+| Información personal | Correo personal en los metadatos de los commits; las rutas locales con el nombre de usuario ya no están en el árbol, pero sí en el historial |
+| Archivos generados innecesarios | `output/imagegen/` y los prompts de restauración se retiraron del árbol el 24 de noviembre de 2026; siguen en el historial (340 MB empaquetados) |
+| Propiedad intelectual de Relick | Logotipo, 102 escaneos de cartas (ahora con su marca de agua), retratos, figuras y animaciones derivados sin marca de agua, textos de reglas |
 | Licencias de dependencias | Compatibles con un proyecto no comercial; SpacetimeDB usa BSL 1.1 con condiciones; licencia del SDK de cliente sin verificar |
 
 ## Bloqueantes
@@ -20,16 +20,16 @@ Deben resolverse antes de hacer público el repositorio o distribuir builds.
 
 ### B1. Ilustraciones y escaneos oficiales de Relick
 
-- `assets/cards/*-clean.png` (92 archivos) y `assets/cards/card-back.png`: escaneos de cartas impresas, con créditos como «© 2018 Fuyuhiro Gushiken» y de ilustradores, «restaurados» con edición generativa.
-- `assets/characters/*/` (30 imágenes): cartas de Relikario por nivel, retratos, figuras recortadas y hojas de animación derivadas de esas ilustraciones.
-- `output/imagegen/`: escaneos originales con marca de agua e imágenes intermedias.
+- `assets/cards/*-clean.png` (92 archivos), `assets/cards/card-back.png` y las cartas `card-lv1.png`, `card-lv2.png` y `attack-card.png` de `assets/characters/*/`: escaneos de cartas impresas, con créditos como «© 2018 Fuyuhiro Gushiken» y de ilustradores. Desde el 24 de noviembre de 2026 son los archivos aportados, **con su marca de agua**, sin edición generativa.
+- `assets/characters/*/` (retratos, miniaturas, figuras recortadas y hojas de animación): derivados de esas ilustraciones con edición generativa y **sin marca de agua**. No tienen un original con marca que los sustituya.
 - `assets/relikia/*.webp`: procedencia no documentada.
 
-**Agravante:** los `README.md` y los prompts documentan que se **eliminaron marcas de agua «RELICK»** de las imágenes aportadas. Retirar marcas de agua de obras ajenas puede tener consecuencias legales propias, además de la infracción de derechos de autor, en algunas jurisdicciones.
+**Agravante:** las versiones anteriores de las cartas, sin marca de agua, siguen en el historial, y los recursos derivados del tablero no tienen marca. Retirar marcas de agua de obras ajenas puede tener consecuencias legales propias, además de la infracción de derechos de autor, en algunas jurisdicciones. La norma actual del proyecto exige conservar la marca ([docs/ADDING_CARD.md](ADDING_CARD.md#3-ilustración)).
 
 **Resolver con una de estas opciones:**
 1. Obtener una autorización escrita del titular de los derechos que cubra la redistribución pública de estas imágenes (incluidas las derivadas), y documentarla en `THIRD_PARTY_NOTICES.md`. Las notas de Yuno Oro y WD mencionan archivos «suministrados con el diseño»: si existe esa autorización, debe quedar por escrito.
 2. Sacar las imágenes del repositorio público ([alternativas](#alternativas-para-desacoplar-los-recursos-protegidos)).
+3. Para los retratos, figuras y animaciones sin marca de agua: sustituirlos por arte original o retirarlos.
 
 ### B2. Logotipo de Relick
 
@@ -37,14 +37,14 @@ Deben resolverse antes de hacer público el repositorio o distribuir builds.
 
 ### B3. Historial de Git
 
-Aunque se retiren los recursos del árbol, los 169 archivos de imagen que han pasado por el historial (incluidos los escaneos originales de `output/imagegen/` y variantes ya borradas) siguen en cada commit. Publicar este repositorio con su historial publica esos recursos.
+Aunque se retiren los recursos del árbol, los archivos de imagen que han pasado por el historial (incluidas las 102 versiones de cartas sin marca de agua, los escaneos de `output/imagegen/` y variantes ya borradas) siguen en cada commit. Publicar este repositorio con su historial publica esos recursos.
 
 **Opciones (decisión del propietario):** publicar un repositorio nuevo a partir de un árbol limpio, sin historial; o reescribir el historial con una herramienta como `git filter-repo` **después** de hacer copia de seguridad. Esta tarea no reescribe nada.
 
 ### B4. Información personal
 
 - Los commits contienen el nombre y el **correo personal** del autor (263 commits; los otros 29 usan la dirección `noreply` de GitHub). Publicar el historial publica el correo. Si se reescribe o se crea un repositorio nuevo, conviene usar la dirección `noreply`.
-- Rutas locales con el nombre de usuario (`/home/<usuario>/Downloads/…`) en `assets/cards/README.md`, `assets/cards/{diamond-helmet,konamy-code,mind-swap,time-bomb}-prompt.txt` y `output/imagegen/{attack-clean,yuno-sprite}-prompt.txt`. Sustituirlas por descripciones neutras («imagen aportada por el usuario»). No se cambian en esta tarea porque los archivos forman parte de la documentación de procedencia que depende de la decisión de B1.
+- Las rutas locales con el nombre de usuario (`/home/<usuario>/Downloads/…`) se retiraron del árbol junto con los prompts de restauración, pero siguen en el historial (ver B3).
 
 ### B5. Titular de los derechos del código
 
@@ -84,9 +84,9 @@ Antes de aplicar cualquiera, revisar qué pruebas de interfaz comprueban la pres
 
 ## Lista de bloqueantes
 
-- [ ] **B1** Autorización escrita para las ilustraciones y escaneos de Relick (incluidas las derivadas y las imágenes sin marca de agua), o retirarlas del repositorio público.
+- [ ] **B1** Autorización escrita para las ilustraciones y escaneos de Relick (las cartas ya llevan su marca de agua), o retirarlas del repositorio público; sustituir o retirar los retratos, figuras y animaciones derivados sin marca.
 - [ ] **B2** Autorización para el logotipo oficial, o un logotipo propio.
 - [ ] **B3** Decidir cómo publicar sin el historial que contiene esos recursos (repositorio nuevo o reescritura con copia de seguridad).
-- [ ] **B4** Quitar el correo personal de los metadatos que se publiquen y las rutas locales de 7 archivos.
+- [ ] **B4** Quitar el correo personal de los metadatos que se publiquen (y del historial las rutas locales, ya retiradas del árbol).
 - [ ] **B5** Declarar el titular legal y el año en `NOTICE.md`.
 - [ ] **B6** Verificar la licencia del SDK de cliente de SpacetimeDB y de los bindings generados.

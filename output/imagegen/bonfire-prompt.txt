@@ -1,6 +1,0 @@
-Use case: precise-object-edit
-Asset type: full Spanish trading card image for game asset.
-Input image: edit target, Hoguera card supplied by the user.
-Primary request: remove only the large semi-transparent diagonal repeated RELICK watermark overlays throughout this card, reconstructing the underlying sword, campfire, starry sky, smoke, green circuit board border and text panels faithfully.
-Constraints: preserve the complete portrait card, layout, border, colors, original illustration, all rule text, heading EQUIPO, name HOGUERA, card number TUTOOSAMU-3/7, printed artist credit ILUS. STIVART and bottom-right copyright ©2018FG. Do not remove printed credits or copyright. Preserve original aspect ratio. No new objects, no redesign, no cropping.
-Rule text verbatim: "AL EQUIPAR: GANA +1 VIDA. MIENTRAS ESTA CARTA ESTE EQUIPADA TODOS LOS DAÑOS SE TRANSFORMAN EN 0. DESTRUYE ESTA CARTA AL INICIO DE TU SIGUIENTE TURNO LUEGO DE HABER SIDO EQUIPADA."

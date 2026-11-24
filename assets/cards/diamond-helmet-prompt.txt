@@ -1,5 +1,0 @@
-Tool: built-in image_gen; transparent_background=false.
-Source: /home/hemagome/Downloads/casco-de-diamantes.jpg
-Output: assets/cards/diamond-helmet-clean.png, normalized to697x987.
-
-Use case: precise-object-edit. Remove ONLY the large repeated translucent diagonal RELICK watermark from this supplied Spanish trading card scan. Reconstruct helmet cyan diamond facets, blue starry background, green circuit board and frame where covered. Preserve the COMPLETE original card layout, exact illustration, proportions, colors, black outlines, all legitimate printed text including EQUIPO, CASCO DE DIAMANTES, card number B04-6/15 and small bottom copyright credit. Do not remove or alter the genuine copyright credit. Preserve rules text EXACTLY, including red words: 'Resta 2 puntos a cualquier daño que recibas.' and 'Si en el dado de ataque alguien saca 1: destruye esta carta.' Do not translate, paraphrase, redesign or add text. Sharp legible restored print. Same portrait697:987 aspect ratio, no crop, no added margins. Opaque original card, not transparent. Output only cleaned card.

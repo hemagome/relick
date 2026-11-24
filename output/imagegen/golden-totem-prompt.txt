@@ -1,6 +1,0 @@
-Use case: precise-object-edit
-Asset type: complete portrait Spanish trading card game asset.
-Input images: Image 1 is the edit target, the user supplied TÓTEM DE ORO code card.
-Primary request: remove only the large repeated semi-transparent diagonal RELICK watermark overlays throughout the card. Faithfully reconstruct the golden angular mask, long golden feathers, white outline, gold rays, brown radial backdrop, gray circuit board frame and white rules panel underneath.
-Constraints: preserve the entire original card, portrait aspect ratio, original layout, illustration, colors, headings PERSONAJE and CÓDIGO, title TÓTEM DE ORO, identifier BGK-10/16, and copyright ©2018 FUYUHIRO GUSHIKEN. Preserve all printed Spanish rules and author credits exactly. No cropping, redesign or new objects; remove only the diagonal overlays.
-Rule text verbatim: "MUESTRA DE TU MANO HASTA 2 TÓTEM DE SALVACIÓN, COLOCALOS EN LA ZONA DE EQUIPOS Y Ú COLOCA ESTE OBJETO ENCIMA DE TUS CARTAS DE EQUIPO. SI TÓTEM DE SALVACIÓN FUERA A SER DESTRUIDO Y ESTA CARTA ESTA EN LA ZONA DE EQUIPOS: DESTRUYE ESTA CARTA EN SU LUGAR." Preserve the actual original printed text, punctuation, typography, accent marks and line breaks.

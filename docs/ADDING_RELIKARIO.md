@@ -71,7 +71,7 @@ Todo el arte del personaje va en `assets/characters/<id base>/`. [scripts/Relika
 | `attack-projectile.png` | Proyectil del ataque | transparente |
 | `attack-card.png` | Ilustración alternativa del Ataque clásico | 1054 × 1492 |
 
-Documenta en un `README.md` de la carpeta la procedencia de cada imagen: quién la aportó, con qué permiso y qué transformación no generativa se le aplicó (recorte, escala). Las imágenes derivadas de una carta, como el retrato, conservan la marca de agua de la carta de la que salen. Las figuras y animaciones del tablero deben ser arte aportado con permiso o arte original del proyecto, no reconstrucciones generativas de las ilustraciones oficiales. Los prompts de `image_gen` que aparecen en los `README.md` de Yuno, Osamu, WD y Yuno Oro son un registro histórico de cómo se hicieron esos recursos, no un procedimiento a seguir.
+Documenta en un `README.md` de la carpeta la procedencia de cada imagen: quién la aportó, con qué permiso y qué transformación no generativa se le aplicó (recorte, escala). Las imágenes derivadas de una carta, como el retrato, conservan la marca de agua de la carta de la que salen. Las figuras y animaciones del tablero deben ser arte aportado con permiso o arte original del proyecto, no reconstrucciones generativas de las ilustraciones oficiales. Los prompts de `image_gen` que aún aparecen en los `README.md` de Yuno, Osamu, WD y Yuno Oro describen cómo se hicieron sus retratos y animaciones; son un registro histórico, no un procedimiento a seguir.
 
 ## 6. Animaciones del tablero
 

@@ -1,9 +1,0 @@
-Tool: built-in image_gen; transparent_background=false.
-Source: /home/hemagome/Downloads/bomba-de-tiempo.png
-Output: assets/cards/time-bomb-clean.png, normalized697x987.
-
-Cleaning prompt:
-Use case: precise-object-edit. Remove ONLY the large repeated translucent diagonal RELICK watermark from this Spanish trading card scan. Reconstruct the spherical gray cartoon time bomb, lit yellow/orange fuse, purple starry background, gray circuit-board border and printed areas where covered. Preserve complete layout, illustration, colors, black outlines and ALL legitimate printed text, card number B04-9/15 and small bottom copyright credit ©2018 Fuyuhiro Gushiken. Preserve OBJETO and CÓDIGO headers, title BOMBA DE TIEMPO and rule text EXACTLY: 'Escoge una de estas opciones: -zona de equipos. -mano al azar. -zona bonus. Destruye una carta de ese lugar.' Preserve the decorative clock digits on the bomb. No rewriting, translation, extra text or redesigned layout. Same697:987 portrait proportions, no crop/margins. Original opaque card, not transparent. Output only cleaned card with crisp readable text.
-
-Footer correction:
-Localized footer correction ONLY. Image1 is edit target: the cleaned Bomba de Tiempo trading card. Image2 is the original reference ONLY for its small legitimate copyright credit at bottom right. Restore that exact footer credit '©2018 FUYUHIRO GUSHIKEN' in small white italic condensed letters with dark outline at the bottom-right border, matching Image2 placement/style. Preserve every other part of Image1 exactly: full framing, art, circuit border, all existing text and number B04-9/15. Do NOT reintroduce any diagonal RELICK watermark. Do not redraw, resize, crop, replace or reword the card. Change only the missing tiny bottom-right copyright credit. Opaque card same portrait proportions, no added margins.
