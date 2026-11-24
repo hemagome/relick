@@ -391,7 +391,7 @@ Cambios en el servidor:
 - **Tabla `deck_style`.** Guarda la mica y el dado de cada mazo, igual que `deck_side` guarda el banquillo. Un mazo sin fila usa los clásicos, y no se escribe fila cuando el estilo es el clásico. Borrar el mazo borra también su estilo.
 - **Tabla `loadout_style`.** Congela la mica y el dado al repartir, igual que `loadout` congela las Trampas. Se elimina al salir, al caducar la sala o al eliminar la cuenta.
 - **Vista `my_deck_styles`.** Publica la mica y el dado de cada mazo con estilo. `my_decks` no cambia, para no romper a los clientes anteriores; el cliente une ambas vistas (`LobbyConnection.WithStyles`) y se suscribe a la nueva por separado, como a la partida rápida.
-- **Reductor `save_deck_v_2`.** Guarda el mazo con su estilo y rechaza identificadores que no existan. `save_deck` sigue disponible para los clientes anteriores y conserva el estilo que ya tenga el mazo.
+- **Reductor `save_deck_v_2`.** Guarda el mazo con su estilo y rechaza identificadores que no existan. El reductor anterior, `save_deck`, se retiró el 24 de noviembre de 2026: ningún cliente actual lo usaba, así que los clientes anteriores a los estilos ya no pueden guardar mazos.
 
 Cambios en el motor:
 
@@ -408,7 +408,7 @@ Validación local con `tests/server/dev`:
 Publicado el 15 de noviembre de 2026 en `relick-pvp-dev-c2006ee7` de Maincloud
 con `--delete-data=never`. El plan de migración solo agregó las tablas privadas
 `deck_style` y `loadout_style` y la vista `my_deck_styles`. No eliminó tablas ni
-datos. Los clientes anteriores siguen funcionando con `save_deck`.
+datos. Los clientes anteriores siguieron funcionando con `save_deck` hasta su retirada.
 
 El 15 de noviembre se corrigió el cliente: leía la mica y el dado de cada fila de
 `my_decks`, que nunca los tuvo, y el juego no compilaba. Ahora los toma de

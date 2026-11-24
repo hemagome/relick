@@ -313,12 +313,6 @@ public partial class OnlineArena
         RefreshInspector();
     }
 
-    private Button AddLocalButton(Node parent, string label, Action pressed)
-    {
-        var button = ArenaPresentation.Button(parent, label, pressed); button.TooltipText = label;
-        button.AddThemeFontSizeOverride("font_size", Short ? 13 : 15); return button;
-    }
-
     private void ClearContext()
     {
         var gallery = _showReplayMemory;
@@ -644,7 +638,6 @@ public partial class OnlineArena
 
     private void RefreshAdvanceInvitation(bool blocked)
         => _advanceButton?.SetInvitation(!blocked && !_preparing && _snapshot != null && AdvanceSuggested(_snapshot));
-
 
     private string ChoiceOrigin(DuelOption option) => option.Move.Kind switch
     {

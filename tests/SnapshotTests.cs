@@ -1,5 +1,4 @@
 using Relick.Core;
-using System.Text.Json;
 
 static class SnapshotTests
 {

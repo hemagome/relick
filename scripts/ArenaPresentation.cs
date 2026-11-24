@@ -112,7 +112,7 @@ public static class ArenaPresentation
     /// over its equipment, the four skills in a 2×2 block, the memory and the deck. The rival's
     /// half is the same field turned around.
     /// </summary>
-    public static void Field(BoardCanvas canvas, DuelPlayerView owner, int index, bool enemy, bool active, bool preparing,
+    public static void Field(BoardCanvas canvas, DuelPlayerView owner, int index, bool enemy, bool preparing,
         int selectedSkill, RelikarioPortrait portrait, LifeMeter life, ActionCrystalPool crystals, ArenaPlayerActions actions,
         Action bonusPressed, Action<int> exchangePressed)
     {

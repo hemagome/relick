@@ -23,7 +23,7 @@ internal static class FieldDestruction
 
     public static DecisionChoice Zone(GameEngine.EffectContext ctx, FieldTarget t) => new()
     {
-        Label = GameEngine.FieldPlace(ctx.State, t, ctx.Actor),
+        Label = GameEngine.FieldPlace(t, ctx.Actor),
         Button = "Destruir", Field = t, Public = $"elige destruir una carta de {ctx.PlayerName(t.Owner)} ({PublicZone(t.Zone)})."
     };
 

@@ -127,9 +127,8 @@ public static partial class Module
             .Select(style => new DeckStyleInfo { Deck = style!.Value.Deck, Sleeve = style.Value.Sleeve, Dice = style.Value.Dice })
             .ToList();
 
-    /// <summary>Creates a deck when <paramref name="id"/> is zero, otherwise replaces the caller's deck.
+    /// <summary>Creates a deck when <paramref name="id"/> is zero, otherwise replaces the caller's deck, with its cosmetic sleeve and die.
     /// An illegal deck is kept as a draft; it cannot be made active or dealt.</summary>
-    /// <summary>Saves a deck with its cosmetic sleeve and die. Older clients call <see cref="SaveDeck"/>, which keeps the current style.</summary>
     [Reducer]
     public static void SaveDeckV2(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side,
         string sleeve, string dice, string commandId)
@@ -140,12 +139,8 @@ public static partial class Module
         StoreDeck(ctx, id, name, relikario, cards, traps, side, commandId, (sleeve, dice));
     }
 
-    [Reducer]
-    public static void SaveDeck(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side, string commandId) =>
-        StoreDeck(ctx, id, name, relikario, cards, traps, side, commandId, null);
-
     private static void StoreDeck(ReducerContext ctx, ulong id, string name, string relikario, List<string> cards, List<string> traps, List<string> side,
-        string commandId, (string Sleeve, string Dice)? style)
+        string commandId, (string Sleeve, string Dice) style)
     {
         if (RequireAccount(ctx).Guest) throw new Exception(GuestsKeepNoDecks);
         if (!Guid.TryParseExact(commandId, "N", out _)) throw new Exception("Solicitud de mazo inválida.");
@@ -167,7 +162,7 @@ public static partial class Module
             if (mine.Count >= MaxDecksPerPlayer) throw new Exception($"Puedes guardar hasta {MaxDecksPerPlayer} mazos.");
             var created = ctx.Db.Deck.Insert(new Deck { Owner = ctx.Sender, Name = name, Relikario = relikario, Cards = cards, Traps = traps, CommandId = commandId, UpdatedAt = now });
             StoreSide(ctx, created.Id, side);
-            if (style is { } chosen) StoreStyle(ctx, created.Id, chosen.Sleeve, chosen.Dice);
+            StoreStyle(ctx, created.Id, style.Sleeve, style.Dice);
             return;
         }
         if (mine.FirstOrDefault(deck => deck.Id == id) is not { Id: > 0 } current) throw new Exception("No se encontró el mazo.");
@@ -175,7 +170,7 @@ public static partial class Module
         current.CommandId = commandId; current.UpdatedAt = now;
         ctx.Db.Deck.Id.Update(current);
         StoreSide(ctx, id, side);
-        if (style is { } updated) StoreStyle(ctx, id, updated.Sleeve, updated.Dice);
+        StoreStyle(ctx, id, style.Sleeve, style.Dice);
         // A deck edited into a draft stops being the one dealt.
         if (ctx.Db.Account.Player.Find(ctx.Sender) is Account account && account.ActiveDeck == id &&
             DeckRules.Validate(relikario, cards, traps, side).Count > 0) SetActive(ctx, account, 0);

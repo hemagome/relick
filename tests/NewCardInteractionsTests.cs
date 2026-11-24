@@ -11,7 +11,6 @@ static class NewCardInteractionsTests
     private static readonly string Era = CardCatalog.FutureEra.Id;
     private static readonly string Attack = CardCatalog.Attack.Id;
     private static readonly string Life = CardCatalog.ExtraLife.Id;
-    private static readonly string Shield = CardCatalog.GalacticShield.Id;
 
     public static (string Name, Action Run)[] Cases =>
     [

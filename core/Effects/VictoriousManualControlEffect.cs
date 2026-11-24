@@ -2,7 +2,7 @@ namespace Relick.Core;
 
 internal sealed class VictoriousManualControlEffect : CardEffect
 {
-    private const string Source = "source", Destination = "destination";
+    private const string Source = "source";
 
     public override string CardId => CardCatalog.VictoriousManualControl.Id;
 
