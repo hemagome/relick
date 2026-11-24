@@ -56,11 +56,9 @@ Con `tests/server/dev` publicado en un servidor local en el puerto 3100:
 ```bash
 dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --rate-test http://127.0.0.1:3100 relick-dev
 dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --load http://127.0.0.1:3100 relick-dev artifacts/scalability-load.json
-dotnet run --project tests/pvp/Relick.Pvp.Tests.csproj -- --state-benchmark
 ```
 
 - `--load` lanza oleadas de partidas con dos clientes por sala y guarda jugadas por segundo y latencias en el archivo indicado. Las cifras de una máquina local sirven para detectar regresiones, no para estimar la capacidad de un servidor remoto.
-- `--state-benchmark` compara recuperar una partida desde su estado guardado con reproducirla desde el historial (`artifacts/scalability-state.json`).
 
 La prueba de temporizadores usa el módulo `tests/server/lifecycle`, con vencimientos de dos segundos. **No lo publiques en un servidor compartido.**
 
