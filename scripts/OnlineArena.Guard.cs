@@ -1,4 +1,3 @@
-using Godot;
 using Relick.Core;
 
 namespace Relick;

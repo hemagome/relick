@@ -377,7 +377,7 @@ public partial class OnlineArena : Control
             {
                 var seat = relative == 0 ? s.MySeat : 1 - s.MySeat;
                 var actions = Prepare(relative);
-                ArenaPresentation.Field(canvas, relativePlayers[relative], relative, relative == 1, Active(relative), _preparing,
+                ArenaPresentation.Field(canvas, relativePlayers[relative], relative, relative == 1, _preparing,
                     _selectedSkill, _portraits[relative], _life[relative], _actionPools[relative], actions,
                     () => SelectField(seat, FieldZone.Bonus, -1), slot => SelectField(seat, FieldZone.Exchange, slot));
             }

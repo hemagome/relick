@@ -78,7 +78,6 @@ public sealed partial class LobbyConnection
         _connection.Db.MyDeckStyles.OnInsert += (_, _) => Changed();
         _connection.Db.MyDeckStyles.OnUpdate += (_, _, _) => Changed();
         _connection.Db.MyDeckStyles.OnDelete += (_, _) => Changed();
-        _connection.Reducers.OnSaveDeck += (context, _, _, _, _, _, _, _) => Reply(context, save: true);
         _connection.Reducers.OnSaveDeckV2 += (context, _, _, _, _, _, _, _, _, _) => Reply(context, save: true);
         _connection.Reducers.OnDeleteDeck += (context, _) => Reply(context);
         _connection.Reducers.OnSetActiveDeck += (context, _) => Reply(context);

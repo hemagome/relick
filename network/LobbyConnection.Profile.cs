@@ -1,4 +1,3 @@
-using Relick.Core;
 using Relick.Network.Types;
 using SpacetimeDB;
 

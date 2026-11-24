@@ -1,5 +1,4 @@
 using SpacetimeDB;
-using Relick.Core;
 
 public static partial class Module
 {

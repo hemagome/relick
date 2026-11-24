@@ -43,7 +43,7 @@ static class DeckChecks
             {
                 peer.Replies++; peer.Error = ctx.Event.Status is Status.Failed(var reason) ? reason : null;
             }
-            peer.Connection.Reducers.OnSaveDeck += (ctx, _, _, _, _, _, _, _) => Reply(ctx);
+            peer.Connection.Reducers.OnSaveDeckV2 += (ctx, _, _, _, _, _, _, _, _, _) => Reply(ctx);
             peer.Connection.Reducers.OnSetDisplayName += (ctx, _) => Reply(ctx);
             peer.Connection.Reducers.OnDeleteAccount += ctx => Reply(ctx);
             peer.Connection.Reducers.OnDeleteAccountOf += (ctx, _) => Reply(ctx);
@@ -75,7 +75,7 @@ static class DeckChecks
                 Console.WriteLine("Esperando a que la cuenta se marque como invitada…");
                 await Until(() => visitor.Connection.Db.MyAccount.Iter().SingleOrDefault()?.Guest == true, 60);
                 var legal = CardCatalog.TrainingDeck();
-                await Call(visitor, r => r.SaveDeck(0, "De invitado", "yuno", legal, [], [], Id()), rejected: true);
+                await Call(visitor, r => r.SaveDeckV2(0, "De invitado", "yuno", legal, [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
                 Check(visitor.Error!.Contains("invitado") && visitor.Decks.Count == 0, "Un invitado no puede guardar mazos");
                 await Call(visitor, r => r.SetActiveDeck(1), rejected: true);
                 Check(visitor.Error!.Contains("invitado"), "Un invitado no puede activar un mazo guardado");
@@ -100,30 +100,30 @@ static class DeckChecks
             var command = Id();
             var legacy = custom.ToList();
             legacy[0] = CardCatalog.AttackOsamu.Id;
-            await Call(ana, r => r.SaveDeck(0, "  Dobles  ", "yuno", legacy, traps, [], command));
-            await Call(ana, r => r.SaveDeck(0, "Dobles", "yuno", custom, traps, [], command));
+            await Call(ana, r => r.SaveDeckV2(0, "  Dobles  ", "yuno", legacy, traps, [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, command));
+            await Call(ana, r => r.SaveDeckV2(0, "Dobles", "yuno", custom, traps, [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, command));
             await Until(() => ana.Decks.Count == 1);
             var deck = ana.Decks.Single();
             Check(deck is { Name: "Dobles", Valid: true, Active: false } && deck.Cards.SequenceEqual(custom) && deck.Traps.SequenceEqual(traps),
                 "Guardar reemplaza el arte ajeno, conserva los artes propios, evita duplicados al reintentar y recorta el nombre");
             Check(beto.Decks.Count == 0, "Los mazos de otro jugador no son visibles");
 
-            await Call(ana, r => r.SaveDeck(0, "Borrador", "yuno", custom.Skip(1).ToList(), [], [], Id()));
+            await Call(ana, r => r.SaveDeckV2(0, "Borrador", "yuno", custom.Skip(1).ToList(), [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
             await Until(() => ana.Decks.Count == 2);
             var draft = ana.Decks.Single(d => d.Name == "Borrador");
             Check(!draft.Valid, "Un mazo que no cumple las reglas se guarda como borrador");
             await Call(ana, r => r.SetActiveDeck(draft.Id), rejected: true);
             Check(ana.Error!.Contains("no cumple las reglas"), "Un borrador no puede ser el mazo activo");
 
-            await Call(ana, r => r.SaveDeck(0, "Falso", "yuno", custom.Skip(1).Append("no-existe").ToList(), [], [], Id()), rejected: true);
-            await Call(ana, r => r.SaveDeck(0, "Falso", "otro", custom, [], [], Id()), rejected: true);
-            await Call(ana, r => r.SaveDeck(0, " ", "yuno", custom, [], [], Id()), rejected: true);
-            await Call(ana, r => r.SaveDeck(0, "Enorme", "yuno", Enumerable.Repeat("attack", 200).ToList(), [], [], Id()), rejected: true);
-            await Call(ana, r => r.SaveDeck(0, "Mal id", "yuno", custom, [], [], "x"), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(0, "Falso", "yuno", custom.Skip(1).Append("no-existe").ToList(), [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(0, "Falso", "otro", custom, [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(0, " ", "yuno", custom, [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(0, "Enorme", "yuno", Enumerable.Repeat("attack", 200).ToList(), [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(0, "Mal id", "yuno", custom, [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, "x"), rejected: true);
             Check(ana.Decks.Count == 2, "Cartas, Relikarios, nombres, tamaños e identificadores inválidos se rechazan");
 
             await Call(beto, r => r.SetActiveDeck(deck.Id), rejected: true);
-            await Call(beto, r => r.SaveDeck(deck.Id, "Robado", "yuno", custom, [], [], Id()), rejected: true);
+            await Call(beto, r => r.SaveDeckV2(deck.Id, "Robado", "yuno", custom, [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
             await Call(beto, r => r.DeleteDeck(deck.Id), rejected: true);
             Check(ana.Decks.Count == 2 && ana.Decks.Any(d => d.Name == "Dobles"), "Otro jugador no puede usar, editar ni borrar un mazo ajeno");
 
@@ -135,25 +135,23 @@ static class DeckChecks
             var bench = CardCatalog.All.Values.Where(card => !DeckRules.IsAttack(card) && !DeckRules.IsTrap(card) && !pairs.Contains(card.Id) && DeckRules.Compatible(card, "yuno"))
                 .Select(card => card.Id).Take(DeckRules.MaxSide).ToList();
             Check(bench.Count == DeckRules.MaxSide && DeckRules.Validate("yuno", custom, traps, bench).Count == 0, "El banquillo de prueba cumple las reglas");
-            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, [pairs[0]], Id()));
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, [pairs[0]], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
             await Until(() => ana.Decks.Single(d => d.Id == deck.Id) is { Valid: false, Active: false });
             Check(true, "Una tercera copia en el banquillo deja el mazo como borrador y lo desactiva");
-            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, ["attack"], Id()));
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, ["attack"], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
             await Call(ana, r => r.SetActiveDeck(deck.Id), rejected: true);
             Check(ana.Error!.Contains("banquillo no admite cartas de Ataque"), "Un banquillo con Ataques no se puede activar");
-            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, Enumerable.Repeat(bench[0], 21).ToList(), Id()), rejected: true);
-            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, ["no-existe"], Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, Enumerable.Repeat(bench[0], 21).ToList(), CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, ["no-existe"], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
             Check(ana.Decks.Single(d => d.Id == deck.Id).Side.SequenceEqual(["attack"]), "Banquillos desmedidos o con cartas inexistentes se rechazan");
-            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, bench, Id()));
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
             await Call(ana, r => r.SetActiveDeck(deck.Id));
             await Until(() => ana.Decks.Single(d => d.Id == deck.Id) is { Valid: true, Active: true } saved && saved.Side.SequenceEqual(bench));
             Check(true, "Guardar conserva un banquillo de diez cartas y el mazo sigue siendo jugable");
 
-            // The deck's sleeve and die: saved with it, kept when an older client saves without them, and validated.
+            // The deck's sleeve and die: saved with it and validated.
             await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, "oro", "obsidiana", Id()));
             await Until(() => ana.Decks.Single(d => d.Id == deck.Id) is { Sleeve: "oro", Dice: "obsidiana", Valid: true, Active: true });
-            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, bench, Id()));
-            Check(ana.Decks.Single(d => d.Id == deck.Id) is { Sleeve: "oro", Dice: "obsidiana" }, "Guardar con un cliente anterior conserva la mica y el dado");
             await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, "no-existe", "clasico", Id()), rejected: true);
             await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, "clasica", "no-existe", Id()), rejected: true);
             Check(ana.Decks.Single(d => d.Id == deck.Id) is { Sleeve: "oro", Dice: "obsidiana" }, "Micas y dados inexistentes se rechazan sin tocar el mazo");
@@ -169,7 +167,7 @@ static class DeckChecks
                 await Until(() => ana.Room!.Dealt && beto.Room?.Dealt == true);
                 var room = ana.Room!.Code;
                 // Editing after the deal must not reach the match in progress.
-                await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", CardCatalog.TrainingDeck(), [], [], Id()));
+                await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", CardCatalog.TrainingDeck(), [], [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
                 foreach (var peer in new[] { ana, beto })
                     await Call(peer, r => r.ChooseInitialSkill(room, "magnet-shuffle", Id()));
                 await Until(() => ana.Hand.Count == 5 && beto.Hand.Count == 5);
@@ -178,7 +176,7 @@ static class DeckChecks
                 betoCards.UnionWith(beto.Hand);
                 await Call(ana, r => r.LeaveRoom());
                 await Until(() => ana.Room == null && beto.Room == null);
-                await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, bench, Id()));
+                await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
             }
             Check(true, "La mano inicial sale del mazo activo aunque se edite después de repartir");
             Check(betoCards.Any(card => !custom.Contains(card)) && betoCards.All(CardCatalog.TrainingDeck().Contains),
@@ -199,7 +197,7 @@ static class DeckChecks
                 await Until(() => new[] { ana, beto }.All(p => p.Connection.Db.MyRoomRelikarios.Iter().SingleOrDefault() is
                     { RelikarioOne: "osamu", RelikarioTwo: "yuno" }));
                 Check(true, "Osamu y Yuno se ven en la preparación antes de elegir sus habilidades");
-                await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom, traps, bench, Id()));
+                await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom, traps, bench, CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
                 await Call(ana, r => r.ChooseInitialSkill(room, CardCatalog.TurboOverlap.Id, Id()));
                 await Call(beto, r => r.ChooseInitialSkill(room, CardCatalog.Magnet.Id, Id()));
                 await Until(() => ana.Hand.Count == 5 && beto.Hand.Count == 5);
@@ -216,7 +214,7 @@ static class DeckChecks
                 await Until(() => ana.Room == null && beto.Room == null);
             }
 
-            await Call(ana, r => r.SaveDeck(deck.Id, "Dobles", "yuno", custom.Skip(1).ToList(), traps, [], Id()));
+            await Call(ana, r => r.SaveDeckV2(deck.Id, "Dobles", "yuno", custom.Skip(1).ToList(), traps, [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
             await Until(() => ana.Decks.All(d => !d.Active));
             Check(!ana.Decks.Single(d => d.Id == deck.Id).Valid, "Editar el mazo activo hasta dejarlo ilegal lo desactiva");
 
@@ -236,14 +234,14 @@ static class DeckChecks
             await Call(beto, r => r.LeaveRoom());
             await Until(() => beto.Room == null);
 
-            for (var i = 0; i < 20; i++) await Call(beto, r => r.SaveDeck(0, "Mazo " + i, "yuno", custom, traps, [], Id()));
-            await Call(beto, r => r.SaveDeck(0, "Sobra", "yuno", custom, traps, [], Id()), rejected: true);
+            for (var i = 0; i < 20; i++) await Call(beto, r => r.SaveDeckV2(0, "Mazo " + i, "yuno", custom, traps, [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
+            await Call(beto, r => r.SaveDeckV2(0, "Sobra", "yuno", custom, traps, [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
             await Until(() => beto.Decks.Count == 20);
             Check(true, "Cada jugador guarda hasta 20 mazos");
             foreach (var saved in beto.Decks.ToList()) await Call(beto, r => r.DeleteDeck(saved.Id));
 
             // Deleting an account erases its decks and leaves nothing to play with until a new sign-in.
-            await Call(ana, r => r.SaveDeck(0, "Se va conmigo", "yuno", custom, traps, [], Id()));
+            await Call(ana, r => r.SaveDeckV2(0, "Se va conmigo", "yuno", custom, traps, [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()));
             await Until(() => ana.Decks.Count == 1);
             await Call(ana, r => r.CreateRoom("Ana"));
             await Until(() => ana.Room != null);
@@ -255,7 +253,7 @@ static class DeckChecks
             Check(ana.Decks.Count == 1, "Un jugador no puede eliminar la cuenta de otro");
             await Call(ana, r => r.DeleteAccount());
             await Until(() => ana.Decks.Count == 0 && !ana.Connection.Db.MyAccount.Iter().Any());
-            await Call(ana, r => r.SaveDeck(0, "Fantasma", "yuno", custom, traps, [], Id()), rejected: true);
+            await Call(ana, r => r.SaveDeckV2(0, "Fantasma", "yuno", custom, traps, [], CosmeticCatalog.DefaultSleeve, CosmeticCatalog.DefaultDice, Id()), rejected: true);
             await Call(ana, r => r.CreateRoom("Ana"), rejected: true);
             await Call(ana, r => r.DeleteAccount(), rejected: true);
             Check(ana.Error!.Contains("Inicia sesión"), "Eliminar la cuenta borra sus mazos y deja de admitir sus solicitudes");

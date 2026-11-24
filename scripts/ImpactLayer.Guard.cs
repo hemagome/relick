@@ -69,7 +69,7 @@ public partial class ImpactLayer
         if (g.Projectile != null) DrawBouncingBlow(g, origin, center, radius, facing);
         if (local < 0) return;
         var flare = ReducedMotion ? 0 : Math.Max(0, 1 - local / 0.25f);
-        if (g.Blocked) DrawBlock(g, portrait, origin, center, radius, local, fade, flare);
+        if (g.Blocked) DrawBlock(g, center, radius, local, fade, flare);
         else DrawReduction(g, portrait, origin, center, radius, facing, local, fade, flare);
     }
 
@@ -164,7 +164,7 @@ public partial class ImpactLayer
             BoardArt.CenterText(this, "0", point + new Vector2(0, size * 0.95f), 30, BoardArt.Tint(g.Accent, fade));
     }
 
-    private void DrawBlock(GuardEffect g, Rect2 portrait, Vector2 origin, Vector2 center, float radius, float local, float fade, float flare)
+    private void DrawBlock(GuardEffect g, Vector2 center, float radius, float local, float fade, float flare)
     {
         // A full barrier around the defender, brightest at the moment of the block.
         var pulse = ReducedMotion ? 0 : 0.5f + 0.5f * Mathf.Sin(local * Mathf.Tau * 1.6f);

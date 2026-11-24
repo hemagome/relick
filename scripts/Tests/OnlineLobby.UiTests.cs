@@ -230,6 +230,7 @@ public partial class OnlineLobby
                 ("MatchmakingAnimation", () => { Lobby(); return CheckMatchmakingAnimation(); }),
                 ("MenuStyle", () => { Lobby(); return CheckMenuStyle(); }),
                 ("AccountScreens", () => { Lobby(); return CheckAccountScreens(); }),
+                ("LegalNotice", () => { Lobby(); return CheckLegalNotice(); }),
                 ("DeckScreens", () => { Lobby(); return CheckDeckScreens(); }),
             };
             var names = checks.Select(check => check.Name).ToArray();

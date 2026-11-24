@@ -114,6 +114,10 @@ public partial class OnlineLobby
         var connection = new HBoxContainer(); connection.AddThemeConstantOverride("separation", 10); column.AddChild(connection);
         _status = Description("Conectando…"); _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _status.SizeFlagsVertical = SizeFlags.ShrinkCenter; connection.AddChild(_status);
+        // The full notice lives in Ajustes → Acerca de; the menu keeps one quiet line under everything else.
+        var notice = Caption(LegalNotice.Short + " Aviso legal en Ajustes.", BoardArt.Muted); notice.Name = "PlayLegalNotice";
+        notice.AutowrapMode = TextServer.AutowrapMode.WordSmart; notice.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(notice);
         page.Resized += AdjustPlayLayout;
         return page;
     }

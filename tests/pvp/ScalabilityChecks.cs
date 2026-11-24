@@ -13,7 +13,6 @@ static class ScalabilityChecks
         try
         {
             if (mode == "--load") await Load(server, database, args.ElementAtOrDefault(3) ?? "artifacts/scalability-load.json");
-            else if (mode == "--state-benchmark") StateBenchmark(args.ElementAtOrDefault(3) ?? "artifacts/scalability-state.json");
             else if (mode == "--expiry-test") await Expiry(server, database);
             else if (mode == "--rate-test") await Rate(server, database);
             else if (mode == "--restart-prepare") await Restart(server, database, args.ElementAtOrDefault(3) ?? "/tmp/relick-restart-check.json", false);
@@ -178,40 +177,6 @@ static class ScalabilityChecks
             using var writer = new StreamWriter(new FileStream(path, options)); writer.Write(JsonSerializer.Serialize(saved));
             Console.WriteLine("RESTART_READY · archivo privado creado; los tokens no se muestran.");
         }
-    }
-
-    static void StateBenchmark(string output)
-    {
-        using var document = JsonDocument.Parse(File.ReadAllText("tests/fixtures/legacy-duels.json"));
-        var fixture = document.RootElement.EnumerateArray().Where(g => g.GetProperty("Opening").ValueKind != JsonValueKind.Null)
-            .OrderByDescending(g => g.GetProperty("Steps").GetArrayLength()).First();
-        var opening = JsonSerializer.Deserialize(fixture.GetProperty("Opening").GetRawText(), DuelJson.Default.DuelOpening)!;
-        var entries = fixture.GetProperty("Steps").EnumerateArray().Select(s => JsonSerializer.Deserialize(s.GetProperty("Entry").GetRawText(), DuelJson.Default.DuelEntry)!).ToArray();
-        var results = new List<object>();
-        (double Ms, long Bytes) Measure(Action action)
-        {
-            for (var i = 0; i < 20; i++) action();
-            var before = GC.GetAllocatedBytesForCurrentThread(); var timer = Stopwatch.StartNew();
-            for (var i = 0; i < 300; i++) action();
-            timer.Stop(); return (timer.Elapsed.TotalMilliseconds / 300, (GC.GetAllocatedBytesForCurrentThread() - before) / 300);
-        }
-        foreach (var length in new[] { 10, 40, 90 }.Where(n => n <= entries.Length))
-        {
-            var prefix = entries.Take(length).ToArray();
-            var snapshot = DuelReplay.Restore(opening, prefix).Game.SaveSnapshot(false);
-            var decodedReplay = Measure(() => DuelReplay.Restore(opening, prefix));
-            var openingJson = JsonSerializer.Serialize(opening, DuelJson.Default.DuelOpening);
-            var stored = prefix.Select(e => JsonSerializer.Serialize(e, DuelJson.Default.DuelEntry)).ToArray();
-            var replay = Measure(() => DuelReplay.Restore(JsonSerializer.Deserialize(openingJson, DuelJson.Default.DuelOpening)!,
-                stored.Select(j => JsonSerializer.Deserialize(j, DuelJson.Default.DuelEntry)!)));
-            var saved = Measure(() => GameEngine.FromSnapshot(snapshot, new DuelRandom()));
-            results.Add(new { Moves = length, PredecodedReplayMs = decodedReplay.Ms, ReplayMs = replay.Ms, SnapshotMs = saved.Ms, ReplayAllocatedBytes = replay.Bytes,
-                SnapshotAllocatedBytes = saved.Bytes, SnapshotBytes = System.Text.Encoding.UTF8.GetByteCount(snapshot) });
-            Console.WriteLine($"STATE {length} jugadas: replay {replay.Ms:F3} ms / snapshot {saved.Ms:F3} ms");
-        }
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
-        File.WriteAllText(output, JsonSerializer.Serialize(new { TimestampUtc = DateTimeOffset.UtcNow, Results = results,
-            Notes = "Comparación de la lectura del historial JSON persistido con lectura del estado JSON guardado, en .NET nativo local. PredecodedReplayMs excluye la deserialización y no representa el camino anterior del servidor. 20 calentamientos y 300 repeticiones por muestra; no es una medición de WASI ni de Maincloud." }, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     sealed class LoadPair

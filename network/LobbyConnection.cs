@@ -1,5 +1,4 @@
 using Relick.Network.Types;
-using SpacetimeDB.ClientApi;
 using SpacetimeDB;
 using Relick.Core;
 using System.Text.Json;

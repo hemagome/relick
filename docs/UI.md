@@ -1,12 +1,12 @@
 # Interfaz PvP y pantallas horizontales
 
-El juego inicia directamente en `OnlineLobby`, desde `scenes/Main.tscn`. No se construye un motor local, un rival automático ni un tablero oculto al abrir las salas. El controlador de práctica y sus pruebas de interfaz fueron retirados; las simulaciones de reglas restantes solo se compilan en las pruebas .NET.
+El juego inicia directamente en `OnlineLobby`, desde `scenes/Main.tscn`. No hay motor local, rival automático ni tablero oculto: las simulaciones de reglas solo se compilan en las pruebas .NET.
 
-## Identidad y futuros playmats
+## Identidad visual y tapetes
 
-La cabecera muestra el logotipo original de Relick. Marcos con esquinas recortadas, símbolos sólidos y circuitos de bajo contraste conectan las cartas y los controles con la estética del manga y sus referencias a videojuegos. Cada campo se tiñe con el acento de su jugador y se ilumina durante su turno; la identidad del propietario permanece en su cabecera.
+La cabecera muestra el logotipo de Relick (ver [NOTICE.md](../NOTICE.md)). Marcos con esquinas recortadas, símbolos sólidos y circuitos de bajo contraste conectan las cartas y los controles con la estética del manga y sus referencias a videojuegos. Cada campo se tiñe con el acento de su jugador y se ilumina durante su turno; la identidad del propietario permanece en su cabecera.
 
-`RelickVisuals` centraliza marcos, controles, logotipo y señales de interacción. `RelickPlaymat` define fondo, superficies, borde y circuitos, con una textura opcional para el tapete. Es una base para temas futuros, todavía sin selector, persistencia ni cambio en caliente. El arte de un tapete se dibuja bajo las superficies legibles de la interfaz.
+`RelickVisuals` centraliza marcos, controles, logotipo y señales de interacción. `RelickPlaymat` define fondo, superficies, borde y circuitos, con una textura opcional para el tapete. Cada jugador elige su tapete en el perfil ([Perfil público](#perfil-público)); su arte se dibuja bajo las superficies legibles de la interfaz.
 
 Los significados de `RelickVisuals.State` son independientes del tapete: selección dorada con confirmación, objetivo cian con escuadras y foco de teclado blanco. La prioridad es selección > objetivo > hover; el foco añade un borde interior. Vida baja conserva su señal de peligro. Las zonas vacías mantienen su tamaño y posición con contornos tenues y costes discretos. Las fases futuras quedan atenuadas, las completadas llevan confirmación y la actual se destaca con tamaño y color; la celda de estado dice con texto de quién es el turno.
 
@@ -52,7 +52,7 @@ Con un lienzo de al menos 1400×980 unidades lógicas, `OnlineArena` construye e
 - **Bonus y canje.** Como en el juego físico, Bonus y Área comparten una única zona Bonus dentro del campo de su dueño, junto a la línea central. Es ancha para dos cartas pegadas: con solo el Bonus, este queda centrado; al activarse un Área, ambas se ven lado a lado. Más afuera hay un único canje: la segunda carta canjeada se apila sobre la primera, desplazada hacia el borde para que siga viéndose una franja de la de abajo. Un hueco de Área o de segunda carta vacío no se dibuja ni recibe clics. Los textos nombran las cartas del canje como «abajo» y «encima». El marco se delinea en verde para el jugador y en rojo para el rival.
 - **Cartas sobre el Relikario.** `RelikarioGroups` agrupa lo que hay sobre cada Relikario como en una mesa física: cada carta con las que guarda debajo (las cartas del Tomo de Magia, las cargas boca abajo de cada Escudo Galáctico). Solo los grupos con cartas debajo reciben un color propio (ámbar, cian, rosa, lima, lila), así que un color en el tablero siempre significa «van juntas». En el tablero de escritorio la pila crece hacia abajo: cada carta (las anexas y luego cada Escudo) queda un poco más abajo que la anterior y deja ver la parte superior de la de debajo; el paso se reduce si hay muchas. Cada carta con cartas debajo lleva un contorno de su color y, en la franja visible, una ficha «+N». Las composiciones compactas conservan una columna por Escudo. Al dejar el cursor sobre la pila o un Escudo, `RelikarioGroupPeek` despliega un árbol junto a la pila: cada anfitrión con sus cartas debajo en miniatura, unidas por líneas del color del grupo (hasta cuatro por grupo, con «+N» si hay más). El visor no recibe clics y desaparece al salir o pulsar. Pulsar la pila abre la consulta agrupada: un encabezado por carta («Tomo de Magia · 2 cartas debajo») y sus cartas sobre una banda de su color.
 - **Zona de Relikia.** Sobre el mazo, los Relick Points se muestran en un heptágono grande; el propio abre los efectos de Relikia. Debajo, el botón de evolución propio («Lv 2 ↑» / «Lv 2 ✓») o el nivel del rival. En la vista de mesa la zona se ajusta a su profundidad para no cubrir el mazo.
-- **Placas de perfil.** El nombre del jugador ya no está junto al Relikario: cada duelista tiene una placa con su retrato enmarcado, nombre y título en una esquina libre junto a las manos (la propia abajo a la izquierda, bajo el canje; la del rival, delgada, arriba a la derecha). El borde toma el color del marco elegido y el nombre abre el perfil completo cuando el servidor publica perfiles. El abanico propio reserva esos costados al repartirse.
+- **Placas de perfil.** Cada duelista tiene una placa con su retrato enmarcado, nombre y título en una esquina libre junto a las manos (la propia abajo a la izquierda, bajo el canje; la del rival, delgada, arriba a la derecha). El borde toma el color del marco elegido y el nombre abre el perfil completo cuando el servidor publica perfiles. El abanico propio reserva esos costados al repartirse.
 - **Núcleo de turno.** `TurnCore` (236×112) ocupa el hueco entre las habilidades de ambos jugadores, sobre la línea central. Tiene de quién es la decisión y su reloj, la fase con el número de turno, una pista de cuatro tramos y un único botón contextual (avanzar o «Dejar resolver»). Toma el color de quien tiene el turno y nunca cambia de tamaño. Conserva los nombres `CombatCenter`, `StageIndicator` y `TurnDock`. Los equipos ligeros van bajo la Memoria de su dueño.
 - **Manos.** La mano propia cuelga del borde inferior con las cartas al tamaño del tablero: en reposo solo el cuadro de efecto queda bajo la pantalla. La carta bajo el cursor, con foco o seleccionada sube hasta verse completa y sus acciones la acompañan; el área de pulsación no se mueve. Un borde rojo identifica las cartas del rival que tienes en mano. La mano rival cuelga del borde superior y solo asoma su franja inferior.
 - **Elecciones.** Elegir entre cartas que no están en la mano —Disquete, reciclaje, búsqueda en el mazo, Resetear la Mente, corrupción, código de Relikia y habilidad inicial— abre un panel sobre el tablero atenuado. Las memorias se apilan en bloques con el color de su dueño y la decisión que confirma la elección va al pie del panel.
@@ -77,7 +77,7 @@ Reglas del lector:
 - **Hover.** Aparece tras 180 ms en pantallas estrechas, no recibe clics y se aparta si el cursor entra en él. Al salir de la carta se cierra (250 ms flotando, 700 ms fijo, para poder ir a leerlo), así que el último hover ya no deja oculto lo que había debajo.
 - **Fijado.** Una selección, una jugada pulsada en la franja o la carta que debes responder quedan abiertas. La carta a responder se abre sola.
 - **Lado.** Prefiere la derecha. Pasa a la izquierda si ahí está la carta que se lee, el historial o algo que pulsar. Con objetivos en ambos lados se oculta.
-- **Texto.** El arte cede alto antes que el texto. Con las 67 cartas actuales solo Reverse Shuffle necesita desplazamiento, en 4:3 y en el lector fijo más estrecho; al seleccionarla se puede desplazar.
+- **Texto.** El arte cede alto antes que el texto. Si un efecto largo no cabe, al seleccionar la carta se puede desplazar.
 - **Motivo.** Por qué una carta no se puede jugar se lee en el lector; el aviso central no lo repite porque taparía el botón de turno.
 
 Franja e historial:
@@ -166,8 +166,7 @@ panel y Menú → Ver resultado permite volver. El historial
 sigue disponible. «Volver al lobby» cierra la sala, muestra la espera de
 confirmación y permite a cada jugador terminar de leer su resultado aunque el
 rival ya la haya cerrado. El resultado autorizado se conserva en memoria hasta
-ese retorno; si no hay conexión se muestra el mismo aviso central de Reconectar. No se presenta una causa
-inventada para resultados antiguos sin ese dato.
+ese retorno; si no hay conexión se muestra el mismo aviso central de Reconectar.
 
 `ArenaPresentation`, `ArenaMotion` y los controles de cartas, personajes, pilas y dado componen la arena PvP. `OnlineArena` solo consume las vistas autorizadas y envía una opción ligada a sala y revisión; no ejecuta ni predice las reglas.
 
@@ -238,11 +237,11 @@ identidades que ya estén autorizadas para el asiento.
 La presentación conserva el índice de opción original y la revisión del tablero
 para cada botón o entrada de menú. Los rótulos breves son locales al cliente y no
 modifican costes, efectos, mensajes del servidor ni el protocolo de red. Se bloquean
-los envíos durante animaciones, desconexión o una jugada pendiente, igual que antes.
+los envíos durante animaciones, desconexión o una jugada pendiente.
 
 PC, tablet y teléfono comparten alcance horizontal. El proyecto permite girar entre ambos lados del teléfono. Una ventana de escritorio alta conserva un lienzo horizontal con bandas; una ancha amplía el lienzo.
 
-Con menos de 1100 unidades lógicas de ancho, el campo admite desplazamiento vertical y los controles secundarios pasan al menú. En pantallas cortas —altura menor de 600— se muestran tablero, inspector y galería de cartas juntos. La mano usa desplazamiento vertical propio, con una columna en los anchos menores y dos desde 820 unidades; conserva el arte completo y la escala anterior de cada carta. El tablero admite desplazamiento también en ventanas anchas y cortas. En pantallas altas la mano mantiene su fila horizontal. Los objetivos táctiles principales miden al menos 48 unidades lógicas; los diálogos se ajustan al área disponible y admiten desplazamiento.
+Con menos de 1100 unidades lógicas de ancho, el campo admite desplazamiento vertical y los controles secundarios pasan al menú. En pantallas cortas —altura menor de 600— se muestran tablero, inspector y galería de cartas juntos. La mano usa desplazamiento vertical propio, con una columna en los anchos menores y dos desde 820 unidades; conserva el arte completo de cada carta. El tablero admite desplazamiento también en ventanas anchas y cortas. En pantallas altas la mano mantiene su fila horizontal. Los objetivos táctiles principales miden al menos 48 unidades lógicas; los diálogos se ajustan al área disponible y admiten desplazamiento.
 
 La configuración contempla densidad y área segura. No constituye una exportación Android/iOS ni una validación en hardware móvil; todavía deben comprobarse teclado virtual, rendimiento y consumo en dispositivos físicos.
 
@@ -275,7 +274,7 @@ Espacio pulsa ese botón en todas las distribuciones. No repite al mantenerlo, r
 
 El reloj muestra el tiempo de quien decide, aunque sea una respuesta en el turno ajeno: cada asiento dispone de una referencia de 90 segundos por turno. El contorno del núcleo se vacía con él, se vuelve dorado en los últimos 15 segundos y después cuenta el tiempo extra como «+0:12». **Es solo informativo: no avanza, pasa ni termina nada.** Su tooltip añade el total de cada jugador en el duelo.
 
-Se repite donde el núcleo no se ve: en el aviso de decisión, en el lector durante una galería y en el indicador de las composiciones compactas. Se oculta en la preparación, al terminar y con un servidor que no lo publica; sin hora del servidor muestra «–:––». Los datos se describen en [PvP · Reloj de decisión](PVP.md#reloj-de-decisión).
+Se repite donde el núcleo no se ve: en el aviso de decisión, en el lector durante una galería y en el indicador de las composiciones compactas. Se oculta en la preparación, al terminar y con un servidor que no lo publica; sin hora del servidor muestra «–:––». Los datos se describen en [PvP · Reglas de partida](PVP.md#reglas-de-partida-que-resuelve-el-servidor).
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --turn-core-only`; también forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el núcleo en ambas vistas, la decisión y la galería.
 
@@ -283,7 +282,7 @@ Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --turn-core-only`; 
 
 Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas: todas leen el snapshot autorizado y la conexión.
 
-- **Estado en el núcleo de turno.** En el tablero de escritorio, la primera línea del núcleo (`StageStatusCell`) dice con texto e icono qué ocurre. Los estados posibles son «TU TURNO», «RESPONDE» (decides durante el turno rival), «RIVAL RESPONDE», «TURNO RIVAL», «ENVIANDO…», «RESOLVIENDO…», «JUGADA RECHAZADA» y «SIN CONEXIÓN». El color solo repite el mensaje. La línea se actualiza en cada fotograma sin reconstruir la arena. Sin botón, su hueco conserva el alto y nombra la fase especial (por ejemplo, «DEFENSA»). Las composiciones compactas conservan su indicador propio, que ya incluía «TÚ/RIVAL».
+- **Estado en el núcleo de turno.** En el tablero de escritorio, la primera línea del núcleo (`StageStatusCell`) dice con texto e icono qué ocurre. Los estados posibles son «TU TURNO», «RESPONDE» (decides durante el turno rival), «RIVAL RESPONDE», «TURNO RIVAL», «ENVIANDO…», «RESOLVIENDO…», «JUGADA RECHAZADA» y «SIN CONEXIÓN». El color solo repite el mensaje. La línea se actualiza en cada fotograma sin reconstruir la arena. Sin botón, su hueco conserva el alto y nombra la fase especial (por ejemplo, «DEFENSA»). Las composiciones compactas tienen su indicador propio, con «TÚ/RIVAL».
 - **Jugada rechazada.** `LobbyConnection` publica `PlayRejection` y `PlayRejectionSerial` cuando el servidor rechaza una jugada o una preferencia COMBO, o cuando la partida cambió antes de enviarla. Una entrega incierta conserva su orden para la reconexión. El aviso central muestra el motivo durante seis segundos o hasta la siguiente jugada y sobrevive a la reconstrucción del tablero. Los rechazos anteriores a abrir la arena se ignoran.
 - **Cartas jugables.** Un halo amarillo fijo rodea las cartas que tienen una jugada autorizada. Incluye los COMBO disponibles durante el turno rival y las cartas activables en el campo, como Jessica Lee en Bonus o canje. El cian señala los objetivos de una jugada. El halo en mano se atenúa durante el bloqueo y se oculta durante la preparación, las galerías de elección y el resultado.
 - **Tabla de ataque.** Al leer una habilidad, el inspector muestra el resultado por cara final del D6, en el orden del manual: 1–3 fallo, 4 reducido (mitad redondeada hacia arriba, con `GameEngine.DamageFor`), 5 normal y 6 crítico.
@@ -295,7 +294,7 @@ Escritorio y pantallas compactas comparten estas señales. Ninguna aplica reglas
   - La nota final recuerda que no incluye respuestas, defensas ni el bonus de equipo.
 
 - **Contadores de mano.** En el tablero de escritorio, cada abanico lleva su propio contador junto a la última carta. El propio queda en la franja visible de la mano. El rival queda justo bajo el borde superior, porque las cartas colgantes ya se solapan con la primera fila de su campo. Así cada contador queda fuera de las zonas, incluso con el lienzo de 16:10 o el panorámico. Una mano rival vacía centra su contador. Las composiciones compactas conservan el contador al principio de su franja.
-- **Golpe final y segunda caída.** Con 0 vidas, el medidor apilado del escritorio rotula «GOLPE FINAL» sobre la barra vacía, igual que ya hacía la versión compacta. Si el jugador ya llegó a 0 y se curó, la barra conserva un borde rojo, porque volver a 0 termina el duelo. El tooltip explica ambas reglas, que usan `HasReachedZero` del snapshot.
+- **Golpe final y segunda caída.** Con 0 vidas, el medidor rotula «GOLPE FINAL» sobre la barra vacía. Si el jugador ya llegó a 0 y se curó, la barra conserva un borde rojo, porque volver a 0 termina el duelo. El tooltip explica ambas reglas, que usan `HasReachedZero` del snapshot.
 - **Habilidades por enseñar.** Las ranuras vacías muestran su coste pequeño y atenuado. Solo cuando el servidor ofrece enseñar, la primera ranura libre (donde se enseña la siguiente habilidad) se ilumina con el color del jugador y el rótulo «ENSEÑAR AQUÍ».
 
 Prueba enfocada: `godot --headless --path . -- --pvp-ui-test --feedback-only`. También forma parte de la matriz completa. Con `--ui-screenshot-dir` y renderizado guarda el rechazo, la mano jugable y la tabla de ataque. `--board-reading-only` comprueba los contadores (sin solapes con ninguna zona, en cinco tamaños y ambos asientos), el golpe final, la segunda caída y la ranura por enseñar.
@@ -308,7 +307,7 @@ Relikario, mica, dado y acciones. «Estilo» abre el vestidor en ese mazo.
 El editor muestra el mazo en el centro, el inspector a la izquierda y la colección a la derecha. En pantallas cortas el nombre y los totales ocupan la barra superior y Deshacer pasa junto a «Agrupar copias», para dejar el alto a las cartas. Las pestañas Principal, Trampas y Banquillo tienen sus propias cuadrículas. «Agrupar copias» alterna entre una ficha con contador por carta y una ficha por copia. Los requisitos del mazo se actualizan al editar y se pueden consultar antes de guardar un borrador.
 
 - Pulsa una carta para ver su arte y su efecto. Pulsa el arte del inspector para ampliarlo.
-- La colección muestra los tres artes de Ataque del Relikario del mazo. Yuno y Osamu tienen arte clásico, NS y DT. Ironwing tiene UT (su arte inicial), DT y NS. Cada copia cuenta para el total de 12 y conserva su ilustración durante el duelo. Los artes ajenos de mazos antiguos pasan al arte inicial del Relikario.
+- La colección muestra los artes de Ataque del Relikario del mazo (las variantes `Attack with { … }` de `core/CardCatalog.cs`). Cada copia cuenta para el total de 12 y conserva su ilustración durante el duelo. Un arte de otro Relikario se convierte en el arte inicial del Relikario del mazo (`DeckRules.NormalizeAttackArt`).
 - Con clic derecho quitas una copia del mazo o añades una desde la colección. También puedes arrastrar desde la colección a la cuadrícula o a la pestaña de destino.
 - Los botones `+` y `−` del inspector editan la carta seleccionada en la pestaña activa. El botón de intercambio mueve una copia entre el banquillo y el mazo que le corresponde.
 - «Deshacer» o `Ctrl+Z` revierte el último cambio de cartas.
@@ -325,8 +324,8 @@ Funcionamiento:
 - **Editor.** La pestaña «Estilo» muestra una ficha por opción, con la elegida enmarcada en dorado. Mientras está abierta puedes consultar las cartas de la colección. Cambiar la mica o el dado marca el mazo como modificado. Duplicar un mazo copia su estilo. El mazo de entrenamiento usa la mica Transparente y el dado Clásico.
 - **Micas.** `SleeveArt` recolorea en bitono el reverso impreso: los negros toman el tono oscuro de la mica y los blancos el claro, y se añade un borde con su color de canto. Cada reverso se genera una vez, a 512 px de alto, y se conserva durante la sesión. La mica Transparente deja ver el reverso impreso original.
   - Se ve en el mazo y en las cartas corruptas de cada jugador, en la mano oculta del rival y en las cartas que vuelan.
-- **Dados.** `DiceFace.ApplyStyle` recolorea el cuerpo y los puntos del dado 3D. Cada tirada muestra el dado de quien tira, también cuando lanza el defensor (por ejemplo, con Esquivar), porque el evento visual del dado ahora indica quién tiró. Los dados de iniciativa conservan el estilo clásico, porque la preparación aún no conoce los estilos.
-- **Visibilidad.** Ambos jugadores ven la mica y el dado del otro: viajan en la apertura del duelo y en la vista pública de cada jugador (`DuelPlayerView.Sleeve` y `Dice`). Las partidas anteriores a la personalización usan la mica Transparente y el dado Clásico.
+- **Dados.** `DiceFace.ApplyStyle` recolorea el cuerpo y los puntos del dado 3D. Cada tirada muestra el dado de quien tira, también cuando lanza el defensor (por ejemplo, con Esquivar), porque el evento visual del dado indica quién tiró. Los dados de iniciativa usan el dado de cada jugador.
+- **Visibilidad.** Ambos jugadores ven la mica y el dado del otro: viajan en la apertura del duelo y en la vista pública de cada jugador (`DuelPlayerView.Sleeve` y `Dice`).
 
 Pruebas:
 
@@ -354,7 +353,7 @@ Cuatro efectos cosméticos. Ninguno forma parte de `IsAnimating`: no bloquean ju
 - **Código jugado.** Cuando el historial público registra la activación de un código nuevo, su ilustración aparece 0,8 s sobre el centro del tablero con un destello dorado. Una decisión dentro de la misma resolución, como elegir la carta de Disquete, no repite el destello.
 
 - **Creación de un Código Trampa.** Respeta el orden del reglamento (§ 4.6 y § 5.3): primero el canje se completa, con las dos cartas a Memoria, el Bonus a la mano y la reposición; después se decide si crear la trampa.
-  - Al decidir, el inspector muestra la trampa y las dos cartas canjeadas que cumplieron su receta, en miniatura junto a «Canjeaste X y Y». Ese dato viene de `DuelSnapshot.TrapIngredients`, que los servidores anteriores dejan vacío.
+  - Al decidir, el inspector muestra la trampa y las dos cartas canjeadas que cumplieron su receta, en miniatura junto a «Canjeaste X y Y». Ese dato viene de `DuelSnapshot.TrapIngredients`.
   - Si se elige «Crear», dos ecos translúcidos de esas cartas salen de la Memoria, convergen sobre el canje e invocan la trampa. Las cartas reales no se mueven.
   - Luego la trampa vuela a su lugar: la mano para Súper Ataque y la zona de equipo para Súper Imán. Zahira Flair aparece y se desvanece sobre el canje, porque su anfitrión se elige a continuación.
   - «Pasar sin crear» no muestra nada. Funciona igual cuando la creación espera a que termine una cadena, porque en ambos casos las cartas ya están en Memoria.
@@ -400,10 +399,10 @@ Un texto visible solo se mantiene si aporta algo que no dicen ya la forma, la po
 - Las cartas no mantienen procesamiento de hover cuando ya no necesitan animarlo. Los personajes ocultos no avanzan; los visibles solicitan redibujado cuando cambia su fotograma. El dado deja de actualizar continuamente su viewport 3D cuando está inmóvil.
 - A cero vidas, Yuno usa un reposo agotado con respiración lenta, gesto preocupado y raspones. Se termina la reacción del último golpe antes de entrar al bucle. La vida recibida selecciona el reposo para ambos jugadores, también al recuperar la partida; volver a construir la arena no reinicia ese bucle.
 - Cuando el motor aplica una curación efectiva, emite `Heal` con el destinatario y las vidas recuperadas. La arena reproduce una acción de 1,2 segundos con gesto de alivio y corazones verdes de píxel después del dado y de los movimientos de cartas pendientes; luego vuelve al reposo. La señal no contiene identidades de cartas y se descarta al recuperar el estado, igual que los demás efectos visuales.
-- Los impactos distinguen el resultado final del ataque mediante `Hit.AttackDie`: 4 conserva la reacción reducida anterior, 5 usa un retroceso normal y 6 un tambaleo crítico con recuperación más lenta. La cantidad de daño y los dados secundarios no seleccionan el clip. Los tres impactos terminan en el reposo agotado si la vida actual es cero; no se interrumpen al recibir ese cambio de estado.
-- Los iconos usan siluetas angulares y los marcos dibujados no crean recursos de estilo en cada redibujado. No se introdujo una caché global ilimitada de estilos o colores animados.
+- Los impactos distinguen el resultado final del ataque mediante `Hit.AttackDie`: 4 usa la reacción reducida, 5 un retroceso normal y 6 un tambaleo crítico con recuperación más lenta. La cantidad de daño y los dados secundarios no seleccionan el clip. Los tres impactos terminan en el reposo agotado si la vida actual es cero; no se interrumpen al recibir ese cambio de estado.
+- Los iconos usan siluetas angulares y los marcos dibujados no crean recursos de estilo en cada redibujado.
 
-Los seis atlas de Yuno conservan un lienzo lógico de 608×504 por cuadro; el reposo con vida es una imagen fija animada por sombreador, continua a cualquier frecuencia de pantalla. La importación limita el ancho a 2432 píxeles y mantiene la cuadrícula: reposo, ataque, daño reducido, normal y crítico, reposo agotado y curación usan el mismo tamaño visual. Los clips, su procedencia y sus prompts están documentados en [las animaciones de Yuno](../assets/characters/yuno/README.md).
+Los seis atlas de Yuno conservan un lienzo lógico de 608×504 por cuadro; el reposo con vida es una imagen fija animada por sombreador, continua a cualquier frecuencia de pantalla. La importación limita el ancho a 2432 píxeles y mantiene la cuadrícula: reposo, ataque, daño reducido, normal y crítico, reposo agotado y curación usan el mismo tamaño visual. Los clips y su procedencia están documentados en [las animaciones de Yuno](../assets/characters/yuno/README.md).
 
 ## Resolución e historial público
 
@@ -424,9 +423,8 @@ El servidor asigna identificadores y conserva el registro acotado en el estado
 recuperable; el cliente lo presenta sin acumular entradas propias. Reconectar,
 reintentar una jugada o reconstruir la interfaz no duplica el historial. Los
 cambios privados de preferencia COMBO solo generan una entrada si efectivamente
-reanudan una resolución pendiente. Los duelos anteriores a esta actualización
-empiezan su registro público con la siguiente jugada aceptada; no se reconstruye
-desde el registro interno del motor, que contiene información privada.
+reanudan una resolución pendiente. El historial no se reconstruye desde el registro
+interno del motor, que contiene información privada.
 
 ## Validación
 
@@ -441,7 +439,7 @@ y rival encontrado en una ejecución gráfica. La prueba de dos procesos con
 ./pruebas.sh
 ```
 
-`pruebas.sh` compila, ejecuta el motor y reparte la matriz de interfaz entre varios procesos de Godot; sus opciones están en el [README](../README.md#pruebas). La matriz es la tabla `checks` de `OnlineLobby.UiTests.cs`: cada comprobación tiene nombre, se ejecuta sola con `--pvp-ui-test --checks=Nombre` y debe pasar tanto sola como detrás de las demás, porque el script las agrupa según su duración. Una comprobación nueva se añade a esa tabla; si además quieres un filtro `--algo-only`, añádelo a `UiTestFlags`. Un filtro mal escrito hace fallar la prueba en lugar de recorrer toda la matriz. Cada comprobación imprime `PVP_UI_CHECK · Nombre · ms`, y el script muestra las diez más lentas.
+`pruebas.sh` compila, ejecuta el motor y reparte la matriz de interfaz entre varios procesos de Godot; sus opciones están en el [README](../README.md#pruebas). La matriz es la tabla `checks` de `OnlineLobby.UiTests.cs`: cada comprobación tiene nombre, se ejecuta sola con `--pvp-ui-test --checks=Nombre` y debe pasar tanto sola como detrás de las demás, porque el script las agrupa según su duración. Una comprobación nueva se añade a esa tabla; si además quieres un filtro `--<nombre>-only`, añádelo a `UiTestFlags`. Un filtro mal escrito hace fallar la prueba en lugar de recorrer toda la matriz. Cada comprobación imprime `PVP_UI_CHECK · Nombre · ms`, y el script muestra las diez más lentas.
 
 Para repetir solo la matriz de búsqueda de Código Konamy, añade `--deck-search-only` a los argumentos de la prueba; para Cambio de Mentes, usa `--mind-swap-only`. Se puede combinar con `--ui-screenshot-dir=/tmp/relick-ui` para guardar las capturas de PC y móvil horizontal.
 

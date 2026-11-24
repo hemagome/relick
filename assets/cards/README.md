@@ -1,9 +1,10 @@
 # Cartas
 
-## Relick Turbo Attack (L8B-13/40)
+Las imágenes `<id>-clean.png` son los escaneos y archivos de cada carta tal como los aportó el usuario, **con su marca de agua**, convertidos a PNG sin otra edición (el sufijo `-clean` es solo la convención de nombre que usa el juego). Los derechos de estas imágenes pertenecen a sus titulares ([NOTICE.md](../../NOTICE.md)); su situación está en [docs/PUBLISHING.md](../../docs/PUBLISHING.md).
 
-[`turbo-attack-clean.png`](turbo-attack-clean.png) restaura el escaneo adjunto
-`turbo-attack.png` con la herramienta integrada `image_gen`.
+Cada sección documenta las reglas y las interpretaciones confirmadas de la carta.
+
+## Relick Turbo Attack (L8B-13/40)
 
 Habilidad de Osamu. Un D6 aparte fija el daño normal en 2 con un resultado
 par o 3 con uno impar. El crítico es 5 y el premio es 400 PR. Una vez por turno,
@@ -12,17 +13,7 @@ permite activar o equipar una de esas copias sin gastar una acción. Se
 aplican sus demás costes, requisitos y respuestas. Pasar deja disponible
 la opción para otra búsqueda.
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore this exact full landscape Relick game card. Remove only the large repeated translucent diagonal RELICK watermark overlays, including faint strokes over the face, hair, hands, sword, artwork, name bar, and translucent rules panel. Restore underlying linework and colors where the overprint was. Preserve the flat full-width card, dark outer margin, 987:697 proportions, Osamu with red glasses, black-violet hair, sword with gray gamepad guard and blue circuits, the inset portrait, the blue hex lattice, blue gems, and the original layout and lettering. Exact printed text in place: “© 2018 FUYUHIRO GUSHIKEN”; “RELICK TURBO ATTACK”; “L8B-13/40”; “ATAQUE-HABILIDAD”; “UNA VEZ POR TURNO: AL BUSCAR CÓDIGOS” / “Y/O EQUIPOS DE TU MAZO A TU MANO: PUEDES” / “ACTIVAR/EQUIPAR UNO INMEDIATAMENTE” / “(ESTO NO CUENTA COMO UNA ACCIÓN)”; “DAÑO NORMAL” with the original die icon and “PAR: 2” / “IMPAR: 3”; “DAÑO CRÍTICO” with “5”; “PREMIO” with “400 PR”. Preserve credits, typography, and symbols. No crop, new elements, or redesign. Return only the clean card.
-
-</details>
-
 ## Relick Rolling Shuffle (L8B-12/40)
-
-[`rolling-shuffle-clean.png`](rolling-shuffle-clean.png) restaura el escaneo adjunto
-`rolling-shuffle.png` con la herramienta integrada `image_gen`.
 
 Habilidad de Yuno. El daño normal es 2. El daño crítico y el premio de un
 ataque exitoso se calculan con tiradas separadas. El crítico es 1D6 + 1 y el
@@ -33,17 +24,7 @@ tope de su memoria normal si existe. Con un 6, se eligen dos de las primeras
 seis cartas del mazo propio, o las disponibles si quedan menos de dos.
 Las demás conservan su orden.
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore this exact full landscape Relick game card. Remove only the large repeated translucent diagonal RELICK watermark overlays, including faint strokes over the face, hair, glove, red clothing, background, name bar, and translucent rules panel. Restore underlying linework and colors where the overprint was. Preserve the full dark outer margin, 987:697 proportions, Yuno in red with his raised armored fist, cyan lightning, original pose and expression, inset portrait, red circuit background, red gems, and exact original layout and lettering. Exact printed text in place: “© 2018 FUYUHIRO GUSHIKEN”; “RELICK ROLLING SHUFFLE”; “L8B-12/40”; “ATAQUE-HABILIDAD”; “COMO UNA DE TUS ACCIONES PUEDES LANZAR 1D6:” / “1-PIERDES 1 VIDA.” / “2- ROBA 2 CARTAS.” / “3-TU OPONENTE GANA 3 VIDAS.” / “4- GANA 400 PR.” / “5-TU OPONENTE COGE LA 5 CARTA DE SU MEMORIA.” / “6-MIRA LAS 6 CARTAS DE LA PARTE SUPERIOR DEL MAZO Y COGE 2.”; “DAÑO NORMAL” with “2”; “DAÑO CRÍTICO” with the original die icon followed by “+1”; “PREMIO” and original small die icon above “X 100 + 100” and “PR”. Preserve credits, typography, and symbols. No crop, new elements, or redesign. Return only the clean card.
-
-</details>
-
 ## Relick Wild Aim
-
-[Wild Aim (L8B-14/40)](wild-aim-clean.png) se restauró con la herramienta
-integrada `image_gen` a partir del escaneo adjunto `wild-aim.png`.
 
 Habilidad de WD. Tras confirmar un acierto y resolver las respuestas al
 ataque, el atacante puede elegir y confirmar cualquier número de descartes
@@ -57,13 +38,6 @@ Wild Aim conserva sus descartes, su robo y su premio. Un fallo sin
 conversión o un ataque anulado termina sin abrir la selección de descartes.
 [Reglamento de combate, §§ 7.1–7.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the supplied full landscape ReLick card “RELICK WILD AIM” (L8B-14/40). The attached card is the exact edit target. Remove only the repeated large diagonal translucent “RELICK” watermarks, including their faint outlines across the white shirt, technical cartoon blaster, name bar, transparent rules box and bottom. The original large green comic letters and the two WD cap logos are part of the artwork and must remain. Rebuild the underlying flat colors, linework and original bevels. Preserve the 987:697 landscape proportions, full dark outer border, the left inset portrait, the masked blond character in white and green, his pose and original fictional pixel-art and comic styling, the teal star-speckled dark background and original layout. Preserve all printed credits and text verbatim in place. Top left “BGRD. STARLINE/FREEPIK”. Top right “© 2018 FUYUHIRO GUSHIKEN”. Name “RELICK WILD AIM”. Code “L8B-14/40”. Rules panel: “ATAQUE-HABILIDAD” then “AL RESOLVER EL DAÑO DESCARTA CUALQUIER” / “NÚMERO DE CARTAS, ?: EL NÚMERO DE” / “CARTAS QUE DESCARTASTE.” / “LUEGO DE RESOLVER EL DAÑO ROBA ?-1”. Other columns “DAÑO NORMAL” with “2+?” and “MAX 4”, “DAÑO CRÍTICO” with “3+?”, and “PREMIO” with “?X100” above “+200” above “PR”. Keep every original panel, glyph, copyright notice, text, margin and border. No crop, added typography, new elements, or redesign. Return only the clean card.
-
-</details>
-
 ## Ataques L8B
 
 Cada ilustración está disponible en el editor con su Relikario y cuenta
@@ -71,45 +45,17 @@ para el cupo de doce Ataques del mazo principal.
 
 ### Osamu (L8B-9/40)
 
-Se restauró el escaneo adjunto `atk-osamu-4.png` con la herramienta integrada
-`image_gen`. El resultado es [`attack-osamu-l8b9-clean.png`](attack-osamu-l8b9-clean.png).
-
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Asset type: full-bleed portrait ReLick Ataque card for the user's game. Input image: the supplied OSAMU card is the edit target. Remove only the repeated translucent diagonal “RELICK” watermark, including the faint outlines on the symbol and on all background rays. Reconstruct the original flat colors, straight ray edges and bevel wherever the watermark overlapped them. Match the original pixel-art scan closely, including its full outer dark border on all four edges, proportions, banner and corner positions, indigo and pale lavender rays and four indigo octagonal corner jewels, and the vertical black sword symbol with a thick beveled white and silver pixel-art outline. Retain the printed text exactly with the same position, lettering and white outlines where present. At the top center above the first banner print “L8B-9/40”. In both black banners print “ATAQUE”. At the bottom center below the lower banner retain “© 2018 FUYUHIRO GUSHIKEN”. Keep the printed copyright notice. No crop, perspective, redesign, extra text, gradients in the flat background, added marks, or change in icon geometry. Return the full clean portrait card.
-
-</details>
+Imagen: [`attack-osamu-l8b9-clean.png`](attack-osamu-l8b9-clean.png).
 
 ### Yuno (L8B-8/40)
 
-Se restauró el escaneo adjunto `atk-yuno-4.png` con la herramienta integrada
-`image_gen`. El resultado es [`attack-yuno-l8b8-clean.png`](attack-yuno-l8b8-clean.png).
-
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Asset type: full-bleed portrait ReLick Ataque card for the user's game. Input image: the supplied YUNO card is the edit target. Remove only the repeated translucent diagonal “RELICK” watermark, including the faint outlines on the symbol and on all background rays. Reconstruct the original flat colors, straight ray edges and bevel wherever the watermark overlapped them. Match the original pixel-art scan closely, including its full outer dark border on all four edges, proportions, banner and corner positions, scarlet and pale peach rays and four red octagonal corner jewels, and the black raised fist with a thick beveled white and silver pixel-art outline. Retain the printed text exactly with the same position, lettering and white outlines where present. At the top center above the first banner print “L8B-8/40”. In both black banners print “ATAQUE”. At the bottom center below the lower banner retain “© 2018 FUYUHIRO GUSHIKEN”. Keep the printed copyright notice. No crop, perspective, redesign, extra text, gradients in the flat background, added marks, or change in icon geometry. Return the full clean portrait card.
-
-</details>
+Imagen: [`attack-yuno-l8b8-clean.png`](attack-yuno-l8b8-clean.png).
 
 ### WD (L8B-10/40)
 
-Se restauró el escaneo adjunto `atk-wd-4.png` con la herramienta integrada
-`image_gen`. El resultado es [`attack-wd-l8b10-clean.png`](attack-wd-l8b10-clean.png).
-
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Asset type: full-bleed portrait ReLick Ataque card for the user's game. Input image: the supplied WD card is the edit target. Remove only the repeated translucent diagonal “RELICK” watermark, including the faint outlines on the symbol and on all background rays. Reconstruct the original flat colors, straight ray edges and bevel wherever the watermark overlapped them. Match the original pixel-art scan closely, including its full outer dark border on all four edges, proportions, banner and corner positions, emerald green and pale mint rays and four green octagonal corner jewels, and the sideways black blaster icon pointing right, with a thick beveled white and silver pixel-art outline. Retain the printed text exactly with the same position, lettering and white outlines where present. At the top center above the first banner print “L8B-10/40”. In both black banners print “ATAQUE”. At the bottom center below the lower banner retain “© 2018 FUYUHIRO GUSHIKEN”. Keep the printed copyright notice. No crop, perspective, redesign, extra text, gradients in the flat background, added marks, or change in icon geometry. Return the full clean portrait card.
-
-</details>
+Imagen: [`attack-wd-l8b10-clean.png`](attack-wd-l8b10-clean.png).
 
 ## Habitación Secreta
-
-`habitacion-secreta-clean.png` restaura la carta NS-19/150 con la herramienta
-integrada `image_gen`. Se retiró la marca diagonal y se conservaron los textos
-y créditos impresos.
 
 Código Jugada disponible en el editor de mazos. Al entrar en un espacio de
 canje, su controlador recupera una carta de su memoria normal. Si completa el
@@ -125,18 +71,7 @@ Secreta como segundo canje, su recuperación incluye las cartas recién
 canjeadas que estén en su memoria.
 [Reglamento oficial, §§ 4.6, 4.7 y 5.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the attached original, complete Spanish ReLick card HABITACIÓN SECRETA, NS-19/150. Remove only the repeated large translucent diagonal RELICK watermark overlays. Reconstruct the underlying gray circuit traces and illustration exactly from the visible shapes: red distressed radial background, isometric black room with white outline, narrow entry walkway and small man with flashlight, white circular light, dark doorway and tiny floor objects. Keep flat front-facing portrait framing, exact original 697:987 geometry, borders, gray circuitry, type banners, layout, colors, typography and red emphasis. Preserve all printed text exactly: JUGADA; CÓDIGO; HABITACIÓN SECRETA; SI ESTA CARTA LLEGA A: TU CANJE: AÑADE UNA CARTA DE TU MEMORIA A TU MANO. TU BONUS AL CANJEAR 2 CARTAS: GANA 3.000PR, SELECCIONA UN CÓDIGO TRAMPA DE TU MAZO DE CÓDIGOS TRAMPA Y ENVÍALO AL LUGAR DONDE INDICA ESA CARTA. Footer: NS-19/150, ILUS. STIVART, ©2018 FG. No redesign, extra text, margins or cropping.
-
-</details>
-
 ## Núcleo Energético Galáctico x3
-
-`nucleo-energetico-galactico-clean.png` restaura la carta UT-25/50 con la
-herramienta integrada `image_gen`. Se retiró la marca diagonal y se conservaron
-los textos y créditos impresos.
 
 Código Objeto de una acción. Requiere tres cartas de Ataque en la memoria
 propia. Si hay más de tres, el jugador elige las copias. Las tres vuelven al
@@ -151,18 +86,7 @@ copias por nombre en el formato personalizado.
 [Catálogo oficial](https://www.relicktcg.com/cat%C3%A1logo/expansiones/universo-tridimensional) ·
 [Reglamento oficial, §§ 4.7, 6.5, 8.2 y 9.1](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the supplied full Spanish ReLick card NÚCLEO ENERGÉTICO GALÁCTICO x3 (UT-25/50). Remove ONLY the large repeated translucent diagonal RELICK watermarks. Reconstruct the artwork under the overlays by following the existing crystalline outlines and exact colors of the three yellow, blue and red energy cores, their white highlights, the red and dark maroon radial burst, and the gray circuit traces and frame. Keep the full flat front-facing portrait card edge to edge, with original 697:987 geometry, borders, printed layout and lettering. Exact print: OBJETO; CÓDIGO; NÚCLEO ENERGÉTICO GALÁCTICO x3; ENVÍA EXACTAMENTE 3 CARTAS DE ATAQUE DE TU MEMORIA A TU MAZO, REVUELVE Y ROBA 2 CARTAS. LUEGO CORROMPE ESTA CARTA. Footer: UT-25/50, FONDO: FREEPIK, ©2018 FUYUHIRO GUSHIKEN. Preserve all original small credits. No cropping, added margins, new text, or redesign.
-
-</details>
-
 ## Casete de Dualidad
-
-`casete-de-dualidad-clean.png` restaura la carta DT-4/100 con la herramienta
-integrada `image_gen`. Se retiró la marca diagonal y se conservaron los textos
-y créditos impresos.
 
 Código Objeto de una acción. Se usa el resultado final del dado para corromper
 las cartas disponibles del tope del mazo. Quien juega el Casete elige qué mitad
@@ -175,17 +99,7 @@ El grupo de cartas del Casete se fija con las que salieron del mazo original.
 Se aplican las ventanas habituales de Error de Carga y Caja de Cartón.
 [Reglamento oficial, §§ 1.3, 4.7 y 6.6](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the supplied complete Spanish ReLick card CASETE DE DUALIDAD (DT-4/100). Edit the attached image of the card, removing only the repeated large translucent diagonal RELICK watermark overlays throughout the scan. Reconstruct the obscured pink cassette, magenta bat wing on the left, cyan feathered wing on the right, purple dotted radial background, and gray circuit lines, following the existing shapes and colors. Preserve the flat front-facing full edge-to-edge card, original 697:987 aspect ratio, border, margins, proportions, layout, type, and red emphasis. Preserve this print exactly: OBJETO; CÓDIGO; CASETE DE DUALIDAD; LANZA 1D6 Y CORROMPE ESE NÚMERO DE CARTAS DEL TOPE DE TU MAZO: AÑADE LA MITAD DE ESAS CARTAS CORRUPTAS A TU MANO. SI SACAS 6: AÑADE UNA CARTA CORRUPTA. Footer: DT-4/100, ILUS. GELPATLU FONDO. FREEPIK, ©2018 FUYUHIRO GUSHIKEN. Keep the original small illustration, background and copyright credits. No new imagery, text, margins, or cropping.
-
-</details>
-
 ## Sin opciones
-
-La imagen `sin-opciones-clean.png` restaura la carta UT-46/50 con la herramienta integrada
-`image_gen`. Se retiró la marca diagonal y se conservaron las reglas y los créditos.
 
 Es un Código Jugada COMBO de una acción, disponible en el editor de mazos.
 La respuesta se ofrece cuando un efecto rival elige al jugador, su mano o una carta
@@ -196,60 +110,19 @@ Luego se retoma el efecto original y se comprueba que el objetivo siga disponibl
 Se aplican la preferencia de respuestas COMBO y Error de Carga.
 [Reglamento oficial, §§ 5.2, 5.4 y 6.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Edit the attached original portrait trading card ‘SIN OPCIONES’ for the ReLick game. Remove ONLY the four large translucent diagonal ‘RELICK’ watermark overlays, reconstructing the circuit traces and the angular dark panel and glitch illustration behind them. Keep the exact original border, cropping, proportions, design, colors, and Spanish typography. Preserve every printed label and the small original set, illustration and copyright credits at the bottom, including ©2018. The rules read ‘SI TU ADVERSARIO USA UN EFECTO QUE TE SELECCIONE A TI O A LAS CARTAS QUE CONTROLAS: DESCARTA TODA LA MANO DEL ADVERSARIO EXCEPTO 1 CARTA AL AZAR.’ Return the whole card, edge to edge as in the reference, with no new text or elements.
-
-</details>
-
 ## Brújula 16 Bits
-
-La imagen adjunta `brujula-16bits.png` (NS-15/150, ilustración de Stivart) se restauró con la herramienta integrada `image_gen` y se incorporó como `brujula-16bits-clean.png`.
 
 El Código Objeto cuesta una acción. «Todas las cartas en tu Bonus» abarca el Bonus, el Área activa y sus anexos. Las cartas vuelven a los mazos de sus dueños. Después de barajar, quien jugó la Brújula elige en privado cualquier carta de su mazo para colocarla como Bonus. [Reglamento oficial, §§ 4.5 y 4.8](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Edit target: the attached full Spanish Relick card scan of Brújula 16 Bits. Remove only the repeated translucent diagonal RELICK watermark on the face of the user-supplied scan. Restore obscured areas following the supplied map and pixel-art exactly: keep the silhouette and pixel clusters of the yellow-gold, maroon and gray open compass, its needle and ring, the sepia map, red X and all grayscale circuitry, framing, color blocks, lettering, full borders and original portrait aspect ratio (697:987). Preserve the original printed text verbatim in its original locations: 'OBJETO', 'CÓDIGO', 'BRÚJULA 16 BITS', 'BARAJA TODAS LAS CARTAS EN TU BONUS AL MAZO Y ENVÍA UNA CARTA DE TU MAZO A TU ZONA DE BONUS.', 'NS-15/150', 'ILUS. STIVART' and '©2018 FG'. Keep the original flat edge-to-edge card, with no added padding, cropping, recoloring, new illustration or text changes. Return only the restored scan.
-
-</details>
-
 ## Escenario Plataformas
-
-La imagen adjunta `escenario-plataformas.jpg` (NS-34/150, ilustración de Stivart) se restauró con la herramienta integrada `image_gen` y se incorporó como `escenario-plataformas-clean.png`.
 
 La orientación se elige al colocar el Área. Mientras esté activa, el lado A suma una acción al presupuesto del turno propio y el lado B deja en cero las acciones disponibles durante el turno rival. Al salir del Área o quedar suprimida, deja de modificar las acciones disponibles.
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Asset: user-supplied Spanish Relick game card scan for the Relick project. Edit the attached scan of Escenario Plataformas in place. Remove only the large translucent diagonal gray watermark overlay crossing the face of the supplied image. Preserve the underlying original printed artwork, purple circuitry, ornamental frame and platform illustration, gameplay panels, both purple badges and orientation, margins, card outline and proportions. Do not redraw or restyle the card, crop it or add details. Keep every original printed letter, accent, punctuation, code and credit exactly in its original position and orientation. Top panel reads 'PIERDE TODAS TUS ACCIONES EN EL TURNO DEL ADVERSARIO.' Bottom panel reads 'GANA UNA ACCIÓN EXTRA EN TU TURNO.' Both titles read 'ESCENARIO PLATAFORMAS' (the upper title and LADO B label are upside down in the original). Preserve NS-34/150, ILUS. STIVART and ©2018 FG, and preserve the entire border. Return a flat, front-facing, edge-to-edge 697 × 987 proportion image of the edited scan only.
-
-</details>
-
 ## Game y Over
 
-`game-clean.png` (LR-65/82) y `over-clean.png` (LR-64/82) se restauraron con
-`image_gen` a 1492 × 1054. Son habilidades S para cualquier Relikario. Ambas
-tienen 0 de daño normal y crítico, y dan 500 PR por un ataque exitoso. Over
-da la victoria cuando está activa en el espacio de 1000 PR y Game ocupa el de
-500 PR en el mismo campo. [Reglamento oficial, §§ 1.4 y 4.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
-
-<details>
-<summary>Prompts de restauración</summary>
-
-> Restore the attached GAME card image as a precise retouch of the existing user-provided image. Remove only the repeated translucent diagonal word RELICK overlay throughout the background, over the letters and lower text panel. Preserve exact full landscape 987:697 card geometry, margins, dark gray and silver background, beveled orange-yellow arcade GAME lettering, both S icons, and every other printed element. Preserve precisely GAME (both placements), HABILIDAD, DAÑO NORMAL 0, DAÑO CRÍTICO 0, PREMIO 500 PR, LR-65/82, © 2018 FG. The lower white effect panel must remain blank. Flat edge-to-edge scan, no crop, no new borders, no redesign.
-
-> Restore the attached OVER card image as a precise retouch of the existing user-provided image. Remove only the repeated translucent diagonal word RELICK overlay throughout the background, over the letters and lower text panel. Preserve the exact full landscape 987:697 card geometry, margins, dark gray and silver background, beveled orange-yellow arcade OVER lettering, both S icons, and all other printed elements. Preserve precisely OVER (both placements), HABILIDAD, DAÑO NORMAL 0, DAÑO CRÍTICO 0, PREMIO 500 PR, LR-64/82, © 2018 FG. Preserve this Spanish rule on the lower panel verbatim, with the condition in red and result in black: «SI LA HABILIDAD EN TU ZONA DE HABILIDADES DE 500PR ES “GAME” Y ESTA CARTA ESTÁ EN TU ZONA DE HABILIDADES DE 1.000PR: GANAS EL JUEGO.» Flat edge-to-edge scan, no crop, no new borders, no redesign.
-
-</details>
+Son habilidades S para cualquier Relikario. Ambas tienen 0 de daño normal y crítico, y dan 500 PR por un ataque exitoso. Over da la victoria cuando está activa en el espacio de 1000 PR y Game ocupa el de 500 PR en el mismo campo. [Reglamento oficial, §§ 1.4 y 4.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
 ## Púa del Destino
-
-`pua-del-destino-clean.png` restaura la carta BJ95-7/15 con `image_gen`.
-Se retiró la marca diagonal y se conservaron las reglas y los créditos.
 
 Es un Código Objeto COMBO de una acción. Elige un solo efecto: robar una carta,
 infligir 1 de daño no letal al rival o corromper una carta de cualquiera de
@@ -264,17 +137,7 @@ responder al Código jugado desde la mano. La activación del efecto propio
 desde memoria sigue la distinción entre carta y efecto del
 [reglamento oficial, §§ 5.4 y 6.5](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the supplied portrait Relick trading card PÚA DEL DESTINO. Remove only the large translucent repeating diagonal RELICK watermark. Reconstruct the original silver and gray guitar pick with dark zigzag graphic across the purple heart and white gleam, diagonal white guitar strings, navy panel and gray circuit lines underneath the watermark. Preserve the flat composition, colors, typography, border, margins and full card proportions 697:987. Preserve every printed word and credit. Headings OBJETO, CÓDIGO, COMBO. Title PÚA DEL DESTINO. Rules: ESCOGE 1: ROBA 1 CARTA. HAZ 1 PUNTO DE DAÑO NO LETAL. CORROMPE 1 CARTA DE CUALQUIER MEMORIA. COMO UNA ACCIÓN EN TU ETAPA DE ACCIONES: PUEDES CORROMPER ESTA CARTA DE TU MEMORIA PARA USAR SU EFECTO. Keep red emphasis on ESCOGE 1 and the entire closing instruction. Footer BJ95 - 7 / 15, FONDO. FREEPIK, ©2018 FUYUHIRO GUSHIKEN. No cropping, additions, perspective, or redesign.
-
-</details>
-
 ## Capirote Metálico
-
-`capirote-metalico-clean.png` restaura la carta TD-13/15 con `image_gen`.
-Se retiró la marca diagonal y se conservaron las reglas y los créditos.
 
 Es un equipo normal. Quien lo juega gasta una acción y elige su zona de equipo
 o la del rival. Se aplican las reglas de reemplazo y las protecciones de equipo
@@ -287,18 +150,7 @@ el turno, se recupera margen dentro del presupuesto de acciones de ese turno.
 La carta se destruye si quien la lleva confirma un 1 en su dado de ataque o
 efecto después de aplicar los modificadores.
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the supplied CAPIROTE METÁLICO portrait trading card scan. Remove only the large translucent diagonal repeating RELICK watermark. Reconstruct the obscured gray polygonal metal hood and face, beige radial lines and green circuit board traces by continuing the original detail. Preserve the flat full card, exact 697:987 proportions, framing and margins, printed design, colors, positions, title, red emphasis and attribution. Text exactly: EQUIPO; CAPIROTE METÁLICO; PUEDES EQUIPAR ESTA CARTA A TU ADVERSARIO. MIENTRAS ESTA CARTA ESTÉ EQUIPADA: RESTA -2 A LOS DAÑOS QUE RECIBAS Y RESTA -1 A TUS ACCIONES DEL TURNO. SI SACAS 1 EN UN DADO DESTRUYE ESTA CARTA. Footer TD-13/15, IDEA. DANIEL VARGAS, ©2018 FUYUHIRO GUSHIKEN. No crop, no redesign, no added elements.
-
-</details>
-
 ## Combo Parry
-
-`combo-parry-clean.png` restaura la carta DT-86/100 con la herramienta integrada
-`image_gen`. Se retiró la marca diagonal y se conservaron el texto, el
-identificador y los créditos impresos.
 
 Combo Parry es un Código Jugada COMBO de una acción. La mano rival se muestra
 temporalmente al activador para que pueda revisarla. Al confirmar, todos los
@@ -311,18 +163,7 @@ Carga. Combo Parry puede responder a una activación inicial y reanuda la
 resolución que interrumpe. Se aplican las reglas habituales de COMBO, la
 preferencia de pasar respuestas y los costes de Relikia. [Reglamento oficial, §§ 5.2 y 6.3](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Edit the supplied COMBO PARRY portrait trading card scan. Remove only the large translucent repeated diagonal RELICK watermark across the art and border, restoring the original two martial artists' poses and clothing, bright blue impact rays, and gray circuit lines beneath it. Keep the exact original flat composition, margins, proportions 697:987, typography, colors and all printed words and credits. Labels JUGADA, CÓDIGO, COMBO. Title COMBO PARRY. Exact rules: TU ADVERSARIO REVELA SU MANO Y ENVÍA A SU MAZO TODAS LAS CARTAS COMBO EN SU MANO, LUEGO ESTE REVUELVE SU MAZO. NO SE PUEDEN ACTIVAR COMBOS EN RESPUESTA A ESTA CARTA. Preserve red emphasis on the final sentence. Footer DT-86/100, FONDO. FREEPIK, ©2018 FUYUHIRO GUSHIKEN. No cropping, no redesign, no additions.
-
-</details>
-
 ## Robotizar
-
-`robotizar-clean.png` restaura la carta DT-27/100 con la herramienta integrada
-`image_gen`. Se retiró la marca diagonal y se conservaron el texto, el
-identificador y los créditos impresos.
 
 Robotizar es un Código Jugada de una acción que se coloca encima del Relikario.
 Cada copia activa reduce el daño recibido en 1. Al comenzar cada etapa de
@@ -335,18 +176,7 @@ ataque o de efecto. El resultado se comprueba después de los modificadores.
 Se aplican el agotamiento, las reglas de canje y las protecciones de destrucción
 habituales. La colocación se hace desde la mano. [Reglamento oficial, §§ 4.6 y 6.6](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the supplied portrait Robotizar trading card scan. Remove only the large translucent repeating diagonal RELICK watermark. Reconstruct the underlying blue robot with red eyes, helmet emblem, dark circuit panel, pink outlines and gray printed circuitry by continuing the original detail. Preserve the entire card frame, every margin, flat composition, original 697:987 proportions, typography, printed colors, and exact Spanish print. Labels JUGADA and CÓDIGO. Title ROBOTIZAR. Rules exactly: COLOCA ESTA CARTA ENCIMA DE TU RELIKARIO Y MIENTRAS PERMANEZCA AHÍ: RESTA -1 A LOS DAÑOS QUE RECIBAS Y AL INICIO DE TU ETAPA DE ACCIÓN: ENVÍA LA CARTA DEL TOPE DEL MAZO AL CANJE (SI ES UN CÓDIGO PUEDES AÑADIRLO A TU MANO.) SI SACAS 1 EN 1D6 DESTRUYE ESTA CARTA. Retain the original red emphasis. Footer DT-27/100, FONDO. FREEPIK and ©2018 FUYUHIRO GUSHIKEN. No crop, no redesign, no added elements.
-
-</details>
-
 ## Ellie
-
-`ellie-clean.png` restaura la carta LR-19/82 con la herramienta integrada
-`image_gen`. Se retiró la marca diagonal y se conservaron el texto, el
-identificador y los créditos impresos.
 
 Ellie es un Código Personaje de una acción. Su búsqueda añade hasta dos cartas
 del mazo que contengan las palabras completas «vida» o «vidas» en el nombre o en
@@ -355,18 +185,7 @@ La galería solo muestra las coincidencias al jugador que elige. Cuando queda
 una sola opción, se añade automáticamente. El mazo conserva su orden restante
 y, si se vacía, se aplica el agotamiento habitual.
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Restore the supplied portrait Relick trading card scan ELLIE. Remove ONLY the large translucent repeating diagonal RELICK watermark. Reconstruct the exact underlying watercolor character illustration, purple bob haircut, eyes, pink bow, blue dress with cream apron, glass milk bottle with its red M, pale pink burst, and gray printed circuit lines beneath it. Preserve all framing, margins, aspect ratio 697:987, and printed labels, text, and attribution. Printed text exactly: PERSONAJE; CÓDIGO; ELLIE; BUSCA EN TU MAZO 2 CARTAS CON LA PALABRA “VIDA” O “VIDAS” EXCEPTO “ELLIE” Y AÑÁDELAS A TU MANO. Footer: LR-19/82; ILUS. CANDY C; ©2018FG. Preserve the red highlights for VIDA and VIDAS. Output a crisp, flat portrait scan, faithful to the original without cropping, additional details, or redesign.
-
-</details>
-
 ## Control Manual Victorioso
-
-`control-manual-victorioso-clean.png` restaura la imagen aportada con la
-herramienta integrada `image_gen` a 1054 × 1492. Se retiró la marca diagonal y se
-conservaron las reglas, el identificador LR-9/82 y los créditos impresos.
 
 El Código Objeto consume una acción y paga 1 vida al resolver el traslado,
 después de las respuestas. Si se activa con Relikia, se aplican sus costes y
@@ -382,33 +201,13 @@ repone el Bonus retirado y se completan los canjes que correspondan. Mover
 una carta a equipo, habilidad o Área no dispara los efectos de activarla,
 enseñarla o equiparla. [Reglamento oficial, §§ 4.6, 4.8 y 7.5](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Edit the supplied flat portrait trading card PNG. Remove only the large repeating diagonal translucent RELICK watermark. Restore underlying gray circuit traces, dark hexagonal background, joystick and outline from their neighboring detail. Preserve the full original border and exact 697:987 proportions, shapes, typography, colors, joystick and its red button. Preserve the title and all printed text and attribution. Text exactly: OBJETO; CÓDIGO; CONTROL MANUAL VICTORIOSO; PAGA 1 PUNTO DE VIDA: MUEVE UNA CARTA EN TU CAMPO A UNA DE TUS ZONAS QUE ESTÉ VACÍA Y QUE SEA COMPATIBLE. Footer: LR-9/82; FONDO. COOLVECTOR / FREEPIK; ©2018FG. No crop, no redesign.
-
-</details>
-
 ## Escudo Galáctico
 
-`escudo-galactico-clean.png` restaura la imagen aportada con la herramienta
-integrada `image_gen` a 1054 × 1492. Se retiró la marca diagonal y se conservaron
-las reglas, el identificador y los créditos impresos. El arte reconstruido
-puede presentar pequeñas diferencias.
-
-<details>
-<summary>Prompt de restauración</summary>
-
-> Use case: precise-object-edit. Edit target: the attached Escudo Galáctico card PNG. Remove only the large translucent diagonal repeating watermark superimposed across the image. Reconstruct the obscured circuitry, green rays and electric blue shield directly beneath those letters by continuing neighboring detail. Maintain the original composition, full portrait card, pixel alignment, colors, border, framing, illustration, original typography and all printed Spanish words, rules text, card ID and footer credits. Do not crop or redesign. Maintain aspect ratio 697:987.
-
-</details>
+El arte reconstruido puede presentar pequeñas diferencias.
 
 ## Súper Ataque
 
-`super-attack-clean.png` restaura con `image_gen` la imagen aportada, a
-1054 × 1492. La edición retira la marca diagonal y conserva el identificador
-NS-27/150 y el copyright impresos. El arte reconstruido puede presentar
-pequeñas diferencias.
+El arte reconstruido puede presentar pequeñas diferencias.
 
 Cada jugador tiene una copia en el mazo de trampas de los duelos nuevos de
 desarrollo. Después de canjear dos Ataques, puede crear Súper Ataque y añadirlo
@@ -418,18 +217,9 @@ resultado en hasta 2, con tope de 5, y conserva un 6 que ya salió. Un ataque
 que inflige daño suma 2 antes de aplicar las defensas. La carta queda fuera
 del juego al usarse o cuando se enviaría a memoria o al mazo.
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Precisely restore this supplied Spanish Relick trading card scan for the game. Remove only the large repeated semitransparent diagonal RELICK watermark across the card and reconstruct the illustration and circuit frame directly beneath it. Keep the full original portrait card and all edges, red and black circuitry, gray gems, blue and cyan burst, tilted Attack card illustration and white pixel fist, existing design, proportions and print colors. Preserve the printed title, text, expansion number and bottom copyright. Exact printed text: “SÚPER ATAQUE”, “CÓDIGO TRAMPA”, “LUGAR: MANO”, “ATAQUE + ATAQUE”, “ESTA CARTA SE CONSIDERA UN ATAQUE Y NO CUESTA ACCIÓN. AL ATACAR CON ESTA CARTA: • SUMA +2 AL D6 DE ATAQUE (MÁX. 5). • SUMA +2 AL DAÑO DE ESE ATAQUE.” Bottom “NS-27/150” and “©2018FG”. Output as a crisp flat portrait scan, uncropped.
-
-</details>
-
 ## Zahira Flair
 
-`zahira-flair-clean.png` restaura el PNG aportado con `image_gen` a 1054 × 1492.
-La edición retira la marca diagonal y conserva el identificador, los créditos y
-el copyright impresos. El arte reconstruido puede presentar pequeñas diferencias.
+El arte reconstruido puede presentar pequeñas diferencias.
 
 Los duelos nuevos de desarrollo incluyen una copia por jugador en el mazo de
 trampas. Tras canjear dos Personajes, el jugador puede crear Zahira sobre una
@@ -443,19 +233,9 @@ Si se repite la etapa final, se vuelve a resolver su tirada al cerrarla.
 Súper Imán puede sustituir la colocación de Zahira sobre una carta rival o
 la destrucción de la carta cubierta.
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Restore this exact Spanish Relick card. Remove only the repeated translucent diagonal watermark across the whole card, reconstructing the underlying drawing and red circuit border precisely. Keep the entire original flat portrait card, its original proportions, character, pose, typography, colors, corner gems, frame, exact Spanish printed text, expansion number NS-11/150, illustrator credits and copyright ©2018FG. Title ZAHIRA FLAIR; CÓDIGO TRAMPA; LUGAR: ENCIMA DE UNA CARTA EN EL CAMPO; PERSONAJE + PERSONAJE. Rules verbatim: SI ESTA CARTA ESTÁ ENCIMA DE UNA CARTA: ESA CARTA PIERDE SUS EFECTOS. EL DUEÑO DE ESTA CARTA LANZA 1D6 EN LA FASE FINAL DE SU ADVERSARIO: 1-2: DESTRUYE ESTA CARTA. 3-4: COLÓCALA ENCIMA DE OTRA CARTA EN EL CAMPO. 5-6: SI ESTÁ ENCIMA DE UN RELIKARIO: PIERDE -2 VIDAS. OTRA CARTA: DESTRUYE ESA CARTA. Preserve the bottom attribution. No crop or redesign.
-
-</details>
-
 ## Súper Imán
 
-`super-magnet-clean.png` es una restauración de la imagen aportada con
-`image_gen`, a 1054 × 1492. La reconstrucción quitó la marca diagonal y conservó
-los créditos y el copyright impresos. El dibujo reconstruido puede presentar
-pequeñas diferencias frente al original.
+El dibujo reconstruido puede presentar pequeñas diferencias frente al original.
 
 Cada jugador dispone de una copia en el mazo de Códigos Trampa de los duelos
 nuevos de desarrollo. Tras un canje de Equipo y otra carta, puede crear Súper
@@ -470,21 +250,7 @@ Magnet Shuffle. El daño al Relikario y las cartas en mano quedan fuera de esa
 protección. El tercer contador provoca la destrucción de Súper Imán y admite
 la protección habitual de Reverse Shuffle. [Reglamento oficial, §§ 4.4–4.8 y 5.3](https://sites.google.com/view/relickjuegodecartas/reglas/nuevo-manual-de-juego#h.byyxqj2ib44c_l).
 
-<details>
-<summary>Prompt de restauración</summary>
-
-> Precision restoration of the supplied Spanish Relick card scan for use as the original card asset in the videogame. Remove only the repeated semi-transparent diagonal watermark overlay ("RELICK") across the front, reconstructing the colors, illustrated edges, lighting, and details directly underneath. Preserve the original image from edge to edge, portrait ratio 697:987, exact framing and border, circuit pattern, gems, outlined magnet and creatures, typography, accent marks, text positioning, and the printed illustrator credits, card number, and ©2018FG at the bottom. Keep the full artwork and full bottom rules panel uncropped. Keep the exact printed text and the source typography, especially “SÚPER IMÁN”, “CÓDIGO TRAMPA”, “LUGAR: ZONA EQUIPOS”, “EQUIPO + CUALQUIER CARTA”, and the rules as printed. Match the original ink colors and letters throughout. No redesign, no added marks or text, do not remove the printed attribution. Output the cleaned trading card as a crisp flat image.
-
-</details>
-
 ## Tótem de Oro
-
-`golden-totem-clean.png` restaura el PNG aportado en Downloads mediante la
-herramienta integrada `image_gen`, a 1054×1492. Se retiró la marca diagonal
-conservando ilustración, diseño, texto, identificador y copyright del autor.
-La reconstrucción generativa puede introducir pequeñas diferencias. Original y
-prompt completo: `output/imagegen/golden-totem-original.png` y
-`golden-totem-prompt.txt`.
 
 Código Personaje sin COMBO, una acción y cero PR, siguiendo el encabezado de la
 carta. Según lo confirmado por el usuario, no se puede activar con Relikia y
@@ -511,18 +277,9 @@ decisiones. Oro puede elegirse directamente con Huevo o Bomba y no protege a
 otros tipos de equipo ni a otro Oro. Si el equipo inferior desaparece, Oro
 permanece en la zona; eso no permite colocar otro Oro sin un equipo debajo.
 
-El tablero muestra Oro encima del equipo y permite inspeccionar todas las
-copias. Se conserva la privacidad de las cartas de mano que no se muestran.
-Una copia se añade a cada mazo nuevo: 42 cartas, incluidos doce Ataques.
+El tablero muestra Oro encima del equipo y permite inspeccionar todas las copias. Se conserva la privacidad de las cartas de mano que no se muestran.
 
 ## Tótem de Salvación
-
-`salvation-totem-clean.png` restaura el PNG aportado en Downloads mediante la
-herramienta integrada `image_gen`, a 1054×1492. Se retiró la marca diagonal
-conservando ilustración, diseño, reglas, identificador y copyright del autor.
-La reconstrucción generativa puede introducir pequeñas diferencias. Original y
-prompt completo: `output/imagegen/salvation-totem-original.png` y
-`salvation-totem-prompt.txt`.
 
 Equipo de una acción y cero PR. Otra copia se apila sobre el Tótem existente sin
 destruirlo, ocupando la misma zona. Las copias cuentan como cartas reales; la
@@ -550,15 +307,7 @@ mantienen mitad/normal/crítico. Se aplican defensas y modificadores normales;
 el premio y los efectos críticos esperan a terminar las decisiones pendientes.
 La cancelación de daño conserva el robo de Jessica y el efecto crítico de Magnet.
 
-Una copia se añade a cada mazo nuevo: 41 cartas, incluidos doce Ataques.
-
 ## Doblador de Tiempo
-
-`time-bender-clean.png` restaura el PNG aportado en Downloads mediante la
-herramienta integrada `image_gen`, a 1054×1492. Se retiró la marca diagonal
-conservando diseño, reglas, identificador y crédito del autor. La reconstrucción
-generativa puede introducir pequeñas diferencias en la ilustración. Original y
-prompt completo: `output/imagegen/time-bender-original.png` y `time-bender-prompt.txt`.
 
 Código Objeto COMBO, una acción y cero PR, con dos descartes elegidos como coste.
 Según lo confirmado por el usuario, repite una etapa completa del turno
@@ -581,15 +330,7 @@ disparo. Relikia permite repetir Acciones desde memoria, cobra dos
 acciones y 400 PR y corrompe la copia cuando resuelve. El coste, las elecciones,
 el contexto interrumpido y las repeticiones pendientes se guardan al reconectar.
 
-Una copia se añade a cada mazo nuevo: 40 cartas, incluidos doce Ataques.
-
 ## Cartucho de Re-carga
-
-`reload-cartridge-clean.png` restaura el PNG aportado en Downloads mediante la
-herramienta integrada `image_gen`. Se retiró la marca diagonal conservando diseño,
-reglas, identificador y crédito del autor. La reconstrucción generativa puede
-introducir pequeñas diferencias en la ilustración. Original y prompt completo:
-`output/imagegen/reload-cartridge-original.png` y `reload-cartridge-prompt.txt`.
 
 Código Jugada sin COMBO, una acción y cero PR, prohibido en el primer turno global
 del juego. Al activarlo ambos jugadores necesitan al menos una carta restante en
@@ -612,15 +353,7 @@ el Cartucho. Durante las pausas de reciclaje se permiten los modificadores de da
 comunes. Los descartes se animan como paquetes sin revelar manos ocultas; las nuevas
 manos permanecen privadas y las cartas descartadas son públicas en memoria.
 
-Una copia se añade a cada mazo nuevo: 39 cartas, incluidos doce Ataques.
-
 ## Carga Rápida
-
-`quick-load-clean.png` restaura el PNG aportado en Downloads mediante `image_gen`.
-Se retiró la marca diagonal conservando diseño, reglas, identificador y crédito del
-autor. La reconstrucción generativa puede introducir pequeñas diferencias en la
-ilustración. Original y prompt completo: `output/imagegen/quick-load-original.png`
-y `quick-load-prompt.txt`.
 
 Código Jugada sin COMBO, una acción y cero PR. Primero roba dos cartas y después
 lanza un dado de efecto: 1–2 exige dos descartes elegidos; 3–4 exige uno; 5 roba
@@ -641,15 +374,7 @@ dado; un agotamiento que termina el duelo interrumpe los pasos restantes. Las
 decisiones y cantidades de descarte persisten al reconectar; el límite de siete
 se comprueba al terminar el turno, después de todos los efectos.
 
-Una copia se añade a cada mazo nuevo: 38 cartas, incluidos doce Ataques.
-
 ## Jessica Lee
-
-`jessica-lee-clean.png` restaura el PNG aportado en Downloads mediante `image_gen`.
-Se retiró la marca diagonal conservando diseño, texto, firma, créditos y copyright.
-La reconstrucción generativa puede introducir pequeñas diferencias en la ilustración.
-Original y prompt completo: `output/imagegen/jessica-lee-original.png` y
-`jessica-lee-prompt.txt`.
 
 Código Personaje con efecto de zona. Cada copia en el canje o Bonus propio puede
 activarse una vez durante la etapa de combate propia, antes o después del ataque,
@@ -669,11 +394,7 @@ en juego (se enseña), antes de lanzar el dado, y enviar la copia de origen a me
 sin destruirla ni activar Reverse. Pasar la respuesta cierra la ventana para esa
 activación; mover el origen durante su resolución no habilita una nueva cancelación.
 
-En turnos posteriores no se abre respuesta de Error ni se permite jugarlo durante
-el dado de Jessica. El turno de entrada se guarda por copia al colocarla en canje
-o revelar un Bonus; pasar del Bonus al canje conserva su antigüedad y una copia
-nueva repuesta recibe su propio turno de entrada. Las copias de guardados anteriores
-sin historial de entrada se consideran ya establecidas, sin nueva ventana de Error.
+En turnos posteriores no se abre respuesta de Error ni se permite jugarlo durante el dado de Jessica. El turno de entrada se guarda por copia al colocarla en canje o revelar un Bonus; pasar del Bonus al canje conserva su antigüedad y una copia nueva repuesta recibe su propio turno de entrada.
 
 Mira de Sniper suma uno a los daños de Jessica y Estrella del Fontanero duplica el
 total antes de las reducciones del rival. Casco, Hoguera e inmunidad de Estrella se
@@ -682,15 +403,7 @@ de recibir el daño. Un seis roba aunque el daño se absorba, después de las de
 de destrucción pendientes; si el daño termina el duelo, no continúa el robo.
 El agotamiento y la recuperación de decisiones utilizan el flujo común.
 
-Una copia se añade a cada mazo nuevo: 37 cartas, incluidos doce Ataques.
-
 ## Estrella del Fontanero
-
-`plumber-star-clean.png` restaura el PNG aportado en Downloads mediante la herramienta
-integrada `image_gen`. Se retiraron las marcas diagonales conservando diseño, texto,
-identificador, crédito de Freepik y copyright. La reconstrucción generativa puede
-introducir pequeñas diferencias en la ilustración. Original y prompt completo:
-`output/imagegen/plumber-star-original.png` y `plumber-star-prompt.txt`.
 
 Código Objeto COMBO: una acción, cero PR y un descarte elegido de otra carta de la
 mano. La ventana de Error de Carga precede a la selección y al pago del descarte. Sin otra carta para
@@ -717,15 +430,7 @@ no cancela Estrella.
 Relikia exige una carta de la mano como descarte y cobra sus dos acciones y 400 PR;
 su copia de Estrella se corrompe al resolver, con las respuestas comunes.
 
-Una copia se añade a cada mazo nuevo: 36 cartas, incluidos doce Ataques.
-
 ## Disquete
-
-`floppy-disk-clean.png` restaura `/home/hemagome/Downloads/disquete.png` con la
-herramienta integrada `image_gen`. Se retiró la marca diagonal, conservando diseño,
-reglas, identificador y copyright, incluido el rótulo RELICK impreso en el disquete.
-La reconstrucción generativa puede introducir pequeñas diferencias en la ilustración.
-Original y prompt: `output/imagegen/floppy-disk-original.png` y `floppy-disk-prompt.txt`.
 
 Código Objeto sin COMBO, una acción y cero PR. El activador elige una carta de la
 memoria normal propia o rival y la añade a su mano, incluidas habilidades y otras
@@ -734,22 +439,9 @@ según lo confirmado por el usuario. Las cartas corruptas no son seleccionables.
 No permite activarse sin objetivos; mediante Relikia, la copia activada se corrompe
 y se requiere otra carta en las memorias.
 
-Admite Caja de Cartón. Error de Carga solo responde en la ventana inicial, antes
-de empezar la selección. Cancelar devuelve los costes según
-las reglas comunes. La elección persiste al reconectar. La interfaz muestra las
-cartas de ambas memorias y el dueño de cada origen, y anima el traslado a la mano
-del activador sin emitir un robo del mazo ni revelar permanentemente la carta.
-Resetear la Mente puede modificar los objetivos pendientes; si desaparecen todos,
-Disquete finaliza sin recuperar cartas. Una copia se añade a cada mazo nuevo:
-35 cartas en total, incluidos doce Ataques.
+Admite Caja de Cartón. Error de Carga solo responde en la ventana inicial, antes de empezar la selección. Cancelar devuelve los costes según las reglas comunes. La elección persiste al reconectar. La interfaz muestra las cartas de ambas memorias y el dueño de cada origen, y anima el traslado a la mano del activador sin emitir un robo del mazo ni revelar permanentemente la carta. Resetear la Mente puede modificar los objetivos pendientes; si desaparecen todos, Disquete finaliza sin recuperar cartas.
 
 ## Hoguera
-
-`bonfire-clean.png` restaura el PNG aportado en `/home/hemagome/Downloads/hoguera.png`
-mediante la herramienta integrada `image_gen`. Se eliminó la marca diagonal,
-conservando el texto y los créditos impresos. La reconstrucción generativa puede
-introducir pequeñas diferencias en la ilustración. El original y el prompt completo
-están en `output/imagegen/bonfire-original.png` y `bonfire-prompt.txt`.
 
 Equipo normal: una acción, cero PR. Al instalarse recupera una vida hasta el máximo
 del Relikario; Error de Carga puede anularlo antes de curar o reemplazar el equipo
@@ -757,104 +449,43 @@ anterior. Mientras está equipado convierte en cero cada daño recibido por su d
 sin anular el ataque, su premio ni sus otros efectos. Las vidas inevitables del
 segundo agotamiento conservan su regla común.
 
-Al inicio del siguiente turno propio se destruye a memoria antes de robar. La
-destrucción admite Reverse Shuffle y la decisión persiste al reconectar. Si Reverse
-sustituye esa destrucción, Hoguera permanece equipada; el disparador de «tu siguiente
-turno» ya se consumió y no se repite. Proteger el equipo anterior al intentar equipar
-Hoguera deja Hoguera en memoria sin curar. Destruirla o reemplazarla elimina su
-vencimiento pendiente. Una copia se añade a cada mazo nuevo: 34 cartas, doce Ataques.
+Al inicio del siguiente turno propio se destruye a memoria antes de robar. La destrucción admite Reverse Shuffle y la decisión persiste al reconectar. Si Reverse sustituye esa destrucción, Hoguera permanece equipada; el disparador de «tu siguiente turno» ya se consumió y no se repite. Proteger el equipo anterior al intentar equipar Hoguera deja Hoguera en memoria sin curar. Destruirla o reemplazarla elimina su vencimiento pendiente.
 
 ## Reverso
 
-`card-back.png` es la conversión a PNG, sin redimensionar ni retocar, del reverso
-aportado por el usuario en `/home/hemagome/Downloads/back.webp` (424 × 600 píxeles).
-Sustituye la versión anterior de 212 × 300 píxeles por su mayor resolución y detalle.
-La mano del adversario muestra una miniatura por carta, manteniendo la proporción de
-la imagen. Las cartas ocultas no reciben datos de identidad en sus controles visuales;
-solo las reveladas por efectos reciben y muestran su frente.
+`card-back.png` es la conversión a PNG, sin redimensionar ni retocar, del reverso aportado por el usuario (424 × 600 píxeles). La mano del adversario muestra una miniatura por carta, manteniendo la proporción de la imagen. Las cartas ocultas no reciben datos de identidad en sus controles visuales; solo las reveladas por efectos reciben y muestran su frente.
 
 ## Carta de ataque
 
-`attack-clean.png` es una restauración mediante la herramienta integrada de edición de imágenes
-del archivo aportado por el usuario en `/home/hemagome/Downloads/ataque`.
-Se eliminó la marca diagonal conservando el diseño y los créditos impresos. Al ser una
-reconstrucción generativa puede haber pequeñas diferencias en los circuitos o el símbolo.
-
-El original y el prompt están en `output/imagegen/attack-original.jpg` y
-`output/imagegen/attack-clean-prompt.txt`. En la mano se dibuja la imagen completa,
-sin recortarla ni deformarla; el borde de selección, la marca y el efecto al pasar el cursor
-siguen siendo controles de la interfaz.
+En la mano se dibuja la imagen completa, sin recortarla ni deformarla; el borde de selección, la marca y el efecto al pasar el cursor siguen siendo controles de la interfaz.
 
 ## Magnet Shuffle y Destiny Shuffle
 
-`magnet-shuffle-clean.png` y `destiny-shuffle-clean.png` son las versiones limpias
-creadas con la herramienta integrada de edición de imágenes a partir de los PNG
-aportados por el usuario. Se retiró la marca diagonal; se conservaron nombres,
-texto de efectos, valores, identificadores y créditos impresos. La reconstrucción
-generativa puede introducir pequeñas diferencias en la ilustración.
-
-Los originales y los prompts completos utilizados están en
-`output/imagegen/magnet-shuffle-original.png`, `output/imagegen/destiny-shuffle-original.png`,
-`output/imagegen/magnet-shuffle-prompt.txt` y `output/imagegen/destiny-shuffle-prompt.txt`.
 Los archivos del juego están en `assets/cards/` y no dependen de rutas externas.
 
 ## Colgante de la Suerte y Senshuni
 
-`lucky-pendant-clean.png` y `senshuni-clean.png` son las restauraciones sin la marca
-superpuesta de las imágenes aportadas por el usuario. Se editaron mediante la
-herramienta integrada, preservando el diseño, el texto de efecto y los créditos
-impresos; la reconstrucción puede introducir pequeñas diferencias en la ilustración.
-Los originales y los prompts completos están en `output/imagegen/` como
-`senshuni-original.jpg` y `senshuni-prompt.txt`. El Colgante actual se reconstruyó
-posteriormente desde el PNG original de 697 × 987 píxeles, más nítido que el JPG
-de igual resolución: `lucky-pendant-original.png` y `lucky-pendant-png-prompt.txt`.
-Se conservan el JPG y su prompt anteriores, y la restauración previa en
-`lucky-pendant-clean-from-jpg.png`, como referencia. El juego carga los PNG locales
-de `assets/cards/`.
+El juego carga los PNG locales de `assets/cards/`.
 
 ## Caja de Cartón
 
-`cardboard-box-clean.png` es la versión limpia de `/home/hemagome/Downloads/caja.jpg`,
-editada mediante la herramienta integrada para retirar la marca superpuesta y
-preservar el diseño, el texto y los créditos impresos. La reconstrucción puede
-introducir pequeñas diferencias en la ilustración. El original y el prompt completo
-están en `output/imagegen/cardboard-box-original.jpg` y
-`output/imagegen/cardboard-box-prompt.txt`.
+La reconstrucción puede introducir pequeñas diferencias en la ilustración.
 
 ## Vida Extra
 
-`extra-life-clean.png` es la versión limpia de `/home/hemagome/Downloads/vida-extra.jpg`,
-editada mediante la herramienta integrada para retirar la marca superpuesta y
-preservar el diseño, las seis correspondencias del dado y los créditos impresos.
-La reconstrucción puede introducir pequeñas diferencias en la ilustración. Se guardan
-el original y el prompt completo en `output/imagegen/extra-life-original.jpg` y
-`output/imagegen/extra-life-prompt.txt`.
+La reconstrucción puede introducir pequeñas diferencias en la ilustración.
 
 ## Aumento de Relick Points
 
-`points-increase-clean.png` es la versión sin marca superpuesta de `/home/hemagome/Downloads/aumento.jpg`,
-restaurada con la herramienta integrada conservando diseño, tabla de resultados y créditos impresos.
-La reconstrucción puede introducir pequeñas diferencias en la ilustración. El original y el prompt
-completo están en `output/imagegen/points-increase-original.jpg` y `output/imagegen/points-increase-prompt.txt`.
+La reconstrucción puede introducir pequeñas diferencias en la ilustración.
 
 ## Huevo Azul Explosivo y Re-lanza
 
-`blue-egg-clean.png` corresponde a la edición LR-16/82. La herramienta integrada
-retiró la marca superpuesta y conservó los créditos impresos. Activar Huevo Azul
-Explosivo cuesta una acción. Tras resolver la destrucción de una no-habilidad en
-el campo, su activador puede pagar 200 PR para robar una carta.
-El prompt de esta edición está en `output/imagegen/blue-egg-v2-prompt.txt`.
-
-`reroll-clean.png` se restauró mediante la herramienta integrada. Su original y
-prompt están en `output/imagegen/reroll-original.jpg` y `output/imagegen/reroll-prompt.txt`.
+`blue-egg-clean.png` corresponde a la edición LR-16/82. Activar Huevo Azul Explosivo cuesta una acción. Tras resolver la destrucción de una no-habilidad en el campo, su activador puede pagar 200 PR para robar una carta.
 
 ## Error de Carga
 
-`load-error-clean.png` es la restauración sin marca superpuesta de
-`/home/hemagome/Downloads/error-de-carga.png`, realizada con la herramienta integrada.
-Se conservaron diseño, rótulo COMBO, condiciones y créditos impresos. La reconstrucción
-puede introducir pequeñas diferencias en la ilustración. El original y el prompt
-completo están en `output/imagegen/load-error-original.png` y `load-error-prompt.txt`.
+Se conservaron diseño, rótulo COMBO, condiciones y créditos impresos. La reconstrucción puede introducir pequeñas diferencias en la ilustración.
 
 En la versión virtual solo responde antes de ejecutar una activación. El rival
 elige usarlo o pasar; un Error puede recibir otro Error y la cadena se resuelve
@@ -865,153 +496,47 @@ oportunidad: no se puede cancelar después de conocer dados, iniciar búsquedas,
 mirar manos o entrar en decisiones de protección. Las nuevas activaciones COMBO
 tienen su propia ventana; cancelar un COMBO no cancela el efecto que interrumpió.
 
-## Restauraciones actualizadas desde PNG originales
+## Caja de Cartón (BY4-6/14), Casco de Diamantes, Bomba de Tiempo, Código Konamy y Cambio de Mentes
 
-Las versiones actuales de Re-lanza, Aumento de Relick Points, Vida Extra, Caja de
-Cartón y Senshuni se reconstruyeron mediante la herramienta integrada a partir de
-los PNG originales aportados posteriormente. Tienen la misma resolución de origen
-que los JPG (697 × 987), pero conservan mejor texto, bordes y líneas finas.
-Se retiraron las marcas superpuestas, manteniendo los valores y créditos impresos.
+Los identificadores son `reroll`, `points-increase`, `extra-life`, `cardboard-box` y `senshuni`.
 
-En `output/imagegen/`, cada una conserva su nuevo original como
-`<id>-original.png`, el prompt completo como `<id>-png-prompt.txt` y la versión
-limpia anterior como `<id>-clean-from-jpg.png`. Los identificadores son `reroll`,
-`points-increase`, `extra-life`, `cardboard-box` y `senshuni`.
-Los JPG y sus prompts anteriores se conservan para referencia.
+Caja de Cartón corresponde a la edición BY4-6/14: «No recibir daño de un ataque» y «Cancelar la activación de un código que sea tipo objeto».
 
-Caja de Cartón usa ahora la edición BY4-6/14 del PNG: «No recibir daño de un ataque»
-y «Cancelar la activación de un código que sea tipo objeto». Esta actualización
-solo sustituye la imagen y no modifica las reglas ya implementadas.
+Es equipo normal: resta dos a cada daño, con mínimo cero. Un 1 en cualquier tirada de ataque, también en un relanzamiento, destruye todos los cascos equipados y los envía a memoria de sus dueños. Unos en otros dados no lo destruyen.
 
-`diamond-helmet-clean.png` restaura el JPG del Casco de Diamantes (B04-6/15), retirando
-la marca diagonal y conservando la ilustración, las reglas y el crédito impreso.
-Se editó con `image_gen` y se normalizó a 697×987; el prompt está en
-`diamond-helmet-prompt.txt`. El original aportado permanece en Downloads.
-Es equipo normal: resta dos a cada daño, con mínimo cero. Un 1 en cualquier tirada
-de ataque, también en un relanzamiento, destruye todos los cascos equipados y los
-envía a memoria de sus dueños. Unos en otros dados no lo destruyen.
-El mazo de prueba conserva 20 cartas: una copia de Casco sustituye una de Colgante.
+Es código de tipo Objeto: elige equipo, Bonus o mano al azar, de cualquiera de los jugadores. La carta destruida va a memoria de su dueño; el Bonus se repone. La selección aleatoria se resuelve en el servidor y no enumera cartas de la mano rival. Respeta Caja de Cartón, Error de Carga y Relikia.
 
-`time-bomb-clean.png` restaura Bomba de Tiempo (B04-9/15) a 697×987 con `image_gen`,
-conservando texto, ilustración y crédito del autor. Los prompts están en `time-bomb-prompt.txt`.
-Es código de tipo Objeto: elige equipo, Bonus o mano al azar, de cualquiera de los jugadores.
-La carta destruida va a memoria de su dueño; el Bonus se repone. La selección aleatoria se
-resuelve en el servidor y no enumera cartas de la mano rival. Respeta Caja de Cartón, Error
-de Carga y Relikia. Una copia sustituye una de Aumento de PR, manteniendo las 20 cartas.
+Es código de tipo Jugada, sin COMBO: cuesta una acción y permite elegir una no-habilidad del mazo propio para añadirla a la mano. La búsqueda y la identidad de la carta añadida son privadas. Conserva el orden del mazo restante: el texto no indica barajarlo. Error de Carga y Relikia utilizan sus ventanas y costes comunes; Caja de Cartón no cancela códigos Jugada.
 
-`konamy-code-clean.png` restaura Código Konamy (B04-11/15) desde el PNG aportado,
-usando la herramienta integrada `image_gen` y normalizando a 697×987. Conserva la
-secuencia de botones, las reglas y ambos créditos impresos. El prompt completo está
-en `konamy-code-prompt.txt`; el original permanece en Downloads.
-Es código de tipo Jugada, sin COMBO: cuesta una acción y permite elegir una
-no-habilidad del mazo propio para añadirla a la mano. La búsqueda y la identidad de
-la carta añadida son privadas. Conserva el orden del mazo restante: el texto no
-indica barajarlo. Error de Carga y Relikia utilizan sus ventanas y costes comunes;
-Caja de Cartón no cancela códigos Jugada. Una copia sustituye una de Caja de
-Cartón, conservando veinte cartas en los mazos nuevos.
-
-`mind-swap-clean.png` restaura Cambio de Mentes (B04-10/15) mediante la herramienta
-integrada `image_gen`, normalizada a 697×987. Se retiraron las marcas superpuestas,
-conservando las flechas, las reglas y los créditos de Pikisuperstar/Freepik y del
-autor. El prompt está en `mind-swap-prompt.txt`; el original permanece en Downloads.
-Es código Jugada, sin COMBO: una acción, cero PR, prohibido en el turno 1 global.
-Intercambia las manos restantes después de las respuestas, incluso con cero cartas.
-La propia carta queda en memoria o se corrompe si se activó mediante Relikia.
-Las cartas previamente reveladas conservan esa condición al cambiar de mano.
-Una copia sustituye una de Vida Extra en los mazos nuevos, conservando veinte cartas.
+Es código Jugada, sin COMBO: una acción, cero PR, prohibido en el turno 1 global. Intercambia las manos restantes después de las respuestas, incluso con cero cartas. La propia carta queda en memoria o se corrompe si se activó mediante Relikia. Las cartas previamente reveladas conservan esa condición al cambiar de mano.
 
 ## Agilidad al 100%
 
-`agility-100-clean.png` es la restauración del JPG aportado mediante `image_gen`,
-normalizada a 697×987. Se retiró la marca diagonal, conservando el diseño, el texto
-y los créditos impresos. La reconstrucción generativa puede introducir pequeñas
-diferencias en la ilustración. El original y el prompt están en
-`output/imagegen/agility-100-original.jpg` y `agility-100-prompt.txt`. Es código Jugada con COMBO, cuesta una acción incluso durante el ataque:
-fija en 5 un dado propio pendiente de ataque o efecto, sin relanzarlo ni robar cartas.
-Admite Error de Carga. Una copia sustituye una de Ataque en el mazo de 20 cartas.
+Es código Jugada con COMBO, cuesta una acción incluso durante el ataque: fija en 5 un dado propio pendiente de ataque o efecto, sin relanzarlo ni robar cartas. Admite Error de Carga.
 
 ## Resetear la Mente
 
-`mind-reset-clean.png` restaura el JPG aportado mediante `image_gen`, normalizado a
-697×987. Se retiró la marca de agua diagonal, conservando texto, consola, marco y
-crédito impreso. La reconstrucción generativa puede introducir pequeñas diferencias.
-El original y el prompt están en `output/imagegen/mind-reset-original.jpg` y
-`mind-reset-prompt.txt`.
-
-Código Jugada con COMBO, una acción. El activador elige un jugador y mira su mano
-solo en su vista privada. Selecciona dos copias distintas de las memorias normales
-(propias, rivales o una de cada una) y una no-habilidad de la mano objetivo. Las tres
-regresan al mazo de su dueño; se barajan los mazos afectados y solo el objetivo roba
-una carta. Las memorias corruptas no son seleccionables. Si al mirar solo hay
-habilidades, el efecto termina sin devolver cartas ni robar. Error de Carga puede
-anularlo y devolver el coste; Caja de Cartón no responde a códigos Jugada.
-Una copia sustituye una de Ataque, manteniendo el mazo de veinte cartas.
+Código Jugada con COMBO, una acción. El activador elige un jugador y mira su mano solo en su vista privada. Selecciona dos copias distintas de las memorias normales (propias, rivales o una de cada una) y una no-habilidad de la mano objetivo. Las tres regresan al mazo de su dueño; se barajan los mazos afectados y solo el objetivo roba una carta. Las memorias corruptas no son seleccionables. Si al mirar solo hay habilidades, el efecto termina sin devolver cartas ni robar. Error de Carga puede anularlo y devolver el coste; Caja de Cartón no responde a códigos Jugada.
 
 ## Esquivar
 
-`dodge-clean.png` restaura la imagen aportada en Downloads/esquivar con `image_gen`,
-a 697×987, sin la marca diagonal y conservando reglas y créditos impresos.
-Original y prompt: `output/imagegen/dodge-original.jpg` y `dodge-prompt.txt`.
-Código Jugada COMBO, una acción del defensor. Ante un ataque pendiente lanza D6:
-1–3 roba una carta y conserva la decisión de defensa; 4–6 niega el ataque completo,
-sin daño ni efecto crítico de Magnet y retirando el premio de ese ataque.
-Admite Error de Carga y modificadores del dado. Una copia sustituye una de Senshuni
-para conservar el mazo de veinte cartas.
+Código Jugada COMBO, una acción del defensor. Ante un ataque pendiente lanza D6: 1–3 roba una carta y conserva la decisión de defensa; 4–6 niega el ataque completo, sin daño ni efecto crítico de Magnet y retirando el premio de ese ataque. Admite Error de Carga y modificadores del dado.
 
 ## PC 8BITS
 
-`pc-8bits-clean.png` restaura la imagen aportada en Downloads/pc con `image_gen`,
-a 697×987, sin la marca diagonal, conservando diseño, reglas y créditos impresos.
-Original y prompt: `output/imagegen/pc-8bits-original.png` y `pc-8bits-prompt.txt`.
-Al equiparse, después de las respuestas de Error de Carga, lanza un dado y guarda
-su resultado sobre la carta. El valor es público y persiste al reconectar.
-Al decidir un dado propio de ataque o efecto puede destruirse: con 1–3 suma el valor
-guardado (máximo 5); con 4–6 sustituye el resultado por ese valor. No es relanzamiento
-ni convierte el resultado modificado en seis natural. La destrucción no cuesta otra
-acción; manda PC a memoria y elimina el valor guardado. Reemplazarlo también lo limpia.
-El dado al equipar admite los modificadores ya disponibles. Una copia sustituye
-una de Magnet Shuffle, conservando veinte cartas y ambos tipos de habilidad inicial.
+Al equiparse, después de las respuestas de Error de Carga, lanza un dado y guarda su resultado sobre la carta. El valor es público y persiste al reconectar. Al decidir un dado propio de ataque o efecto puede destruirse: con 1–3 suma el valor guardado (máximo 5); con 4–6 sustituye el resultado por ese valor. No es relanzamiento ni convierte el resultado modificado en seis natural. La destrucción no cuesta otra acción; manda PC a memoria y elimina el valor guardado. Reemplazarlo también lo limpia. El dado al equipar admite los modificadores ya disponibles.
 
 ## Mira de Sniper
 
-`sniper-scope-clean.png` restaura el PNG aportado con `image_gen`, sin marca diagonal,
-a 697×987. Conserva texto y créditos; puede presentar pequeñas diferencias generativas.
-Original y prompt: `output/imagegen/sniper-scope-original.png` y `sniper-scope-prompt.txt`.
-Equipada suma uno al daño de ataques acertados, después del cálculo de mitad/normal/crítico,
-y al daño de efectos propios como Jessica Lee. Los efectos sin daño no reciben ese aumento.
-Cada ocasión de daño recibido añade un contador; al tercero se destruye a memoria.
-Los contadores se muestran públicamente, se guardan al reconectar y se reinician al equipar.
-Los descartes por efectos y por Destiny permiten equiparla gratis o colocarla en canje.
-Destrucción, canje y devolución al mazo no son descartes. El equipo gratuito admite
-Error de Carga, que no devuelve acciones al dueño porque no se gastaron.
-Una copia sustituye la segunda Destiny, manteniendo veinte cartas y ambas habilidades.
+Equipada suma uno al daño de ataques acertados, después del cálculo de mitad/normal/crítico, y al daño de efectos propios como Jessica Lee. Los efectos sin daño no reciben ese aumento. Cada ocasión de daño recibido añade un contador; al tercero se destruye a memoria. Los contadores se muestran públicamente, se guardan al reconectar y se reinician al equipar. Los descartes por efectos y por Destiny permiten equiparla gratis o colocarla en canje. Destrucción, canje y devolución al mazo no son descartes. El equipo gratuito admite Error de Carga, que no devuelve acciones al dueño porque no se gastaron.
 
 ## Triple Ataque Cruzado
 
-`triple-cross-attack-clean.png` restaura el PNG aportado con `image_gen`, a 697×987,
-sin la marca diagonal y conservando reglas y créditos. Original y prompt:
-`output/imagegen/triple-cross-attack-original.png` y `triple-cross-attack-prompt.txt`.
-Jugada sin COMBO: una acción, cero PR. Añade tres cartas de tipo Ataque del mazo
-propio a la mano; si quedan menos, recupera las disponibles. Sin Ataques no se puede
-activar. No busca habilidades, no baraja y conserva el orden de las cartas restantes.
-Error de Carga puede cancelarla antes de la búsqueda; Caja de Cartón no responde.
-Admite Relikia. Si se toma la última carta del mazo, continúa el agotamiento normal;
-el reciclaje no añade objetivos nuevos a esta búsqueda. Las manos siguen siendo privadas.
-El mazo de desarrollo pasa a 23 cartas: tres Ataques y una copia de cada otra carta,
-sin retirar cartas existentes. Las notas anteriores de veinte cartas describen los
-mazos usados al incorporar cada carta en aquel momento.
+Jugada sin COMBO: una acción, cero PR. Añade tres cartas de tipo Ataque del mazo propio a la mano; si quedan menos, recupera las disponibles. Sin Ataques no se puede activar. No busca habilidades, no baraja y conserva el orden de las cartas restantes. Error de Carga puede cancelarla antes de la búsqueda; Caja de Cartón no responde. Admite Relikia. Si se toma la última carta del mazo, continúa el agotamiento normal; el reciclaje no añade objetivos nuevos a esta búsqueda. Las manos siguen siendo privadas.
 
-El mazo de desarrollo actual se amplió después a 32 cartas: doce Ataques y una
-copia de cada otra carta. Triple Ataque Cruzado sigue buscando como máximo tres.
+Triple Ataque Cruzado sigue buscando como máximo tres.
 
 ## Relick Reverse Shuffle
-
-`reverse-shuffle-clean.png` restaura la imagen horizontal aportada por el usuario
-con la herramienta integrada `image_gen`. Se elimina la marca diagonal y se
-conservan los textos, valores, código LR-70/82 y crédito ©2018 FG. La reconstrucción
-generativa puede introducir pequeñas diferencias en la ilustración. El original
-y el prompt están en `output/imagegen/reverse-shuffle-original.png` y
-`output/imagegen/reverse-shuffle-prompt.txt`.
 
 Habilidad de Yuno: daño normal 2 (máximo 5), crítico 4 y premio 600 PR. Cada dado
 propio relanzado mientras está enseñada aumenta en uno ambos daños de cada copia.
@@ -1031,28 +556,14 @@ No protege cartas rivales, cartas descartadas ni cartas meramente devueltas al m
 Si se protege el equipo anterior al equipar otro, el anterior ocupa la única zona
 y el nuevo queda en memoria; no se permite tener dos equipos normales.
 
-Cada copia guarda sus propios aumentos; sacrificar una elimina sus contadores y
-conserva los de las restantes. Su espacio físico queda libre, sin mover las demás
-habilidades; enseñar otra utiliza el primer espacio libre y su coste correspondiente.
-Un ataque declarado conserva su daño aunque su
-habilidad salga del campo. La carta sacrificada va a memoria, sin activar descartes.
-Los daños y premios esperan las elecciones pendientes. Una copia se añade a cada
-mazo nuevo de desarrollo, que ahora contiene 33 cartas, incluidos doce Ataques.
+Cada copia guarda sus propios aumentos; sacrificar una elimina sus contadores y conserva los de las restantes. Su espacio físico queda libre, sin mover las demás habilidades; enseñar otra utiliza el primer espacio libre y su coste correspondiente. Un ataque declarado conserva su daño aunque su habilidad salga del campo. La carta sacrificada va a memoria, sin activar descartes. Los daños y premios esperan las elecciones pendientes.
 
 ## Tomo de Magia, Moto-Ratón, Era Futurista, Casco de Copias, Flauta de Vidrio, Fantasma Ladrón y Perro Fantasma
 
-Las siete cartas se restauraron con `image_gen` y se guardaron con el sufijo `-clean.png`.
 El Tomo conserva sus anexos al moverse por el campo. La galería de la zona muestra las cartas invertidas a 180°. Casco de Copias conserva el texto copiado mientras esté en el campo y recupera su identidad al salir. [Reglamento oficial, §§ 4.8 y 6.7](https://www.relicktcg.com/reglas/nuevo-manual-de-juego).
-
-<details>
-<summary>Prompt de restauración aplicado a cada carta</summary>
-
-> Precise object edit of the attached complete Spanish Relick card (card filename stem). Remove ONLY the repeated translucent diagonal RELICK overlay from the artwork/background. Reconstruct the exact underlying colors and linework, preserving the complete portrait card, original framing, proportions, illustration and layout. Preserve all original lettering exactly as provided, including type banners, name, rules, collector number and bottom artist/copyright credits. No redraw, new details, cropping, padding, or changes to the printed card. Return the complete cleaned card.
-
-</details>
 
 ### Letras de RELICK y Relick Gold Digger
 
-Las seis letras proceden de los archivos R.png, E.png, L.png, I.png, C.png y K.png suministrados con el diseño. Se restauró el arte de cada letra con ImageGen integrado y se conservaron los textos de reglas y créditos del archivo original. Se usó el mismo prompt de restauración para cada carta, documentado en la carpeta de [Yuno Oro](../characters/yuno-oro/README.md). La habilidad Relick Gold Digger usa el original GoldDigger.png, que ya tenía el arte limpio.
+Las seis letras proceden de los archivos R.png, E.png, L.png, I.png, C.png y K.png suministrados con el diseño.
 
 La opción de investigar de Código Caótico deja la carta del tope en su lugar o la envía al fondo. El mazo de caso se usa al abrir un caso. [Reglas oficiales de investigación](https://www.relicktcg.com/reglas/mec%C3%A1nicas/investigar)

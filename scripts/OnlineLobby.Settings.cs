@@ -38,7 +38,30 @@ public partial class OnlineLobby
         _deleteAccount = AddButton(actions, "Eliminar cuenta…", ConfirmDeleteAccount); _deleteAccount.Name = "DeleteAccount";
         _deleteAccount.AddThemeColorOverride("font_color", ArenaPresentation.Coral);
         _accountSection.Visible = false;
+
+        var about = SettingsSection(column, "ACERCA DE");
+        about.GetParent().Name = "AboutSection";
+        about.AddChild(Text("Relick · simulador comunitario no oficial"));
+        foreach (var paragraph in LegalNotice.Disclaimer) about.AddChild(Description(paragraph));
+        about.AddChild(Description(LegalNotice.License));
+        about.AddChild(Description(LegalNotice.Credits));
+        var licenses = AddButton(about, "Licencias de terceros…", ShowThirdPartyLicenses);
+        licenses.Name = "ThirdPartyLicenses"; licenses.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         return page;
+    }
+
+    private void ShowThirdPartyLicenses()
+    {
+        if (GetNodeOrNull("ThirdPartyLicensesDialog") != null) return;
+        var dialog = new AcceptDialog { Name = "ThirdPartyLicensesDialog", Title = "Licencias de terceros", OkButtonText = "Cerrar" };
+        // A read-only editor keeps the long engine licences responsive where a label would lay out every line.
+        var text = new TextEdit { Text = LegalNotice.ThirdPartyLicenses(), Editable = false, WrapMode = TextEdit.LineWrappingMode.Boundary,
+            CustomMinimumSize = new(0, 420) };
+        text.AddThemeFontSizeOverride("font_size", MenuVisuals.Type.Body);
+        MenuDialog.Fill(dialog, text, 720);
+        AddChild(dialog);
+        dialog.VisibilityChanged += () => { if (!dialog.Visible) dialog.QueueFree(); };
+        MenuDialog.Show(dialog);
     }
 
     private static VBoxContainer SettingsSection(Node parent, string title)

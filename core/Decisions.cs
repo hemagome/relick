@@ -680,7 +680,7 @@ public sealed partial class GameEngine
         effect.Continue(EffectFor(next.Actor, next.Text), next.Step ?? "", next);
     }
 
-    internal static string FieldPlace(GameState s, FieldTarget t, int viewer)
+    internal static string FieldPlace(FieldTarget t, int viewer)
     {
         var own = t.Owner == viewer;
         return t.Zone switch

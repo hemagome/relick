@@ -667,7 +667,6 @@ namespace Relick.TestNetwork.Types
                 Reducer.KeepQuickMatchAlive args => Reducers.InvokeKeepQuickMatchAlive(eventContext, args),
                 Reducer.LeaveRoom args => Reducers.InvokeLeaveRoom(eventContext, args),
                 Reducer.PlayDuelV2 args => Reducers.InvokePlayDuelV2(eventContext, args),
-                Reducer.SaveDeck args => Reducers.InvokeSaveDeck(eventContext, args),
                 Reducer.SaveDeckV2 args => Reducers.InvokeSaveDeckV2(eventContext, args),
                 Reducer.SetActiveDeck args => Reducers.InvokeSetActiveDeck(eventContext, args),
                 Reducer.SetComboResponses args => Reducers.InvokeSetComboResponses(eventContext, args),
