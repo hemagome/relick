@@ -25,7 +25,7 @@ Pide o consulta, por cada carta:
 | Habilidades | Daño normal y crítico, premio en PR, habilidad «S» (`Special`) |
 | Equipos | Normal o ligero (`LightEquipment`), apilable (`Stackable`) |
 | Texto de reglas exacto | Como en la carta impresa; se muestra en el inspector |
-| Imagen | Escaneo o foto de la carta, para restaurarla |
+| Imagen | Escaneo o foto de la carta, con su marca de agua (no se elimina) |
 
 Si el texto es ambiguo, pregunta antes de programar. Indica qué interpretación tomas y anótala en la sección de la carta en [assets/cards/README.md](../assets/cards/README.md).
 
@@ -47,9 +47,12 @@ public static readonly CardDefinition AttackOsamuDt = Attack with
 
 ## 3. Ilustración
 
-- Guarda la imagen limpia en `assets/cards/<id>-clean.png`. La cargan `BoardArt.LoadCardArtwork` y `SkillArtwork` por convención de nombre, sin registro.
-- Respeta la proporción de la carta impresa: 697 × 987 en vertical, o 987 × 697 en horizontal, como las habilidades. Conserva márgenes, textos impresos y créditos, sin bordes nuevos.
-- Si restauras la imagen (quitar marcas de agua, reconstruir zonas), documenta la procedencia y el prompt en [assets/cards/README.md](../assets/cards/README.md), como las cartas existentes.
+> **Permisos antes que píxeles.** Las ilustraciones, escaneos, logotipos y textos impresos de Relick no están cubiertos por la licencia del código ([NOTICE.md](../NOTICE.md)). Solo añade una imagen si quien la aporta tiene derecho a distribuirla y queda documentado en [assets/cards/README.md](../assets/cards/README.md). Si no hay permiso, deja la carta sin imagen: la interfaz funciona igual y el hueco queda anotado como pendiente en [docs/PUBLICATION_AUDIT.md](PUBLICATION_AUDIT.md).
+
+- **La marca de agua se conserva.** Añade la imagen tal como se aportó, con su marca de agua, sus textos y sus créditos. No la quites ni la retoques con herramientas de edición generativa (`image_gen` u otras) ni de ningún otro modo.
+- Guárdala en `assets/cards/<id>-clean.png`. El sufijo `-clean` es solo la convención de nombre con la que la cargan `BoardArt.LoadCardArtwork` y `SkillArtwork`, sin registro; no significa que haya que limpiarla.
+- Respeta la proporción de la carta impresa: 697 × 987 en vertical, o 987 × 697 en horizontal, como las habilidades. Solo se permite recortar el fondo sobrante o escalar; conserva márgenes, textos impresos y créditos, sin bordes nuevos.
+- Documenta la procedencia (quién la aportó y con qué permiso) en la sección de la carta en [assets/cards/README.md](../assets/cards/README.md). Las restauraciones y prompts que aparecen allí para cartas anteriores son un registro histórico, no un procedimiento a seguir.
 - Godot genera el archivo `.import` al abrir el proyecto en el editor, o con `godot --headless --path . --import`. Añade la imagen y su `.import` al mismo commit.
 
 ## 4. Reglas
@@ -79,6 +82,8 @@ Los demás miembros son opcionales:
 - `Unavailable(ctx, excludedHand)`: por qué no se puede activar ahora, además de los costes comunes; `null` si se puede.
 - `Choices` y `Choose`: las opciones y la respuesta de una decisión que la carta abrió con `ctx.Ask(...)`.
 - `Continue(ctx, step, next)`: cómo sigue tras una pausa, ya sea un dado (`ctx.Roll(purpose, step)`) o una operación que se puede sustituir (`ctx.Then(step)`). Los pasos son cadenas constantes, porque se guardan en la partida.
+
+Antes de escribir un módulo, busca uno que puedas reutilizar o parametrizar ([core/AGENTS.md](../core/AGENTS.md#reutilizar-antes-de-crear)). La tabla de [ejemplos por patrón](../core/AGENTS.md#ejemplos-existentes-por-patrón) cubre cartas sin efecto, activadas, continuas, disparadas y con objetivo.
 
 Buenos ejemplos para copiar:
 
@@ -151,12 +156,16 @@ dotnet build server/spacetimedb/StdbModule.csproj
 
 Ambas deben pasar. El módulo del servidor compila el mismo `core/`, así que un fallo ahí suele ser código de Godot que se coló en el motor.
 
+**Multijugador.** No hace falta tocar `server/`: el servidor ejecuta el mismo motor y valida la jugada a través de `DuelOptions`. Comprueba en las pruebas que la opción aparece para el asiento correcto (`DuelOptions.For(game, seat)`) y que el rival no ve información privada (`DuelSnapshot.For`). Si la carta necesita una jugada nueva (`DuelMoveKind`), lee [server/AGENTS.md](../server/AGENTS.md). Para verla en una partida real, juega contra ti mismo con un servidor local (`./jugar.sh` y `./jugar.sh --pvp-profile=dos`, ver [PvP](PVP.md#desarrollo-local)).
+
 ## Lista de comprobación
 
 - [ ] Datos de la carta confirmados, y las dudas anotadas.
 - [ ] `CardDefinition` en `CardCatalog`, en `All` y, si procede, en `TrainingDeck()`.
-- [ ] `assets/cards/<id>-clean.png` con su `.import`, y la procedencia documentada.
+- [ ] `assets/cards/<id>-clean.png` con su `.import` y su marca de agua intacta, la procedencia documentada y el permiso de distribución confirmado (o la carta sin imagen y el pendiente anotado).
 - [ ] Módulo en `core/Effects/` registrado en `CardEffects`, si tiene reglas propias.
 - [ ] Ningún `if` por identificador nuevo en el motor y ninguna fase nueva en `Phase`.
 - [ ] Pruebas del motor nuevas en `tests/Program.cs`, y de interfaz si hay presentación propia.
 - [ ] Motor, servidor e interfaz en verde.
+
+La lista completa (*Definition of Done*) está en [AGENTS.md](../AGENTS.md#definition-of-done-carta-o-relikario).

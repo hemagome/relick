@@ -1,5 +1,7 @@
 # WD
 
+> **Registro histórico.** Las restauraciones con `image_gen` y la eliminación de marcas de agua que se describen aquí documentan cómo se hicieron estos recursos; no son un procedimiento a seguir. Las imágenes nuevas se añaden con su marca de agua y sin edición generativa ([Añadir un Relikario](../../../docs/ADDING_RELIKARIO.md#5-arte)). La situación de estos recursos está en [docs/PUBLICATION_AUDIT.md](../../../docs/PUBLICATION_AUDIT.md).
+
 Cartas restauradas con ImageGen a partir de los escaneos adjuntos por el usuario. Se retiró la marca diagonal de las ocho cartas y se conservaron los créditos impresos. El retrato se extrajo de WD Lv 1.
 
 Multi Drive calcula el daño y el premio con la mano al resolver el ataque. El daño normal es la mitad de las cartas en mano, redondeada hacia arriba. Cada fallo confirmado permite pagar un nuevo relanzamiento.

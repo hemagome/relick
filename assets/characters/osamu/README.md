@@ -1,5 +1,7 @@
 # Osamu Takahashi
 
+> **Registro histórico.** Las restauraciones con `image_gen` y la eliminación de marcas de agua que se describen aquí documentan cómo se hicieron estos recursos; no son un procedimiento a seguir. Las imágenes nuevas se añaden con su marca de agua y sin edición generativa ([Añadir un Relikario](../../../docs/ADDING_RELIKARIO.md#5-arte)). La situación de estos recursos está en [docs/PUBLICATION_AUDIT.md](../../../docs/PUBLICATION_AUDIT.md).
+
 El [recorte transparente en la pose impresa](../../../output/imagegen/osamu-lv1-cutout.png) conserva la postura, el rostro y los objetos de la carta Lv 1. `sprite.png` adapta la figura a la guardia del tablero. `turbo-sword.png` conserva la empuñadura, la guarda y el patrón de circuitos como capa independiente. `attack-card.png` es la carta azul de Ataque restaurada del JPG aportado por el usuario.
 
 Los PNG se crearon con `image_gen`. Para el recorte se pidió conservar la pose, la expresión y los objetos que sostiene en la carta, reconstruyendo las zonas cubiertas por los elementos impresos. Para la figura del tablero se pidió conservar sus gafas, ojos rojos y abrigo índigo, darle una guardia contenida y dejar un puño visible para articular la espada. Para la espada se pidió aislar la hoja completa y orientarla a la derecha. Para Ataque se pidió quitar la marca diagonal y conservar la espada de píxel, las dos leyendas ATAQUE y el crédito impreso.

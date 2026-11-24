@@ -1,6 +1,6 @@
 # Añadir un Relikario
 
-Guía para que un desarrollador o un agente de IA programe un Relikario nuevo, con su evolución, sus poderes, sus cartas, su arte, sus animaciones y su música. Los Relikarios ya programados (Yuno, Osamu e Ironwing) sirven de referencia en cada paso; el commit que habilitó a Ironwing (`e4f5a81`) y el de su retrato (`69de641`) muestran el recorrido completo.
+Guía para que un desarrollador o un agente de IA programe un Relikario nuevo, con su evolución, sus poderes, sus cartas, su arte, sus animaciones y su música. Los Relikarios ya programados (Yuno, Osamu, Ironwing, WD y Yuno Oro) sirven de referencia en cada paso; el commit que habilitó a Ironwing (`e4f5a81`) y el de su retrato (`69de641`) muestran el recorrido completo.
 
 Lee también la [clasificación de cartas](CARD_TAXONOMY.md#relikarios-y-afinidad-de-habilidades) y [Añadir una carta](ADDING_CARD.md): la mayor parte del contenido de un Relikario son cartas.
 
@@ -20,7 +20,7 @@ Reúne esto y confirma las dudas antes de programar. Un Relikario mal especifica
 - Otras cartas que solo tienen sentido con él (como Agujero Negro para Ironwing).
 
 **Arte y audio**
-- Escaneos de las cartas del Relikario por nivel y de cada carta propia.
+- Escaneos de las cartas del Relikario por nivel y de cada carta propia, con su marca de agua (no se elimina).
 - Referencias de la figura del tablero: pose, rasgos que deben conservarse y objetos que se animan por separado (la espada de Osamu, los cañones de Ironwing).
 - Cómo ataca en pantalla: proyectil recto, en arco o láser. También cómo encaja un golpe y cómo se ve a cero vidas.
 - Carácter de su música: tempo, instrumentos y ambiente del combate y del clímax.
@@ -54,13 +54,11 @@ Si la habilidad necesita lógica propia, va en un archivo parcial del motor, `co
 
 - **Habilidades específicas**: `CardDefinition` con `Relikario = RelikarioCatalog.<Nombre>.Id`. Las reglas del mazo ([core/DeckRules.cs](../core/DeckRules.cs)) solo las admiten con ese Relikario, y el motor solo permite enseñarlas y atacar con ellas si son compatibles.
 - **Ilustraciones de Ataque**: variantes `Attack with { Id = "attack-<id>-<código>", ArtworkLabel = "<Nombre> (<código>)", Relikario = … }` en [core/CardCatalog.cs](../core/CardCatalog.cs), cada una con su imagen `assets/cards/attack-<id>-<código>-clean.png`. Comparten la regla del Ataque.
-- **Ataque por defecto**: si la ilustración por defecto no es la clásica, hay que tocar dos sitios que hoy solo tratan a Ironwing como caso especial:
-  - `DeckRules.DefaultAttackArt`, que decide qué Ataque recibe un mazo nuevo;
-  - `BoardArt.LoadCardArtwork`, en [scripts/BoardWidgets.cs](../scripts/BoardWidgets.cs).
-  
-  Generaliza esos dos sitios en lugar de añadir otro `if`. Otra opción: un `attack-card.png` en la carpeta del personaje sustituye la ilustración del Ataque clásico de ese Relikario, como hace Osamu.
+- **Ataque por defecto**: si la ilustración por defecto no es la clásica, indícala con `DefaultAttackArtId` en la definición de la forma base, como Ironwing, WD y Yuno Oro. `DeckRules.DefaultAttackArt` y `BoardArt.LoadCardArtwork` ([scripts/BoardWidgets.cs](../scripts/BoardWidgets.cs)) la leen de ahí, sin casos especiales. Otra opción: un `attack-card.png` en la carpeta del personaje sustituye la ilustración del Ataque clásico de ese Relikario, como hace Osamu.
 
 ## 5. Arte
+
+> **Permisos antes que píxeles.** Las cartas, retratos y figuras de los personajes de Relick son propiedad intelectual de terceros y no están cubiertos por la licencia del código ([NOTICE.md](../NOTICE.md)). Añade solo imágenes que quien las aporta tenga derecho a distribuir, documenta la autorización en el `README.md` de la carpeta y conserva la marca de agua: no la quites ni retoques las imágenes con herramientas de edición generativa (`image_gen` u otras). Sin permiso, las reglas del Relikario pueden programarse igual. `RelikarioArt.Load` devuelve `null` cuando falta un archivo, pero comprueba en las pruebas de interfaz que el retrato, el selector y la evolución se presentan sin él, y anota el hueco en [docs/PUBLICATION_AUDIT.md](PUBLICATION_AUDIT.md).
 
 Todo el arte del personaje va en `assets/characters/<id base>/`. [scripts/RelikarioArt.cs](../scripts/RelikarioArt.cs) lo busca por nombre de archivo, y cada forma usa la carpeta de su forma base.
 
@@ -73,7 +71,7 @@ Todo el arte del personaje va en `assets/characters/<id base>/`. [scripts/Relika
 | `attack-projectile.png` | Proyectil del ataque | transparente |
 | `attack-card.png` | Ilustración alternativa del Ataque clásico | 1054 × 1492 |
 
-Documenta en un `README.md` de la carpeta la procedencia de cada imagen y los prompts usados (por ejemplo con `image_gen`), como en [Yuno](../assets/characters/yuno/README.md) y [Osamu](../assets/characters/osamu/README.md). Si una herramienta deja marcas de agua, dilo.
+Documenta en un `README.md` de la carpeta la procedencia de cada imagen: quién la aportó, con qué permiso y qué transformación no generativa se le aplicó (recorte, escala). Las imágenes derivadas de una carta, como el retrato, conservan la marca de agua de la carta de la que salen. Las figuras y animaciones del tablero deben ser arte aportado con permiso o arte original del proyecto, no reconstrucciones generativas de las ilustraciones oficiales. Los prompts de `image_gen` que aparecen en los `README.md` de Yuno, Osamu, WD y Yuno Oro son un registro histórico de cómo se hicieron esos recursos, no un procedimiento a seguir.
 
 ## 6. Animaciones del tablero
 
@@ -136,8 +134,11 @@ Juega además un duelo real contra ti mismo (`./jugar.sh` y `./jugar.sh --pvp-pr
 - [ ] Reglas, cartas, arte y música pedidos y confirmados con el diseñador.
 - [ ] Formas en `RelikarioCatalog` (`All`, `Playable` y `Roster`), con su evolución.
 - [ ] Poderes propios en `GameEngine.<Nombre>.cs`, con sus jugadas, opciones e historial.
-- [ ] Habilidades específicas y variantes de Ataque en `CardCatalog`, con sus imágenes; Ataque por defecto resuelto sin un `if` nuevo.
+- [ ] Habilidades específicas y variantes de Ataque en `CardCatalog`, con sus imágenes; Ataque por defecto con `DefaultAttackArtId`, sin un `if` nuevo.
+- [ ] Permiso de distribución de cada imagen confirmado y documentado (o el hueco anotado como pendiente), con la marca de agua intacta.
 - [ ] `assets/characters/<id>/`: cartas por nivel, retrato, miniatura, animaciones o rig, proyectil y `README.md`.
 - [ ] Rig conectado en `RelikarioPortrait` y proyectil en `ArenaEffects`, si procede.
 - [ ] Temas de combate y clímax generados, registrados en `music.tres` y documentados.
 - [ ] Pruebas del motor, de interfaz y de música en verde.
+
+Diferencias con una carta y lista completa (*Definition of Done*): [core/AGENTS.md](../core/AGENTS.md#relikario-frente-a-carta) y [AGENTS.md](../AGENTS.md#definition-of-done-carta-o-relikario).

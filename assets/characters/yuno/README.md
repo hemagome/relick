@@ -1,5 +1,7 @@
 # Yuno · animaciones
 
+> **Registro histórico.** Las restauraciones con `image_gen` y la eliminación de marcas de agua que se describen aquí documentan cómo se hicieron estos recursos; no son un procedimiento a seguir. Las imágenes nuevas se añaden con su marca de agua y sin edición generativa ([Añadir un Relikario](../../../docs/ADDING_RELIKARIO.md#5-arte)). La situación de estos recursos está en [docs/PUBLICATION_AUDIT.md](../../../docs/PUBLICATION_AUDIT.md).
+
 Exportaciones de Ludo.ai facilitadas por el usuario, con la marca de agua retirada mediante
 edición generativa con la herramienta integrada `image_gen`. Se procesaron 46 bloques de cuatro
 fotogramas para reconstruir las partes cubiertas sin reducir cada figura al tamaño de una hoja completa.

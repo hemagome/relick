@@ -1,5 +1,7 @@
 # Cartas
 
+> **Registro histórico.** Las restauraciones con `image_gen` y la eliminación de marcas de agua que se describen aquí documentan cómo se hicieron estos recursos; no son un procedimiento a seguir. Las imágenes nuevas se añaden con su marca de agua y sin edición generativa ([Añadir una carta](../../docs/ADDING_CARD.md#3-ilustración)). La situación de estos recursos está en [docs/PUBLICATION_AUDIT.md](../../docs/PUBLICATION_AUDIT.md).
+
 ## Relick Turbo Attack (L8B-13/40)
 
 [`turbo-attack-clean.png`](turbo-attack-clean.png) restaura el escaneo adjunto
