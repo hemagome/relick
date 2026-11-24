@@ -21,6 +21,8 @@ mkdir -p "$relick_staging/Relick"
 
 "$relick_godot" --headless --path "$relick_root" --editor --import --log-file "$relick_staging/import.log"
 "$relick_godot" --headless --path "$relick_root" --export-release "Windows Desktop" "$relick_staging/Relick/Relick.exe" --log-file "$relick_staging/export.log"
+# The licence, its scope and the third-party notices travel with every copy.
+cp LICENSE NOTICE.md THIRD_PARTY_NOTICES.md "$relick_staging/Relick/"
 
 python3 - "$relick_staging" "$relick_root/artifacts/Relick-windows-x86_64.zip" <<'PY'
 from pathlib import Path
