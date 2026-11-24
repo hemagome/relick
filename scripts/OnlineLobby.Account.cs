@@ -40,6 +40,8 @@ public partial class OnlineLobby
         column.AddChild(Description("Se abrirá tu navegador. Puedes entrar con correo, Discord u otra cuenta."));
         _loginStatus = Description(""); _loginStatus.Name = "LoginStatus";
         column.AddChild(_loginStatus);
+        var notice = Caption(LegalNotice.Short, BoardArt.Muted); notice.Name = "LoginLegalNotice";
+        notice.AutowrapMode = TextServer.AutowrapMode.WordSmart; column.AddChild(notice);
         void Arrange()
         {
             var shortScreen = ArenaViewport.Short(this);
